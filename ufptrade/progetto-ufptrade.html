@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<title>Progetto WebApp Utensilferramenta</title>
+<style>
+/* === RESET === */
+body { margin: 0; padding: 0; }
+
+/* === PAGE SETUP === */
+@page {
+    size: A4;
+    margin: 2.5cm 2cm;
+    @top-center { content: string(doctitle); font-size: 9pt; color: #999; }
+    @bottom-center { content: counter(page); font-size: 9pt; color: #999; }
+}
+@page :first { margin: 0; @top-center { content: none; } @bottom-center { content: none; } }
+@page cover { @top-center { content: none; } @bottom-center { content: none; } }
+@page toc { @top-center { content: none; } @bottom-center { content: none; } }
+
+body { string-set: doctitle ""; }
+h1 { string-set: doctitle content(); }
+
+/* === TYPOGRAPHY === */
+body {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 11pt;
+    line-height: 1.6;
+    color: #333;
+    text-align: justify;
+    text-align-last: left;
+}
+
+h1 { font-size: 20pt; font-weight: 700; color: #1a1a1a; margin-top: 1.5em; margin-bottom: 0.6em; page-break-after: avoid; }
+h2 { font-size: 15pt; font-weight: 700; color: #2a2a2a; margin-top: 1.3em; margin-bottom: 0.5em; page-break-after: avoid; }
+h3 { font-size: 12pt; font-weight: 700; color: #444; margin-top: 1em; margin-bottom: 0.4em; page-break-after: avoid; }
+
+p { margin: 0.5em 0; }
+
+/* === COVER === */
+.cover {
+    width: 210mm;
+    height: 297mm;
+    margin: 0;
+    position: relative;
+    overflow: hidden;
+    page: cover;
+    page-break-after: always;
+    background: #faf9f7;
+}
+
+/* Swiss style geometric elements */
+.cover::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 8mm;
+    background: #1a1714;
+}
+.cover::after {
+    content: "";
+    position: absolute;
+    bottom: 40mm; right: 0;
+    width: 60mm;
+    height: 60mm;
+    background: #E86824;
+    opacity: 0.15;
+}
+
+.cover-accent-1 {
+    position: absolute;
+    top: 30mm; left: 20mm;
+    width: 2mm;
+    height: 80mm;
+    background: #E86824;
+}
+.cover-accent-2 {
+    position: absolute;
+    bottom: 60mm; left: 25mm;
+    width: 40mm;
+    height: 1px;
+    background: #1a1714;
+}
+.cover-accent-3 {
+    position: absolute;
+    top: 50mm; right: 30mm;
+    width: 25mm;
+    height: 25mm;
+    border: 1px solid #d4cfc8;
+}
+
+.cover-content {
+    position: absolute;
+    top: 55%;
+    left: 25mm;
+    right: 25mm;
+    transform: translateY(-50%);
+}
+.cover-label {
+    font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+    font-size: 10pt;
+    font-weight: 500;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #E86824;
+    margin-bottom: 15mm;
+}
+.cover-title {
+    font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+    font-size: 32pt;
+    font-weight: 700;
+    color: #1a1714;
+    line-height: 1.2;
+    margin-bottom: 8mm;
+}
+.cover-subtitle {
+    font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+    font-size: 14pt;
+    font-weight: 400;
+    color: #7a756e;
+    line-height: 1.5;
+    margin-bottom: 25mm;
+}
+.cover-meta {
+    font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+    font-size: 10pt;
+    color: #4a4540;
+    line-height: 2;
+}
+.cover-meta strong { color: #1a1714; }
+
+.cover-footer {
+    position: absolute;
+    bottom: 20mm;
+    left: 25mm;
+    right: 25mm;
+    font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+    font-size: 9pt;
+    color: #7a756e;
+    border-top: 1px solid #e8e4de;
+    padding-top: 5mm;
+}
+
+/* === TOC === */
+.toc-page { page: toc; page-break-after: always; }
+.toc-title { font-size: 20pt; font-weight: 700; color: #1a1a1a; margin-bottom: 1em; }
+.toc { list-style: none; padding: 0; margin: 0; }
+.toc li { margin: 0.4em 0; font-size: 11pt; }
+.toc a { color: #333; text-decoration: none; display: block; }
+.toc a::after { content: leader('.') target-counter(attr(href url), page); }
+.toc .toc-h1 { font-weight: 700; margin-top: 0.8em; }
+.toc .toc-h2 { padding-left: 1.5em; font-weight: 400; }
+
+/* === TABLES === */
+table {
+    width: 100%;
+    max-width: 100%;
+    border-collapse: collapse;
+    margin: 1em 0;
+    font-size: 10pt;
+    box-sizing: border-box;
+}
+thead { border-top: 2px solid #333; border-bottom: 1px solid #333; }
+tbody { border-bottom: 2px solid #333; }
+th { padding: 8px 10px; text-align: left; font-weight: 700; background: #f5f5f5; }
+td { padding: 8px 10px; text-align: left; vertical-align: top; }
+tr { page-break-inside: avoid; }
+caption { font-weight: 700; margin-bottom: 0.5em; text-align: left; }
+caption::before { content: attr(data-label) ". "; }
+
+/* === LISTS === */
+ul, ol { margin: 0.5em 0; padding-left: 1.5em; }
+li { margin: 0.3em 0; }
+
+/* === HIGHLIGHT BOX === */
+.box {
+    border-left: 3px solid #E86824;
+    padding: 0.8em 1.2em;
+    margin: 1em 0;
+    background: #fef0e6;
+}
+.box-title { font-weight: 700; color: #1a1714; margin-bottom: 0.3em; }
+
+/* === PHASE BOX === */
+.phase {
+    border: 1px solid #d4cfc8;
+    padding: 1em;
+    margin: 0.8em 0;
+    background: #faf9f7;
+    page-break-inside: avoid;
+}
+.phase-title { font-weight: 700; font-size: 12pt; color: #1a1714; margin-bottom: 0.3em; }
+.phase-meta { font-size: 10pt; color: #7a756e; margin-bottom: 0.5em; }
+
+/* === COST TABLE === */
+.cost-positive { color: #2d7a3a; font-weight: 700; }
+.cost-negative { color: #b32424; font-weight: 700; }
+
+/* === OVERFLOW PREVENTION === */
+pre, table, figure, img, svg, blockquote {
+    max-width: 100%;
+    box-sizing: border-box;
+}
+pre { overflow-x: auto; white-space: pre-wrap; word-wrap: break-word; }
+figure img, figure svg { max-width: 80%; max-height: 40vh; height: auto; }
+a { word-break: break-all; }
+
+/* === MISC === */
+strong { color: #1a1a1a; }
+.page-break { page-break-before: always; }
+</style>
+</head>
+<body>
+
+<!-- ==================== COVER ==================== -->
+<div class="cover">
+    <div class="cover-accent-1"></div>
+    <div class="cover-accent-2"></div>
+    <div class="cover-accent-3"></div>
+    <div class="cover-content">
+        <div class="cover-label">Progetto Tecnologico</div>
+        <div class="cover-title">WebApp Multifunzione<br>Utensilferramenta</div>
+        <div class="cover-subtitle">Piattaforma digitale per agenti di vendita con assistente AI integrato,<br>catalogo prodotti AGB e generazione automatica di kit</div>
+        <div class="cover-meta">
+            <strong>Azienda:</strong> Utensilferramenta Pistoiese S.p.A.<br>
+            <strong>Sede:</strong> Via Luigi Salvatorelli 161, 51100 Pistoia<br>
+            <strong>Data:</strong> Giugno 2026<br>
+            <strong>Documento:</strong> Proposta tecnica per la direzione
+        </div>
+    </div>
+    <div class="cover-footer">
+        Documento confidenziale — Uso interno
+    </div>
+</div>
+
+<!-- ==================== TOC ==================== -->
+<div class="toc-page">
+    <div class="toc-title">Indice</div>
+    <ul class="toc">
+        <li class="toc-h1"><a href="#sec1">1. Executive Summary</a></li>
+        <li class="toc-h1"><a href="#sec2">2. Contesto e Problematiche</a></li>
+        <li class="toc-h2"><a href="#sec2-1">2.1 Chi siamo</a></li>
+        <li class="toc-h2"><a href="#sec2-2">2.2 I problemi attuali</a></li>
+        <li class="toc-h2"><a href="#sec2-3">2.3 L'opportunita</a></li>
+        <li class="toc-h1"><a href="#sec3">3. La Soluzione Proposta</a></li>
+        <li class="toc-h2"><a href="#sec3-1">3.1 Visione d'insieme</a></li>
+        <li class="toc-h2"><a href="#sec3-2">3.2 Modulo Sito Pubblico</a></li>
+        <li class="toc-h2"><a href="#sec3-3">3.3 Modulo Gestionale Agenti</a></li>
+        <li class="toc-h2"><a href="#sec3-4">3.4 Assistente AI</a></li>
+        <li class="toc-h1"><a href="#sec4">4. Architettura Tecnica</a></li>
+        <li class="toc-h1"><a href="#sec5">5. Piano di Sviluppo</a></li>
+        <li class="toc-h1"><a href="#sec6">6. Stima Costi e Investimento</a></li>
+        <li class="toc-h1"><a href="#sec7">7. Benefici Attesi</a></li>
+        <li class="toc-h1"><a href="#sec8">8. Prossimi Passi</a></li>
+    </ul>
+</div>
+
+<!-- ==================== SECTION 1 ==================== -->
+<h1 id="sec1">1. Executive Summary</h1>
+
+<p>Questo documento presenta la proposta tecnica per lo sviluppo di una <strong>piattaforma web multifunzione</strong> per Utensilferramenta Pistoiese S.p.A. L'obiettivo e' duplice: modernizzare la presenza online dell'azienda e dotare gli agenti di vendita di un <strong>assistente artificiale intelligente</strong> in grado di cercare codici prodotto, generare distinte di kit e ridurre drasticamente i tempi di risposta ai clienti.</p>
+
+<div class="box">
+    <div class="box-title">Dati chiave del progetto</div>
+    <ul>
+        <li><strong>Catalogo:</strong> 20.000+ prodotti AGB con ricerca semantica e per codice</li>
+        <li><strong>Utenti interni:</strong> fino a 10 agenti di vendita simultanei</li>
+        <li><strong>Funzione chiave:</strong> generazione automatica kit ferramenta da specifiche tecniche</li>
+        <li><strong>Tempo di sviluppo MVP:</strong> 6 settimane</li>
+        <li><strong>Investimento stimato:</strong> 950-1.450 euro al mese (infrastruttura + API AI)</li>
+    </ul>
+</div>
+
+<p>Il progetto si articola in tre componenti: un <strong>sito web pubblico</strong> che sostituira' quello attuale, un <strong>gestionale riservato</strong> accessibile solo agli agenti autorizzati, e un <strong>assistente AI</strong> addestrato sul catalogo AGB 2026 per rispondere istantaneamente alle richieste tecniche. La fase di e-commerce con carrello e ordini sara' sviluppata in un secondo momento, dopo aver dimostrato il valore del gestionale.</p>
+
+<!-- ==================== SECTION 2 ==================== -->
+<h1 id="sec2">2. Contesto e Problematiche</h1>
+
+<h2 id="sec2-1">2.1 Chi siamo</h2>
+
+<p>Utensilferramenta Pistoiese S.p.A. e' un'azienda all'ingrosso di ferramenta con sede a Pistoia, operativa dal 1972. Con 29 dipendenti e un fatturato di circa 9,5 milioni di euro, l'azienda e' un punto di riferimento regionale per artigiani e aziende del settore serramenti. Il mercato principale comprende ferramenta per porte, finestre e oscuranti, con AGB Alban Giacomo come fornitore principale.</p>
+
+<h2 id="sec2-2">2.2 I problemi attuali</h2>
+
+<p>Gli agenti di vendita impiegano fino a <strong>un'ora per trovare il codice corretto</strong> di un singolo prodotto all'interno del listino AGB, che conta oltre 20.000 articoli distribuiti su centinaia di pagine PDF. Questo si traduce in:</p>
+
+<table>
+    <caption data-label="Tabella 1">Costi del processo attuale</caption>
+    <thead>
+        <tr><th>Problema</th><th>Impatto</th><th>Costo stimato annuo</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>Ricerca manuale codici in PDF</td><td>Fino a 60 minuti per codice</td><td>180 ore/agente (circa 5.400 euro)</td></tr>
+        <tr><td>Errori in distinte kit</td><td>Resi, rilavori, insoddisfazione cliente</td><td>Non quantificabile (significativo)</td></tr>
+        <tr><td>Risposta lenta a richieste email</td><td>Perdita opportunita' commerciali</td><td>Stimato 15-20% richieste perse</td></tr>
+        <tr><td>Nessun sistema di tracciamento richieste</td><td>Nessuna visibilita' sul lavoro degli agenti</td><td>Impossibile ottimizzare</td></tr>
+        <tr><td>Sito web datato (ufptrade.it)</td><td>Immagine aziendale non allineata al mercato</td><td>Perdita fidelizzazione</td></tr>
+    </tbody>
+</table>
+
+<h2 id="sec2-3">2.3 L'opportunita</h2>
+
+<p>L'intelligenza artificiale ha raggiunto un livello di maturita' tale da poter essere applicata con successo al settore B2B industriale. Un assistente AI addestrato sul catalogo AGB puo' <strong>ridurre la ricerca di un codice da un'ora a pochi secondi</strong>, eliminare gli errori nelle distinte kit e fornire un'esperienza cliente superiore attraverso il sito web.</p>
+
+<!-- ==================== SECTION 3 ==================== -->
+<h1 id="sec3">3. La Soluzione Proposta</h1>
+
+<h2 id="sec3-1">3.1 Visione d'insieme</h2>
+
+<p>La piattaforma si compone di tre moduli integrati, sviluppati in sequenza per gestire il rischio e dimostrare valore prima di ogni investimento maggiore:</p>
+
+<table>
+    <caption data-label="Tabella 2">Moduli della piattaforma</caption>
+    <thead>
+        <tr><th>Modulo</th><th>Destinatari</th><th>Priorita'</th><th>Tempo</th></tr>
+    </thead>
+    <tbody>
+        <tr><td><strong>Gestionale Agenti</strong> (con AI)</td><td>Agenti di vendita (max 10)</td><td>Fase 1 — MVP</td><td>6 settimane</td></tr>
+        <tr><td><strong>Sito Web Pubblico</strong></td><td>Clienti B2B, visitatori</td><td>Fase 2</td><td>3-4 settimane</td></tr>
+        <tr><td><strong>E-Commerce</strong></td><td>Clienti registrati</td><td>Fase 3</td><td>Dopo integrazione DB</td></tr>
+    </tbody>
+</table>
+
+<h2 id="sec3-2">3.2 Modulo Sito Pubblico</h2>
+
+<p>Il sito web sostituira' l'attuale ufptrade.it con un design moderno, responsive e ottimizzato per il settore B2B. Le pagine principali includono:</p>
+
+<ul>
+    <li><strong>Homepage</strong> — presentazione aziendale, prodotti in evidenza, form richiesta kit</li>
+    <li><strong>Catalogo prodotti</strong> — esplorazione del catalogo AGB con filtri per categoria, marca, disponibilita'</li>
+    <li><strong>Area Agenti</strong> — link di accesso al gestionale (nascosto al pubblico generale)</li>
+    <li><strong>Chi siamo / Contatti</strong> — informazioni aziendali</li>
+</ul>
+
+<p>L'accesso al gestionale avviene tramite login dedicato: solo gli account creati dall'amministratore possono accedere. I clienti esterni potranno registrarsi solo per la futura area e-commerce.</p>
+
+<h2 id="sec3-3">3.3 Modulo Gestionale Agenti</h2>
+
+<p>Il cuore del progetto. Un dashboard professionale con queste sezioni:</p>
+
+<p><strong>Dashboard principale.</strong> Panoramica attivita' giornaliera: richieste elaborate, kit generati, tempo risparmiato, prodotti cercati. Lista delle ultime richieste con stato (nuova, in lavorazione, completata).</p>
+
+<p><strong>Chat AI.</strong> L'interfaccia principale di lavoro. L'agente puo':</p>
+<ul>
+    <li>Descrivere un prodotto a voce o per iscritto → l'AI restituisce il codice esatto</li>
+    <li>Incollare un'email di richiesta cliente → l'AI estrae tutti i codici prodotto</li>
+    <li>Fornire uno o piu' codici → l'AI restituisce nome e specifiche complete</li>
+    <li>Chiedere la generazione di un kit → l'AI calcola tutti i componenti necessari</li>
+</ul>
+
+<p><strong>Archivio Prodotti.</strong> Ricerca avanzata nel catalogo con filtri per categoria, marca, prezzo, disponibilita'. Visualizzazione a griglia o lista con codice prodotto, descrizione, prezzo e stato magazzino.</p>
+
+<p><strong>Kit Builder.</strong> Form strutturato per la generazione precisa di kit: tipo di finestra, dimensioni, materiale, battuta, sede, mano, finitura, serie. Il sistema calcola automaticamente tutti i componenti necessari con quantita' e prezzi.</p>
+
+<p><strong>Gestione Richieste.</strong> Tracciamento di tutte le richieste kit ricevute dai clienti tramite il sito. Ogni richiesta passa attraverso uno stato: Nuova → In lavorazione → Completata → Inviata.</p>
+
+<p><strong>Pannello Amministratore.</strong> Gestione utenti (creazione account agenti), configurazione AI (API keys, modelli), analytics d'uso.</p>
+
+<h2 id="sec3-4">3.4 Assistente AI</h2>
+
+<p>L'assistente artificiale e' il componente tecnologicamente piu' avanzato del progetto. E' stato progettato per:</p>
+
+<ul>
+    <li><strong>Ricerca semantica</strong> — trova prodotti anche con descrizioni imprecise o parziali</li>
+    <li><strong>Parsing email</strong> — analizza il testo delle richieste cliente ed estrae i prodotti</li>
+    <li><strong>Generazione kit deterministica</strong> — calcola componenti e quantita' con regole tecniche codificate, non con "intuizione" dell'AI</li>
+    <li><strong>Dual provider</strong> — utilizza Google Gemini per chat e ricerca, Moonshot AI Kimi per calcoli complessi, con fallback automatico</li>
+</ul>
+
+<p>L'architettura garantisce che fino a 10 agenti possano usare l'assistente contemporaneamente senza rallentamenti, grazie a un sistema di code intelligenti.</p>
+
+<!-- ==================== SECTION 4 ==================== -->
+<h1 id="sec4">4. Architettura Tecnica</h1>
+
+<p>La piattaforma e' costruita su tecnologie moderne, consolidate e adatte al contesto B2B industriale:</p>
+
+<table>
+    <caption data-label="Tabella 3">Stack tecnologico</caption>
+    <thead>
+        <tr><th>Componente</th><th>Tecnologia</th><th>Funzione</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>Frontend</td><td>Next.js 15 + React 19 + TypeScript</td><td>Interfaccia utente, sito + dashboard</td></tr>
+        <tr><td>Backend</td><td>tRPC + Prisma</td><td>API type-safe, ORM database</td></tr>
+        <tr><td>Database</td><td>PostgreSQL + pgvector</td><td>Dati prodotti, ricerca vettoriale</td></tr>
+        <tr><td>Cache / Code</td><td>Redis (BullMQ)</td><td>Gestione code AI, sessioni, cache</td></tr>
+        <tr><td>AI Engine</td><td>Gemini + Kimi K2.6</td><td>Assistente conversazionale, kit gen</td></tr>
+        <tr><td>Autenticazione</td><td>NextAuth.js</td><td>Login sicuro, ruoli (agente/admin)</td></tr>
+        <tr><td>Hosting</td><td>Vercel + Neon + Upstash</td><td>Cloud managed, zero manutenzione</td></tr>
+    </tbody>
+</table>
+
+<p><strong>Sicurezza.</strong> L'accesso e' protetto da autenticazione con ruoli (RBAC): il pubblico vede solo il sito, gli agenti accedono al dashboard, l'amministratore gestisce utenti e configurazioni. Tutte le comunicazioni sono criptate (HTTPS), i dati sensibili sono pseudonimizzati e il sistema e' conforme al GDPR per le aziende UE.</p>
+
+<!-- ==================== SECTION 5 ==================== -->
+<h1 id="sec5">5. Piano di Sviluppo</h1>
+
+<div class="phase">
+    <div class="phase-title">Fase 1 — MVP Gestionale (6 settimane)</div>
+    <div class="phase-meta">Priorita' assoluta | 2-3 sviluppatori | Budget: tempo di sviluppo</div>
+    <p><strong>Settimane 1-2:</strong> setup progetto, autenticazione, database, import catalogo AGB (20.000+ prodotti).</p>
+    <p><strong>Settimane 3-4:</strong> chat AI con ricerca prodotti, archivio con filtri, UI dashboard agente.</p>
+    <p><strong>Settimane 5-6:</strong> kit deterministic engine, gestione richieste, test con 2-3 agenti, deploy produzione.</p>
+    <p><strong>Deliverable:</strong> gestionale funzionante con AI, usato da agenti di prova.</p>
+</div>
+
+<div class="phase">
+    <div class="phase-title">Fase 2 — Sito Pubblico + Ottimizzazioni (3-4 settimane)</div>
+    <div class="phase-meta">Dopo validazione MVP | 2 sviluppatori</div>
+    <p>Sito web pubblico moderno, admin panel completo, analytics, ottimizzazioni AI, form richiesta kit per clienti esterni.</p>
+    <p><strong>Deliverable:</strong> sito sostituisce ufptrade.it, gestionale usato da tutti gli agenti.</p>
+</div>
+
+<div class="phase">
+    <div class="phase-title">Fase 3 — E-Commerce + Integrazione DB (futuro)</div>
+    <div class="phase-meta">Dopo approvazione e accesso al database aziendale</div>
+    <p>Carrello, checkout, integrazione con il database del magazzino per disponibilita' real-time, customer portal.</p>
+    <p><strong>Deliverable:</strong> piattaforma e-commerce B2B completa.</p>
+</div>
+
+<!-- ==================== SECTION 6 ==================== -->
+<h1 id="sec6">6. Stima Costi e Investimento</h1>
+
+<table>
+    <caption data-label="Tabella 4">Stima costi mensili (fase operativa)</caption>
+    <thead>
+        <tr><th>Voce</th><th>Costo mensile</th><th>Note</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>Hosting Vercel (Pro)</td><td>20 euro</td><td>Sito + dashboard</td></tr>
+        <tr><td>Database Neon (Standard)</td><td>19 euro</td><td>PostgreSQL con pgvector</td></tr>
+        <tr><td>Redis Upstash</td><td>10 euro</td><td>Cache + code AI</td></tr>
+        <tr><td>API Google Gemini</td><td>0-50 euro</td><td>Dipende dall'uso, pay-per-use</td></tr>
+        <tr><td>API Moonshot AI Kimi</td><td>0-30 euro</td><td>Fallback per calcoli complessi</td></tr>
+        <tr><td>Email (Resend)</td><td>0-10 euro</td><td>Notifiche richieste kit</td></tr>
+        <tr><td><strong>TOTALE</strong></td><td><strong>49-139 euro/mese</strong></td><td>Scala con l'uso dell'AI</td></tr>
+    </tbody>
+</table>
+
+<p>Il costo dello sviluppo (tempo dei programmatori) e' l'investimento principale. L'infrastruttura cloud e' deliberatamente economica perche' basata su servizi managed che eliminano la necessita' di un sistemista dedicato.</p>
+
+<!-- ==================== SECTION 7 ==================== -->
+<h1 id="sec7">7. Benefici Attesi</h1>
+
+<table>
+    <caption data-label="Tabella 5">Benefici quantificabili</caption>
+    <thead>
+        <tr><th>Indicatore</th><th>Valore attuale</th><th>Valore atteso</th><th>Miglioramento</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>Tempo ricerca codice prodotto</td><td>15-60 minuti</td><td>5-15 secondi</td><td class="cost-positive">-98%</td></tr>
+        <tr><td>Errori in distinte kit</td><td>5-10% ordini</td><td>&lt;1%</td><td class="cost-positive">-90%</td></tr>
+        <tr><td>Tempo risposta richiesta email</td><td>2-24 ore</td><td>2-5 minuti</td><td class="cost-positive">-95%</td></tr>
+        <tr><td>Ore settimanali ricerca codici (per agente)</td><td>3-5 ore</td><td>&lt;30 minuti</td><td class="cost-positive">-85%</td></tr>
+        <tr><td>Richieste kit gestite/giorno</td><td>5-10</td><td>30-50</td><td class="cost-positive">+400%</td></tr>
+    </tbody>
+</table>
+
+<p><strong>Benefici strategici non quantificabili:</strong> immagine aziendale moderna e allineata al mercato; riduzione stress lavorativo degli agenti; maggiore fidelizzazione cliente grazie a tempi di risposta immediati; base dati strutturata del catalogo (asset strategico); preparazione al futuro e-commerce; possibilita' di offrire il servizio ad altri distributori AGB.</p>
+
+<!-- ==================== SECTION 8 ==================== -->
+<h1 id="sec8">8. Prossimi Passi</h1>
+
+<p>Per avviare il progetto servono le seguenti azioni:</p>
+
+<ol>
+    <li><strong>Approvazione della direzione</strong> — via libera allo sviluppo del MVP (Fase 1)</li>
+    <li><strong>Designazione referente interno</strong> — una persona in azienda che funga da product owner, disponibile per 2-3 ore settimanali di feedback</li>
+    <li><strong>Fornitura listino AGB 2026 digitale</strong> — il file PDF gia' in possesso e' sufficiente per l'estrazione iniziale</li>
+    <li><strong>Identificazione 2-3 agenti beta-tester</strong> — volontari per testare il gestionale nelle prime settimane</li>
+    <li><strong>Accesso API AI</strong> — sottoscrizione account Google AI Studio (gratuito per Gemini) e Moonshot AI</li>
+</ol>
+
+<div class="box">
+    <div class="box-title">Richiesta di decisione</div>
+    <p>Con l'approvazione della direzione, il progetto puo' partire immediatamente. Il primo risultato tangibile — il gestionale con chat AI funzionante — sara' disponibile per i test entro <strong>6 settimane</strong> dall'avvio.</p>
+</div>
+
+</body>
+</html>
