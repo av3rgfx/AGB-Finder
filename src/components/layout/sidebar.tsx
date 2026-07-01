@@ -1,3 +1,5 @@
+"use client";
+
 import { LayoutDashboard, MessageSquare, Package, ClipboardList, Settings } from "lucide-react";
 import { NavItem, type NavItemProps } from "./nav-item";
 
