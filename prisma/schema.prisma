@@ -1,0 +1,564 @@
+// schema.prisma — Utensilferramenta Pistoiese S.p.A. (UFPtrade)
+// PostgreSQL 16 + pgvector. Special indexes (tsvector GIN, vector HNSW) are
+// created in the migration SQL because Prisma cannot emit the required
+// operator class (vector_cosine_ops) for Unsupported column types.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")
+  extensions = [vector]
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 1. USER & AUTH
+// ═══════════════════════════════════════════════════════════════
+
+model User {
+  id            String  @id @default(cuid())
+  name          String
+  email         String  @unique
+  emailVerified Boolean @default(false) @map("email_verified")
+  image         String?
+
+  // Domain fields
+  firstName String @map("first_name")
+  lastName  String @map("last_name")
+  role      String @default("AGENT") // AGENT | ADMIN
+  status    String @default("ACTIVE") // ACTIVE | INACTIVE | SUSPENDED
+
+  // Admin plugin (Better Auth)
+  banned     Boolean?  @default(false)
+  banReason  String?   @map("ban_reason")
+  banExpires DateTime? @map("ban_expires")
+
+  // Relations
+  sessions      Session[]
+  accounts      Account[]
+  conversations Conversation[]
+  kitRequests   KitRequest[]   @relation("KitRequestAgent")
+  activityLogs  ActivityLog[]
+  settings      Settings[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([email])
+  @@index([role])
+  @@index([status])
+  @@map("users")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BETTER AUTH — core tables (session / account / verification)
+// ═══════════════════════════════════════════════════════════════
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent") @db.Text
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Account {
+  id         String @id @default(cuid())
+  accountId  String @map("account_id")
+  providerId String @map("provider_id")
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  accessToken           String?   @map("access_token") @db.Text
+  refreshToken          String?   @map("refresh_token") @db.Text
+  idToken               String?   @map("id_token") @db.Text
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at")
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at")
+  scope                 String?
+  password              String?   @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String   @db.Text
+  expiresAt  DateTime @map("expires_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([identifier])
+  @@map("verifications")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 2. PRODUCT CATALOG
+// ═══════════════════════════════════════════════════════════════
+
+model ProductCategory {
+  id          String  @id @default(cuid())
+  name        String
+  slug        String  @unique
+  description String? @db.Text
+  imageUrl    String? @map("image_url")
+
+  parentId String?           @map("parent_id")
+  parent   ProductCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children ProductCategory[] @relation("CategoryHierarchy")
+
+  products     Product[]
+  kitTemplates KitTemplate[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([slug])
+  @@index([parentId])
+  @@map("product_categories")
+}
+
+model Product {
+  id               String  @id @default(cuid())
+  agbCode          String  @unique @map("agb_code")
+  sku              String  @unique
+  name             String
+  description      String? @db.Text
+  shortDescription String? @map("short_description") @db.Text
+
+  basePrice       Decimal  @map("base_price") @db.Decimal(12, 2)
+  discountedPrice Decimal? @map("discounted_price") @db.Decimal(12, 2)
+  priceUnit       String   @default("EUR") @map("price_unit")
+
+  stockQuantity Int     @default(0) @map("stock_quantity")
+  isAvailable   Boolean @default(true) @map("is_available")
+
+  categoryId String          @map("category_id")
+  category   ProductCategory @relation(fields: [categoryId], references: [id])
+
+  imageUrls    String[] @map("image_urls")
+  datasheetUrl String?  @map("datasheet_url")
+
+  specifications Json? @map("specifications")
+
+  weightKg Decimal? @map("weight_kg") @db.Decimal(8, 3)
+  lengthMm Int?     @map("length_mm")
+  widthMm  Int?     @map("width_mm")
+  heightMm Int?     @map("height_mm")
+
+  // Search & AI. Indexes are created manually in the migration (GIN / HNSW).
+  searchVector Unsupported("tsvector")?     @map("search_vector")
+  embedding    Unsupported("vector(768)")? // gemini-embedding-001 @ 768 dims
+
+  kitComponents        KitComponent[]
+  conversationMessages Message[]      @relation("ReferencedProducts")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([agbCode])
+  @@index([sku])
+  @@index([categoryId])
+  @@index([isAvailable])
+  @@map("products")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 3. KIT SYSTEM
+// ═══════════════════════════════════════════════════════════════
+
+enum KitRequestStatus {
+  DRAFT
+  PENDING_GENERATION
+  GENERATING
+  COMPLETED
+  REVIEWED
+  SENT_TO_CUSTOMER
+  APPROVED
+  REJECTED
+}
+
+enum WindowType {
+  ANTA_RIBALTA
+  ANTA_PROIETTANTE
+  ANTA_BATTENTE
+  SCORREVOLE_ALZANTE
+  SCORREVOLE_TRASLANTE
+  VASISTAS
+  FINESTRA_TETTO
+}
+
+enum MaterialType {
+  LEGNO
+  PVC
+  ALLUMINIO
+  LEGNO_ALLUMINIO
+  PVC_ALLUMINIO
+}
+
+enum HingeSide {
+  DESTRA
+  SINISTRA
+}
+
+enum OpeningDirection {
+  TIRARE
+  SPINGERE
+}
+
+model KitRequest {
+  id            String @id @default(cuid())
+  requestNumber String @unique @map("request_number")
+
+  windowType   WindowType       @map("window_type")
+  widthMm      Int              @map("width_mm")
+  heightMm     Int              @map("height_mm")
+  material     MaterialType
+  airGapMm     Int              @map("air_gap_mm")
+  axisOffsetMm Int              @map("axis_offset_mm")
+  rebateMm     Int              @map("rebate_mm")
+  seatMm       Int              @map("seat_mm")
+  openingSide  HingeSide        @map("opening_side")
+  openingDir   OpeningDirection @map("opening_direction")
+  finish       String
+  series       String
+
+  notes         String? @db.Text
+  customerNotes String? @map("customer_notes") @db.Text
+
+  status       KitRequestStatus @default(DRAFT)
+  generatedKit Json?            @map("generated_kit")
+
+  totalComponents Int      @default(0) @map("total_components")
+  totalPrice      Decimal? @map("total_price") @db.Decimal(12, 2)
+
+  agentId String @map("agent_id")
+  agent   User   @relation("KitRequestAgent", fields: [agentId], references: [id])
+
+  customerId String?   @map("customer_id")
+  customer   Customer? @relation(fields: [customerId], references: [id])
+
+  components KitComponent[]
+
+  pdfUrl         String?   @map("pdf_url")
+  pdfGeneratedAt DateTime? @map("pdf_generated_at")
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  generatedAt DateTime? @map("generated_at")
+
+  @@index([requestNumber])
+  @@index([agentId])
+  @@index([customerId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([windowType, material, series])
+  @@map("kit_requests")
+}
+
+model KitComponent {
+  id String @id @default(cuid())
+
+  kitRequestId String     @map("kit_request_id")
+  kitRequest   KitRequest @relation(fields: [kitRequestId], references: [id], onDelete: Cascade)
+
+  productId String  @map("product_id")
+  product   Product @relation(fields: [productId], references: [id])
+
+  componentCode String  @map("component_code")
+  componentName String  @map("component_name")
+  position      String?
+  quantity      Int     @default(1)
+  unitPrice     Decimal @map("unit_price") @db.Decimal(12, 2)
+  totalPrice    Decimal @map("total_price") @db.Decimal(12, 2)
+
+  ruleId          String?  @map("rule_id")
+  ruleDescription String?  @map("rule_description") @db.Text
+  isOptional      Boolean  @default(false) @map("is_optional")
+  isAlternative   Boolean  @default(false) @map("is_alternative")
+
+  sortOrder Int @default(0) @map("sort_order")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([kitRequestId, componentCode, position])
+  @@index([kitRequestId])
+  @@index([productId])
+  @@index([componentCode])
+  @@index([sortOrder])
+  @@map("kit_components")
+}
+
+model KitTemplate {
+  id          String  @id @default(cuid())
+  name        String
+  description String? @db.Text
+
+  windowType WindowType?   @map("window_type")
+  material   MaterialType?
+  series     String?
+
+  rules Json
+
+  categoryId String?          @map("category_id")
+  category   ProductCategory? @relation(fields: [categoryId], references: [id])
+
+  isActive Boolean @default(true) @map("is_active")
+  priority Int     @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([windowType, material, series])
+  @@index([isActive])
+  @@index([priority])
+  @@map("kit_templates")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 4. CUSTOMER (B2B)
+// ═══════════════════════════════════════════════════════════════
+
+model Customer {
+  id          String  @id @default(cuid())
+  companyName String  @map("company_name")
+  vatNumber   String? @unique @map("vat_number")
+  taxCode     String? @unique @map("tax_code")
+
+  contactName  String? @map("contact_name")
+  contactEmail String? @map("contact_email")
+  contactPhone String? @map("contact_phone")
+
+  address  String?
+  city     String?
+  province String?
+  zipCode  String? @map("zip_code")
+  country  String  @default("IT")
+
+  customerCode String?  @unique @map("customer_code")
+  priceList    String?  @map("price_list")
+  paymentTerms String?  @map("payment_terms")
+  discount     Decimal? @db.Decimal(5, 2)
+
+  kitRequests KitRequest[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([companyName])
+  @@index([vatNumber])
+  @@index([customerCode])
+  @@map("customers")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 5. CONVERSATION SYSTEM (AI Chat)
+// ═══════════════════════════════════════════════════════════════
+
+enum ConversationStatus {
+  ACTIVE
+  ARCHIVED
+  DELETED
+}
+
+model Conversation {
+  id     String             @id @default(cuid())
+  title  String             @default("Nuova Conversazione")
+  status ConversationStatus @default(ACTIVE)
+
+  contextJson Json? @map("context_json")
+
+  agentId String @map("agent_id")
+  agent   User   @relation(fields: [agentId], references: [id])
+
+  messages Message[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([agentId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("conversations")
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+  TOOL
+}
+
+enum MessageStatus {
+  PENDING
+  SENT
+  ERROR
+  STREAMING
+}
+
+model Message {
+  id String @id @default(cuid())
+
+  conversationId String       @map("conversation_id")
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  role        MessageRole
+  content     String      @db.Text
+  contentHtml String?     @map("content_html") @db.Text
+
+  toolName   String? @map("tool_name")
+  toolInput  Json?   @map("tool_input")
+  toolOutput Json?   @map("tool_output")
+
+  modelUsed  String? @map("model_used")
+  tokensUsed Int?    @map("tokens_used")
+  latencyMs  Int?    @map("latency_ms")
+
+  referencedProductIds String[]  @map("referenced_product_ids")
+  referencedProducts   Product[] @relation("ReferencedProducts")
+
+  status       MessageStatus @default(SENT)
+  errorMessage String?       @map("error_message")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([conversationId])
+  @@index([role])
+  @@index([createdAt])
+  @@index([toolName])
+  @@map("messages")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 6. ACTIVITY LOG
+// ═══════════════════════════════════════════════════════════════
+
+enum ActivityType {
+  LOGIN
+  LOGOUT
+  CONVERSATION_CREATED
+  CONVERSATION_MESSAGE
+  KIT_REQUEST_CREATED
+  KIT_GENERATED
+  KIT_EXPORTED_PDF
+  PRODUCT_SEARCHED
+  CUSTOMER_VIEWED
+  SETTINGS_CHANGED
+  USER_CREATED
+  USER_UPDATED
+  IMPORT_EXECUTED
+}
+
+model ActivityLog {
+  id String @id @default(cuid())
+
+  userId String? @map("user_id")
+  user   User?   @relation(fields: [userId], references: [id])
+
+  type        ActivityType
+  description String       @db.Text
+  metadata    Json?
+
+  ipHash    String? @map("ip_hash")
+  userAgent String? @map("user_agent") @db.Text
+
+  resourceType String? @map("resource_type")
+  resourceId   String? @map("resource_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+  @@index([resourceType, resourceId])
+  @@map("activity_logs")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 7. SETTINGS
+// ═══════════════════════════════════════════════════════════════
+
+enum SettingCategory {
+  AI_PROVIDER
+  API_KEYS
+  COMPANY_INFO
+  EMAIL
+  RATE_LIMITS
+  FEATURE_FLAGS
+}
+
+model Settings {
+  id          String          @id @default(cuid())
+  category    SettingCategory
+  key         String
+  value       Json
+  description String?         @db.Text
+  isEncrypted Boolean         @default(false) @map("is_encrypted")
+
+  updatedBy String @map("updated_by")
+  updater   User   @relation(fields: [updatedBy], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([category, key])
+  @@index([category])
+  @@map("settings")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 8. SYNC LOG (external integrations)
+// ═══════════════════════════════════════════════════════════════
+
+enum SyncStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  PARTIAL
+  FAILED
+}
+
+model SyncLog {
+  id       String     @id @default(cuid())
+  syncType String     @map("sync_type")
+  status   SyncStatus @default(PENDING)
+
+  recordsProcessed Int @default(0) @map("records_processed")
+  recordsInserted  Int @default(0) @map("records_inserted")
+  recordsUpdated   Int @default(0) @map("records_updated")
+  recordsFailed    Int @default(0) @map("records_failed")
+
+  errorMessage String? @map("error_message") @db.Text
+  errorDetails Json?   @map("error_details")
+
+  startedAt   DateTime  @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  durationMs  Int?      @map("duration_ms")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([syncType])
+  @@index([status])
+  @@index([createdAt])
+  @@map("sync_logs")
+}
