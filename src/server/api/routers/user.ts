@@ -1,7 +1,6 @@
 import { z } from "zod";
-import bcrypt from "bcryptjs";
-import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, adminProcedure } from "@/server/api/trpc";
+import { auth } from "@/server/auth/config";
 
 const userSelect = {
   id: true,
@@ -15,6 +14,7 @@ const userSelect = {
 
 /**
  * User administration. Admin-only — agents never self-register (project rule).
+ * Account creation delegates to Better Auth's admin plugin (hashing, account row).
  */
 export const userRouter = createTRPCRouter({
   create: adminProcedure
@@ -28,21 +28,17 @@ export const userRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const existing = await ctx.db.user.findUnique({ where: { email: input.email } });
-      if (existing) {
-        throw new TRPCError({ code: "CONFLICT", message: "Email già registrata." });
-      }
-      const passwordHash = await bcrypt.hash(input.password, 12);
-      return ctx.db.user.create({
-        data: {
+      const created = await auth.api.createUser({
+        headers: ctx.headers,
+        body: {
           email: input.email,
-          firstName: input.firstName,
-          lastName: input.lastName,
+          password: input.password,
+          name: `${input.firstName} ${input.lastName}`,
           role: input.role,
-          passwordHash,
+          data: { firstName: input.firstName, lastName: input.lastName },
         },
-        select: userSelect,
       });
+      return created.user;
     }),
 
   list: adminProcedure.query(({ ctx }) =>

@@ -1,25 +1,22 @@
-import { describe, it, expect, vi } from "vitest";
-import { buildAdminData, BASE_CATEGORIES } from "./seed";
+import { describe, it, expect } from "vitest";
+import { buildAdminUserData, BASE_CATEGORIES } from "./seed";
 
-describe("buildAdminData", () => {
-  it("hashes the password and marks the user ADMIN/ACTIVE without leaking plaintext", async () => {
-    const hash = vi.fn().mockResolvedValue("hashed-value");
-    const data = await buildAdminData({ email: "admin@x.it", password: "s3cret-pw" }, hash);
-
-    expect(hash).toHaveBeenCalledWith("s3cret-pw", 12);
+describe("buildAdminUserData", () => {
+  it("marks the user ADMIN/ACTIVE, verified, with a composed name", () => {
+    const data = buildAdminUserData("admin@x.it", "Anna", "Bianchi");
     expect(data).toMatchObject({
       email: "admin@x.it",
+      name: "Anna Bianchi",
+      firstName: "Anna",
+      lastName: "Bianchi",
       role: "ADMIN",
       status: "ACTIVE",
-      passwordHash: "hashed-value",
+      emailVerified: true,
     });
-    expect(JSON.stringify(data)).not.toContain("s3cret-pw");
   });
 
-  it("applies default first/last name", async () => {
-    const data = await buildAdminData({ email: "a@b.it", password: "x" }, vi.fn().mockResolvedValue("h"));
-    expect(data.firstName).toBe("Admin");
-    expect(data.lastName).toBe("UFP");
+  it("does not carry a password (it lives in the Account row)", () => {
+    expect(buildAdminUserData("a@b.it")).not.toHaveProperty("password");
   });
 });
 

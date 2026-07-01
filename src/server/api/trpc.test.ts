@@ -17,6 +17,7 @@ const router = createTRPCRouter({
 const ctx = (session: unknown): TRPCContext => ({
   db: {} as TRPCContext["db"],
   session: session as TRPCContext["session"],
+  headers: new Headers(),
 });
 const call = (session: unknown) => createCallerFactory(router)(ctx(session));
 

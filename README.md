@@ -7,8 +7,8 @@ tRPC, login, dashboard).
 ## Stack
 
 Next.js 15 · React 19 · TypeScript (strict) · tRPC v11 · Prisma 6 +
-PostgreSQL/pgvector · NextAuth v4 (Credentials + JWT) · Tailwind CSS 3 ·
-Vitest · pnpm.
+PostgreSQL/pgvector · Better Auth (email/password, sessioni DB, plugin admin) ·
+Tailwind CSS 3 · Vitest · pnpm.
 
 ## Prerequisiti
 

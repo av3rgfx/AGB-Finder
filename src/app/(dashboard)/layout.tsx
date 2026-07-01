@@ -1,12 +1,12 @@
 import type { ReactNode } from "react";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/server/auth/config";
+import { auth } from "@/server/auth/config";
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/topbar";
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
-  const session = await getServerSession(authOptions);
+  const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user) redirect("/login");
 
   const { firstName, lastName } = session.user;

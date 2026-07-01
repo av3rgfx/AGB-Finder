@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { authClient } from "@/lib/auth-client";
 import { Search, Bell, ChevronDown, LogOut } from "lucide-react";
 
 export interface TopBarProps {
@@ -11,6 +12,13 @@ export interface TopBarProps {
 
 export function TopBar({ name, initials }: TopBarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const router = useRouter();
+
+  async function handleSignOut() {
+    await authClient.signOut();
+    router.push("/login");
+    router.refresh();
+  }
 
   return (
     <header className="flex h-16 items-center justify-between gap-4 border-b border-line bg-surface px-4 sm:px-6">
@@ -67,7 +75,7 @@ export function TopBar({ name, initials }: TopBarProps) {
                 <button
                   type="button"
                   role="menuitem"
-                  onClick={() => signOut({ callbackUrl: "/login" })}
+                  onClick={handleSignOut}
                   className="flex w-full items-center gap-2 rounded px-3 py-2 text-sm text-ink transition-colors hover:bg-surface-sunken"
                 >
                   <LogOut className="size-4" aria-hidden /> Esci

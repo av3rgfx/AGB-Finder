@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { signIn } from "next-auth/react";
+import { authClient } from "@/lib/auth-client";
 import { Mail, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -44,10 +44,10 @@ export function LoginForm() {
     if (Object.keys(errors).length > 0) return;
 
     setLoading(true);
-    const result = await signIn("credentials", { redirect: false, email, password });
+    const { error } = await authClient.signIn.email({ email, password, rememberMe: remember });
     setLoading(false);
 
-    if (!result || result.error) {
+    if (error) {
       setError("Email o password errate.");
       return;
     }

@@ -19,27 +19,27 @@ datasource db {
 // 1. USER & AUTH
 // ═══════════════════════════════════════════════════════════════
 
-enum UserRole {
-  PUBLIC
-  AGENT
-  ADMIN
-}
-
-enum UserStatus {
-  ACTIVE
-  INACTIVE
-  SUSPENDED
-}
-
 model User {
-  id           String     @id @default(cuid())
-  email        String     @unique
-  passwordHash String     @map("password_hash")
-  firstName    String     @map("first_name")
-  lastName     String     @map("last_name")
-  role         UserRole   @default(AGENT)
-  status       UserStatus @default(ACTIVE)
+  id            String  @id @default(cuid())
+  name          String
+  email         String  @unique
+  emailVerified Boolean @default(false) @map("email_verified")
+  image         String?
 
+  // Domain fields
+  firstName String @map("first_name")
+  lastName  String @map("last_name")
+  role      String @default("AGENT") // AGENT | ADMIN
+  status    String @default("ACTIVE") // ACTIVE | INACTIVE | SUSPENDED
+
+  // Admin plugin (Better Auth)
+  banned     Boolean?  @default(false)
+  banReason  String?   @map("ban_reason")
+  banExpires DateTime? @map("ban_expires")
+
+  // Relations
+  sessions      Session[]
+  accounts      Account[]
   conversations Conversation[]
   kitRequests   KitRequest[]   @relation("KitRequestAgent")
   activityLogs  ActivityLog[]
@@ -52,6 +52,63 @@ model User {
   @@index([role])
   @@index([status])
   @@map("users")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BETTER AUTH — core tables (session / account / verification)
+// ═══════════════════════════════════════════════════════════════
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent") @db.Text
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Account {
+  id         String @id @default(cuid())
+  accountId  String @map("account_id")
+  providerId String @map("provider_id")
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  accessToken           String?   @map("access_token") @db.Text
+  refreshToken          String?   @map("refresh_token") @db.Text
+  idToken               String?   @map("id_token") @db.Text
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at")
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at")
+  scope                 String?
+  password              String?   @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String   @db.Text
+  expiresAt  DateTime @map("expires_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([identifier])
+  @@map("verifications")
 }
 
 // ═══════════════════════════════════════════════════════════════

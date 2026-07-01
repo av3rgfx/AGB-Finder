@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import type { LucideIcon } from "lucide-react";
-import { getServerSession } from "next-auth";
+import { headers } from "next/headers";
 import {
   ClipboardList,
   PackageCheck,
@@ -11,7 +11,7 @@ import {
   Send,
   Inbox,
 } from "lucide-react";
-import { authOptions } from "@/server/auth/config";
+import { auth } from "@/server/auth/config";
 
 export const metadata: Metadata = { title: "Dashboard — UFPtrade" };
 
@@ -41,7 +41,7 @@ function StatCard({ label, value, icon: Icon }: Stat) {
 }
 
 export default async function DashboardPage() {
-  const session = await getServerSession(authOptions);
+  const session = await auth.api.getSession({ headers: await headers() });
   const firstName = session?.user.firstName ?? "";
 
   return (

@@ -2,19 +2,23 @@ import "server-only";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
-import type { Session } from "next-auth";
-import type { UserRole } from "@prisma/client";
+import type { UserRole } from "@/lib/authz";
+import type { AuthSession } from "@/server/auth/config";
 import { db } from "@/server/db";
 
 /** Request-scoped context shared by every procedure. */
 export interface TRPCContext {
   db: typeof db;
-  session: Session | null;
+  session: AuthSession | null;
+  headers: Headers;
 }
 
 /** Build the context from an already-resolved session (see the route handler). */
-export function createTRPCContext(opts: { session: Session | null }): TRPCContext {
-  return { db, session: opts.session };
+export function createTRPCContext(opts: {
+  session: AuthSession | null;
+  headers: Headers;
+}): TRPCContext {
+  return { db, session: opts.session, headers: opts.headers };
 }
 
 const t = initTRPC.context<TRPCContext>().create({
@@ -63,7 +67,7 @@ const enforceRole = (roles: readonly UserRole[]) =>
     if (!role) {
       throw new TRPCError({ code: "UNAUTHORIZED", message: "Autenticazione richiesta." });
     }
-    if (!roles.includes(role)) {
+    if (!(roles as readonly string[]).includes(role)) {
       throw new TRPCError({
         code: "FORBIDDEN",
         message: `Ruolo '${role}' non autorizzato per questa operazione.`,

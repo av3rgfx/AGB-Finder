@@ -1,32 +1,27 @@
-import type { UserRole } from "@prisma/client";
-
-export interface RouteToken {
-  role?: UserRole;
-}
-
 /**
  * Pure route-protection decision. Returns a redirect target path, or null to
- * let the request proceed. Kept free of `next/*` imports so it is unit-testable.
+ * let the request proceed. Kept free of framework imports so it is unit-testable.
  *
- * - Protected areas (/dashboard, /admin): anonymous → /login.
- * - /admin: non-ADMIN authenticated users → /dashboard.
- * - /login: already-authenticated users → /dashboard.
+ * The Edge middleware only knows whether a session cookie exists (optimistic).
+ * Fine-grained RBAC (e.g. ADMIN-only areas) is enforced server-side in tRPC and
+ * the admin layout, not here.
+ *
+ * - Protected areas (/dashboard, /admin) without a session → /login.
+ * - /login with an existing session → /dashboard.
  */
 export function decideRedirect(params: {
   pathname: string;
-  token: RouteToken | null;
+  hasSession: boolean;
 }): string | null {
-  const { pathname, token } = params;
-  const isAdmin = pathname === "/admin" || pathname.startsWith("/admin/");
-  const isDashboard = pathname === "/dashboard" || pathname.startsWith("/dashboard/");
+  const { pathname, hasSession } = params;
+  const isProtected =
+    pathname === "/dashboard" ||
+    pathname.startsWith("/dashboard/") ||
+    pathname === "/admin" ||
+    pathname.startsWith("/admin/");
   const isLogin = pathname === "/login";
 
-  if (isLogin) {
-    return token ? "/dashboard" : null;
-  }
-  if (isAdmin || isDashboard) {
-    if (!token) return "/login";
-    if (isAdmin && token.role !== "ADMIN") return "/dashboard";
-  }
+  if (isLogin) return hasSession ? "/dashboard" : null;
+  if (isProtected) return hasSession ? null : "/login";
   return null;
 }
