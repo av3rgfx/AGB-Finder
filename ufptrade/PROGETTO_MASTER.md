@@ -6,6 +6,28 @@
 
 ---
 
+## ⚠️ AGGIORNAMENTI IMPLEMENTATIVI (2026-07-01) — leggere prima
+
+Decisioni prese in fase di implementazione che **sostituiscono il design
+originale** dove divergono (dettagli in `handoff.md`, `CLAUDE.md`,
+`ARCHITETTURA_COMPLETA.md` §0):
+
+- **Auth = Better Auth** (NON NextAuth v4/v5). Verdetto LLM Council: v5 in sola
+  manutenzione, Better Auth è il successore attivo. Sessioni DB 8h, plugin admin,
+  tipi inferiti.
+- **Embedding = `vector(768)`** (non 1536); `gemini-embedding-001` normalizzato.
+- **Struttura = layout T3** (`src/server/api/...`, server-only sotto `src/server/`).
+- **Raw SQL**: consentito SOLO per pgvector, incapsulato nel modulo `RAGEngine`
+  (oltre alle migrazioni).
+- **Istruzioni permanenti utente**: usare sempre `/using-superpowers` (sviluppo),
+  `/llm-council` (dubbi), `/impeccable` (UI/UX); aggiornare i `.md` a fine sessione.
+
+**Stato:** Fase 1a (Fondamenta) ✅ + migrazione Better Auth ✅. Fase 1b (Catalogo)
+in progettazione (spec in `docs/superpowers/specs/`). Branch
+`claude/ufptrade-mvp-setup-gcwxnt`, PR #2.
+
+---
+
 ## Indice Documenti
 
 | Documento | Percorso | Contenuto |
@@ -30,7 +52,7 @@
 - **Cache/Queue:** Redis via Upstash (BullMQ)
 - **AI:** Single-agent con tool-use (non multi-agent)
 - **AI Providers:** Google Gemini (primario) + Moonshot Kimi K2.6 (kit gen + fallback)
-- **Auth:** NextAuth.js con credenziali, RBAC 3 ruoli
+- **Auth:** ~~NextAuth.js~~ → **Better Auth** (email/password, sessioni DB, plugin admin), RBAC 3 ruoli
 - **Deployment:** Vercel + Neon + Upstash (managed, non VPS)
 
 ### Pattern AI
@@ -217,7 +239,7 @@ WebApp multifunzione per Utensilferramenta Pistoiese S.p.A.:
 - Kit generation engine deterministico
 
 ## STACK
-Next.js 15 + React 19 + TypeScript + tRPC + Prisma + PostgreSQL(pgvector) + Redis(BullMQ) + NextAuth
+Next.js 15 + React 19 + TypeScript + tRPC + Prisma + PostgreSQL(pgvector) + Redis(BullMQ) + Better Auth
 
 ## ARCHITECTURE DECISIONS
 - Single-agent AI with tool-use (NOT multi-agent)
@@ -230,7 +252,7 @@ Next.js 15 + React 19 + TypeScript + tRPC + Prisma + PostgreSQL(pgvector) + Redi
 ## KEY RULES
 - Always use TypeScript strict mode
 - All API calls go through tRPC (never fetch directly)
-- All DB queries go through Prisma (never raw SQL except migrations)
+- All DB queries go through Prisma (raw SQL only for pgvector, isolated in RAGEngine, + migrations)
 - Kit engine must never use LLM for calculations (deterministic only)
 - All AI calls go through BullMQ queue with rate limiting
 - Product codes always use monospace font
