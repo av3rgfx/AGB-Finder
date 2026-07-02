@@ -30,7 +30,7 @@ beforeEach(() => {
 const sqlOf = (call: unknown[]): Prisma.Sql => call[0] as Prisma.Sql;
 
 describe("RAGEngine.search — degradazione tsvector-only", () => {
-  it("senza EmbeddingService usa SOLO il ramo tsvector (mai <=>)", async () => {
+  it("senza EmbeddingService usa SOLO il ramo testuale (mai <=>)", async () => {
     const engine = new RAGEngine(db);
     const result = await engine.search("cerniera");
     const query = sqlOf(queryRaw.mock.calls[0]!);
@@ -41,6 +41,13 @@ describe("RAGEngine.search — degradazione tsvector-only", () => {
     expect(result.hits).toEqual([hit]);
     expect(result.total).toBe(1);
     expect(result.queryTimeMs).toBeGreaterThanOrEqual(0);
+  });
+
+  it("include il ramo fuzzy pg_trgm (flessioni italiane fuori stemmer)", async () => {
+    await new RAGEngine(db).search("cerniera");
+    const query = sqlOf(queryRaw.mock.calls[0]!);
+    expect(query.sql).toContain("<%");
+    expect(query.sql).toContain("word_similarity");
   });
 
   it("boost del match per prefisso codice (ILIKE 'query%')", async () => {

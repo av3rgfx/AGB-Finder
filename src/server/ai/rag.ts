@@ -78,13 +78,20 @@ function buildFilterSql(filters: SearchFilters): Prisma.Sql {
     : Prisma.sql`AND ${Prisma.join(conditions, " AND ")}`;
 }
 
+/** Testo bersaglio del match fuzzy pg_trgm — DEVE combaciare con l'indice products_fuzzy_trgm_idx. */
+const FUZZY_TARGET = Prisma.sql`(p.name || ' ' || coalesce(p.short_description, ''))`;
+
 /**
- * UNICO modulo dell'app autorizzato al raw SQL (regola di progetto): pgvector e
- * tsvector non sono esprimibili in Prisma Client. Tutto parametrizzato via
- * Prisma.sql — MAI interpolazione di stringhe.
+ * UNICO modulo dell'app autorizzato al raw SQL (regola di progetto): pgvector,
+ * tsvector e pg_trgm non sono esprimibili in Prisma Client. Tutto parametrizzato
+ * via Prisma.sql — MAI interpolazione di stringhe.
+ *
+ * Il ramo testuale combina tsvector (stemming 'italian') e pg_trgm
+ * (word_similarity): lo stemmer italiano è asimmetrico sulle flessioni
+ * ('cerniere'→cern ma 'cerniera'→cernier), il trigram copre singolare/plurale.
  *
  * Degradazione graceful: senza EmbeddingService la ricerca usa solo il ramo
- * tsvector; con embeddings combina i punteggi (0.4 testo, 0.6 vettore).
+ * testuale; con embeddings combina i punteggi (0.4 testo, 0.6 vettore).
  */
 export class RAGEngine {
   constructor(
@@ -113,6 +120,7 @@ export class RAGEngine {
       SELECT count(*)::int AS total
       FROM products p
       WHERE (p.search_vector @@ plainto_tsquery('italian', ${query})
+             OR ${query} <% ${FUZZY_TARGET}
              OR p.agb_code ILIKE ${codePrefix})
         ${filterSql}`);
 
@@ -132,13 +140,16 @@ export class RAGEngine {
   ): Promise<SearchHit[]> {
     return this.db.$queryRaw<SearchHit[]>(Prisma.sql`
       SELECT ${HIT_PROJECTION},
-        ts_rank(p.search_vector, plainto_tsquery('italian', ${query}))::float8 AS "textScore",
+        (ts_rank(p.search_vector, plainto_tsquery('italian', ${query}))
+          + 0.5 * word_similarity(${query}, ${FUZZY_TARGET}))::float8 AS "textScore",
         0::float8 AS "vectorScore",
         (CASE WHEN p.agb_code ILIKE ${codePrefix} THEN 1.0 ELSE 0.0 END
-          + ts_rank(p.search_vector, plainto_tsquery('italian', ${query})))::float8 AS score
+          + ts_rank(p.search_vector, plainto_tsquery('italian', ${query}))
+          + 0.5 * word_similarity(${query}, ${FUZZY_TARGET}))::float8 AS score
       FROM products p
       JOIN product_categories c ON c.id = p.category_id
       WHERE (p.search_vector @@ plainto_tsquery('italian', ${query})
+             OR ${query} <% ${FUZZY_TARGET}
              OR p.agb_code ILIKE ${codePrefix})
         ${filterSql}
       ORDER BY score DESC, p.agb_code ASC
@@ -157,9 +168,11 @@ export class RAGEngine {
     return this.db.$queryRaw<SearchHit[]>(Prisma.sql`
       WITH text_hits AS (
         SELECT p.id,
-               ts_rank(p.search_vector, plainto_tsquery('italian', ${query}))::float8 AS text_score
+               (ts_rank(p.search_vector, plainto_tsquery('italian', ${query}))
+                 + 0.5 * word_similarity(${query}, ${FUZZY_TARGET}))::float8 AS text_score
         FROM products p
         WHERE p.search_vector @@ plainto_tsquery('italian', ${query})
+           OR ${query} <% ${FUZZY_TARGET}
            OR p.agb_code ILIKE ${codePrefix}
       ),
       vector_hits AS (

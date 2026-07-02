@@ -27,6 +27,17 @@ describe.runIf(Boolean(url))("RAGEngine — integrazione su Postgres/pgvector", 
     expect(result.queryTimeMs).toBeLessThan(1000);
   });
 
+  it("gestisce la flessione singolare/plurale via trigram (stemmer italiano asimmetrico)", async () => {
+    // 'cerniera' → lexema 'cernier', ma 'Cerniere' → 'cern': il tsvector da solo
+    // NON matcherebbe. Il ramo pg_trgm (word_similarity ≈ 0.78) deve coprirlo.
+    const result = await engine.search("cerniera");
+    expect(result.hits.some((h) => h.agbCode === "E10073.10.16")).toBe(true);
+    expect(result.total).toBeGreaterThanOrEqual(3);
+    // Analogamente 'cremonese' (singolare) vs sottocategoria 'Cremonesi'.
+    const cremonesi = await engine.search("cremonese");
+    expect(cremonesi.hits.some((h) => h.categoryName === "Artech")).toBe(true);
+  });
+
   it("trova per prefisso codice AGB", async () => {
     const result = await engine.search("B00590");
     expect(result.total).toBe(5);
