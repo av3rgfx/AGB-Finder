@@ -39,7 +39,9 @@ fetch() { # <remote-file> <local-name> <chmod?>
   echo "  download: $1"
   curl -fsS "${CURL_CA[@]}" "$url" -o "$out.gz"
   gunzip -f "$out.gz"
-  [ "${3:-}" = "exec" ] && chmod +x "$out"
+  # NB: niente `[ cond ] && cmd` come ultima riga — con set -e il ritorno 1
+  # del test falso abortirebbe lo script (bug visto sul primo fetch).
+  if [ "${3:-}" = "exec" ]; then chmod +x "$out"; fi
 }
 
 fetch "libquery_engine.so.node" "libquery_engine-$PLATFORM.so.node"
