@@ -143,7 +143,7 @@ export class RAGEngine {
         (ts_rank(p.search_vector, plainto_tsquery('italian', ${query}))
           + 0.5 * word_similarity(${query}, ${FUZZY_TARGET}))::float8 AS "textScore",
         0::float8 AS "vectorScore",
-        (CASE WHEN p.agb_code ILIKE ${codePrefix} THEN 1.0 ELSE 0.0 END
+        (CASE WHEN p.agb_code ILIKE ${codePrefix} THEN 2.0 ELSE 0.0 END
           + ts_rank(p.search_vector, plainto_tsquery('italian', ${query}))
           + 0.5 * word_similarity(${query}, ${FUZZY_TARGET}))::float8 AS score
       FROM products p
@@ -192,7 +192,7 @@ export class RAGEngine {
       SELECT ${HIT_PROJECTION},
         combined.text_score   AS "textScore",
         combined.vector_score AS "vectorScore",
-        (CASE WHEN p.agb_code ILIKE ${codePrefix} THEN 1.0 ELSE 0.0 END
+        (CASE WHEN p.agb_code ILIKE ${codePrefix} THEN 2.0 ELSE 0.0 END
           + 0.4 * combined.text_score + 0.6 * combined.vector_score)::float8 AS score
       FROM combined
       JOIN products p ON p.id = combined.id

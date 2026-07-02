@@ -32,7 +32,7 @@
 | Righe con firma rigida (→ `parsed`) | **8.217** |
 | Righe codice senza firma (→ `skipped`) | **274** |
 | Codici AGB distinti sulle righe-firma (→ prodotti) | **6.191** |
-| Categorie con prodotti | **23** |
+| Categorie con prodotti | **22** (23 nel parse; i 3 codici di GALILEO PRO - RICAMBI ricompaiono altrove e la dedupe last-wins li riassegna) |
 
 *(Correzione post-Task 3, misurata col parser reale: i 6.299 codici distinti stimati in planning contavano anche codici presenti SOLO su righe-indice/moduli d'ordine, mai come riga-prodotto; i prodotti importabili sono 6.191. Le categorie sono 23: la regex esplorativa perdeva `IMAGO++`, `IMAGO E IMAGO+`, `CLIMATECH E CLIMATECH+`.)*
 
@@ -643,7 +643,7 @@ const { rows, stats } = parseListino(text);
 console.log(stats, 'codici distinti:', new Set(rows.map(r => r.agbCode)).size);
 "
 ```
-Expected: `parsed: 8217, skipped: 274`, codici distinti `6191`, categorie `23`. Se il file non c'è, salta lo step (la verifica completa è in Task 14). Se i numeri divergono, indaga PRIMA di proseguire (superpowers:systematic-debugging).
+Expected: `parsed: 8217, skipped: 274`, codici distinti `6191`, categorie `23` (22 dopo dedupe). Se il file non c'è, salta lo step (la verifica completa è in Task 14). Se i numeri divergono, indaga PRIMA di proseguire (superpowers:systematic-debugging).
 
 - [ ] **Step 6: Gates + commit**
 
@@ -3072,7 +3072,7 @@ pnpm import:agb "$SCRATCH/catalog.pdf"
 Expected (numeri ESATTI, misurati in planning):
 ```
 ✓ Pagine: 959 · Righe con codice: 8491 · Parsed: 8217 · Skipped: 274
-✓ Prodotti unici: 6191 · Categorie: 23
+✓ Prodotti unici: 6191 · Categorie: 22
 ```
 Se `parsed`/`skipped`/prodotti divergono → superpowers:systematic-debugging (NON aggiustare i numeri attesi).
 
