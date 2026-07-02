@@ -49,6 +49,14 @@ Tailwind CSS 3 · Vitest · pnpm. Deploy target: Vercel + Neon + Upstash.
 - `src/server/kit/` — engine deterministico (Fase 1d)
 - `handoff.md` — stato sessione · `docs/superpowers/{specs,plans}/` — spec e piani
 
+## FILE ESTERNI (regola utente)
+- **Listino AGB (PDF)**: se il file non è disponibile nell'ambiente (es. container
+  nuovo, scratchpad svuotata), **NON cercarlo sul web da solo**: chiedere il link
+  direttamente all'utente, che lo fornirà. Ultimo link fornito (2026-07-01):
+  https://drive.google.com/file/d/1TugU94aM6OP557ELiLQpH0nUxhxrXMUz/view?usp=sharing
+- Stessa regola per qualunque altro file/documento aziendale mancante: prima
+  chiedere all'utente, mai recuperarlo autonomamente da fonti esterne.
+
 ## AMBIENTE (workaround sandbox)
 - **Engine Prisma**: `bash scripts/setup-prisma-engines.sh` (il downloader va in
   ECONNRESET dietro il proxy; li scarichiamo via curl → `PRISMA_*` in `.env`).

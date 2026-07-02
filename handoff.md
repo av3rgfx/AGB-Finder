@@ -87,6 +87,11 @@
 - **Fase 1b**: parser PDF **deterministico** (no LLM); catalogo reale ~**6.300**
   codici (non 20k); hybrid search degrada a solo-tsvector finché embedding null.
 
+### Regola utente — file esterni (2026-07-01)
+- **Listino AGB PDF**: se manca nell'ambiente, **chiedere il link all'utente**
+  (mai cercarlo sul web autonomamente). Link fornito:
+  https://drive.google.com/file/d/1TugU94aM6OP557ELiLQpH0nUxhxrXMUz/view?usp=sharing
+
 ### Problemi riscontrati e workaround
 - **Engine Prisma**: il downloader va in ECONNRESET dietro il proxy → scaricati
   via curl con `scripts/setup-prisma-engines.sh` (env `PRISMA_*` in `.env`).
