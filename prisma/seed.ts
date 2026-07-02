@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { hashPassword } from "better-auth/crypto";
 import { pathToFileURL } from "node:url";
+import { seedCatalog } from "./seed-catalog";
 
 // Own client instance: seed runs under tsx/node, so it cannot import the
 // `server-only`-guarded singleton in src/server/db.ts.
@@ -77,6 +78,9 @@ async function main() {
     });
   }
   console.log(`✓ ${BASE_CATEGORIES.length} categorie base`);
+
+  const catalog = await seedCatalog(db);
+  console.log(`✓ catalogo demo: ${catalog.products} prodotti in ${catalog.categories} categorie`);
 }
 
 const isDirectRun =
