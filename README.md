@@ -1,8 +1,9 @@
 # UFPtrade — Utensilferramenta Pistoiese S.p.A.
 
 WebApp gestionale B2B per agenti di vendita: catalogo AGB, assistente AI e
-generazione kit deterministica. **Fase 1 — Fondamenta** (setup, DB, auth,
-tRPC, login, dashboard).
+generazione kit deterministica. **Fase 1a — Fondamenta** (setup, DB, auth,
+tRPC, login, dashboard) + **Fase 1b — Catalogo & ricerca** (parser listino,
+import, RAGEngine tsvector+trigram, Archivio + dettaglio).
 
 ## Stack
 
@@ -53,17 +54,40 @@ Login con le credenziali `SEED_ADMIN_*`. `/` → `/login`; dopo l'accesso →
 | `pnpm lint` | ESLint (`next/core-web-vitals`) |
 | `pnpm test` | Vitest (unit) |
 | `pnpm db:migrate` / `db:seed` / `db:studio` | Prisma |
+| `pnpm db:seed:catalog` | Seed catalogo sintetico (50 prodotti AGB reali) |
+| `pnpm import:agb <listino.pdf>` | Import completo del listino AGB |
+
+## Import catalogo AGB
+
+Prerequisito: `poppler-utils` (`pdftotext`). Il PDF del listino (39 MB) **non è
+committato**: se non è disponibile nell'ambiente, **chiedere il link
+all'utente** (regola in `CLAUDE.md` §FILE ESTERNI — mai recuperarlo dal web).
+
+```bash
+pnpm import:agb /percorso/LISTINO-2026.pdf
+```
+
+Output atteso (listino 2026): `Pagine: 959 · Righe con codice: 8491 · Parsed:
+8217 · Skipped: 274` → `Prodotti unici: 6191 · Categorie: 22`. L'import è
+idempotente (upsert per `agbCode`); per dev senza PDF c'è `pnpm db:seed:catalog`.
+
+La ricerca (`/archivio`) è ibrida: tsvector `italian` + pg_trgm (flessioni
+singolare/plurale) + boost prefisso codice; il ramo vettoriale (pgvector) si
+attiva in Fase ≥1c con gli embedding Gemini.
 
 ## Struttura (T3)
 
 ```
 src/
   app/            App Router — (auth)/login, (dashboard)/*, api/{auth,trpc}
-  server/         SERVER-ONLY — db, auth/config, api/{trpc,routers,root}
+  server/         SERVER-ONLY — db, auth/config, api/{trpc,routers,root},
+                  ai/ (RAGEngine, EmbeddingService), catalog/ (parser+import,
+                  moduli puri senza `server-only`: riusati da scripts/ via tsx)
   trpc/           Client tRPC (React Query)
-  components/     ui/ (Button, Input), layout/ (Sidebar, TopBar)
-  lib/            utils, route-guard
-prisma/           schema.prisma (12 modelli), migrations, seed.ts
+  components/     ui/ (Button, Input), layout/ (Sidebar, TopBar), product/
+  lib/            utils, route-guard, format, use-debounced-value
+prisma/           schema.prisma (12 modelli), migrations, seed.ts, seed-catalog.ts
+scripts/          import-agb.ts, dev-bootstrap.sh, setup-prisma-engines.sh
 ```
 
 ## Regole di progetto

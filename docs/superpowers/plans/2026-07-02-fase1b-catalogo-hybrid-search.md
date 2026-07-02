@@ -1,5 +1,11 @@
 # Fase 1b — Catalogo AGB + Hybrid Search — Piano di implementazione
 
+> **Status: ESEGUITO ✅ (2026-07-02)** — tutti i 14 task completati in TDD, un
+> commit per task. Delta rilevanti applicati in corso d'opera: ramo fuzzy
+> pg_trgm (stemmer italiano asimmetrico), boost prefisso codice 2.0, prodotti
+> unici 6.191 / categorie 22, vista lista default in Archivio. Dettagli in
+> `handoff.md`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Importare il listino AGB 2026 (~6.300 prodotti) nel DB, esporre ricerca ibrida (tsvector ora, vector-ready) via tRPC e fornire l'UI Archivio + dettaglio prodotto.

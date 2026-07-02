@@ -9,83 +9,90 @@
 
 | Campo | Valore |
 |-------|--------|
-| **Data** | 2026-07-01 |
+| **Data** | 2026-07-02 |
 | **Fase in corso** | Fase 1 — MVP Gestionale |
-| **Sotto-fase** | 1a Fondamenta ✅ completata · migrazione auth ✅ · **1b Catalogo in progettazione** |
-| **Branch git** | `claude/ufptrade-mvp-setup-gcwxnt` |
-| **Pull Request** | [#2](https://github.com/av3rgfx/AGB-Finder/pull/2) (aperta) |
+| **Sotto-fase** | 1a ✅ · migrazione Better Auth ✅ · **1b Catalogo + hybrid search ✅** |
+| **Branch git** | `claude/superpowers-handoff-next-z1wyh7` (pushato) |
+| **Pull Request** | Nessuna aperta per la 1b (PR #2/#3 della 1a: merged) |
 
 ## Stato attuale in breve
 
-- **Fase 1a (Fondamenta): COMPLETA e verificata e2e.** Scaffolding, schema DB,
-  auth, tRPC, login, dashboard. 29 test verdi, build ok, login reale da browser.
-- **Migrazione auth NextAuth v4 → Better Auth: COMPLETA** (verdetto LLM Council).
-- **Fase 1b (Catalogo + hybrid search): spec di design scritto e approvato nello
-  scope, in attesa review utente → poi writing-plans.**
+- **Fase 1a (Fondamenta): COMPLETA** — scaffolding, schema DB, Better Auth,
+  tRPC, login, dashboard.
+- **Fase 1b (Catalogo + hybrid search): COMPLETA e verificata e2e nel browser
+  sul catalogo reale (6.191 prodotti).** Piano eseguito task-per-task (TDD):
+  `docs/superpowers/plans/2026-07-02-fase1b-catalogo-hybrid-search.md`.
+- Test: **86 passed** (+5 integrazione gated su `INTEGRATION_DATABASE_URL`).
+  `typecheck` · `lint` · `build` verdi.
 
-## Task completati
+## Fase 1b — cosa è stato costruito
 
-**Fase 1a**
-- [X] 1. Scaffolding Next.js 15 + TS strict + Tailwind + tooling
-- [X] 2. Env validation (zod)
-- [X] 3. Schema Prisma (12 modelli dominio) + pgvector(768) + migration
-- [X] 4-6. Auth + tRPC core (RBAC) + handler/client/router
-- [X] 7. Middleware edge
-- [X] 8-10. Design tokens + Login + Dashboard shell (impeccable)
-- [X] 11. Seed (admin + categorie)
-- [X] 12. Verifica e2e + README + bootstrap
-**Migrazione Better Auth**
-- [X] Schema (User rimodellato + Session/Account/Verification), config, tRPC,
-  router, middleware, UI client, seed, cleanup next-auth/bcryptjs
-**Fase 1b**
-- [X] Brainstorming scope + download listino AGB (PDF 959pp) + analisi formato
-- [X] Spec design → `docs/superpowers/specs/2026-07-01-fase1b-catalogo-hybrid-search-design.md`
+| Componente | File | Note |
+|---|---|---|
+| Parser deterministico | `src/server/catalog/parse-listino.ts` | State machine su righe `pdftotext -layout`; slicing celle per offset colonna; ereditarietà; NO `server-only` (riusato da tsx) |
+| Mapping | `src/server/catalog/map-product.ts` | nome composto, specifications JSON, slug/nome categoria, dedupe last-wins |
+| Estrazione PDF | `src/server/catalog/extract-pdf.ts` | wrapper `pdftotext` (poppler-utils) |
+| Upsert catalogo | `src/server/catalog/import-catalog.ts` | idempotente, batch 500 in transazione, blocco fallito → log e prosegue |
+| Import CLI | `scripts/import-agb.ts` → `pnpm import:agb <pdf>` | report copertura |
+| Seed sintetico | `prisma/seed-catalog.ts` → `pnpm db:seed:catalog` | 50 prodotti AGB reali, 6 categorie |
+| EmbeddingService | `src/server/ai/embedding.ts` | interfaccia + `GeminiEmbeddingService` (NON cablato, Fase ≥1c) + `FakeEmbeddingService` per test |
+| RAGEngine | `src/server/ai/rag.ts` | **UNICO modulo raw SQL**; tsvector `italian` + **pg_trgm** + boost prefisso codice 2.0; ramo pgvector pronto (pesi 0.4/0.6); `getRelated` |
+| Product router | `src/server/api/routers/product.ts` | `search` (agent, log `PRODUCT_SEARCHED`), `getById`, `getByCode`, `listCategories` (public), `getRelated` |
+| UI Archivio | `src/app/(dashboard)/archivio/` + `src/components/product/` | ricerca debounced 300ms, filtri (categoria/prezzo/materiale/disponibilità), lista (default, densità) / griglia, skeleton/vuoto/errore, paginazione 24 |
+| UI Dettaglio | `archivio/[id]` | specifiche tabellari, copy codice con feedback, 4 correlati, stato not-found |
+| Migration | `20260702050000_trgm_fuzzy_search` | `pg_trgm` + indice GIN trigram su `name + short_description` |
 
-## Task in corso
+### Numeri dell'import reale (listino 2026, misurati)
+`Pagine: 959 · Righe con codice: 8491 · Parsed: 8217 · Skipped: 274 ·
+Prodotti unici: 6191 · Categorie: 22`. Idempotente (secondo run identico).
+E2e browser: "cerniere anta ribalta" 13 hit / 218ms · "cremonese ARTECH" 90 /
+195ms · codice esatto 1 · prefisso `A50122` → primi risultati col prefisso.
 
-- **Fase 1b — spec in review utente.** Prossimo passo: `writing-plans` per il
-  piano dettagliato, poi esecuzione TDD (parser AGB, import, product router,
-  RAGEngine, UI Archivio+dettaglio con impeccable).
+### Decisioni prese durante la 1b (delta vs spec/piano)
+- **pg_trgm aggiunto**: lo stemmer `italian` è asimmetrico ("cerniere"→`cern`,
+  "cerniera"→`cernier`) → il singolare non trovava il plurale. Ramo
+  `word_similarity`/`<%` (peso 0.5) + indice GIN. Estensione in `schema.prisma`.
+- **Boost prefisso codice 2.0** (era 1.0): col catalogo pieno un accessorio che
+  cita un codice nel nome superava i codici veri.
+- **Prodotti unici = 6.191** (non 6.299: quel conteggio includeva codici presenti
+  solo su righe-indice) · **categorie = 22** (23 nel parse; i 3 codici di
+  "GALILEO PRO - RICAMBI" ricompaiono altrove → dedupe last-wins li riassegna).
+- **Vista lista default** in Archivio (PRODUCT.md: information density).
+- `shortDescription` = `categoria · sottocategoria · materiale` (per il match
+  tsvector sulle categorie); `composeName` include la mano DX/SX.
+- Errori di ricerca: banner inline `role="alert"` (niente infra toast, YAGNI).
+
+### Limitazioni note (accettate per 1b)
+- Colonne combinate tipo "ENTRATA HBB" (ARTECH): la `dimension` mostrata può
+  essere la cella ereditata meno significativa (es. "1) 7,5" invece del range
+  HBB); tutti i dati grezzi restano in `specifications.colonne`. Migliorabile
+  in 1c con gli embedding o mappature colonna dedicate.
+- `total` della ricerca = match del ramo testuale (il vettoriale integrerà solo
+  il ranking).
 
 ## Task pendenti
 
-### Prossima sessione
-- [ ] Approvazione spec 1b → piano dettagliato (writing-plans)
-- [ ] Implementare parser `parseListino` (deterministico) + test su righe reali
-- [ ] Import script `pnpm import:agb <pdf>` + seed catalogo sintetico
-- [ ] Product router + RAGEngine (hybrid search, tsvector-only per ora)
-- [ ] UI Archivio + dettaglio prodotto (impeccable)
+### Prossima sessione (Fase 1c — Chat AI)
+- [ ] Chat AI + tool `search_products` (RAG) — richiede `GEMINI_API_KEY` + coda BullMQ
+- [ ] Generazione embedding batch (BullMQ) quando c'è la key → attiva ramo vettoriale
+- [ ] Verificare raggiungibilità API Gemini dalla sandbox
+- [ ] Valutare PR verso `main` per la 1b (branch pushato, nessuna PR aperta)
 
 ### Sessioni future
-- [ ] Fase 1c: Chat AI + tool search_products (RAG) — richiede GEMINI_API_KEY + coda
-- [ ] Generazione embedding batch (BullMQ) quando c'è la key
 - [ ] Fase 1d: Kit deterministic engine · 1e: dashboard dati reali · 1f: deploy
 
 ## Contesto tecnico
 
 | Componente | Stato |
 |------------|-------|
-| Database schema | [X] Migrato (dominio + Better Auth) |
-| Auth | [X] **Better Auth** (email/password, sessioni DB 8h, plugin admin) — funzionante |
-| RBAC | [X] Impl + testato (procedure tRPC public/authed/agent/admin) |
-| Dashboard layout | [X] Impl + stilizzato (impeccable) |
-| Login page | [X] Impl + stilizzato |
-| Docker (DB + Redis) | [X] Funzionante (avvio manuale daemon: `scripts/dev-bootstrap.sh`) |
-| .env | [X] Completo (dev) |
-| Git commit | [X] Multipli, pushati; PR #2 aperta |
-| Catalogo importato | [ ] Non ancora (spec pronto, PDF scaricato in scratchpad) |
-
-## Note importanti
-
-### Decisioni prese (delta rispetto al design originale)
-- **Auth: Better Auth** (non NextAuth v4/v5) — LLM Council unanime: v5 in sola
-  manutenzione, Better Auth è il successore attivo. Sessioni DB (revoca), plugin
-  admin per creazione account, tipi inferiti.
-- **Embedding: `vector(768)`** (non 1536) — Gemini `gemini-embedding-001` @ 768.
-- **Struttura: layout T3** (`src/server/api/...`, server-only sotto `src/server/`).
-- **Ruoli**: `AGENT`/`ADMIN` come stringhe (Better Auth admin plugin + access-control).
-- **Fase 1b**: parser PDF **deterministico** (no LLM); catalogo reale ~**6.300**
-  codici (non 20k); hybrid search degrada a solo-tsvector finché embedding null.
+| Database schema | [X] Migrato (dominio + Better Auth + pg_trgm) |
+| Auth | [X] Better Auth (email/password, sessioni DB 8h, plugin admin) |
+| RBAC | [X] public/authed/agent/admin — testato |
+| Catalogo importato | [X] 6.191 prodotti / 22 categorie (import locale; PDF in scratchpad, non committato) |
+| Ricerca | [X] tsvector+trigram via RAGEngine; embedding **null** (1c) |
+| UI Archivio + dettaglio | [X] Verificata nel browser (Playwright) |
+| Docker (DB + Redis) | [X] `scripts/dev-bootstrap.sh` |
+| Git | [X] Branch pushato; un commit per task |
 
 ### Regola utente — file esterni (2026-07-01)
 - **Listino AGB PDF**: se manca nell'ambiente, **chiedere il link all'utente**
@@ -93,24 +100,14 @@
   https://drive.google.com/file/d/1TugU94aM6OP557ELiLQpH0nUxhxrXMUz/view?usp=sharing
 
 ### Problemi riscontrati e workaround
-- **Engine Prisma**: il downloader va in ECONNRESET dietro il proxy → scaricati
-  via curl con `scripts/setup-prisma-engines.sh` (env `PRISMA_*` in `.env`).
-- **Docker daemon**: non parte da solo → `scripts/dev-bootstrap.sh` lo avvia.
-- **Commit "Unverified"**: chiave di firma SSH dell'ambiente è vuota (0 byte) →
-  tutti i commit sono non firmati ma correttamente attribuiti (`noreply@anthropic.com`).
-- **PDF import**: richiede `poppler-utils` (`pdftotext`), installato nell'ambiente.
-
-### Domande aperte
-- Raggiungibilità API Gemini dalla sandbox (da verificare quando serviranno embedding).
-- Merge PR #2 (Fase 1) prima o dopo la 1b? (1b è sullo stesso branch salvo diversa scelta.)
-
-## Dipendenze bloccanti
-
-| Blocco | Impatto | Risoluzione |
-|--------|---------|-------------|
-| `GEMINI_API_KEY` assente | Niente embedding reali | Fase 1b gira solo-tsvector; embedding differiti |
-| Chiave firma vuota | Commit "Unverified" (cosmetico) | Provisioning chiave nell'ambiente (fuori controllo) |
-| PDF listino 39MB | Non committabile | In `scratchpad/catalog.pdf`; import locale via script |
+- **Engine Prisma**: downloader in ECONNRESET dietro proxy → `scripts/setup-prisma-engines.sh`
+  (fixato bug `set -e` sull'ultimo comando della funzione fetch); engine copiati
+  anche in `node_modules/.pnpm/@prisma+engines@*/...` così `pnpm install` non
+  ritenta il download.
+- **Vitest**: `beforeEach(() => mock.mockReset())` — il valore di ritorno di
+  beforeEach viene invocato come hook di cleanup → usare un body con graffe.
+- **`pnpm lint | tail`** maschera l'exit code → mai in catena `&&` con pipe.
+- **PDF import**: richiede `poppler-utils` (`apt-get install poppler-utils`).
 
 ## Istruzioni permanenti (utente)
 1. **/using-superpowers** — sempre quando si sviluppa.
@@ -124,3 +121,4 @@
 | Data | Cosa fatto | Branch |
 |------|-----------|--------|
 | 2026-07-01 | Fase 1a completa + migrazione Better Auth + spec Fase 1b | `claude/ufptrade-mvp-setup-gcwxnt` |
+| 2026-07-02 | Piano 1b + esecuzione completa (parser, import 6.191 prodotti, RAGEngine tsvector+trigram, router, UI Archivio+dettaglio, verifiche browser) | `claude/superpowers-handoff-next-z1wyh7` |
