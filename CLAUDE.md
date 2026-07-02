@@ -38,7 +38,12 @@ Tailwind CSS 3 · Vitest · pnpm. Deploy target: Vercel + Neon + Upstash.
    brainstorming → writing-plans → esecuzione TDD).
 2. **Usa sempre `/llm-council`** per dubbi, quesiti, incongruenze, problematiche.
 3. **Usa sempre `/impeccable`** quando sviluppi/progetti UI/UX.
-4. **Aggiorna TUTTI i file `.md`** (incluso `handoff.md`) **a fine di ogni
+4. **Usa sempre `/ponytail`** ogni volta che scrivi codice e programmi
+   (scrittura, refactor, fix, review, scelta librerie/dipendenze): soluzione
+   più semplice e minimale che funziona (YAGNI, riuso, stdlib prima delle
+   dipendenze). NON abbassa mai lo standard su validazione input, error
+   handling, sicurezza, accessibilità o test richiesti.
+5. **Aggiorna TUTTI i file `.md`** (incluso `handoff.md`) **a fine di ogni
    sessione** — la fine sessione la dichiara esplicitamente l'utente.
 
 ## FILE CHIAVE
