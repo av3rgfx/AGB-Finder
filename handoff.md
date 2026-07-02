@@ -9,19 +9,24 @@
 
 | Campo | Valore |
 |-------|--------|
-| **Data** | 2026-07-01 |
+| **Data** | 2026-07-02 |
 | **Fase in corso** | Fase 1 — MVP Gestionale |
-| **Sotto-fase** | 1a Fondamenta ✅ completata · migrazione auth ✅ · **1b Catalogo in progettazione** |
+| **Sotto-fase** | 1a ✅ · migrazione auth ✅ · **1b Catalogo + hybrid search ✅** |
 | **Branch git** | `claude/ufptrade-mvp-setup-gcwxnt` |
 | **Pull Request** | [#2](https://github.com/av3rgfx/AGB-Finder/pull/2) (aperta) |
 
 ## Stato attuale in breve
 
 - **Fase 1a (Fondamenta): COMPLETA e verificata e2e.** Scaffolding, schema DB,
-  auth, tRPC, login, dashboard. 29 test verdi, build ok, login reale da browser.
+  auth, tRPC, login, dashboard.
 - **Migrazione auth NextAuth v4 → Better Auth: COMPLETA** (verdetto LLM Council).
-- **Fase 1b (Catalogo + hybrid search): spec di design scritto e approvato nello
-  scope, in attesa review utente → poi writing-plans.**
+- **Fase 1b (Catalogo + hybrid search): COMPLETA.** Parser deterministico del
+  LISTINO 2026 (96,8% parse rate), **6.191 prodotti importati** in 22 categorie,
+  RAGEngine a 3 strategie (prefisso codice ILIKE / AND tsvector / fallback OR),
+  product router tRPC, UI Archivio (ricerca+griglia/lista+filtri) e dettaglio
+  prodotto. 79 test verdi (+6 integrazione su DB reale), build ok, e2e browser
+  verificato con screenshot. Embedding **differiti**: colonna vector(768) null
+  finché non ci sono GEMINI_API_KEY + coda BullMQ (il ramo ibrido è già pronto).
 
 ## Task completati
 
@@ -43,23 +48,19 @@
 
 ## Task in corso
 
-- **Fase 1b — spec in review utente.** Prossimo passo: `writing-plans` per il
-  piano dettagliato, poi esecuzione TDD (parser AGB, import, product router,
-  RAGEngine, UI Archivio+dettaglio con impeccable).
+- Nessuna. Fase 1b chiusa (piano 9/9 task completati e committati).
 
 ## Task pendenti
 
 ### Prossima sessione
-- [ ] Approvazione spec 1b → piano dettagliato (writing-plans)
-- [ ] Implementare parser `parseListino` (deterministico) + test su righe reali
-- [ ] Import script `pnpm import:agb <pdf>` + seed catalogo sintetico
-- [ ] Product router + RAGEngine (hybrid search, tsvector-only per ora)
-- [ ] UI Archivio + dettaglio prodotto (impeccable)
+- [ ] **Fase 1c: Chat AI base con RAG** — Conversation/Message router, provider
+  Gemini, tool `search_products` (il RAGEngine è pronto), streaming, UI chat.
+  Richiede GEMINI_API_KEY (+ coda BullMQ per la regola "AI via queue").
+- [ ] Generazione embedding batch via BullMQ (attiva il ramo ibrido già scritto)
 
 ### Sessioni future
-- [ ] Fase 1c: Chat AI + tool search_products (RAG) — richiede GEMINI_API_KEY + coda
-- [ ] Generazione embedding batch (BullMQ) quando c'è la key
 - [ ] Fase 1d: Kit deterministic engine · 1e: dashboard dati reali · 1f: deploy
+- [ ] Valutare merge PR #2 (contiene 1a + Better Auth + 1b)
 
 ## Contesto tecnico
 
@@ -73,7 +74,8 @@
 | Docker (DB + Redis) | [X] Funzionante (avvio manuale daemon: `scripts/dev-bootstrap.sh`) |
 | .env | [X] Completo (dev) |
 | Git commit | [X] Multipli, pushati; PR #2 aperta |
-| Catalogo importato | [ ] Non ancora (spec pronto, PDF scaricato in scratchpad) |
+| Catalogo importato | [X] **6.191 prodotti / 22 categorie** (LISTINO 2026, idempotente) |
+| Ricerca prodotti | [X] tsvector 3-strategie + UI Archivio/dettaglio (embedding differiti) |
 
 ## Note importanti
 
@@ -119,3 +121,4 @@
 | Data | Cosa fatto | Branch |
 |------|-----------|--------|
 | 2026-07-01 | Fase 1a completa + migrazione Better Auth + spec Fase 1b | `claude/ufptrade-mvp-setup-gcwxnt` |
+| 2026-07-02 | Fase 1b completa: parser AGB, import 6.191 prodotti, RAGEngine, UI Archivio+dettaglio | `claude/ufptrade-mvp-setup-gcwxnt` |

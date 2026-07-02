@@ -62,5 +62,7 @@ Tailwind CSS 3 · Vitest · pnpm. Deploy target: Vercel + Neon + Upstash.
 test prima, commit frequenti, un commit per task.
 
 ## STATO
-Fase 1a (Fondamenta) ✅ + migrazione Better Auth ✅. Fase 1b (Catalogo + hybrid
-search) in progettazione — vedi `handoff.md`.
+Fase 1a (Fondamenta) ✅ + migrazione Better Auth ✅ + Fase 1b (Catalogo + hybrid
+search) ✅ — 6.191 prodotti AGB importati, ricerca tsvector a 3 strategie
+(codice/AND/OR), UI Archivio + dettaglio. Embedding differiti (colonna null
+fino a GEMINI_API_KEY + BullMQ). Prossima: Fase 1c (Chat AI). Vedi `handoff.md`.

@@ -37,6 +37,29 @@ pnpm dev                     # http://localhost:3000
 Login con le credenziali `SEED_ADMIN_*`. `/` → `/login`; dopo l'accesso →
 `/dashboard`.
 
+## Import catalogo AGB
+
+Il listino AGB (PDF) si importa con un parser **deterministico** (nessun LLM):
+
+```bash
+# prerequisito una tantum: pdftotext (poppler)
+sudo apt-get install poppler-utils
+
+set -a; source .env; set +a
+pnpm import:agb /percorso/LISTINO-2026.pdf
+```
+
+Report atteso (listino 2026): ~957 pagine, ~8.400 righe-codice, **~96–97% di
+parse rate**, ~6.200 codici unici in ~22 categorie. L'import è idempotente
+(upsert per `agbCode`); le righe anomale vengono conteggiate come "saltate",
+mai fatali. Il PDF non va committato: senza di esso, `pnpm db:seed` popola un
+catalogo demo di 37 prodotti reali dalle fixture committate.
+
+La ricerca (`/archivio`) usa il full-text italiano (tsvector) con tre strategie:
+prefisso codice AGB (`B00590.15` → ILIKE), AND stretto multi-termine, fallback
+OR ranked. Gli embedding pgvector (768) si attivano in fase successiva via
+`GEMINI_API_KEY` + coda BullMQ, senza modifiche al codice di ricerca.
+
 > **Nota ambiente sandbox:** se il socket Docker non è attivo, avvia il daemon
 > prima di `docker compose up` (es. `sudo dockerd &`). Gli engine Prisma sono
 > risolti via `PRISMA_QUERY_ENGINE_LIBRARY` / `PRISMA_SCHEMA_ENGINE_BINARY`

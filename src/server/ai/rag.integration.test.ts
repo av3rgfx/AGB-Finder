@@ -20,9 +20,15 @@ describe.skipIf(!url)("RAGEngine (integration, seeded docker DB)", () => {
     expect(queryTimeMs).toBeLessThan(1000);
   });
 
-  it("finds products by finish term", async () => {
-    const { hits } = await rag.search("ottonato lucido");
+  it("finds a product by AGB code prefix (core lookup use case)", async () => {
+    const { hits } = await rag.search("B00590.15");
+    expect(hits.length).toBeGreaterThan(0);
     expect(hits.some((h) => h.agbCode === "B00590.15.03")).toBe(true);
+  });
+
+  it("agent-style multi-term query falls back to OR instead of zero results", async () => {
+    const { hits } = await rag.search("cerniera anta ribalta");
+    expect(hits.length).toBeGreaterThan(0);
   });
 
   it("filters by category and respects the limit", async () => {
@@ -34,7 +40,7 @@ describe.skipIf(!url)("RAGEngine (integration, seeded docker DB)", () => {
   });
 
   it("returns prices as plain numbers (float8 cast)", async () => {
-    const { hits } = await rag.search("ottonato lucido");
+    const { hits } = await rag.search("B00590.15.03");
     const hit = hits.find((h) => h.agbCode === "B00590.15.03")!;
     expect(hit.basePrice).toBe(1.23);
     expect(typeof hit.basePrice).toBe("number");

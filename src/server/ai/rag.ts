@@ -11,9 +11,18 @@ import { getEmbeddingService, type EmbeddingService } from "./embedding";
  * equivalent. Everything is parameterized via Prisma.sql — never interpolate
  * user input into SQL text.
  *
+ * Query strategy (deterministic):
+ * 1. Code-like query ("B00590", "E10157.14.93") → agb_code ILIKE prefix match.
+ *    The tsvector tokenizes full codes as single lexemes, so prefix lookup —
+ *    the app's core use case — must bypass full-text.
+ * 2. Full-text strict AND (`plainto_tsquery`) — precise multi-term matches.
+ * 3. If AND finds nothing → OR fallback (`to_tsquery` with `|`), ranked by
+ *    ts_rank so products matching more terms come first. Agent-style queries
+ *    like "cerniera anta ribalta" get recall instead of zero results.
+ *
  * Fase 1b: embeddings are null in the DB and no EmbeddingService is wired →
- * the engine runs the tsvector-only branch. When embeddings arrive (BullMQ
- * batch, Fase ≥1c) the hybrid branch activates without code changes.
+ * tsvector-only. When embeddings arrive (BullMQ batch, Fase ≥1c) the hybrid
+ * branch activates without code changes.
  */
 
 export interface SearchFilters {
@@ -50,8 +59,22 @@ export interface RelatedHit {
   imageUrls: string[];
 }
 
+interface SearchOpts {
+  limit?: number;
+  offset?: number;
+}
+
 const TEXT_WEIGHT = 0.4;
 const VECTOR_WEIGHT = 0.6;
+/** Letter + digits ⇒ the user is typing an AGB code (or its prefix). */
+const CODE_QUERY_RE = /^[a-z]\d{2,}/i;
+
+const SELECT = Prisma.sql`
+  p.id, p.agb_code as "agbCode", p.sku, p.name, p.description,
+  p.base_price::float8 as "basePrice", p.discounted_price::float8 as "discountedPrice",
+  p.stock_quantity as "stockQuantity", p.is_available as "isAvailable",
+  p.image_urls as "imageUrls", p.specifications,
+  c.name as "categoryName", c.slug as "categorySlug"`;
 
 export class RAGEngine {
   constructor(
@@ -69,55 +92,92 @@ export class RAGEngine {
     return Prisma.join(parts, " AND ");
   }
 
+  private searchByCode(code: string, where: Prisma.Sql, limit: number, offset: number) {
+    return this.prisma.$queryRaw<SearchHit[]>`
+      SELECT ${SELECT}, 1::float8 as "textScore", 0::float8 as "vectorScore"
+      FROM products p
+      JOIN product_categories c ON p.category_id = c.id
+      WHERE p.agb_code ILIKE ${`${code}%`} AND ${where}
+      ORDER BY p.agb_code ASC
+      LIMIT ${limit} OFFSET ${offset}`;
+  }
+
+  private searchTsAnd(query: string, where: Prisma.Sql, limit: number, offset: number) {
+    return this.prisma.$queryRaw<SearchHit[]>`
+      SELECT ${SELECT},
+        ts_rank(p.search_vector, plainto_tsquery('italian', ${query}))::float8 as "textScore",
+        0::float8 as "vectorScore"
+      FROM products p
+      JOIN product_categories c ON p.category_id = c.id
+      WHERE p.search_vector @@ plainto_tsquery('italian', ${query}) AND ${where}
+      ORDER BY "textScore" DESC, p.agb_code ASC
+      LIMIT ${limit} OFFSET ${offset}`;
+  }
+
+  private searchTsOr(query: string, where: Prisma.Sql, limit: number, offset: number) {
+    const orTerms = query
+      .split(/\s+/)
+      .map((t) => t.replace(/[^\p{L}\p{N}]/gu, ""))
+      .filter((t) => t.length > 1)
+      .join(" | ");
+    if (!orTerms) return Promise.resolve([] as SearchHit[]);
+    return this.prisma.$queryRaw<SearchHit[]>`
+      SELECT ${SELECT},
+        ts_rank(p.search_vector, to_tsquery('italian', ${orTerms}))::float8 as "textScore",
+        0::float8 as "vectorScore"
+      FROM products p
+      JOIN product_categories c ON p.category_id = c.id
+      WHERE p.search_vector @@ to_tsquery('italian', ${orTerms}) AND ${where}
+      ORDER BY "textScore" DESC, p.agb_code ASC
+      LIMIT ${limit} OFFSET ${offset}`;
+  }
+
+  private async searchHybrid(
+    query: string,
+    embedding: number[],
+    where: Prisma.Sql,
+    limit: number,
+    offset: number,
+  ) {
+    // Weighted tsvector (0.4) + cosine similarity (0.6), per architecture doc.
+    const vec = `[${embedding.join(",")}]`;
+    return this.prisma.$queryRaw<SearchHit[]>`
+      SELECT ${SELECT},
+        COALESCE(ts_rank(p.search_vector, plainto_tsquery('italian', ${query})), 0)::float8 as "textScore",
+        COALESCE(1 - (p.embedding <=> ${vec}::vector), 0)::float8 as "vectorScore"
+      FROM products p
+      JOIN product_categories c ON p.category_id = c.id
+      WHERE (p.search_vector @@ plainto_tsquery('italian', ${query})
+             OR (p.embedding IS NOT NULL AND p.embedding <=> ${vec}::vector < 0.7))
+        AND ${where}
+      ORDER BY (COALESCE(ts_rank(p.search_vector, plainto_tsquery('italian', ${query})), 0) * ${TEXT_WEIGHT}
+              + COALESCE(1 - (p.embedding <=> ${vec}::vector), 0) * ${VECTOR_WEIGHT}) DESC,
+              p.agb_code ASC
+      LIMIT ${limit} OFFSET ${offset}`;
+  }
+
   async search(
     query: string,
     filters: SearchFilters = {},
-    opts: { limit?: number; offset?: number } = {},
+    opts: SearchOpts = {},
   ): Promise<{ hits: SearchHit[]; queryTimeMs: number }> {
     const start = Date.now();
     const limit = opts.limit ?? 20;
     const offset = opts.offset ?? 0;
     const where = this.filterSql(filters);
-
-    const queryEmbedding = this.embeddings
-      ? await this.embeddings.generate(query, "RETRIEVAL_QUERY")
-      : null;
-
-    const select = Prisma.sql`
-      p.id, p.agb_code as "agbCode", p.sku, p.name, p.description,
-      p.base_price::float8 as "basePrice", p.discounted_price::float8 as "discountedPrice",
-      p.stock_quantity as "stockQuantity", p.is_available as "isAvailable",
-      p.image_urls as "imageUrls", p.specifications,
-      c.name as "categoryName", c.slug as "categorySlug"`;
+    const trimmed = query.trim();
 
     let hits: SearchHit[];
-    if (!queryEmbedding) {
-      // Full-text only (Fase 1b default: embedding column is null everywhere).
-      hits = await this.prisma.$queryRaw<SearchHit[]>`
-        SELECT ${select},
-          ts_rank(p.search_vector, plainto_tsquery('italian', ${query}))::float8 as "textScore",
-          0::float8 as "vectorScore"
-        FROM products p
-        JOIN product_categories c ON p.category_id = c.id
-        WHERE p.search_vector @@ plainto_tsquery('italian', ${query}) AND ${where}
-        ORDER BY "textScore" DESC, p.agb_code ASC
-        LIMIT ${limit} OFFSET ${offset}`;
+    if (CODE_QUERY_RE.test(trimmed)) {
+      hits = await this.searchByCode(trimmed, where, limit, offset);
+    } else if (this.embeddings) {
+      const embedding = await this.embeddings.generate(trimmed, "RETRIEVAL_QUERY");
+      hits = await this.searchHybrid(trimmed, embedding, where, limit, offset);
     } else {
-      // Hybrid: weighted tsvector (0.4) + cosine similarity (0.6), per architecture doc.
-      const vec = `[${queryEmbedding.join(",")}]`;
-      hits = await this.prisma.$queryRaw<SearchHit[]>`
-        SELECT ${select},
-          COALESCE(ts_rank(p.search_vector, plainto_tsquery('italian', ${query})), 0)::float8 as "textScore",
-          COALESCE(1 - (p.embedding <=> ${vec}::vector), 0)::float8 as "vectorScore"
-        FROM products p
-        JOIN product_categories c ON p.category_id = c.id
-        WHERE (p.search_vector @@ plainto_tsquery('italian', ${query})
-               OR (p.embedding IS NOT NULL AND p.embedding <=> ${vec}::vector < 0.7))
-          AND ${where}
-        ORDER BY (COALESCE(ts_rank(p.search_vector, plainto_tsquery('italian', ${query})), 0) * ${TEXT_WEIGHT}
-                + COALESCE(1 - (p.embedding <=> ${vec}::vector), 0) * ${VECTOR_WEIGHT}) DESC,
-                p.agb_code ASC
-        LIMIT ${limit} OFFSET ${offset}`;
+      hits = await this.searchTsAnd(trimmed, where, limit, offset);
+      if (hits.length === 0 && offset === 0) {
+        hits = await this.searchTsOr(trimmed, where, limit, offset);
+      }
     }
 
     return { hits, queryTimeMs: Date.now() - start };
