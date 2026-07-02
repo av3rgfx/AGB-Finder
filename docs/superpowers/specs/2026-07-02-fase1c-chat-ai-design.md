@@ -126,8 +126,9 @@ della query via `AIGateway.embedQuery` (pesi 0.4 testo / 0.6 vettore, ramo già
 pronto). Senza key / Gemini giù / timeout → solo testuale, **la ricerca
 Archivio non si rompe mai per colpa dell'AI**.
 
-### 8. UI — `src/app/(dashboard)/assistente/` + `src/components/chat/`
-- Voce nav **«Assistente»**, accesso AGENT. Sviluppo UI con **/impeccable**.
+### 8. UI — `src/app/(dashboard)/chat/` + `src/components/chat/`
+- Usa la voce nav **«Chat AI» → `/chat` già presente** nella sidebar (nessuna
+  voce nuova), accesso AGENT. Sviluppo UI con **/impeccable**.
 - **Split pane 60/40**: chat a sinistra; a destra pannello con le schede dei
   prodotti citati (da `referencedProductIds` dei messaggi ASSISTANT): codice
   mono JetBrains + copia, nome, prezzo, disponibilità, link al dettaglio
