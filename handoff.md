@@ -12,8 +12,8 @@
 | **Data** | 2026-07-02 |
 | **Fase in corso** | Fase 1 — MVP Gestionale |
 | **Sotto-fase** | 1a ✅ · migrazione Better Auth ✅ · **1b Catalogo + hybrid search ✅** |
-| **Branch git** | `claude/superpowers-handoff-next-z1wyh7` (pushato) |
-| **Pull Request** | Nessuna aperta per la 1b (PR #2/#3 della 1a: merged) |
+| **Branch git** | `claude/superpowers-handoff-next-z1wyh7` → **merged su `main`** (scelta utente: merge locale, no PR) |
+| **Pull Request** | Nessuna per la 1b (merge diretto); PR #2/#3 della 1a: merged |
 
 ## Stato attuale in breve
 
