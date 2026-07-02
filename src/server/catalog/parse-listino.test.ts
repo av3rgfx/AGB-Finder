@@ -44,3 +44,58 @@ describe("parseListino — firma riga-prodotto", () => {
     expect(parseListino("senza marker").stats.pages).toBe(1);
   });
 });
+
+// Fixture REALE — pagina 118 del listino (spaziatura preservata).
+const FIXTURE_SERRATURE = [
+  "\f                SERRATURE                                                                LISTINO 2026",
+  "",
+  "Incontri - Sicurezza",
+  "                            Larghezza 22 mm, bordo tondo spessore 3 mm",
+  "                            ACCIAIO",
+  "                            LUNGHEZZA         FINITURA               CODICE                     € CS",
+  "                            238 mm            Ottonato lucido        B00590.15.03   25 250    1,23   A2",
+  "                                              Nichelato lucido       B00590.15.06   25 250    1,35   A2",
+  "                                              Bronzato opaco vern.   B00590.15.22   25 250    0,97   A2",
+  "                                              Cromato opaco          B00590.15.34   25 250    2,07   A2",
+  "",
+  "                            Larghezza 22 mm, bordo tondo spessore 2 mm",
+  "                            ACCIAIO",
+  "                            LUNGHEZZA         FINITURA               CODICE                     € CS",
+  "                            238 mm            Ottonato lucido        B00590.30.03   25 250    1,05   A1",
+  "",
+  "                                                                                                 118",
+].join("\n");
+
+describe("parseListino — contesto di pagina", () => {
+  it("attribuisce categoria, sottocategoria, gruppo e materiale a ogni riga", () => {
+    const { rows, stats } = parseListino(FIXTURE_SERRATURE);
+    expect(stats.parsed).toBe(5);
+    expect(rows[0]).toMatchObject({
+      agbCode: "B00590.15.03",
+      category: "SERRATURE",
+      subcategory: "Incontri - Sicurezza",
+      groupTitle: "Larghezza 22 mm, bordo tondo spessore 3 mm",
+      material: "ACCIAIO",
+    });
+    // Il secondo gruppo aggiorna il titolo, la sottocategoria resta.
+    expect(rows[4]).toMatchObject({
+      agbCode: "B00590.30.03",
+      groupTitle: "Larghezza 22 mm, bordo tondo spessore 2 mm",
+      material: "ACCIAIO",
+      discountClass: "A1",
+    });
+  });
+
+  it("gestisce header con prefisso minuscolo (i.MOTION-S) e ignora numeri pagina", () => {
+    const page = [
+      "\f       i.MOTION-S                               LISTINO 2026",
+      "Guide",
+      "                     Guida singola",
+      "                     FINITURA          CODICE               € CS",
+      "                     Argento           M02022.01.02   1 1    10,00   C1",
+      "                                                                573",
+    ].join("\n");
+    const { rows } = parseListino(page);
+    expect(rows[0]).toMatchObject({ category: "i.MOTION-S", subcategory: "Guide" });
+  });
+});

@@ -44,6 +44,16 @@ export function parsePriceCents(price: string): number {
   return Number(euros) * 100 + Number(cents);
 }
 
+/** Riga materiale: MAIUSCOLA, indentata, che inizia con un materiale noto. */
+const MATERIAL_LINE =
+  /^[ \t]+((?:ACCIAIO|OTTONE|ALLUMINIO|ZAMA|INOX|NYLON|POLIAMMIDE|TECNOPOLIMERO|PVC)[A-Z .]*)$/;
+
+/** Note, bullet, footnote e righe numero-pagina: mai titoli di gruppo. */
+const NOISE_LINE = /^[ \t]*(?:NB|N\.B\.|\(\*|\*|-|•|Contenuto)|^[ \t]*\d{1,4}[ \t]*$/;
+
+/** Header di pagina: riga che termina con "LISTINO 2026"; il prefisso è la categoria. */
+const PAGE_HEADER = /^(.*?)\s*LISTINO 2026\s*$/;
+
 export function parseListino(text: string): ParseResult {
   const pageBreaks = (text.match(/\f/g) ?? []).length;
   const stats: ParseStats = {
@@ -54,11 +64,34 @@ export function parseListino(text: string): ParseResult {
   };
   const rows: ParsedRow[] = [];
 
+  let category = "";
+  let subcategory: string | null = null;
+  let groupTitle: string | null = null;
+  let material: string | null = null;
+
   for (const rawLine of text.split("\n")) {
     const line = rawLine.replaceAll("\f", "");
-    if (CODE_TOKEN.test(line)) stats.codeLines++;
-    else continue;
+    const trimmed = line.trim();
+    const hasCode = CODE_TOKEN.test(line);
+    if (hasCode) stats.codeLines++;
+    if (!trimmed) continue;
 
+    // 1. Header di pagina → categoria (se il prefisso non è vuoto).
+    const header = PAGE_HEADER.exec(trimmed);
+    if (header) {
+      const name = header[1]!.trim().replace(/[ \t]{2,}/g, " ");
+      if (name) category = name;
+      continue;
+    }
+
+    // 2. Riga materiale (mai contiene codici).
+    const materialMatch = MATERIAL_LINE.exec(line);
+    if (materialMatch && !hasCode) {
+      material = materialMatch[1]!.trim();
+      continue;
+    }
+
+    // 3. Righe prodotto (firma rigida; il regex globale gestisce più match).
     PRODUCT_SIGNATURE.lastIndex = 0;
     let emitted = 0;
     let sig = PRODUCT_SIGNATURE.exec(line);
@@ -69,10 +102,10 @@ export function parseListino(text: string): ParseResult {
         packCarton: Number(sig[3]!),
         priceCents: parsePriceCents(sig[4]!),
         discountClass: sig[5]!,
-        category: "",
-        subcategory: null,
-        groupTitle: null,
-        material: null,
+        category,
+        subcategory,
+        groupTitle,
+        material,
         finish: null,
         dimension: null,
         hand: null,
@@ -82,8 +115,33 @@ export function parseListino(text: string): ParseResult {
       emitted++;
       sig = PRODUCT_SIGNATURE.exec(line);
     }
-    if (emitted > 0) stats.parsed += emitted;
-    else stats.skipped++;
+    if (emitted > 0) {
+      stats.parsed += emitted;
+      continue;
+    }
+    if (hasCode) {
+      stats.skipped++;
+      continue;
+    }
+
+    // 4. Rumore (note, bullet, numeri pagina).
+    if (NOISE_LINE.test(line)) continue;
+
+    // 5. Riga a colonna 0 → sottocategoria (reset del contesto blocco).
+    if (/^\S/.test(line)) {
+      subcategory = trimmed.split(/[ \t]{3,}/)[0]!.trim();
+      groupTitle = null;
+      material = null;
+      continue;
+    }
+
+    // 6. Intestazione colonne: gestita in Task 3 (per ora la si salta).
+    if (line.includes("CODICE") && line.includes("€")) continue;
+
+    // 7. Riga di testo indentata → titolo gruppo (l'ultima prima dell'header vince);
+    //    un nuovo gruppo azzera il materiale (nei dati reali il materiale segue sempre il gruppo).
+    groupTitle = trimmed.replace(/[ \t]{2,}/g, " ");
+    material = null;
   }
 
   return { rows, stats };
