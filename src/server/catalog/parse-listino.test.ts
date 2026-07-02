@@ -99,3 +99,68 @@ describe("parseListino — contesto di pagina", () => {
     expect(rows[0]).toMatchObject({ category: "i.MOTION-S", subcategory: "Guide" });
   });
 });
+
+// Fixture REALI — pagg. 282 (CERNIERE) e sezione Abaco (FERRAMENTA PER IMPOSTE).
+const FIXTURE_CERNIERE = [
+  "\f                   CERNIERE                                                                         LISTINO 2026",
+  "",
+  "Per porte a filo",
+  "                              COMPACT - Confezione per una porta",
+  "                              ACCIAIO",
+  "                              FINITURA                       MANO            CODICE                         € CS",
+  "                              Nichelato opaco                dx              E10073.10.16   1 20         51,59   C1",
+  "                                                             sx              E10073.11.16   1 20         51,59   C1",
+  "",
+  "                              Kit 6 viti per cerniera COMPACT",
+  "",
+  "                                                                             CODICE                         € CS",
+  "                                                                             E09010.10.05   50 50         2,77   C1",
+].join("\n");
+
+const FIXTURE_IMPOSTE = [
+  "\f               FERRAMENTA PER IMPOSTE                                             LISTINO 2026",
+  "Abaco - Spagnolette",
+  "                           Asta di chiusura",
+  "                            ACCIAIO",
+  "                           FINITURA            H      GR   CODICE                         € CS",
+  "                           Black Powerage      1000   1    H00900.01.93   10 10         3,89   E1",
+  "                                               1200   2    H00900.02.93   10 10         4,39   E1",
+  "                           Silver Powerage     1000   1    H00900.01.21   10 10         4,19   E1",
+].join("\n");
+
+describe("parseListino — colonne e attributi", () => {
+  it("estrae finitura e mano (normalizzata DX/SX) dalle colonne; le celle vuote ereditano", () => {
+    const { rows } = parseListino(FIXTURE_CERNIERE);
+    expect(rows).toHaveLength(3);
+    expect(rows[0]).toMatchObject({ agbCode: "E10073.10.16", finish: "Nichelato opaco", hand: "DX" });
+    // Riga successiva: FINITURA vuota → ereditata; MANO cambia.
+    expect(rows[1]).toMatchObject({ agbCode: "E10073.11.16", finish: "Nichelato opaco", hand: "SX" });
+    // Blocco kit senza colonne-attributo: tutto null, gruppo aggiornato, materiale azzerato.
+    expect(rows[2]).toMatchObject({
+      agbCode: "E09010.10.05",
+      groupTitle: "Kit 6 viti per cerniera COMPACT",
+      finish: null,
+      hand: null,
+      dimension: null,
+      material: null,
+      priceCents: 277,
+    });
+  });
+
+  it("mappa le colonne dimensionali (H, LUNGHEZZA, …) su dimension e le altre in attributes", () => {
+    const { rows } = parseListino(FIXTURE_IMPOSTE);
+    expect(rows[0]).toMatchObject({ finish: "Black Powerage", dimension: "1000" });
+    expect(rows[0]!.attributes).toMatchObject({ finitura: "Black Powerage", h: "1000", gr: "1" });
+    // Finitura ereditata, dimensione aggiornata dalla cella presente.
+    expect(rows[1]).toMatchObject({ finish: "Black Powerage", dimension: "1200" });
+    // Nuova finitura esplicita interrompe l'ereditarietà.
+    expect(rows[2]).toMatchObject({ finish: "Silver Powerage", dimension: "1000" });
+  });
+
+  it("eredita la dimensione nel blocco serrature (LUNGHEZZA ripetuta solo sulla prima riga)", () => {
+    const { rows } = parseListino(FIXTURE_SERRATURE);
+    expect(rows[0]).toMatchObject({ dimension: "238 mm", finish: "Ottonato lucido" });
+    expect(rows[1]).toMatchObject({ dimension: "238 mm", finish: "Nichelato lucido" });
+    expect(rows[3]).toMatchObject({ dimension: "238 mm", finish: "Cromato opaco" });
+  });
+});

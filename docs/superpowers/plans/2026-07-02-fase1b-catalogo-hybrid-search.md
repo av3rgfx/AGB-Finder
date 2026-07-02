@@ -31,10 +31,12 @@
 | Righe con token codice | 8.491 |
 | Righe con firma rigida (→ `parsed`) | **8.217** |
 | Righe codice senza firma (→ `skipped`) | **274** |
-| Codici AGB distinti (→ prodotti) | **6.299** |
-| Categorie con prodotti | **20** |
+| Codici AGB distinti sulle righe-firma (→ prodotti) | **6.191** |
+| Categorie con prodotti | **23** |
 
-Categorie reali: SERRATURE, ARTECH, FERRAMENTA PER IMPOSTE, MULTIPUNTO, i.MOTION-S, CERNIERE, AS A SCOMPARSA, INTERMEDIO, BASE, GALILEO PRO, CILINDRI, ALZANTE CLASSIC, GALILEO PRO - ALLUMINIO, ARTECH PLANA, COMPONENTI MASTERIZZAZIONE CILINDRI, CATENACCI, GALILEO PRO ALLUMINIO - RICAMBI, GALILEO PRO - RICAMBI, AGB 4K, BILICI. *(Nota: l'header è `i.MOTION-S`, con prefisso minuscolo — la regex header non deve assumere iniziale maiuscola.)*
+*(Correzione post-Task 3, misurata col parser reale: i 6.299 codici distinti stimati in planning contavano anche codici presenti SOLO su righe-indice/moduli d'ordine, mai come riga-prodotto; i prodotti importabili sono 6.191. Le categorie sono 23: la regex esplorativa perdeva `IMAGO++`, `IMAGO E IMAGO+`, `CLIMATECH E CLIMATECH+`.)*
+
+Categorie reali: SERRATURE, ARTECH, FERRAMENTA PER IMPOSTE, MULTIPUNTO, i.MOTION-S, CERNIERE, AS A SCOMPARSA, INTERMEDIO, BASE, GALILEO PRO, CILINDRI, ALZANTE CLASSIC, GALILEO PRO - ALLUMINIO, ARTECH PLANA, COMPONENTI MASTERIZZAZIONE CILINDRI, CATENACCI, GALILEO PRO ALLUMINIO - RICAMBI, GALILEO PRO - RICAMBI, AGB 4K, BILICI, IMAGO++, IMAGO E IMAGO+, CLIMATECH E CLIMATECH+. *(Nota: l'header è `i.MOTION-S`, con prefisso minuscolo — la regex header non deve assumere iniziale maiuscola.)*
 
 ## Delta rispetto allo spec (decisioni prese in planning, da dati reali)
 
@@ -641,7 +643,7 @@ const { rows, stats } = parseListino(text);
 console.log(stats, 'codici distinti:', new Set(rows.map(r => r.agbCode)).size);
 "
 ```
-Expected: `parsed: 8217, skipped: 274`, codici distinti `6299`. Se il file non c'è, salta lo step (la verifica completa è in Task 14). Se i numeri divergono, indaga PRIMA di proseguire (superpowers:systematic-debugging).
+Expected: `parsed: 8217, skipped: 274`, codici distinti `6191`, categorie `23`. Se il file non c'è, salta lo step (la verifica completa è in Task 14). Se i numeri divergono, indaga PRIMA di proseguire (superpowers:systematic-debugging).
 
 - [ ] **Step 6: Gates + commit**
 
@@ -3070,7 +3072,7 @@ pnpm import:agb "$SCRATCH/catalog.pdf"
 Expected (numeri ESATTI, misurati in planning):
 ```
 ✓ Pagine: 959 · Righe con codice: 8491 · Parsed: 8217 · Skipped: 274
-✓ Prodotti unici: 6299 · Categorie: 20
+✓ Prodotti unici: 6191 · Categorie: 23
 ```
 Se `parsed`/`skipped`/prodotti divergono → superpowers:systematic-debugging (NON aggiustare i numeri attesi).
 
@@ -3090,7 +3092,7 @@ console.log('prodotti:', count, 'categorie:', cats);
 await db.\$disconnect();
 "
 ```
-Expected: nome sensato con "Ottonato lucido", prezzo `1.23`, categoria `Serrature`, specifications con finitura/confezione; `prodotti: 6299`.
+Expected: nome sensato con "Ottonato lucido", prezzo `1.23`, categoria `Serrature`, specifications con finitura/confezione; `prodotti: 6191`.
 
 - [ ] **Step 4: Verifica end-to-end nel browser sul catalogo COMPLETO**
 
@@ -3107,7 +3109,7 @@ Expected: nome sensato con "Ottonato lucido", prezzo `1.23`, categoria `Serratur
 ```bash
 pnpm typecheck && pnpm lint && pnpm test && pnpm build
 git add README.md handoff.md CLAUDE.md docs/
-git commit -m "docs: Fase 1b completata (import catalogo reale verificato, 6299 prodotti)"
+git commit -m "docs: Fase 1b completata (import catalogo reale verificato, 6191 prodotti)"
 git push -u origin claude/superpowers-handoff-next-z1wyh7
 ```
 

@@ -54,6 +54,54 @@ const NOISE_LINE = /^[ \t]*(?:NB|N\.B\.|\(\*|\*|-|•|Contenuto)|^[ \t]*\d{1,4}[
 /** Header di pagina: riga che termina con "LISTINO 2026"; il prefisso è la categoria. */
 const PAGE_HEADER = /^(.*?)\s*LISTINO 2026\s*$/;
 
+interface Column {
+  name: string;
+  start: number;
+}
+
+/** Colonne di un header: gruppi di token separati da 2+ spazi, con offset carattere. */
+function parseColumns(line: string): Column[] {
+  const columns: Column[] = [];
+  const re = /\S+(?: \S+)*/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(line)) !== null) {
+    columns.push({ name: m[0].trim(), start: m.index });
+  }
+  return columns;
+}
+
+/** Affetta le celle-attributo (colonne prima di CODICE) per offset, con tolleranza -2. */
+function sliceCells(line: string, columns: Column[], codeStart: number): Record<string, string> {
+  const cells: Record<string, string> = {};
+  const codeIdx = columns.findIndex((c) => c.name === "CODICE");
+  const attrCols = codeIdx > 0 ? columns.slice(0, codeIdx) : [];
+  for (let i = 0; i < attrCols.length; i++) {
+    const col = attrCols[i]!;
+    const start = Math.max(0, col.start - 2);
+    const nextStart = i + 1 < attrCols.length ? attrCols[i + 1]!.start : codeStart + 2;
+    const end = Math.min(Math.max(start, nextStart - 2), codeStart);
+    const value = line
+      .slice(start, end)
+      .trim()
+      .replace(/[ \t]{2,}/g, " ");
+    if (value) cells[col.name.toLowerCase()] = value;
+  }
+  return cells;
+}
+
+/** Colonne che rappresentano una dimensione (chiavi minuscole). */
+const DIMENSION_COLUMN = /^(lunghezza|altezza|entrata|spessore|misura|h\b|h |x\b|x-|ø)/;
+
+function pickCell(
+  cells: Record<string, string>,
+  predicate: (key: string) => boolean,
+): string | null {
+  for (const [key, value] of Object.entries(cells)) {
+    if (predicate(key)) return value;
+  }
+  return null;
+}
+
 export function parseListino(text: string): ParseResult {
   const pageBreaks = (text.match(/\f/g) ?? []).length;
   const stats: ParseStats = {
@@ -68,6 +116,8 @@ export function parseListino(text: string): ParseResult {
   let subcategory: string | null = null;
   let groupTitle: string | null = null;
   let material: string | null = null;
+  let columns: Column[] = [];
+  let carriedCells: Record<string, string> = {};
 
   for (const rawLine of text.split("\n")) {
     const line = rawLine.replaceAll("\f", "");
@@ -84,18 +134,33 @@ export function parseListino(text: string): ParseResult {
       continue;
     }
 
-    // 2. Riga materiale (mai contiene codici).
+    // 2. Intestazione colonne → nuovo blocco tabella (azzera l'ereditarietà).
+    if (line.includes("CODICE") && line.includes("€") && !hasCode) {
+      columns = parseColumns(line);
+      carriedCells = {};
+      continue;
+    }
+
+    // 3. Riga materiale (mai contiene codici).
     const materialMatch = MATERIAL_LINE.exec(line);
     if (materialMatch && !hasCode) {
       material = materialMatch[1]!.trim();
       continue;
     }
 
-    // 3. Righe prodotto (firma rigida; il regex globale gestisce più match).
+    // 4. Righe prodotto (firma rigida; il regex globale gestisce più match).
     PRODUCT_SIGNATURE.lastIndex = 0;
     let emitted = 0;
     let sig = PRODUCT_SIGNATURE.exec(line);
     while (sig !== null) {
+      const cells = { ...carriedCells, ...sliceCells(line, columns, sig.index) };
+      carriedCells = cells;
+      const handCell = pickCell(cells, (k) => k.includes("mano"));
+      const handMatch = handCell ? /\b(dx|sx)\b/i.exec(handCell) : null;
+      const dimensionCell = pickCell(cells, (k) => DIMENSION_COLUMN.test(k));
+      const dimension = dimensionCell
+        ? dimensionCell.replace(/\b(dx|sx)\b/gi, "").trim() || null
+        : null;
       rows.push({
         agbCode: sig[1]!,
         packBox: Number(sig[2]!),
@@ -106,10 +171,10 @@ export function parseListino(text: string): ParseResult {
         subcategory,
         groupTitle,
         material,
-        finish: null,
-        dimension: null,
-        hand: null,
-        attributes: {},
+        finish: pickCell(cells, (k) => k.includes("finitura")),
+        dimension,
+        hand: handMatch ? (handMatch[1]!.toUpperCase() as "DX" | "SX") : null,
+        attributes: cells,
         rawLine: line,
       });
       emitted++;
@@ -124,24 +189,23 @@ export function parseListino(text: string): ParseResult {
       continue;
     }
 
-    // 4. Rumore (note, bullet, numeri pagina).
+    // 5. Rumore (note, bullet, numeri pagina).
     if (NOISE_LINE.test(line)) continue;
 
-    // 5. Riga a colonna 0 → sottocategoria (reset del contesto blocco).
+    // 6. Riga a colonna 0 → sottocategoria (reset del contesto blocco).
     if (/^\S/.test(line)) {
       subcategory = trimmed.split(/[ \t]{3,}/)[0]!.trim();
       groupTitle = null;
       material = null;
+      carriedCells = {};
       continue;
     }
 
-    // 6. Intestazione colonne: gestita in Task 3 (per ora la si salta).
-    if (line.includes("CODICE") && line.includes("€")) continue;
-
     // 7. Riga di testo indentata → titolo gruppo (l'ultima prima dell'header vince);
-    //    un nuovo gruppo azzera il materiale (nei dati reali il materiale segue sempre il gruppo).
+    //    un nuovo gruppo azzera materiale ed ereditarietà (il materiale segue sempre il gruppo).
     groupTitle = trimmed.replace(/[ \t]{2,}/g, " ");
     material = null;
+    carriedCells = {};
   }
 
   return { rows, stats };
