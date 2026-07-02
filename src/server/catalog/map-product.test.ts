@@ -50,9 +50,9 @@ describe("buildProductData", () => {
     });
   });
 
-  it("builds a searchable description from category context", () => {
+  it("builds a searchable description including the material", () => {
     expect(d.description).toBe(
-      "SERRATURE — Incontri - Sicurezza — Larghezza 22 mm, bordo tondo spessore 3 mm",
+      "SERRATURE — Incontri - Sicurezza — Larghezza 22 mm, bordo tondo spessore 3 mm — ACCIAIO",
     );
   });
 

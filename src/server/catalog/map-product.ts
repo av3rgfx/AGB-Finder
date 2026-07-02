@@ -14,8 +14,12 @@ export function slugify(name: string): string {
 export function buildProductData(row: ParsedRow) {
   const nameParts = [row.groupTitle, row.finish, row.dimension, row.hand].filter(Boolean);
   const name = nameParts.length > 0 ? nameParts.join(", ") : `${row.category} ${row.agbCode}`;
+  // Material goes into the searchable description: the tsvector trigger only
+  // indexes name/description/shortDescription/agbCode, and agents search by
+  // material ("cerniera acciaio dx").
   const description =
-    [row.category, row.subcategory, row.groupTitle].filter(Boolean).join(" — ") || null;
+    [row.category, row.subcategory, row.groupTitle, row.material].filter(Boolean).join(" — ") ||
+    null;
 
   return {
     agbCode: row.agbCode,
