@@ -5,7 +5,7 @@ import { NavItem, type NavItemProps } from "./nav-item";
 
 const PRIMARY_NAV: NavItemProps[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/chat", label: "Chat AI", icon: MessageSquare },
+  { href: "/assistente", label: "Assistente", icon: MessageSquare },
   { href: "/archivio", label: "Archivio", icon: Package },
   { href: "/richieste", label: "Richieste Kit", icon: ClipboardList },
 ];

@@ -18,7 +18,7 @@ afterEach(cleanup);
 describe("Sidebar", () => {
   it("renders the primary navigation labels", () => {
     render(<Sidebar />);
-    for (const label of ["Dashboard", "Chat AI", "Archivio", "Richieste Kit", "Impostazioni"]) {
+    for (const label of ["Dashboard", "Assistente", "Archivio", "Richieste Kit", "Impostazioni"]) {
       expect(screen.getByText(label)).toBeTruthy();
     }
   });
