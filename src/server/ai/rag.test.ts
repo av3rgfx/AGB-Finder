@@ -4,7 +4,8 @@ import { FakeEmbeddingService } from "./embedding";
 import { RAGEngine } from "./rag";
 
 const queryRaw = vi.fn();
-const db = { $queryRaw: queryRaw } as never;
+const executeRaw = vi.fn();
+const db = { $queryRaw: queryRaw, $executeRaw: executeRaw } as never;
 
 const hit = {
   id: "p1",
@@ -24,6 +25,7 @@ const hit = {
 
 beforeEach(() => {
   queryRaw.mockReset();
+  executeRaw.mockReset();
   queryRaw.mockResolvedValueOnce([hit]).mockResolvedValueOnce([{ total: 1 }]);
 });
 
@@ -92,6 +94,40 @@ describe("RAGEngine.search — ramo ibrido", () => {
     expect(query.sql).toContain("0.6");
     // Il vettore è passato come parametro '[v1,v2,…]'::vector, mai interpolato.
     expect(query.values.some((v) => typeof v === "string" && v.startsWith("["))).toBe(true);
+  });
+});
+
+describe("RAGEngine — degrado su embedding fallito", () => {
+  it("se l'EmbeddingService lancia, usa il solo ramo testuale senza propagare", async () => {
+    const broken = { generate: () => Promise.reject(new Error("Gemini giù")) };
+    const result = await new RAGEngine(db, broken).search("cerniera");
+    const query = sqlOf(queryRaw.mock.calls[0]!);
+    expect(query.sql).not.toContain("<=>");
+    expect(result.hits).toEqual([hit]);
+  });
+});
+
+describe("RAGEngine — embedding dei prodotti (batch)", () => {
+  it("listUnembedded seleziona solo prodotti senza embedding", async () => {
+    queryRaw.mockReset();
+    queryRaw.mockResolvedValueOnce([]);
+    await new RAGEngine(db).listUnembedded(100);
+    const query = sqlOf(queryRaw.mock.calls[0]!);
+    expect(query.sql).toContain("embedding IS NULL");
+    expect(query.values).toContain(100);
+  });
+
+  it("storeEmbeddings esegue un UPDATE parametrizzato per prodotto", async () => {
+    executeRaw.mockResolvedValue(1);
+    await new RAGEngine(db).storeEmbeddings([
+      { id: "p1", embedding: [0.1, 0.2] },
+      { id: "p2", embedding: [0.3, 0.4] },
+    ]);
+    expect(executeRaw).toHaveBeenCalledTimes(2);
+    const update = sqlOf(executeRaw.mock.calls[0]!);
+    expect(update.sql).toContain("UPDATE products SET embedding");
+    expect(update.values).toContain("[0.1,0.2]");
+    expect(update.values).toContain("p1");
   });
 });
 

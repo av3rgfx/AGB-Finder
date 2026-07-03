@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { PrismaClient } from "@prisma/client";
 import { seedCatalog } from "../../../prisma/seed-catalog";
+import { FakeEmbeddingService } from "./embedding";
 import { RAGEngine } from "./rag";
 
 const url = process.env.INTEGRATION_DATABASE_URL;
@@ -61,5 +62,21 @@ describe.runIf(Boolean(url))("RAGEngine — integrazione su Postgres/pgvector", 
     expect(related.length).toBeGreaterThan(0);
     expect(related.every((r) => r.id !== source.id)).toBe(true);
     expect(related.every((r) => r.categoryName === "Serrature")).toBe(true);
+  });
+
+  it("storeEmbeddings + ricerca ibrida: il ramo vettoriale contribuisce al ranking", async () => {
+    const fake = new FakeEmbeddingService();
+    const unembedded = await engine.listUnembedded(100);
+    expect(unembedded.length).toBeGreaterThan(0);
+    const items = await Promise.all(
+      unembedded.map(async (p) => ({ id: p.id, embedding: await fake.generate(p.name) })),
+    );
+    await engine.storeEmbeddings(items);
+    expect((await engine.listUnembedded(100)).length).toBe(0);
+
+    const hybrid = new RAGEngine(db, fake);
+    const result = await hybrid.search("cerniera");
+    expect(result.hits.length).toBeGreaterThan(0);
+    expect(result.hits.some((h) => h.vectorScore > 0)).toBe(true);
   });
 });

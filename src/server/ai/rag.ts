@@ -1,4 +1,5 @@
-import "server-only";
+// NB: niente "server-only": il modulo è riusato dallo script tsx embed-products
+// (stesso pattern di src/server/catalog/*). Il guard resta sui router che lo usano.
 import { Prisma, type PrismaClient } from "@prisma/client";
 import type { EmbeddingService } from "./embedding";
 
@@ -46,7 +47,14 @@ export interface RelatedHit {
   isAvailable: boolean;
 }
 
-type RagDb = Pick<PrismaClient, "$queryRaw">;
+export interface UnembeddedProduct {
+  id: string;
+  name: string;
+  shortDescription: string | null;
+  specifications: Record<string, unknown> | null;
+}
+
+type RagDb = Pick<PrismaClient, "$queryRaw" | "$executeRaw">;
 
 const HIT_PROJECTION = Prisma.sql`
   p.id,
@@ -110,7 +118,14 @@ export class RAGEngine {
     const filterSql = buildFilterSql(filters);
     const codePrefix = query + "%";
 
-    const embedding = this.embeddings ? await this.embeddings.generate(query) : null;
+    let embedding: number[] | null = null;
+    if (this.embeddings) {
+      try {
+        embedding = await this.embeddings.generate(query);
+      } catch {
+        embedding = null; // embedding giù → la ricerca degrada al solo ramo testuale
+      }
+    }
     const hits = embedding
       ? await this.hybridSearch(query, codePrefix, embedding, filterSql, limit, offset)
       : await this.textSearch(query, codePrefix, filterSql, limit, offset);
@@ -219,5 +234,24 @@ export class RAGEngine {
                      THEN p.embedding <=> src.embedding END) ASC NULLS LAST,
                p.name ASC
       LIMIT ${limit}`);
+  }
+
+  /** Prodotti ancora senza embedding: lo script batch pagina su questa query (checkpoint gratuito). */
+  listUnembedded(limit: number): Promise<UnembeddedProduct[]> {
+    return this.db.$queryRaw<UnembeddedProduct[]>(Prisma.sql`
+      SELECT p.id, p.name, p.short_description AS "shortDescription", p.specifications
+      FROM products p
+      WHERE p.embedding IS NULL
+      ORDER BY p.agb_code ASC
+      LIMIT ${limit}`);
+  }
+
+  /** Unico punto di scrittura dei vettori (L2-normalizzati, EMBEDDING_DIM). */
+  async storeEmbeddings(items: { id: string; embedding: number[] }[]): Promise<void> {
+    for (const item of items) {
+      await this.db.$executeRaw(Prisma.sql`
+        UPDATE products SET embedding = ${`[${item.embedding.join(",")}]`}::vector
+        WHERE id = ${item.id}`);
+    }
   }
 }
