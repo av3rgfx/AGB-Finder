@@ -18,6 +18,20 @@ Tailwind CSS 3 · Vitest · pnpm.
 
 ## Avvio sviluppo
 
+### macOS (MacBook) — un comando
+
+Con Docker Desktop e Node 20+ installati:
+
+```bash
+bash scripts/dev-macos.sh
+```
+
+Avvia Docker, installa le dipendenze, genera `.env` al primo avvio (stampa le
+credenziali admin), alza Postgres+Redis, migra, fa il seed e lancia il dev
+server su http://localhost:3000. Nessun workaround engine Prisma serve su macOS.
+
+### Passo-passo (qualsiasi ambiente)
+
 ```bash
 pnpm install
 
@@ -56,6 +70,7 @@ Login con le credenziali `SEED_ADMIN_*`. `/` → `/login`; dopo l'accesso →
 | `pnpm db:migrate` / `db:seed` / `db:studio` | Prisma |
 | `pnpm db:seed:catalog` | Seed catalogo sintetico (50 prodotti AGB reali) |
 | `pnpm import:agb <listino.pdf>` | Import completo del listino AGB |
+| `bash scripts/dev-macos.sh` | Avvio macOS in un comando (Docker + install + migrate + seed + dev) |
 
 ## Import catalogo AGB
 
@@ -87,7 +102,7 @@ src/
   components/     ui/ (Button, Input), layout/ (Sidebar, TopBar), product/
   lib/            utils, route-guard, format, use-debounced-value
 prisma/           schema.prisma (12 modelli), migrations, seed.ts, seed-catalog.ts
-scripts/          import-agb.ts, dev-bootstrap.sh, setup-prisma-engines.sh
+scripts/          import-agb.ts, dev-macos.sh, dev-bootstrap.sh, setup-prisma-engines.sh
 ```
 
 ## Regole di progetto
