@@ -22,7 +22,12 @@ Tailwind CSS 3 · Vitest · pnpm. Deploy target: Vercel + Neon + Upstash.
   unica `src/server/constants/embedding.ts` (`EMBEDDING_DIM = 768`).
 - **Struttura T3**: server-only sotto `src/server/` (guardato con `server-only`);
   client tRPC sotto `src/trpc/`; `src/env.ts` (zod).
-- **Ogni chiamata AI via BullMQ** (rate limit + circuit breaker) — Fase ≥1c.
+- **Ogni chiamata AI passa dall'unico modulo `AIGateway`**
+  (`src/server/ai/gateway.ts`): rate limit + circuit breaker con stato su Redis
+  + fallback Gemini→Kimi. Nessuna chiamata provider fuori da `src/server/ai/`.
+  Batch = script tsx idempotenti (`pnpm embed:products`). NIENTE BullMQ (verdetto
+  LLM Council 2026-07-02: worker persistente impossibile su Vercel, anti-pattern
+  su Upstash); per job asincroni durevoli futuri: Upstash QStash.
 
 ## REGOLE INVIOLABILI
 - TypeScript strict sempre.
@@ -76,5 +81,7 @@ test prima, commit frequenti, un commit per task.
 
 ## STATO
 Fase 1a (Fondamenta) ✅ + migrazione Better Auth ✅ + Fase 1b (Catalogo + hybrid
-search: parser, import 6.191 prodotti, RAGEngine tsvector+pg_trgm, UI Archivio
-e dettaglio) ✅. Prossima: Fase 1c (Chat AI) — vedi `handoff.md`.
+search, 6.191 prodotti) ✅ + Fase 1c (Chat AI: AIGateway, provider Gemini/Kimi,
+ChatService tool-use, router chat, embedding batch, UI Assistente) ✅ — restano
+la verifica e2e con key reali (fornite dall'utente) e l'embedding del catalogo
+reale. Prossima: Fase 1d (Kit engine) — vedi `handoff.md`.
