@@ -17,6 +17,7 @@
     "db:seed:catalog": "tsx prisma/seed-catalog.ts",
     "db:studio": "prisma studio",
     "import:agb": "tsx scripts/import-agb.ts",
+    "embed:products": "tsx scripts/embed-products.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
@@ -33,6 +34,7 @@
     "@trpc/server": "^11.0.0",
     "better-auth": "^1.6.23",
     "clsx": "^2.1.1",
+    "ioredis": "^5.11.1",
     "lucide-react": "^0.475.0",
     "next": "15.3.0",
     "react": "19.1.0",
@@ -66,7 +68,9 @@
   "pnpm": {
     "overrides": {
       "next-auth>react": "$react",
-      "next-auth>react-dom": "$react-dom"
+      "next-auth>react-dom": "$react-dom",
+      "better-call": "1.3.7",
+      "@better-fetch/fetch": "1.3.1"
     },
     "onlyBuiltDependencies": [
       "@prisma/client",
