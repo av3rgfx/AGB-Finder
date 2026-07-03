@@ -2,6 +2,10 @@ import { describe, it, expect, vi } from "vitest";
 import { EMBEDDING_DIM } from "@/server/constants/embedding";
 import { FakeEmbeddingService, GeminiEmbeddingService, l2Normalize } from "./embedding";
 
+function fetchReturning(payload: unknown, status = 200) {
+  return vi.fn().mockResolvedValue({ ok: status < 400, status, json: () => Promise.resolve(payload) });
+}
+
 describe("l2Normalize", () => {
   it("normalizza a norma unitaria", () => {
     const v = l2Normalize([3, 4]);
@@ -54,5 +58,68 @@ describe("GeminiEmbeddingService", () => {
     });
     const service = new GeminiEmbeddingService("k", "RETRIEVAL_QUERY", fetchMock as never);
     await expect(service.generate("x")).rejects.toThrow(/768/);
+  });
+});
+
+describe("GeminiEmbeddingService.generateBatch", () => {
+  const vector = Array.from({ length: EMBEDDING_DIM }, () => 0.5);
+
+  it("una richiesta batchEmbedContents con taskType e dimensioni", async () => {
+    const fetchImpl = fetchReturning({ embeddings: [{ values: vector }, { values: vector }] });
+    const service = new GeminiEmbeddingService("key", "RETRIEVAL_DOCUMENT", fetchImpl as never);
+    const result = await service.generateBatch(["a", "b"]);
+    expect(result).toHaveLength(2);
+    const [url, init] = fetchImpl.mock.calls[0]!;
+    expect(String(url)).toContain(":batchEmbedContents");
+    const body = JSON.parse((init as RequestInit).body as string);
+    expect(body.requests).toHaveLength(2);
+    expect(body.requests[0]).toMatchObject({
+      taskType: "RETRIEVAL_DOCUMENT",
+      outputDimensionality: EMBEDDING_DIM,
+      content: { parts: [{ text: "a" }] },
+    });
+  });
+
+  it("normalizza L2 ogni vettore del batch", async () => {
+    const service = new GeminiEmbeddingService(
+      "key",
+      "RETRIEVAL_DOCUMENT",
+      fetchReturning({ embeddings: [{ values: vector }] }) as never,
+    );
+    const [first] = await service.generateBatch(["a"]);
+    const norm = Math.sqrt(first!.reduce((s, v) => s + v * v, 0));
+    expect(norm).toBeCloseTo(1, 6);
+  });
+
+  it("rifiuta più di 100 testi", async () => {
+    const service = new GeminiEmbeddingService("key", "RETRIEVAL_DOCUMENT", vi.fn() as never);
+    await expect(service.generateBatch(Array.from({ length: 101 }, () => "x"))).rejects.toThrow(
+      /100/,
+    );
+  });
+
+  it("batch vuoto → [] senza chiamate", async () => {
+    const fetchImpl = vi.fn();
+    const service = new GeminiEmbeddingService("key", "RETRIEVAL_DOCUMENT", fetchImpl as never);
+    expect(await service.generateBatch([])).toEqual([]);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("HTTP 429 → HttpStatusError con status (per il backoff dello script)", async () => {
+    const service = new GeminiEmbeddingService(
+      "key",
+      "RETRIEVAL_DOCUMENT",
+      fetchReturning({}, 429) as never,
+    );
+    await expect(service.generateBatch(["a"])).rejects.toMatchObject({ status: 429 });
+  });
+
+  it("conteggio embeddings diverso dai testi → errore", async () => {
+    const service = new GeminiEmbeddingService(
+      "key",
+      "RETRIEVAL_DOCUMENT",
+      fetchReturning({ embeddings: [{ values: vector }] }) as never,
+    );
+    await expect(service.generateBatch(["a", "b"])).rejects.toThrow(/incompleto/i);
   });
 });
