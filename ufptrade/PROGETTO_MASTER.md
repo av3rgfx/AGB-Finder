@@ -22,8 +22,9 @@ originale** dove divergono (dettagli in `handoff.md`, `CLAUDE.md`,
 - **Istruzioni permanenti utente**: usare sempre `/using-superpowers` (sviluppo),
   `/llm-council` (dubbi), `/impeccable` (UI/UX); aggiornare i `.md` a fine sessione.
 
-**Stato:** Fase 1a (Fondamenta) ✅ + migrazione Better Auth ✅. Fase 1b (Catalogo)
-in progettazione (spec in `docs/superpowers/specs/`). Branch
+**Stato:** Fase 1a (Fondamenta) ✅ + migrazione Better Auth ✅ + Fase 1b
+(Catalogo + hybrid search) ✅ — 6.191 prodotti AGB importati, ricerca tsvector,
+UI Archivio + dettaglio. Prossima: Fase 1c (Chat AI). Branch
 `claude/ufptrade-mvp-setup-gcwxnt`, PR #2.
 
 ---

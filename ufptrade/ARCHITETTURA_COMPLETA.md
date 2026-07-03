@@ -22,13 +22,14 @@
 | Embedding (§2.1, §4.2) | `vector(1536)` "Gemini" | **`vector(768)`** — `gemini-embedding-001`, `outputDimensionality:768`, L2-normalizzato | 1536 è OpenAI; Gemini = 768 |
 | Struttura (§7.5) | mista | **layout T3**: server-only sotto `src/server/`, client tRPC `src/trpc/`, `src/env.ts` (zod) | boundary RSC + scalabilità |
 | Raw SQL | "mai tranne migrazioni" | consentito **solo per pgvector**, incapsulato in `RAGEngine` | hybrid search richiede `$queryRaw` |
-| Catalogo (Fase 1b) | ~20.000 prodotti | **~6.300** codici reali (listino AGB 2026, parser deterministico) | conteggio effettivo del PDF |
+| Catalogo (Fase 1b) | ~20.000 prodotti | **6.191** codici reali importati (listino AGB 2026, parser deterministico, 96,8% parse rate) | conteggio effettivo del PDF |
 
 **Istruzioni permanenti di workflow (utente):** usare sempre `/using-superpowers`
 (sviluppo), `/llm-council` (dubbi/incongruenze), `/impeccable` (UI/UX); aggiornare
 tutti i `.md` a fine di ogni sessione.
 
-**Stato:** Fase 1a ✅ + migrazione Better Auth ✅ · Fase 1b in progettazione.
+**Stato:** Fase 1a ✅ + migrazione Better Auth ✅ + Fase 1b (Catalogo + hybrid
+search) ✅ · prossima: Fase 1c (Chat AI).
 
 ---
 

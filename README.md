@@ -17,6 +17,20 @@ Tailwind CSS 3 · Vitest · pnpm.
 
 ## Avvio sviluppo
 
+### macOS (MacBook) — un comando
+
+Con Docker Desktop e Node 20+ installati:
+
+```bash
+bash scripts/dev-macos.sh
+```
+
+Avvia Docker, installa le dipendenze, genera `.env` al primo avvio (stampa le
+credenziali admin), alza Postgres+Redis, migra, fa il seed e lancia il dev
+server su http://localhost:3000. Nessun workaround engine Prisma serve su macOS.
+
+### Passo-passo (qualsiasi ambiente)
+
 ```bash
 pnpm install
 
