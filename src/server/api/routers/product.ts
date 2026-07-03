@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { agentProcedure, createTRPCRouter, publicProcedure } from "@/server/api/trpc";
+import { getAIGateway } from "@/server/ai/gateway";
 import { RAGEngine } from "@/server/ai/rag";
 
 const searchFiltersInput = z.object({
@@ -31,9 +32,9 @@ function serializeProduct<
 }
 
 export const productRouter = createTRPCRouter({
-  /** Ricerca ibrida nel catalogo (Fase 1b: solo tsvector — nessun EmbeddingService). */
+  /** Ricerca ibrida: tsvector+trigram sempre, ramo vettoriale se Gemini è configurato. */
   search: agentProcedure.input(searchInput).query(async ({ ctx, input }) => {
-    const engine = new RAGEngine(ctx.db);
+    const engine = new RAGEngine(ctx.db, getAIGateway().queryEmbeddings());
     const result = await engine.search(input.query, input.filters ?? {}, {
       limit: input.limit,
       offset: input.offset,
