@@ -9,11 +9,11 @@
 
 | Campo | Valore |
 |-------|--------|
-| **Data** | 2026-07-03 |
+| **Data** | 2026-07-04 |
 | **Fase in corso** | Fase 1 — MVP Gestionale |
-| **Sotto-fase** | 1a ✅ · Better Auth ✅ · 1b ✅ · **1c Chat AI: codice COMPLETO** (resta e2e con key reali) |
+| **Sotto-fase** | 1a ✅ · Better Auth ✅ · 1b ✅ · **1c Chat AI ✅ (e2e reale verificato)** — embedding catalogo al ~15% (quota free-tier) |
 | **Branch git** | `claude/handoff-review-48kkhi` (pushato; nessuna PR aperta) |
-| **Piano eseguito** | `docs/superpowers/plans/2026-07-03-fase1c-chat-ai.md` (task 0–14 ✅, task 15 bloccato su key utente) |
+| **Piano eseguito** | `docs/superpowers/plans/2026-07-03-fase1c-chat-ai.md` (task 0–15 ✅; embedding full-catalog in coda su quota) |
 
 ## Stato attuale in breve
 
@@ -26,9 +26,23 @@
   continua a funzionare (ramo testuale).
 - Integrazione pgvector verificata su Docker: `storeEmbeddings` + ricerca ibrida
   con `FakeEmbeddingService` → `vectorScore > 0`.
-- **BLOCCATO (unico item): e2e con key reali** — servono `GEMINI_API_KEY` (e
-  idealmente `KIMI_API_KEY`) dall'utente in `.env`, poi: re-import listino PDF +
-  `pnpm embed:products` + conversazione reale con tool-use.
+- **E2e con key reale (2026-07-04, key Gemini fornita dall'utente, solo in `.env`):**
+  - Listino re-importato nel container (6.191/22, identico alla 1b).
+  - **Chat reale verificata nel browser**: tool-use multi-round (ricerca filtrata
+    → 0 → retry senza filtri nello stesso turno), codici reali citati in mono,
+    4 schede nel pannello, messaggi TOOL/ASSISTANT a DB con modello/token/latenza
+    (2–5s a quota libera; 1–2 min sotto 429 con retry+backoff del gateway).
+  - **Ricerca ibrida reale verificata** (900 embedding reali): «maniglia con
+    chiave per anta ribalta» → ramo testuale 0 hit, ramo vettoriale trova i 5
+    A50107* giusti (vec≈0.72); prefisso codice `A50122` resta dominante.
+  - **Tuning da e2e** (commit dedicati): system prompt (retry immediato senza
+    filtri, niente markdown), descrizioni tool (filtri restrittivi), batch
+    embedding 100→50 (il free tier rifiuta sistematicamente le richieste da 100).
+- **IN CODA: embedding full-catalog** — quota free-tier ≈1.000 contenuti/giorno:
+  900/6.191 fatti. Loop idempotente `embed-loop.sh` attivo in scratchpad +
+  trigger di check post-reset quota (07:20Z). Opzioni: billing sulla key
+  (catalogo intero ≈ pochi centesimi, minuti) · trickle free-tier (~6 giorni) ·
+  altra key.
 
 ## Fase 1c — cosa è stato costruito
 
@@ -68,11 +82,11 @@
 
 ## Task pendenti
 
-### Immediati (servono le key dall'utente)
-- [ ] **Chiedere all'utente `GEMINI_API_KEY` + `KIMI_API_KEY`** → `.env` locale (MAI committate)
-- [ ] Re-import listino reale (PDF: chiedere/usare link registrato in CLAUDE.md) — DB del container ha solo il seed (50 prodotti)
-- [ ] `pnpm embed:products` (~62 batch) → verifica ranking ibrido su `/archivio`
-- [ ] Conversazione reale con tool-use su `/assistente` (+ rate limit, retry, fallback Kimi)
+### Immediati
+- [ ] **Completare embedding catalogo** (900/6.191): decisione utente su quota
+  (billing / trickle ~6 giorni / altra key); il loop e il re-run di
+  `pnpm embed:products` riprendono da dove sono (idempotenti)
+- [ ] `KIMI_API_KEY` per il fallback (opzionale ma consigliata: elimina i 429-storm)
 - [ ] Valutare PR/merge del branch `claude/handoff-review-48kkhi` (scelta utente)
 
 ### Sessioni future
