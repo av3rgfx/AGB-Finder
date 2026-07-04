@@ -18,7 +18,7 @@ export const TOOL_DECLARATIONS: ToolDeclaration[] = [
   {
     name: "search_products",
     description:
-      "Cerca prodotti nel catalogo AGB per nome, descrizione, categoria o prefisso del codice. Ritorna i migliori risultati ordinati per pertinenza.",
+      "Cerca prodotti nel catalogo AGB per nome, descrizione, categoria o prefisso del codice. Ritorna i migliori risultati ordinati per pertinenza. I filtri sono restrittivi (escludono i prodotti senza quel dato): se una ricerca filtrata dà 0 risultati, riprova subito senza filtri.",
     parameters: {
       type: "object",
       properties: {
@@ -32,7 +32,11 @@ export const TOOL_DECLARATIONS: ToolDeclaration[] = [
           maximum: 10,
           description: "Numero massimo di risultati (default 5)",
         },
-        material: { type: "string", description: "Filtro materiale, es. ACCIAIO, ZAMA" },
+        material: {
+          type: "string",
+          description:
+            "Filtro materiale, es. ACCIAIO, ZAMA. Esclude i prodotti senza materiale specificato: usalo solo se il materiale è essenziale per l'utente.",
+        },
         priceMax: { type: "number", description: "Prezzo massimo in EUR" },
         inStockOnly: { type: "boolean", description: "Solo prodotti disponibili" },
       },

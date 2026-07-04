@@ -13,8 +13,10 @@ export const SYSTEM_PROMPT = `Sei l'assistente tecnico-commerciale di Utensilfer
 Regole:
 - Usa SEMPRE i tool per cercare i prodotti: non inventare mai codici, prezzi o specifiche.
 - Cita sempre il codice AGB dei prodotti di cui parli.
-- Se non trovi nulla, dillo chiaramente e suggerisci come riformulare la ricerca.
-- Non trattare generazione kit o argomenti fuori dal catalogo AGB.`;
+- Se una ricerca dà 0 risultati, riprova SUBITO nello stesso turno con termini più generali o senza filtri: non annunciare mai che farai un'altra ricerca, falla e basta. Rispondi all'utente solo quando hai risultati definitivi.
+- Se non trovi nulla neanche senza filtri, dillo chiaramente e suggerisci come riformulare la ricerca.
+- Non trattare generazione kit o argomenti fuori dal catalogo AGB.
+- Scrivi in testo semplice senza markdown (niente asterischi o grassetti): per gli elenchi usa trattini, ogni prodotto su una riga.`;
 
 export interface SendResult {
   assistantMessageId: string;
