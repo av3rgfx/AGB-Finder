@@ -11,7 +11,7 @@
 |-------|--------|
 | **Data** | 2026-07-04 |
 | **Fase in corso** | Fase 1 — MVP Gestionale |
-| **Sotto-fase** | 1a ✅ · Better Auth ✅ · 1b ✅ · **1c Chat AI ✅ (e2e reale verificato)** — embedding catalogo al ~15% (quota free-tier) |
+| **Sotto-fase** | 1a ✅ · Better Auth ✅ · 1b ✅ · **1c Chat AI ✅ (e2e reale verificato)** — embedding catalogo **0/6.191** (persi col riciclo del container, vedi sotto) |
 | **Branch git** | `claude/handoff-review-48kkhi` (pushato; nessuna PR aperta) |
 | **Piano eseguito** | `docs/superpowers/plans/2026-07-03-fase1c-chat-ai.md` (task 0–15 ✅; embedding full-catalog in coda su quota) |
 
@@ -38,11 +38,20 @@
   - **Tuning da e2e** (commit dedicati): system prompt (retry immediato senza
     filtri, niente markdown), descrizioni tool (filtri restrittivi), batch
     embedding 100→50 (il free tier rifiuta sistematicamente le richieste da 100).
-- **IN CODA: embedding full-catalog** — quota free-tier ≈1.000 contenuti/giorno:
-  900/6.191 fatti. Loop idempotente `embed-loop.sh` attivo in scratchpad +
-  trigger di check post-reset quota (07:20Z). Opzioni: billing sulla key
-  (catalogo intero ≈ pochi centesimi, minuti) · trickle free-tier (~6 giorni) ·
-  altra key.
+- **RICICLO CONTAINER (2026-07-04 ~07:00Z)**: l'ambiente remoto è stato
+  ricreato → persi `.env` (con la GEMINI_API_KEY), il DB Docker (catalogo +
+  **i 900 embedding reali**) e i loop in scratchpad. Il codice era tutto
+  pushato: nulla di perso lato git.
+- **Ambiente RICOSTRUITO nella sessione del check (2026-07-04)**: install +
+  engine Prisma + Docker/Postgres/Redis + migrazioni + seed + **re-import
+  listino 6.191/22** (PDF dal link registrato) + suite verde (137 passed).
+  Manca SOLO la key in `.env`.
+- **EMBEDDING DA RIFARE (0/6.191)** — lezione dal riciclo: il **trickle
+  free-tier (~6 giorni) non può completare su un container effimero** (il
+  progresso si azzera a ogni riciclo). Opzioni realistiche: **billing sulla
+  key** (catalogo intero ≈ pochi centesimi, minuti — rilanciabile dopo ogni
+  riciclo) · rimandare il full-embed al DB persistente Neon (Fase 1f). Chat e
+  ricerca testuale funzionano comunque senza embedding.
 
 ## Fase 1c — cosa è stato costruito
 
@@ -83,9 +92,11 @@
 ## Task pendenti
 
 ### Immediati
-- [ ] **Completare embedding catalogo** (900/6.191): decisione utente su quota
-  (billing / trickle ~6 giorni / altra key); il loop e il re-run di
-  `pnpm embed:products` riprendono da dove sono (idempotenti)
+- [ ] **GEMINI_API_KEY di nuovo in `.env`** (persa col riciclo — chiederla
+  all'utente, mai committarla)
+- [ ] **Embedding catalogo (0/6.191)**: decisione utente su quota — billing
+  sulla key (consigliato: minuti, centesimi) o rimandare a Neon (1f); poi
+  `pnpm embed:products` (idempotente, batch 50)
 - [ ] `KIMI_API_KEY` per il fallback (opzionale ma consigliata: elimina i 429-storm)
 - [ ] Valutare PR/merge del branch `claude/handoff-review-48kkhi` (scelta utente)
 
@@ -100,7 +111,7 @@
 | Auth | [X] Better Auth (override better-call 1.3.7 in package.json) |
 | Chat AI | [X] Codice completo; SENZA key risponde «Assistente non configurato.» |
 | Embedding | [ ] Vettori reali non generati (serve key); ramo pronto e testato con fake |
-| Docker (DB + Redis) | [X] `scripts/dev-bootstrap.sh` (in questo container: seed 50 prodotti, admin `admin@ufptrade.local`) |
+| Docker (DB + Redis) | [X] `scripts/dev-bootstrap.sh` (in questo container: **catalogo reale 6.191 importato**, admin `admin@ufptrade.local`) |
 | Git | [X] Branch pushato; un commit per task (11 commit 1c) |
 
 ### Regola utente — file esterni (2026-07-01)
@@ -134,3 +145,4 @@
 | 2026-07-02 | Piano 1b + esecuzione completa (parser, import 6.191 prodotti, RAGEngine tsvector+trigram, router, UI Archivio+dettaglio) | `claude/superpowers-handoff-next-z1wyh7` |
 | 2026-07-02 | Spec Fase 1c (LLM Council: AIGateway al posto di BullMQ) | `claude/handoff-review-3xcvvy` (PR #4) |
 | 2026-07-03 | Piano 1c + esecuzione completa (AIGateway, provider, ChatService, router chat, embedding batch, UI Assistente, CLAUDE.md); gates verdi + verifica browser senza key | `claude/handoff-review-48kkhi` |
+| 2026-07-04 | E2e reale 1c verificato (chat tool-use + ranking ibrido, 900 embedding) · riciclo container: ambiente ricostruito (re-import 6.191, suite verde), embedding da rifare, in attesa key + decisione quota | `claude/handoff-review-48kkhi` |
