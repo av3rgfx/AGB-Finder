@@ -16,6 +16,11 @@ export default defineConfig({
       REDIS_URL: "redis://localhost:6379",
       IP_HASH_SECRET: "test-ip-hash-secret",
       NODE_ENV: "test",
+      // Ermeticità: Vitest carica anche il .env di sviluppo — se contiene key AI
+      // reali il gateway risulterebbe configurato e i test farebbero chiamate
+      // di rete vere. Le key DEVONO essere vuote nei test.
+      GEMINI_API_KEY: "",
+      KIMI_API_KEY: "",
     },
   },
   resolve: {
