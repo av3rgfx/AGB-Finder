@@ -11,7 +11,7 @@
 |-------|--------|
 | **Data** | 2026-07-04 |
 | **Fase in corso** | Fase 1 — MVP Gestionale |
-| **Sotto-fase** | 1a ✅ · Better Auth ✅ · 1b ✅ · **1c Chat AI ✅ (e2e reale verificato)** — embedding catalogo **0/6.191** (persi col riciclo del container, vedi sotto) |
+| **Sotto-fase** | 1a ✅ · Better Auth ✅ · 1b ✅ · **1c Chat AI ✅ (e2e reale verificato)** — embedding catalogo **1.000/6.191** (cap giornaliero free-tier confermato) |
 | **Branch git** | `claude/handoff-review-48kkhi` (pushato; nessuna PR aperta) |
 | **Piano eseguito** | `docs/superpowers/plans/2026-07-03-fase1c-chat-ai.md` (task 0–15 ✅; embedding full-catalog in coda su quota) |
 
@@ -46,12 +46,18 @@
   engine Prisma + Docker/Postgres/Redis + migrazioni + seed + **re-import
   listino 6.191/22** (PDF dal link registrato) + suite verde (137 passed).
   Manca SOLO la key in `.env`.
-- **EMBEDDING DA RIFARE (0/6.191)** — lezione dal riciclo: il **trickle
-  free-tier (~6 giorni) non può completare su un container effimero** (il
-  progresso si azzera a ogni riciclo). Opzioni realistiche: **billing sulla
-  key** (catalogo intero ≈ pochi centesimi, minuti — rilanciabile dopo ogni
-  riciclo) · rimandare il full-embed al DB persistente Neon (Fase 1f). Chat e
-  ricerca testuale funzionano comunque senza embedding.
+- **SECONDO RICICLO (2026-07-04 ~10:30Z)** + ricostruzione bis: key utente in
+  `.env` (e nel transcript sessione: ripristinabili senza richiederle),
+  re-import 6.191/22, loop embedding avviato → **fermo a 1.000/6.191: cap
+  giornaliero free-tier ~1.000 contenuti confermato al centesimo**. Il trickle
+  multi-giorno NON sopravvive ai ricicli (2 in un giorno): le opzioni vere sono
+  **billing sulla key** (catalogo intero ≈ centesimi, minuti) o rimandare a
+  Neon (1f). Chat e ricerca testuale funzionano comunque.
+- **Key Kimi fornita = prodotto "Kimi Code"**: 401 su api.moonshot.ai/.cn —
+  per il fallback serve una key della **Moonshot API platform**
+  (platform.moonshot.ai). Fallback non attivo, chat su sola Gemini.
+- **Raccomandazione persistenza key**: variabili d'ambiente dell'environment
+  Claude Code (impostazioni web) — sopravvivono ai ricicli; mai nel repo.
 
 ## Fase 1c — cosa è stato costruito
 
@@ -92,12 +98,12 @@
 ## Task pendenti
 
 ### Immediati
-- [ ] **GEMINI_API_KEY di nuovo in `.env`** (persa col riciclo — chiederla
-  all'utente, mai committarla)
-- [ ] **Embedding catalogo (0/6.191)**: decisione utente su quota — billing
-  sulla key (consigliato: minuti, centesimi) o rimandare a Neon (1f); poi
-  `pnpm embed:products` (idempotente, batch 50)
-- [ ] `KIMI_API_KEY` per il fallback (opzionale ma consigliata: elimina i 429-storm)
+- [X] GEMINI_API_KEY in `.env` (fornita 2026-07-04; anche nel transcript sessione)
+- [ ] **Embedding catalogo (1.000/6.191)**: decisione utente — billing sulla
+  key (consigliato: minuti, centesimi) o rimandare a Neon (1f); poi rilanciare
+  `pnpm embed:products` / `embed-loop.sh` (idempotenti, batch 50)
+- [ ] **Key Moonshot API platform** per il fallback Kimi (quella "Kimi Code" dà 401)
+- [ ] **Utente: key nelle env vars dell'environment Claude Code** (persistenza tra ricicli)
 - [ ] Valutare PR/merge del branch `claude/handoff-review-48kkhi` (scelta utente)
 
 ### Sessioni future
