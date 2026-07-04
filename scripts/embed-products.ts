@@ -6,7 +6,9 @@ import { GeminiEmbeddingService, HttpStatusError } from "../src/server/ai/embedd
 import { embeddingText } from "../src/server/ai/product-text";
 import { RAGEngine } from "../src/server/ai/rag";
 
-const BATCH_SIZE = 100; // limite batchEmbedContents
+// L'API accetta fino a 100 testi/richiesta, ma sul free tier le richieste da
+// 100 colpiscono sistematicamente il limite di quota (HTTP 429): 50 passa.
+const BATCH_SIZE = 50;
 const MAX_ATTEMPTS = 5;
 
 async function withBackoff<T>(fn: () => Promise<T>): Promise<T> {
