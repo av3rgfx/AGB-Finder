@@ -2,6 +2,11 @@
 
 **Status:** approvato dall'utente (design + verdetto LLM Council 2026-07-04).
 **Data:** 2026-07-04
+**Aggiornamento (Task 0, decisione utente):** la gamma «ad applicare» ALLUMINIO
+della distinta 2021 non esiste più nel listino 2026 → **pilota su ARTECH
+LEGNO**; golden test rimappato sugli equivalenti legno (struttura e quantità
+invariate, 16 righe/21 pezzi). Dettaglio autoritativo:
+`docs/superpowers/plans/2026-07-04-fase1d-emendamento-legno.md`.
 
 ## Goal
 
