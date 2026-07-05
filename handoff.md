@@ -12,7 +12,7 @@
 | **Data** | 2026-07-04 |
 | **Fase in corso** | Fase 1 — MVP Gestionale |
 | **Sotto-fase** | 1a ✅ · Better Auth ✅ · 1b ✅ · **1c Chat AI ✅ (e2e reale verificato)** — embedding catalogo **1.000/6.191** (cap giornaliero free-tier confermato) |
-| **Branch git** | `claude/handoff-review-48kkhi` (pushato; nessuna PR aperta) |
+| **Branch git** | `claude/handoff-review-48kkhi` → **merged su `main`** (2026-07-04, scelta utente: merge locale come 1b; main pushato a `24561d1`) |
 | **Piano eseguito** | `docs/superpowers/plans/2026-07-03-fase1c-chat-ai.md` (task 0–15 ✅; embedding full-catalog in coda su quota) |
 
 ## Stato attuale in breve
@@ -104,7 +104,7 @@
   `pnpm embed:products` / `embed-loop.sh` (idempotenti, batch 50)
 - [ ] **Key Moonshot API platform** per il fallback Kimi (quella "Kimi Code" dà 401)
 - [ ] **Utente: key nelle env vars dell'environment Claude Code** (persistenza tra ricicli)
-- [ ] Valutare PR/merge del branch `claude/handoff-review-48kkhi` (scelta utente)
+- [X] Merge 1c su `main` (2026-07-04, merge locale + push; suite verde sul risultato)
 
 ### Sessioni future
 - [ ] Fase 1d: Kit deterministic engine · 1e: dashboard dati reali · 1f: deploy
