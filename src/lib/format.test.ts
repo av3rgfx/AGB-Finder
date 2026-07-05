@@ -12,6 +12,8 @@ describe("formatPrice", () => {
 describe("formatDate", () => {
   it("formatta in stile it-IT (gg/mm/aa)", () => {
     expect(formatDate("2026-07-05T10:00:00Z")).toBe("05/07/26");
-    expect(formatDate(new Date("2026-01-15T00:00:00Z"))).toBe("15/01/26");
+    expect(formatDate(new Date("2026-01-15T12:00:00Z"))).toBe("15/01/26");
+    // Timezone-independent: 22:30Z = 00:30 Europe/Rome next day (CEST)
+    expect(formatDate(new Date("2026-07-04T22:30:00Z"))).toBe("05/07/26");
   });
 });
