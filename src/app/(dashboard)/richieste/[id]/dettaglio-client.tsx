@@ -130,6 +130,20 @@ export function DettaglioClient({ id }: { id: string }) {
           </div>
         )}
 
+        {/* Se la distinta non ha componenti risolti i warning non passano per
+            DistintaTable (che non viene renderizzata): li mostriamo comunque,
+            altrimenti un kit totalmente non a listino sparirebbe senza traccia. */}
+        {!hasDistinta && warnings.length > 0 && (
+          <div
+            role="alert"
+            className="rounded border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-ink"
+          >
+            {warnings.map((warning) => (
+              <p key={warning}>{warning}</p>
+            ))}
+          </div>
+        )}
+
         {hasDistinta ? (
           <DistintaTable
             components={r.components}
