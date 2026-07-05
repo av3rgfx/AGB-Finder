@@ -172,6 +172,12 @@ browser end-to-end.
   generatore ha solo le regole LEGNO (guardia esplicita → `KitGenerationError`
   sugli altri); wizard li mostra disabilitati con hint «presto disponibile».
   Da abilitare quando ci saranno le regole (nuovo `RuleModule` + registry).
+- [ ] **Follow-up da review finale 1d** (non bloccanti, triage 2026-07-05):
+  test bordo CHIUSURE_VERTICALI (H che passa cremonese ma esce dalla banda) ·
+  `.strict()` su `templateRulesSchema` (ADR: shape estranea → errore) · batch
+  nit UI (doppio push su RequestRow, test ramo warnings-only del dettaglio,
+  hint radio disabilitate fuori dal nome accessibile) · retry su unique per
+  `requestNumber` solo se crescerà la concorrenza.
 
 ### Sessioni future
 - [ ] Fase 1e: dashboard dati reali · 1f: deploy
