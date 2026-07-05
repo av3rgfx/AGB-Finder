@@ -131,4 +131,58 @@ describe("kit.list / kit.get", () => {
     const caller = createCallerFactory(appRouter)(makeCtx(agent));
     await expect(caller.kit.get({ id: "x" })).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
+
+  it("get success → restituisce richiesta con componenti + prodotto", async () => {
+    requestFindFirst.mockResolvedValue({
+      id: "k1",
+      agentId: "agent1",
+      ...validInput,
+      status: "COMPLETED",
+      totalComponents: 1,
+      totalPrice: { toString: () => "99.99" },
+      generatedKit: null,
+      generatedAt: null,
+      createdAt: new Date(),
+      components: [
+        {
+          id: "c1",
+          kitRequestId: "k1",
+          productId: "p1",
+          componentCode: "COMP-001",
+          componentName: "Componente Test",
+          position: "TOP",
+          quantity: 1,
+          unitPrice: { toString: () => "99.99" },
+          totalPrice: { toString: () => "99.99" },
+          sortOrder: 0,
+          ruleId: "r1",
+          ruleDescription: "Test Rule",
+          product: { id: "p1", agbCode: "X", name: "N", isAvailable: true },
+        },
+      ],
+    });
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    const result = await caller.kit.get({ id: "k1" });
+    expect(requestFindFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "k1", agentId: "agent1" },
+        include: expect.objectContaining({
+          components: expect.objectContaining({
+            include: expect.objectContaining({
+              product: expect.objectContaining({
+                select: { id: true, agbCode: true, name: true, isAvailable: true },
+              }),
+            }),
+          }),
+        }),
+      }),
+    );
+    expect(result.components).toHaveLength(1);
+    expect(result.components[0]).toMatchObject({
+      product: { agbCode: "X" },
+      unitPrice: 99.99,
+      totalPrice: 99.99,
+    });
+    expect(result.totalPrice).toBe(99.99);
+  });
 });

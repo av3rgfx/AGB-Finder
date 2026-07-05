@@ -112,7 +112,16 @@ export const kitRouter = createTRPCRouter({
   get: agentProcedure.input(z.object({ id: z.string().min(1) })).query(async ({ ctx, input }) => {
     const request = await ctx.db.kitRequest.findFirst({
       where: { id: input.id, agentId: ctx.session.user.id },
-      include: { components: { orderBy: { sortOrder: "asc" } } },
+      include: {
+        components: {
+          orderBy: { sortOrder: "asc" },
+          include: {
+            product: {
+              select: { id: true, agbCode: true, name: true, isAvailable: true },
+            },
+          },
+        },
+      },
     });
     if (!request)
       throw new TRPCError({ code: "NOT_FOUND", message: "Richiesta kit non trovata." });
