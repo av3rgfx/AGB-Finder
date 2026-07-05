@@ -9,11 +9,11 @@
 
 | Campo | Valore |
 |-------|--------|
-| **Data** | 2026-07-04 |
+| **Data** | 2026-07-05 |
 | **Fase in corso** | Fase 1 — MVP Gestionale |
-| **Sotto-fase** | 1a ✅ · Better Auth ✅ · 1b ✅ · **1c Chat AI ✅ (e2e reale verificato)** — embedding catalogo **1.000/6.191** (cap giornaliero free-tier confermato) |
-| **Branch git** | `claude/handoff-review-48kkhi` → **merged su `main`** (2026-07-04, scelta utente: merge locale come 1b; main pushato a `24561d1`) |
-| **Piano eseguito** | `docs/superpowers/plans/2026-07-03-fase1c-chat-ai.md` (task 0–15 ✅; embedding full-catalog in coda su quota) |
+| **Sotto-fase** | 1a ✅ · Better Auth ✅ · 1b ✅ · 1c Chat AI ✅ (e2e reale verificato) — embedding catalogo **1.000/6.191** (cap giornaliero free-tier confermato) · **1d Kit engine ✅ (golden verificato su catalogo reale + browser)** |
+| **Branch git** | `claude/handoff-review-48kkhi` (1c mergiata su `main` il 2026-07-04; 1d sviluppata su questo branch, non ancora mergiata) |
+| **Piano eseguito** | `docs/superpowers/plans/2026-07-03-fase1c-chat-ai.md` (1c, task 0–15 ✅) · `docs/superpowers/plans/2026-07-04-fase1d-kit-engine.md` + emendamento LEGNO (1d, task 0–8 ✅) |
 
 ## Stato attuale in breve
 
@@ -95,6 +95,60 @@
 - Bolla ottimistica utente con stato `pendingContent` (copre anche la fase di
   `chat.create` alla prima domanda).
 
+## Fase 1d — cosa è stato costruito
+
+Kit deterministico (**MAI LLM**), pilota **ARTECH anta-ribalta LEGNO**, 8 task
+TDD (piano `docs/superpowers/plans/2026-07-04-fase1d-kit-engine.md` +
+emendamento `2026-07-04-fase1d-emendamento-legno.md`). Golden: 550×1820mm,
+SX, TIRARE, aria 12, asse/interasse 13, battuta 20, sede 18, ARGENTO →
+**16 righe / 21 pezzi**, verificato sia in unit (prodotti fake) sia in
+integrazione sul catalogo reale (6.191 prodotti, listino 2026) sia nel
+browser end-to-end.
+
+| Componente | File | Note |
+|---|---|---|
+| Tipi/contratto | `src/server/kit/types.ts` | `kitInputSchema` (zod, generico — nessun campo ARTECH-specifico); `KitLine`/`RuleModule`/`KitGenerationError`; costanti `PILOT` (FINESTRA, verticali passo 600, coperture KIT) |
+| Regole ARTECH legno | `src/server/kit/rules-artech.ts` | Tabelle dati `as const` (cremonese per range altezza, corpo forbice per range larghezza, bracci per gruppo larghezza, coperture per finitura+mano) + funzioni pure per quantità; ogni scelta non derivabile con certezza è marcata `// ASSUNZIONE` (vedi Decisioni) |
+| Registry | `src/server/kit/registry.ts` | Puntatore `{engine, version}` → `RuleModule`; engine non registrato/puntatore malformato → errore esplicito |
+| Seed template | `prisma/seed-kit.ts` (`pnpm db:seed:kit`) | `KitTemplate` "ARTECH anta-ribalta legno" attivo, idempotente |
+| **KitEngine** | `src/server/kit/engine.ts` | Pipeline VALIDATE → SELECT TEMPLATE (DB, priority) → APPLY RULES (registry) → risoluzione prezzi da `Product` (Prisma, no raw SQL); codice non a listino → warning esplicito, kit comunque generato |
+| Router kit | `src/server/api/routers/kit.ts` | `create`/`generate`/`get`/`list` (AGENT, ownership, transazione su `generate`, ActivityLog `KIT_REQUEST_CREATED`/`KIT_GENERATED`) |
+| UI Richieste | `src/app/(dashboard)/richieste/` + `src/components/kit/` | Lista con stato vuoto+CTA, dettaglio con `DistintaTable` (codici mono+copia) e banner warning, wizard `/nuova` 4 step (tipologia → dimensioni → mano/finitura → riepilogo) con default LEGNO |
+| Test integrazione | `src/server/kit/engine.integration.test.ts` | Gated `INTEGRATION_DATABASE_URL`; risolve i 16 codici sul catalogo reale, zero warning, tutti prezzati, `totalPrice > 0` |
+
+### Decisioni 1d (delta vs spec/piano)
+- **Pivot golden ALLUMINIO → LEGNO** (Task 0): la gamma «ad applicare» ALLUMINIO
+  della distinta reale 2021 non esiste più nel listino 2026 (9/20 codici
+  sopravvissuti a DB, gli 11 mancanti sono tutti profilo-specifici — nemmeno i
+  prefissi esistono). Il capitolo ARTECH 2026 è completo per LEGNO → pilota
+  spostato su ARTECH anta-ribalta LEGNO; struttura/quantità della distinta
+  reale restano identiche (16 righe/21 pezzi), i codici profilo-specifici sono
+  rimappati sugli equivalenti legno 2026.
+- **ADR council — regole "a forma di dati" in TypeScript, non JSON a DB**
+  (`docs/superpowers/specs/2026-07-04-fase1d-kit-engine-design.md`): con n=1
+  distinta reale, progettare oggi uno schema JSON generico è wrong abstraction
+  garantita — le tabelle a range sono banali in qualsiasi rappresentazione, sono
+  le *formule* a discriminare. **Trigger di migrazione registrato**: alla 2ª
+  serie si rivaluta, alla 3ª si estrae il vocabolario comune in
+  `KitTemplate.rules`. `KitTemplate` resta comunque vivo come
+  registro/dispatcher (puntatore versionato `{engine, version}` validato zod).
+- **Gap di catalogo — supporto-cerniera (`A50801.01.xx`)**: il listino 2026
+  non ha una variante "Supporto cerniera — Parte telaio" per aria 12/interasse
+  13/battuta 20 (i parametri del golden); esistono solo due varianti "Aria 4"
+  (`A50801` int.9/battuta18, `A50803` int.8,5/battuta15). Pinnato `A50801`
+  (più vicino su entrambi gli assi di confronto) — **da verificare con AGB**
+  prima di fidarsi in produzione: potrebbe mancare a catalogo un codice
+  interasse13/battuta20 dedicato.
+- **Formula quantità incontri-nottolino, non dati `colonne.'not.'`**: verificata
+  l'ipotesi data-driven (somma dei `colonne.'not.'` dei componenti mobili
+  selezionati) sui dati reali → non regge (il fusto forbice ha `not."="-"`,
+  somma pesata darebbe 4 ≠ 5 atteso). Si usa la formula ASSUNZIONE del piano
+  originale (`2 + scatti passo 600 in altezza + scatti passo 600 in
+  larghezza`), che riproduce esattamente il golden.
+- **Finiture coperte nel pilota: solo ARGENTO** (`COPERTURE_KIT` in
+  `rules-artech.ts`); il wizard mostra solo ARGENTO come opzione selezionabile
+  (`FINISH_OPTIONS`, duplicato manuale — annotato come minor in review Task 7).
+
 ## Task pendenti
 
 ### Immediati
@@ -106,8 +160,21 @@
 - [ ] **Utente: key nelle env vars dell'environment Claude Code** (persistenza tra ricicli)
 - [X] Merge 1c su `main` (2026-07-04, merge locale + push; suite verde sul risultato)
 
+### Da Fase 1d
+- [ ] **Verificare con AGB il supporto-cerniera** `A50801.01.xx` pinnato per
+  aria 12/interasse 13/battuta 20 (gap di catalogo — vedi Decisioni 1d): non
+  esiste una variante dedicata nel listino 2026, va confermato col tecnico o
+  con una prossima distinta reale.
+- [ ] **Altre finiture coperture** (`COPERTURE_KIT` in `rules-artech.ts` copre
+  solo ARGENTO): estendere tabella + `FINISH_OPTIONS` nel wizard quando si hanno
+  i codici delle altre finiture a listino.
+- [ ] **PVC/ALLUMINIO**: `kitInputSchema` accetta già i 3 materiali ma il
+  generatore ha solo le regole LEGNO (guardia esplicita → `KitGenerationError`
+  sugli altri); wizard li mostra disabilitati con hint «presto disponibile».
+  Da abilitare quando ci saranno le regole (nuovo `RuleModule` + registry).
+
 ### Sessioni future
-- [ ] Fase 1d: Kit deterministic engine · 1e: dashboard dati reali · 1f: deploy
+- [ ] Fase 1e: dashboard dati reali · 1f: deploy
 
 ## Contesto tecnico
 
@@ -118,7 +185,8 @@
 | Chat AI | [X] Codice completo; SENZA key risponde «Assistente non configurato.» |
 | Embedding | [ ] Vettori reali non generati (serve key); ramo pronto e testato con fake |
 | Docker (DB + Redis) | [X] `scripts/dev-bootstrap.sh` (in questo container: **catalogo reale 6.191 importato**, admin `admin@ufptrade.local`) |
-| Git | [X] Branch pushato; un commit per task (11 commit 1c) |
+| Kit engine (1d) | [X] Pilota ARTECH anta-ribalta LEGNO completo; golden 16 righe verificato su catalogo reale + browser (vedi «Fase 1d») |
+| Git | [X] Branch pushato; un commit per task |
 
 ### Regola utente — file esterni (2026-07-01)
 - **Listino AGB PDF**: se manca nell'ambiente, **chiedere il link all'utente**
@@ -152,3 +220,4 @@
 | 2026-07-02 | Spec Fase 1c (LLM Council: AIGateway al posto di BullMQ) | `claude/handoff-review-3xcvvy` (PR #4) |
 | 2026-07-03 | Piano 1c + esecuzione completa (AIGateway, provider, ChatService, router chat, embedding batch, UI Assistente, CLAUDE.md); gates verdi + verifica browser senza key | `claude/handoff-review-48kkhi` |
 | 2026-07-04 | E2e reale 1c verificato (chat tool-use + ranking ibrido, 900 embedding) · riciclo container: ambiente ricostruito (re-import 6.191, suite verde), embedding da rifare, in attesa key + decisione quota | `claude/handoff-review-48kkhi` |
+| 2026-07-05 | Fase 1d completa: spec+piano (ADR council regole-in-TS) + pivot golden ALLUMINIO→LEGNO (Task 0) + 8 task TDD (tipi, regole ARTECH legno, registry+seed, engine, router kit, UI richieste+wizard, golden integrazione su catalogo reale) + verifica browser (positivo 16 righe/90,20€ + negativo errore fuori-campo) + gates verdi | `claude/handoff-review-48kkhi` |
