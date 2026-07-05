@@ -7,10 +7,12 @@ import { artechAntaRibaltaLegno } from "./rules-artech";
  * codice (ADR 2026-07-04). Qualsiasi altra shape è un errore: la fonte di
  * verità delle regole è git, mai il DB.
  */
-export const templateRulesSchema = z.object({
-  engine: z.string().min(1),
-  version: z.number().int().min(1),
-});
+export const templateRulesSchema = z
+  .object({
+    engine: z.string().min(1),
+    version: z.number().int().min(1),
+  })
+  .strict();
 
 export const RULE_MODULES: Record<string, RuleModule> = {
   [artechAntaRibaltaLegno.engineId]: artechAntaRibaltaLegno,
