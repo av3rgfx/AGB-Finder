@@ -82,6 +82,8 @@ test prima, commit frequenti, un commit per task.
 ## STATO
 Fase 1a (Fondamenta) ✅ + migrazione Better Auth ✅ + Fase 1b (Catalogo + hybrid
 search, 6.191 prodotti) ✅ + Fase 1c (Chat AI: AIGateway, provider Gemini/Kimi,
-ChatService tool-use, router chat, embedding batch, UI Assistente) ✅ — restano
-la verifica e2e con key reali (fornite dall'utente) e l'embedding del catalogo
-reale. Prossima: Fase 1d (Kit engine) — vedi `handoff.md`.
+ChatService tool-use, router chat, embedding batch, UI Assistente) ✅ + Fase 1d
+(Kit engine deterministico — pilota ARTECH anta-ribalta LEGNO, 16 righe,
+golden verificato su catalogo reale + browser) ✅ — restano la verifica e2e 1c
+con key reali e l'embedding del catalogo reale. Prossima: Fase 1e (dashboard
+dati reali) — vedi `handoff.md`.
