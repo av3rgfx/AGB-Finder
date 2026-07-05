@@ -4,6 +4,7 @@ import { authRouter } from "@/server/api/routers/auth";
 import { userRouter } from "@/server/api/routers/user";
 import { productRouter } from "@/server/api/routers/product";
 import { chatRouter } from "@/server/api/routers/chat";
+import { kitRouter } from "@/server/api/routers/kit";
 
 /** Root tRPC router. Add feature routers here as the app grows. */
 export const appRouter = createTRPCRouter({
@@ -12,6 +13,7 @@ export const appRouter = createTRPCRouter({
   user: userRouter,
   product: productRouter,
   chat: chatRouter,
+  kit: kitRouter,
 });
 
 export type AppRouter = typeof appRouter;
