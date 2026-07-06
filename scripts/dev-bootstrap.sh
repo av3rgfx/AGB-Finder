@@ -30,5 +30,6 @@ source .env; set +a
 echo "▶ migrate + seed…"
 pnpm prisma migrate deploy
 pnpm db:seed
+pnpm db:seed:kit
 
 echo "✓ ready — run: pnpm dev"
