@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
@@ -235,6 +235,7 @@ function RadioOption({
   onChange: () => void;
   disabled?: boolean;
 }) {
+  const hintId = useId();
   return (
     <label
       className={cn(
@@ -253,11 +254,19 @@ function RadioOption({
           checked={checked}
           onChange={onChange}
           disabled={disabled}
+          // aria-label tiene l'hint fuori dal nome accessibile (che il <label>
+          // avvolgente includerebbe); l'hint resta annunciato come descrizione.
+          aria-label={hint ? label : undefined}
+          aria-describedby={hint ? hintId : undefined}
           className="accent-brand"
         />
         {label}
       </span>
-      {hint && <span className="pl-6 text-xs text-ink-subtle">{hint}</span>}
+      {hint && (
+        <span id={hintId} className="pl-6 text-xs text-ink-subtle">
+          {hint}
+        </span>
+      )}
     </label>
   );
 }

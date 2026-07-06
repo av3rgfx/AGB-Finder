@@ -118,6 +118,22 @@ describe("selezioni dipendenti dall'input", () => {
     expect(at(605)).toBe("A50510.00.03"); // scaglione successivo (476-604 e 594-804 si sovrappongono)
   });
 
+  it.each([1000, 2200])(
+    "altezza %d passa la cremonese ma esce dalla banda chiusure verticali (1520-2120) → errore artech.verticali",
+    (heightMm) => {
+      // La cremonese copre hbb 650-2510 (heightMm ~660-2520), più ampia
+      // dell'unica banda CHIUSURE_VERTICALI validata dal golden: fuori banda
+      // il kit non è generabile — errore esplicito, mai kit monco.
+      try {
+        artechAntaRibaltaLegno.generate({ ...golden, heightMm });
+        expect.unreachable("atteso KitGenerationError sul passo chiusure verticali");
+      } catch (err) {
+        expect(err).toBeInstanceOf(KitGenerationError);
+        expect((err as KitGenerationError).ruleId).toBe("artech.verticali");
+      }
+    },
+  );
+
   it("incontri nottolino: quantità cresce con l'altezza a scatti del passo 600", () => {
     const qtyAt = (h: number) =>
       artechAntaRibaltaLegno

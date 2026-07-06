@@ -45,6 +45,16 @@ describe("NuovaRichiestaClient", () => {
     expect(within(materiale).getAllByText(/presto disponibile/i).length).toBeGreaterThanOrEqual(2);
   });
 
+  it("radio disabilitata: l'hint è descrizione (aria-describedby), non parte del nome accessibile", () => {
+    render(<NuovaRichiestaClient />);
+    const materiale = screen.getByRole("group", { name: /materiale/i });
+    // Nome accessibile esatto = solo "PVC": l'hint non deve entrarci.
+    const pvc = within(materiale).getByRole("radio", { name: "PVC" });
+    const describedby = pvc.getAttribute("aria-describedby");
+    expect(describedby).toBeTruthy();
+    expect(document.getElementById(describedby!)?.textContent).toMatch(/presto disponibile/i);
+  });
+
   it("blocca lo step dimensioni se fuori range", () => {
     render(<NuovaRichiestaClient />);
     fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // step 2

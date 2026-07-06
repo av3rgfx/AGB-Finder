@@ -87,6 +87,7 @@ function RequestRow({ item }: { item: RequestListItem }) {
       <td className="px-4 py-2.5">
         <Link
           href={href}
+          onClick={(e) => e.stopPropagation()}
           className="font-mono text-sm text-ink hover:text-brand focus-visible:outline-none focus-visible:underline"
         >
           {item.requestNumber}

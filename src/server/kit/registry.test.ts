@@ -15,6 +15,12 @@ describe("registry moduli regole", () => {
     expect(() => resolveRuleModule({ positions: [{ code: "X" }] })).toThrow(/puntatore/i);
   });
 
+  it("puntatore con chiavi estranee → errore (ADR: nessuna regola sconfina nel DB)", () => {
+    expect(() =>
+      resolveRuleModule({ engine: "artech-ar-legno", version: 1, positions: [{ code: "X" }] }),
+    ).toThrow(/puntatore/i);
+  });
+
   it("ogni modulo registrato ha engineId coerente con la chiave", () => {
     for (const [key, module_] of Object.entries(RULE_MODULES)) expect(module_.engineId).toBe(key);
   });
