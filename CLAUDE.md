@@ -68,6 +68,10 @@ Tailwind CSS 3 · Vitest · pnpm. Deploy target: Vercel + Neon + Upstash.
   chiedere all'utente, mai recuperarlo autonomamente da fonti esterne.
 
 ## AMBIENTE (workaround sandbox)
+- **pnpm 10 obbligatorio** (`packageManager: pnpm@10.17.0`): pnpm 11 ignora
+  `pnpm.overrides` in `package.json` e scarta l'override `better-call@1.3.7` →
+  `better-auth` crasha a load. Corepack rispetta il pin; non forzare pnpm 11
+  (semmai migrare gli override in `pnpm-workspace.yaml`). Vedi handoff.
 - **Engine Prisma**: `bash scripts/setup-prisma-engines.sh` (il downloader va in
   ECONNRESET dietro il proxy; li scarichiamo via curl → `PRISMA_*` in `.env`).
 - **Docker**: `bash scripts/dev-bootstrap.sh` (avvia daemon + Postgres/Redis +

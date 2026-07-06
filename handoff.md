@@ -9,11 +9,11 @@
 
 | Campo | Valore |
 |-------|--------|
-| **Data** | 2026-07-05 |
+| **Data** | 2026-07-06 |
 | **Fase in corso** | Fase 1 — MVP Gestionale |
-| **Sotto-fase** | 1a ✅ · Better Auth ✅ · 1b ✅ · 1c Chat AI ✅ (e2e reale verificato) — embedding catalogo **1.000/6.191** (cap giornaliero free-tier confermato) · **1d Kit engine ✅ (golden verificato su catalogo reale + browser)** |
-| **Branch git** | `claude/handoff-review-48kkhi` (1c mergiata su `main` il 2026-07-04; 1d sviluppata su questo branch, non ancora mergiata) |
-| **Piano eseguito** | `docs/superpowers/plans/2026-07-03-fase1c-chat-ai.md` (1c, task 0–15 ✅) · `docs/superpowers/plans/2026-07-04-fase1d-kit-engine.md` + emendamento LEGNO (1d, task 0–8 ✅) |
+| **Sotto-fase** | 1a ✅ · Better Auth ✅ · 1b ✅ · 1c Chat AI ✅ (e2e reale verificato) — embedding catalogo **1.000/6.191** (cap giornaliero free-tier confermato) · **1d Kit engine ✅ (golden verificato su catalogo reale + browser)** · **follow-up review 1d chiusi ✅** |
+| **Branch git** | `claude/handoff-review-ztcteg` (1c+1d mergiate su `main` — PR #7; questo branch porta i follow-up non bloccanti della review 1d, pushato, PR non aperta) |
+| **Piano eseguito** | `docs/superpowers/plans/2026-07-03-fase1c-chat-ai.md` (1c, task 0–15 ✅) · `docs/superpowers/plans/2026-07-04-fase1d-kit-engine.md` + emendamento LEGNO (1d, task 0–8 ✅) · follow-up review 1d (TDD, un commit per task) |
 
 ## Stato attuale in breve
 
@@ -172,12 +172,17 @@ browser end-to-end.
   generatore ha solo le regole LEGNO (guardia esplicita → `KitGenerationError`
   sugli altri); wizard li mostra disabilitati con hint «presto disponibile».
   Da abilitare quando ci saranno le regole (nuovo `RuleModule` + registry).
-- [ ] **Follow-up da review finale 1d** (non bloccanti, triage 2026-07-05):
-  test bordo CHIUSURE_VERTICALI (H che passa cremonese ma esce dalla banda) ·
-  `.strict()` su `templateRulesSchema` (ADR: shape estranea → errore) · batch
-  nit UI (doppio push su RequestRow, test ramo warnings-only del dettaglio,
-  hint radio disabilitate fuori dal nome accessibile) · retry su unique per
-  `requestNumber` solo se crescerà la concorrenza.
+- [X] **Follow-up da review finale 1d** (non bloccanti, chiusi 2026-07-06 su
+  branch `claude/handoff-review-ztcteg`, TDD un commit per task):
+  - [X] test bordo CHIUSURE_VERTICALI (H valida per cremonese ma fuori banda
+    1520-2120 → errore esplicito `artech.verticali`)
+  - [X] `.strict()` su `templateRulesSchema` (puntatore con chiavi estranee → errore)
+  - [X] doppio push su RequestRow (`stopPropagation` sul `<Link>` interno)
+  - [X] test ramo warnings-only del dettaglio (kit fuori listino: warning visibili)
+  - [X] hint radio disabilitate fuori dal nome accessibile (`aria-label` +
+    `aria-describedby`)
+  - [ ] retry su unique per `requestNumber`: **NON fatto (YAGNI)** — "solo se
+    crescerà la concorrenza"; da riprendere solo se emergono collisioni reali.
 
 ### Sessioni future
 - [ ] Fase 1e: dashboard dati reali · 1f: deploy
@@ -201,6 +206,15 @@ browser end-to-end.
 
 ### Problemi riscontrati e workaround
 - **better-call/better-auth** (vedi sopra): override pnpm permanenti in `package.json`.
+- **pnpm 11 ignora `pnpm.overrides` in `package.json`** (2026-07-06): corepack
+  di default nel container remoto lancia pnpm 11, che ha spostato `overrides`/
+  `onlyBuiltDependencies` in `pnpm-workspace.yaml` e **scarta silenziosamente**
+  gli override del repo → `better-call` regredisce a 1.1.8 (senza
+  `kAPIErrorHeaderSymbol`) → `better-auth` va in crash a load (test/build auth
+  rossi) e il lockfile fa drift. **Fix applicato**: `"packageManager":
+  "pnpm@10.17.0"` in `package.json` (pnpm 10 legge ancora `pnpm.overrides`).
+  Con il pin, `pnpm install --frozen-lockfile` è pulito. Se un giorno si vuole
+  passare a pnpm 11: migrare gli override in `pnpm-workspace.yaml`.
 - **`pnpm build` mentre `next dev` gira** invalida `.next` del dev server →
   chunk 404: riavviare `pnpm dev`.
 - **Engine Prisma**: `bash scripts/setup-prisma-engines.sh` DOPO `pnpm install`.
@@ -227,3 +241,4 @@ browser end-to-end.
 | 2026-07-03 | Piano 1c + esecuzione completa (AIGateway, provider, ChatService, router chat, embedding batch, UI Assistente, CLAUDE.md); gates verdi + verifica browser senza key | `claude/handoff-review-48kkhi` |
 | 2026-07-04 | E2e reale 1c verificato (chat tool-use + ranking ibrido, 900 embedding) · riciclo container: ambiente ricostruito (re-import 6.191, suite verde), embedding da rifare, in attesa key + decisione quota | `claude/handoff-review-48kkhi` |
 | 2026-07-05 | Fase 1d completa: spec+piano (ADR council regole-in-TS) + pivot golden ALLUMINIO→LEGNO (Task 0) + 8 task TDD (tipi, regole ARTECH legno, registry+seed, engine, router kit, UI richieste+wizard, golden integrazione su catalogo reale) + verifica browser (positivo 16 righe/90,20€ + negativo errore fuori-campo) + gates verdi | `claude/handoff-review-48kkhi` |
+| 2026-07-06 | Follow-up review 1d non bloccanti (TDD, un commit per task): `templateRulesSchema.strict()` · test bordo CHIUSURE_VERTICALI · fix doppio push RequestRow · test ramo warnings-only dettaglio · fix a11y hint radio (`aria-label`/`aria-describedby`). Retry-su-unique lasciato per YAGNI. Scoperto+risolto il landmine pnpm 11 (override scartati) → pin `packageManager: pnpm@10.17.0`. 4 gate verdi (typecheck·lint·test 183 passed·build). | `claude/handoff-review-ztcteg` |
