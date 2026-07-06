@@ -58,21 +58,23 @@ export function DashboardClient({ firstName, isAdmin }: { firstName: string; isA
             Riprova
           </button>
         </div>
-      ) : null}
+      ) : (
+        <>
+          <section aria-label="Statistiche" className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            {KPI_META.map((k) => (
+              <StatCard
+                key={k.key}
+                label={k.label}
+                icon={k.icon}
+                stat={overview.data?.stats[k.key]}
+                loading={overview.isPending}
+              />
+            ))}
+          </section>
 
-      <section aria-label="Statistiche" className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {KPI_META.map((k) => (
-          <StatCard
-            key={k.key}
-            label={k.label}
-            icon={k.icon}
-            stat={overview.data?.stats[k.key]}
-            loading={overview.isPending}
-          />
-        ))}
-      </section>
-
-      <RecentKits items={overview.data?.recentKits ?? []} loading={overview.isPending} />
+          <RecentKits items={overview.data?.recentKits ?? []} loading={overview.isPending} />
+        </>
+      )}
 
       <Shortcuts />
     </div>

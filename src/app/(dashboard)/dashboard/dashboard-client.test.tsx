@@ -71,6 +71,7 @@ describe("DashboardClient", () => {
     render(<DashboardClient firstName="Marco" isAdmin={false} />);
     fireEvent.click(screen.getByRole("button", { name: "Riprova" }));
     expect(refetch).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("Nessuna richiesta recente")).toBeNull();
   });
 
   it("stato loading: label presenti ma nessun valore numerico", () => {
