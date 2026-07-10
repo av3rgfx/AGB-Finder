@@ -9,11 +9,18 @@
 
 | Campo | Valore |
 |-------|--------|
-| **Data** | 2026-07-06 |
+| **Data** | 2026-07-10 |
 | **Fase in corso** | Fase 1 — MVP Gestionale |
-| **Sotto-fase** | 1a ✅ · Better Auth ✅ · 1b ✅ · 1c Chat AI ✅ (e2e reale verificato) — embedding catalogo **1.000/6.191** (cap giornaliero free-tier confermato) · **1d Kit engine ✅ (golden verificato su catalogo reale + browser)** · **follow-up review 1d chiusi ✅** |
-| **Branch git** | `claude/handoff-review-ztcteg` (1c+1d mergiate su `main` — PR #7; questo branch porta i follow-up non bloccanti della review 1d, pushato, PR non aperta) |
-| **Piano eseguito** | `docs/superpowers/plans/2026-07-03-fase1c-chat-ai.md` (1c, task 0–15 ✅) · `docs/superpowers/plans/2026-07-04-fase1d-kit-engine.md` + emendamento LEGNO (1d, task 0–8 ✅) · follow-up review 1d (TDD, un commit per task) |
+| **Sotto-fase** | 1a ✅ · Better Auth ✅ · 1b ✅ · 1c Chat AI ✅ (e2e reale verificato) — embedding catalogo **1.000/6.191** (cap giornaliero free-tier confermato) · **1d Kit engine ✅** · **1e Dashboard dati reali ✅ (merge PR #9)** · **Gestione API key admin ✅ (merge PR #10)** |
+| **Branch git** | `claude/handoff-md-review-6vyafm` (allineato a `origin/main` @ `2aca4e7`; nessuna PR aperta). Questo branch è la **review/riallineamento dell'handoff**: la 1e e la gestione API key erano state mergiate ma mai riportate qui. |
+| **Piano eseguito** | `docs/superpowers/plans/2026-07-03-fase1c-chat-ai.md` (1c) · `2026-07-04-fase1d-kit-engine.md` + emendamento LEGNO (1d) · **`2026-07-06-fase1e-dashboard-dati-reali.md` (1e)** · **`2026-07-10-gestione-api-key-admin.md` (API key admin)** — tutti TDD, un commit per task |
+
+> **⚠️ Nota di riallineamento (2026-07-10):** le sessioni 1e (2026-07-06) e
+> gestione API key (2026-07-10) hanno mergiato il lavoro su `main` (PR #9, #10)
+> **senza** un aggiornamento di fine sessione dell'handoff. Questo file era quindi
+> rimasto fermo alla 1d e indicava erroneamente «Prossima: Fase 1e» quando la 1e
+> era già completa e in `main`. Sezioni **Fase 1e** e **Gestione API key admin**
+> aggiunte sotto; task pendenti e cronologia aggiornati.
 
 ## Stato attuale in breve
 
@@ -149,13 +156,72 @@ browser end-to-end.
   `rules-artech.ts`); il wizard mostra solo ARGENTO come opzione selezionabile
   (`FINISH_OPTIONS`, duplicato manuale — annotato come minor in review Task 7).
 
+## Fase 1e — cosa è stato costruito (merge PR #9, 2026-07-06)
+
+Dashboard `/dashboard` da placeholder statico a **dati reali via tRPC**, TDD,
+nessuna modifica a `schema.prisma`. Spec `docs/superpowers/specs/2026-07-06-fase1e-dashboard-dati-reali-design.md`,
+piano `docs/superpowers/plans/2026-07-06-fase1e-dashboard-dati-reali.md`.
+
+| Componente | File | Note |
+|---|---|---|
+| Helper fuso | `src/lib/format.ts` (`startOfTodayRome`) | Mezzanotte odierna a **Europe/Rome** (DST inclusa) → confine "oggi" per i KPI; niente nuove dipendenze |
+| Router dashboard | `src/server/api/routers/dashboard.ts` (`overview`) | `protectedProcedure` (AGENT+); input `{ scope: mine\|team }`, **server autoritativo** (non-ADMIN forzato a `mine`); `Promise.all` di `count`/`findMany` Prisma (no raw SQL); output KPI (richieste, kit generati con `generatedAt != null`, conversazioni, prodotti cercati — total + oggi) + ultime 5 richieste con cliente/prezzo |
+| Client dashboard | `src/app/(dashboard)/dashboard/dashboard-client.tsx` | react-query; toggle **"I miei / Team"** solo se ADMIN; 4 StatCard con "+N oggi"; sezione ultime richieste (link a `/richieste/[id]`); card **Scorciatoie** (assistente/nuova richiesta/archivio) che rimpiazza il box AI finto; stati loading (skeleton) / **errore esclusivo** (banner + Riprova, niente empty-state falso) / empty |
+| Shell server | `src/app/(dashboard)/dashboard/page.tsx` | resta server component: passa `firstName`/`isAdmin` al client |
+| Test | `dashboard.test.ts` · `dashboard-client.test.tsx` · `format.test.ts` | scope mine/team, riduzione AGENT→mine, `kitGenerati` su `generatedAt`, confine oggi, mapping `recentKits`; KPI/toggle/empty/loading/errore; `startOfTodayRome` CET+CEST |
+
+## Gestione API key admin — cosa è stato costruito (merge PR #10, 2026-07-10)
+
+Override **cifrato su DB con fallback env** per le key AI, gestibile da **ADMIN
+non-tecnici** dall'app (senza accesso Vercel / redeploy). Verdetto LLM Council
+2026-07-10. Spec `docs/superpowers/specs/2026-07-10-gestione-api-key-admin-design.md`,
+piano `docs/superpowers/plans/2026-07-10-gestione-api-key-admin.md`. Il modello
+`Settings` esisteva già a schema → **nessuna migrazione**.
+
+| Componente | File | Note |
+|---|---|---|
+| Cifratura | `src/server/settings/crypto.ts` (`server-only`) | **AES-256-GCM** (`node:crypto`); `base64(iv[12]\|tag[16]\|ct)`, IV random per chiamata; master key da `SETTINGS_ENCRYPTION_KEY` (32 byte, base64/hex); assente → `SettingsCryptoUnavailableError` (mai crash/cifratura debole) |
+| Env | `src/env.ts` | `SETTINGS_ENCRYPTION_KEY: z.string().optional()` (dev/CI girano senza) |
+| Service | `src/server/settings/service.ts` (`server-only`) | `resolveApiKey` (**DB prima → fallback env**); `setApiKey` (cifra, `upsert` su `@@unique([category,key])`, `ActivityLog SETTINGS_CHANGED` con solo `{provider, maskedSuffix}` — **mai** plaintext, poi `INCR` version-stamp Redis); `getStatus` mascherato (`configured/source/maskedSuffix/updatedAt/updatedBy`) |
+| Helper test key | `src/server/ai/gateway.ts` (`testProviderKey`) | verifica una key con chat minima, timeout corto, senza persistere |
+| Gateway async + invalidazione | `src/server/ai/gateway.ts` (`getAIGateway` **async**) | risolve le key via `resolveApiKey` per chat **e** embedding (stessa key Gemini); version-stamp Redis `settings:ai-keys:version` riletto ~30–60s → ricostruisce il singleton al cambio; **degrada al singleton esistente se Redis è irraggiungibile** (fix `b9a8559`). Tutti i call-site resi `await` |
+| Router settings | `src/server/api/routers/settings.ts` | tutte `adminProcedure`: `aiKeys.status` · `aiKeys.testConnection` (`{provider, apiKey?}`, provider temporaneo, no persist) · `aiKeys.set` (**ri-valida server-side** poi `setApiKey`) |
+| UI Impostazioni | `src/app/(dashboard)/impostazioni/{page,impostazioni-client}.tsx` | admin-only; card per provider (stato DB/env/mancante, `••••1234` mono, "ultima modifica"); campo key **write-only**; **Salva abilitato solo dopo un test riuscito** |
+| Test | `crypto.test.ts` · `service.test.ts` · `settings.test.ts` | roundtrip/tamper/master-key assente; DB-prima+fallback+audit-senza-plaintext+bump versione; `adminProcedure` nega non-ADMIN, `set` ri-valida |
+
+> **Impatto sul task embedding**: con la gestione API key in-app, aggiornare la
+> key Gemini **non richiede più redeploy** — un ADMIN la ruota da `/impostazioni`.
+> La decisione aperta resta il **billing** della key (per superare il cap
+> free-tier ~1.000 ed embeddare i 6.191 prodotti), non il "come" applicarla.
+
 ## Task pendenti
 
 ### Immediati
 - [X] GEMINI_API_KEY in `.env` (fornita 2026-07-04; anche nel transcript sessione)
-- [ ] **Embedding catalogo (1.000/6.191)**: decisione utente — billing sulla
-  key (consigliato: minuti, centesimi) o rimandare a Neon (1f); poi rilanciare
-  `pnpm embed:products` / `embed-loop.sh` (idempotenti, batch 50)
+- [ ] **Embedding catalogo (0/6.191 su Neon)**: l'utente ha creato un **progetto
+  Neon** (`eu-west-2`, "Catalogo Finder", Neon Auth OFF — usiamo Better Auth) e
+  fornito una key Gemini valida (testata: HTTP 200 su `embedContent`). Scelta:
+  **embedding durevole su Neon**. **BLOCCO INFRA scoperto (2026-07-10)**: da
+  Claude Code web **la porta 5432 (Postgres TCP) è filtrata** — solo HTTPS/443
+  passa (proxy HTTP/HTTPS + firewall di porta). `prisma migrate deploy` /
+  `import:agb` / `embed:products` parlano 5432 → **non raggiungono Neon da qui**.
+  I livelli di rete (None/Trusted/**Full**/Custom) sono **domain-based** sul proxy
+  HTTP/HTTPS: verosimilmente **non aprono la 5432** (test: TCP raw a Neon:443 passa
+  anche se Neon non è in allowlist; Neon:5432 va in timeout). **Vie durevoli reali**:
+  (a) driver **serverless Neon su 443** (script ops one-shot: DDL via `migrate diff`
+  + insert/update SQL sul driver HTTP — codice glue usa-e-getta, +1 dip); (b) girare
+  la pipeline standard **da Vercel** (Fase 1f: rete non ristretta → 5432 ok), una
+  volta sola. **NON** basta cambiare policy di rete dell'ambiente web.
+  - Runbook pipeline standard (da rete con 5432 aperta): `pnpm install` →
+    `bash scripts/setup-prisma-engines.sh` → `apt-get install -y poppler-utils` →
+    scaricare listino PDF (link in CLAUDE.md) → `set -a; source .env; set +a` →
+    `pnpm exec prisma migrate deploy` → `pnpm import:agb <pdf>` → `pnpm db:seed`
+    (+ `pnpm db:seed:kit`) → `pnpm embed:products` (idempotente, batch 50).
+  - **Persistenza config** (per non ricostruire `.env` a ogni sessione): mettere
+    `DATABASE_URL`/`DIRECT_URL` (Neon), `GEMINI_API_KEY`, `NEXTAUTH_SECRET`,
+    `IP_HASH_SECRET`, `SETTINGS_ENCRYPTION_KEY`, `REDIS_URL`, `SEED_ADMIN_*` nelle
+    **env vars dell'environment Claude Code** (sopravvivono ai ricicli; mai nel repo).
+  - NB: la key Gemini si aggiorna anche da `/impostazioni` (nessun redeploy) — vedi «Gestione API key admin».
 - [ ] **Key Moonshot API platform** per il fallback Kimi (quella "Kimi Code" dà 401)
 - [ ] **Utente: key nelle env vars dell'environment Claude Code** (persistenza tra ricicli)
 - [X] Merge 1c su `main` (2026-07-04, merge locale + push; suite verde sul risultato)
@@ -184,20 +250,29 @@ browser end-to-end.
   - [ ] retry su unique per `requestNumber`: **NON fatto (YAGNI)** — "solo se
     crescerà la concorrenza"; da riprendere solo se emergono collisioni reali.
 
+### Fatto dopo l'ultimo aggiornamento handoff (riportato ora)
+- [X] **Fase 1e — Dashboard dati reali** (merge PR #9, 2026-07-06) — vedi sezione dedicata
+- [X] **Gestione API key admin** (Settings cifrato + `/impostazioni`, merge PR #10, 2026-07-10) — vedi sezione dedicata
+
 ### Sessioni future
-- [ ] Fase 1e: dashboard dati reali · 1f: deploy
+- [ ] **Fase 1f — deploy** (Vercel + Neon + Upstash): prossima fase di roadmap
+  (parte da brainstorming — nessuna spec ancora). Include l'embedding del catalogo
+  reale su Neon (pgvector) e la persistenza delle key/`SETTINGS_ENCRYPTION_KEY`
+  nelle env dell'ambiente.
 
 ## Contesto tecnico
 
 | Componente | Stato |
 |------------|-------|
-| Database schema | [X] Migrato (nessuna migrazione nuova in 1c) |
+| Database schema | [X] Migrato (nessuna migrazione nuova in 1c/1e/API-key: `Settings` era già a schema) |
 | Auth | [X] Better Auth (override better-call 1.3.7 in package.json) |
 | Chat AI | [X] Codice completo; SENZA key risponde «Assistente non configurato.» |
-| Embedding | [ ] Vettori reali non generati (serve key); ramo pronto e testato con fake |
-| Docker (DB + Redis) | [X] `scripts/dev-bootstrap.sh` (in questo container: **catalogo reale 6.191 importato**, admin `admin@ufptrade.local`) |
+| Embedding | [ ] Vettori reali non generati (serve key con billing); ramo pronto e testato con fake |
+| Dashboard (1e) | [X] `/dashboard` dati reali via `dashboard.overview` (KPI + ultime richieste + scorciatoie, toggle team per ADMIN) |
+| Gestione API key | [X] `/impostazioni` admin: override cifrato AES-256-GCM su `Settings` con fallback env; richiede `SETTINGS_ENCRYPTION_KEY` in env per attivarsi |
+| Docker (DB + Redis) | [X] `scripts/dev-bootstrap.sh` (seed kit templates incluso — fix `0da03e6`); admin `admin@ufptrade.local` |
 | Kit engine (1d) | [X] Pilota ARTECH anta-ribalta LEGNO completo; golden 16 righe verificato su catalogo reale + browser (vedi «Fase 1d») |
-| Git | [X] Branch pushato; un commit per task |
+| Git | [X] `origin/main` @ `2aca4e7` (PR #10 merge); branch `claude/handoff-md-review-6vyafm` allineato |
 
 ### Regola utente — file esterni (2026-07-01)
 - **Listino AGB PDF**: se manca nell'ambiente, **chiedere il link all'utente**
@@ -241,4 +316,7 @@ browser end-to-end.
 | 2026-07-03 | Piano 1c + esecuzione completa (AIGateway, provider, ChatService, router chat, embedding batch, UI Assistente, CLAUDE.md); gates verdi + verifica browser senza key | `claude/handoff-review-48kkhi` |
 | 2026-07-04 | E2e reale 1c verificato (chat tool-use + ranking ibrido, 900 embedding) · riciclo container: ambiente ricostruito (re-import 6.191, suite verde), embedding da rifare, in attesa key + decisione quota | `claude/handoff-review-48kkhi` |
 | 2026-07-05 | Fase 1d completa: spec+piano (ADR council regole-in-TS) + pivot golden ALLUMINIO→LEGNO (Task 0) + 8 task TDD (tipi, regole ARTECH legno, registry+seed, engine, router kit, UI richieste+wizard, golden integrazione su catalogo reale) + verifica browser (positivo 16 righe/90,20€ + negativo errore fuori-campo) + gates verdi | `claude/handoff-review-48kkhi` |
-| 2026-07-06 | Follow-up review 1d non bloccanti (TDD, un commit per task): `templateRulesSchema.strict()` · test bordo CHIUSURE_VERTICALI · fix doppio push RequestRow · test ramo warnings-only dettaglio · fix a11y hint radio (`aria-label`/`aria-describedby`). Retry-su-unique lasciato per YAGNI. Scoperto+risolto il landmine pnpm 11 (override scartati) → pin `packageManager: pnpm@10.17.0`. 4 gate verdi (typecheck·lint·test 183 passed·build). | `claude/handoff-review-ztcteg` |
+| 2026-07-06 | Follow-up review 1d non bloccanti (TDD, un commit per task): `templateRulesSchema.strict()` · test bordo CHIUSURE_VERTICALI · fix doppio push RequestRow · test ramo warnings-only dettaglio · fix a11y hint radio (`aria-label`/`aria-describedby`). Retry-su-unique lasciato per YAGNI. Scoperto+risolto il landmine pnpm 11 (override scartati) → pin `packageManager: pnpm@10.17.0`. 4 gate verdi (typecheck·lint·test 183 passed·build). | `claude/handoff-review-ztcteg` (PR #8) |
+| 2026-07-06 | **Fase 1e — Dashboard dati reali** (TDD): `startOfTodayRome` · router `dashboard.overview` (scope mine/team, server autoritativo) · `DashboardClient` (KPI+oggi, ultime richieste, scorciatoie, stati loading/errore/empty). Fix `db:seed:kit` in bootstrap. **Handoff non aggiornato in questa sessione** (drift). | `claude/handoff-next-steps-p6xyzp` (PR #9) |
+| 2026-07-10 | **Gestione API key admin** (TDD): crypto AES-256-GCM · env `SETTINGS_ENCRYPTION_KEY` · service `resolveApiKey`/`setApiKey`/`getStatus` (DB→env, audit senza plaintext, version-stamp) · `getAIGateway` async + invalidazione + degrado se Redis giù · router `settings.aiKeys` (status/testConnection/set) · UI `/impostazioni`. **Handoff non aggiornato in questa sessione** (drift). | `claude/handoff-next-steps-p6xyzp` (PR #10) |
+| 2026-07-10 | **Review/riallineamento handoff**: riportate 1e + gestione API key (erano merge ma non documentate qui); aggiornati stato, task pendenti, contesto tecnico, cronologia. Prossimo passo di roadmap: Fase 1f (deploy). | `claude/handoff-md-review-6vyafm` |

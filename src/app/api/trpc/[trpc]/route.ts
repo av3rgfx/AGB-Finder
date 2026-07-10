@@ -3,8 +3,10 @@ import { appRouter } from "@/server/api/root";
 import { createTRPCContext } from "@/server/api/trpc";
 import { auth } from "@/server/auth/config";
 
-// Il loop tool-use della chat può superare i 10s di default delle function Vercel.
-export const maxDuration = 120;
+// Il loop tool-use della chat supera i 10s di default delle function Vercel.
+// Cap del piano Vercel Hobby = 60s (con billing Gemini attivo una chat normale
+// resta in 2–5s). Al passaggio a Vercel Pro rialzare a 300.
+export const maxDuration = 60;
 
 const handler = async (req: Request) => {
   const session = await auth.api.getSession({ headers: req.headers });
