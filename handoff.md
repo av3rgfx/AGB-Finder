@@ -198,10 +198,30 @@ piano `docs/superpowers/plans/2026-07-10-gestione-api-key-admin.md`. Il modello
 
 ### Immediati
 - [X] GEMINI_API_KEY in `.env` (fornita 2026-07-04; anche nel transcript sessione)
-- [ ] **Embedding catalogo (1.000/6.191)**: decisione utente — billing sulla
-  key (consigliato: minuti, centesimi) o rimandare a Neon (1f); poi rilanciare
-  `pnpm embed:products` / `embed-loop.sh` (idempotenti, batch 50). NB: la key
-  ora si aggiorna da `/impostazioni` (nessun redeploy) — vedi «Gestione API key admin».
+- [ ] **Embedding catalogo (0/6.191 su Neon)**: l'utente ha creato un **progetto
+  Neon** (`eu-west-2`, "Catalogo Finder", Neon Auth OFF — usiamo Better Auth) e
+  fornito una key Gemini valida (testata: HTTP 200 su `embedContent`). Scelta:
+  **embedding durevole su Neon**. **BLOCCO INFRA scoperto (2026-07-10)**: da
+  Claude Code web **la porta 5432 (Postgres TCP) è filtrata** — solo HTTPS/443
+  passa (proxy HTTP/HTTPS + firewall di porta). `prisma migrate deploy` /
+  `import:agb` / `embed:products` parlano 5432 → **non raggiungono Neon da qui**.
+  I livelli di rete (None/Trusted/**Full**/Custom) sono **domain-based** sul proxy
+  HTTP/HTTPS: verosimilmente **non aprono la 5432** (test: TCP raw a Neon:443 passa
+  anche se Neon non è in allowlist; Neon:5432 va in timeout). **Vie durevoli reali**:
+  (a) driver **serverless Neon su 443** (script ops one-shot: DDL via `migrate diff`
+  + insert/update SQL sul driver HTTP — codice glue usa-e-getta, +1 dip); (b) girare
+  la pipeline standard **da Vercel** (Fase 1f: rete non ristretta → 5432 ok), una
+  volta sola. **NON** basta cambiare policy di rete dell'ambiente web.
+  - Runbook pipeline standard (da rete con 5432 aperta): `pnpm install` →
+    `bash scripts/setup-prisma-engines.sh` → `apt-get install -y poppler-utils` →
+    scaricare listino PDF (link in CLAUDE.md) → `set -a; source .env; set +a` →
+    `pnpm exec prisma migrate deploy` → `pnpm import:agb <pdf>` → `pnpm db:seed`
+    (+ `pnpm db:seed:kit`) → `pnpm embed:products` (idempotente, batch 50).
+  - **Persistenza config** (per non ricostruire `.env` a ogni sessione): mettere
+    `DATABASE_URL`/`DIRECT_URL` (Neon), `GEMINI_API_KEY`, `NEXTAUTH_SECRET`,
+    `IP_HASH_SECRET`, `SETTINGS_ENCRYPTION_KEY`, `REDIS_URL`, `SEED_ADMIN_*` nelle
+    **env vars dell'environment Claude Code** (sopravvivono ai ricicli; mai nel repo).
+  - NB: la key Gemini si aggiorna anche da `/impostazioni` (nessun redeploy) — vedi «Gestione API key admin».
 - [ ] **Key Moonshot API platform** per il fallback Kimi (quella "Kimi Code" dà 401)
 - [ ] **Utente: key nelle env vars dell'environment Claude Code** (persistenza tra ricicli)
 - [X] Merge 1c su `main` (2026-07-04, merge locale + push; suite verde sul risultato)
