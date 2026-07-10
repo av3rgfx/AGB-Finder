@@ -157,12 +157,35 @@ async function buildGateway(redis: RedisLike): Promise<AIGateway> {
  * Il singleton viene ricostruito quando cambia il version-stamp su Redis (rilettura
  * al più ogni VERSION_TTL_MS), così una rotazione key da /impostazioni ha effetto
  * senza redeploy. Disallineamento massimo tra istanze serverless = VERSION_TTL_MS.
+ *
+ * Se Redis è irraggiungibile la lettura della versione degrada anziché propagare
+ * l'errore: con un singleton già costruito si continua a servire quello (search
+ * testuale/RAG non deve mai dipendere dalla disponibilità di Redis), altrimenti si
+ * procede comunque alla build (resolveApiKey è DB→env, non richiede Redis). In
+ * entrambi i casi si aggiorna checkedAt per non martellare Redis fino al prossimo
+ * giro di VERSION_TTL_MS (tradeoff accettato: fino a ~30s per accorgersi di un
+ * cambio versione dopo che Redis torna disponibile).
  */
 export async function getAIGateway(): Promise<AIGateway> {
   const now = Date.now();
   if (singleton && now - checkedAt < VERSION_TTL_MS) return singleton;
   const redis = getRedis();
-  const version = await getKeysVersion(redis);
+  let version: number;
+  try {
+    version = await getKeysVersion(redis);
+  } catch (error) {
+    checkedAt = now;
+    if (singleton) {
+      console.warn("AIGateway: Redis irraggiungibile, riuso il singleton esistente:", error);
+      return singleton;
+    }
+    console.warn(
+      "AIGateway: Redis irraggiungibile alla prima build, procedo comunque (DB→env):",
+      error,
+    );
+    singleton = await buildGateway(redis);
+    return singleton;
+  }
   checkedAt = now;
   if (singleton && version === cachedVersion) return singleton;
   cachedVersion = version;

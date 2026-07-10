@@ -39,4 +39,29 @@ describe("getAIGateway invalidation", () => {
 
     expect(second).toBe(first);
   });
+
+  it("degrada al singleton esistente se Redis è irraggiungibile (non lancia)", async () => {
+    vi.useFakeTimers();
+    resolveApiKey.mockResolvedValue("key-1");
+    getKeysVersion.mockResolvedValue(0);
+    const mod = await import("./gateway");
+
+    const first = await mod.getAIGateway();
+    getKeysVersion.mockRejectedValue(new Error("redis down"));
+    vi.advanceTimersByTime(31_000);
+    const second = await mod.getAIGateway();
+
+    expect(second).toBe(first);
+  });
+
+  it("senza singleton pregresso e Redis irraggiungibile, costruisce comunque il gateway (non lancia)", async () => {
+    vi.useFakeTimers();
+    resolveApiKey.mockResolvedValue("key-1");
+    getKeysVersion.mockRejectedValue(new Error("redis down"));
+    const mod = await import("./gateway");
+
+    const gateway = await mod.getAIGateway();
+
+    expect(gateway).toBeInstanceOf(mod.AIGateway);
+  });
 });
