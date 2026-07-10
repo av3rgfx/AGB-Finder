@@ -28,6 +28,7 @@ const envSchema = z.object({
 
   // Security
   IP_HASH_SECRET: z.string().min(1),
+  SETTINGS_ENCRYPTION_KEY: z.string().optional(),
 
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 });
