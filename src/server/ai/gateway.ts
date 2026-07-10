@@ -1,8 +1,10 @@
 import "server-only";
 import { env } from "@/env";
+import { db } from "@/server/db";
+import { getKeysVersion, resolveApiKey } from "@/server/settings/service";
 import { CircuitBreaker } from "./breaker";
 import { RateLimiter } from "./ratelimit";
-import { getRedis } from "./redis";
+import { getRedis, type RedisLike } from "./redis";
 import { GeminiEmbeddingService, type EmbeddingService } from "./embedding";
 import {
   AINotConfiguredError,
@@ -127,25 +129,43 @@ export class AIGateway {
 }
 
 let singleton: AIGateway | null = null;
+let cachedVersion = -1;
+let checkedAt = 0;
+const VERSION_TTL_MS = 30_000;
 
-/** Gateway di produzione: provider costruiti dalle env (solo quelli con la key). */
-export function getAIGateway(): AIGateway {
-  if (singleton) return singleton;
-  const redis = getRedis();
+async function buildGateway(redis: RedisLike): Promise<AIGateway> {
+  const geminiKey = await resolveApiKey(db, "gemini");
+  const kimiKey = await resolveApiKey(db, "kimi");
   const providers: ChatProvider[] = [];
-  if (env.GEMINI_API_KEY)
-    providers.push(new GeminiChatProvider(env.GEMINI_API_KEY, env.GEMINI_MODEL));
-  if (env.KIMI_API_KEY) providers.push(new KimiChatProvider(env.KIMI_API_KEY, env.KIMI_MODEL));
-  const queryEmbeddings = env.GEMINI_API_KEY
-    ? new GeminiEmbeddingService(env.GEMINI_API_KEY, "RETRIEVAL_QUERY", (input, init) =>
+  if (geminiKey) providers.push(new GeminiChatProvider(geminiKey, env.GEMINI_MODEL));
+  if (kimiKey) providers.push(new KimiChatProvider(kimiKey, env.KIMI_MODEL));
+  const queryEmbeddings = geminiKey
+    ? new GeminiEmbeddingService(geminiKey, "RETRIEVAL_QUERY", (input, init) =>
         fetch(input, { ...init, signal: AbortSignal.timeout(3000) }),
       )
     : undefined;
-  singleton = new AIGateway({
+  return new AIGateway({
     providers,
     breaker: new CircuitBreaker(redis),
     limiter: new RateLimiter(redis),
     queryEmbeddings,
   });
+}
+
+/**
+ * Gateway di produzione: le key sono risolte DB-prima-poi-env dal settings service.
+ * Il singleton viene ricostruito quando cambia il version-stamp su Redis (rilettura
+ * al più ogni VERSION_TTL_MS), così una rotazione key da /impostazioni ha effetto
+ * senza redeploy. Disallineamento massimo tra istanze serverless = VERSION_TTL_MS.
+ */
+export async function getAIGateway(): Promise<AIGateway> {
+  const now = Date.now();
+  if (singleton && now - checkedAt < VERSION_TTL_MS) return singleton;
+  const redis = getRedis();
+  const version = await getKeysVersion(redis);
+  checkedAt = now;
+  if (singleton && version === cachedVersion) return singleton;
+  cachedVersion = version;
+  singleton = await buildGateway(redis);
   return singleton;
 }

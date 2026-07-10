@@ -34,7 +34,7 @@ function serializeProduct<
 export const productRouter = createTRPCRouter({
   /** Ricerca ibrida: tsvector+trigram sempre, ramo vettoriale se Gemini è configurato. */
   search: agentProcedure.input(searchInput).query(async ({ ctx, input }) => {
-    const engine = new RAGEngine(ctx.db, getAIGateway().queryEmbeddings());
+    const engine = new RAGEngine(ctx.db, (await getAIGateway()).queryEmbeddings());
     const result = await engine.search(input.query, input.filters ?? {}, {
       limit: input.limit,
       offset: input.offset,

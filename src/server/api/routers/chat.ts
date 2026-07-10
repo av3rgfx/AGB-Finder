@@ -102,7 +102,7 @@ export const chatRouter = createTRPCRouter({
         where: { id: conversation.id },
         data: conversation.title === DEFAULT_TITLE ? { title: input.content.slice(0, 60) } : {},
       });
-      const service = new ChatService(ctx.db, getAIGateway());
+      const service = new ChatService(ctx.db, await getAIGateway());
       const result = await service
         .send({
           conversationId: conversation.id,
@@ -126,7 +126,7 @@ export const chatRouter = createTRPCRouter({
     .input(z.object({ conversationId: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       const conversation = await ownConversation(ctx, input.conversationId);
-      const service = new ChatService(ctx.db, getAIGateway());
+      const service = new ChatService(ctx.db, await getAIGateway());
       return service
         .retry({ conversationId: conversation.id, agentId: ctx.session.user.id })
         .catch(mapRateLimit);
