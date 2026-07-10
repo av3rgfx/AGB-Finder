@@ -51,7 +51,7 @@ codice glue).
 ## Architettura & data flow
 
 ```
-Utente ─► https://<app>.vercel.app   (Next.js su Vercel: build + serve, runtime dinamico)
+Utente ─► https://catalogo-finder.vercel.app  (Next.js su Vercel: build + serve, runtime dinamico)
              │  tRPC / Better Auth
              ├─► Neon    (DATABASE_URL pooled pgbouncer=true; DIRECT_URL per le migrazioni)
              └─► Upstash (rediss:// via ioredis: rate-limit, breaker, version-stamp key)
@@ -69,7 +69,7 @@ connessioni). Tutte le operazioni sul DB vivono nel workflow ops.
 **Vercel (Production env vars, runtime):**
 `DATABASE_URL` (Neon pooled, `?sslmode=require&pgbouncer=true`) · `DIRECT_URL`
 (Neon diretto, host senza `-pooler`) · `REDIS_URL` (Upstash `rediss://`) ·
-`NEXTAUTH_URL` (= URL Vercel prod, es. `https://<app>.vercel.app`) ·
+`NEXTAUTH_URL` (= URL Vercel prod, `https://catalogo-finder.vercel.app`) ·
 `NEXTAUTH_SECRET` · `IP_HASH_SECRET` · `SETTINGS_ENCRYPTION_KEY` ·
 `GEMINI_API_KEY` (o gestita a runtime da `/impostazioni`) · `GEMINI_MODEL`.
 
@@ -92,7 +92,9 @@ File **`.github/workflows/ops-neon.yml`**, trigger **`workflow_dispatch`**
 (manuale — niente auto-run su push, per evitare import/embed accidentali). Input
 opzionale `listino_url` (default = link registrato in `CLAUDE.md`) così l'utente
 controlla il PDF al dispatch (coerente con la regola "file esterni": il link lo
-fornisce l'utente, non lo si cerca sul web). Step su `ubuntu-latest`:
+fornisce l'utente, non lo si cerca sul web). *Fallback se il link Drive desse
+problemi:* caricare il PDF una volta come **GitHub Release asset** e scaricarlo da
+lì (deciso: si parte con il download da link). Step su `ubuntu-latest`:
 
 1. checkout · setup Node 22 · corepack `pnpm@10` · `pnpm install --frozen-lockfile`
 2. `apt-get install -y poppler-utils` · `pnpm exec prisma generate` (engine
