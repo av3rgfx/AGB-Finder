@@ -1,0 +1,47 @@
+name: Ops — Neon (migrate/import/seed/embed)
+on:
+  workflow_dispatch:
+    inputs:
+      listino_url:
+        description: "URL diretto del listino AGB PDF (default: link registrato in CLAUDE.md)"
+        required: false
+        default: "https://drive.usercontent.google.com/download?id=1TugU94aM6OP557ELiLQpH0nUxhxrXMUz&export=download&confirm=t"
+jobs:
+  ops:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      DATABASE_URL: ${{ secrets.NEON_DIRECT_URL }}
+      DIRECT_URL: ${{ secrets.NEON_DIRECT_URL }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GEMINI_MODEL: gemini-2.5-flash
+      SEED_ADMIN_EMAIL: ${{ secrets.SEED_ADMIN_EMAIL }}
+      SEED_ADMIN_PASSWORD: ${{ secrets.SEED_ADMIN_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Enable corepack (pnpm 10)
+        run: corepack enable
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+      - name: Install poppler-utils
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils
+      - name: Prisma generate
+        run: pnpm exec prisma generate
+      - name: Download listino PDF
+        run: |
+          curl -sSL "${{ github.event.inputs.listino_url }}" -o listino.pdf
+          head -c 5 listino.pdf | grep -q '%PDF' || { echo "::error::Il download non è un PDF valido"; exit 1; }
+          echo "PDF scaricato: $(wc -c < listino.pdf) byte, $(pdfinfo listino.pdf | awk '/Pages/{print $2}') pagine"
+      - name: Migrate deploy (Neon + pgvector/pg_trgm)
+        run: pnpm exec prisma migrate deploy
+      - name: Import catalogo (6.191 prodotti)
+        run: pnpm import:agb listino.pdf
+      - name: Seed admin + template kit
+        run: |
+          pnpm db:seed
+          pnpm db:seed:kit
+      - name: Embed catalogo (idempotente, batch 50)
+        run: pnpm embed:products
