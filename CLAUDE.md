@@ -91,8 +91,13 @@ ChatService tool-use, router chat, embedding batch, UI Assistente) ✅ + Fase 1d
 golden verificato su catalogo reale + browser) ✅ + Fase 1e (Dashboard dati reali:
 router `dashboard.overview`, KPI + ultime richieste + scorciatoie, toggle team
 ADMIN) ✅ + Gestione API key admin (Settings cifrato AES-256-GCM + `/impostazioni`,
-fallback env) ✅ + **Fase 1f (deploy staging Vercel + Neon + Upstash) 🔄 IN CORSO**:
+fallback env) ✅ + **Fase 1f (deploy staging Vercel + Neon + Upstash) 🔄 QUASI COMPLETA**:
 app **live** su `catalogo-finder-kappa.vercel.app`, workflow ops/CI su `main`,
-Next 15.5.20. **Resta**: lanciare la pipeline ops GitHub Actions (`Ops — Neon`) per
-popolare il DB (migrate + import 6.191 + seed admin + embed) → poi login + verifica
-e2e. Dettagli e passi per riprendere: `handoff.md` (sezione «Fase 1f», blocco «RIPRENDI DA QUI»).
+Next 15.5.20. **Task 7 (pipeline ops) ✅** → DB Neon popolato (6.191 prodotti + 6.191
+embedding + admin). **Task 8 (e2e) ✅ VERIFICATO** (2026-07-11, login admin reale, via
+API backend): auth ADMIN · `dashboard.overview` · ricerca **testuale + ibrida** (query
+semantica → famiglia A50107\* per solo vettore) · **chat tool-use** (Gemini cita codici
+reali) · **kit ARTECH golden** `KIT-2026-0001` (16 righe / 21 pezzi / 90,20€, zero
+warning) · `settings.aiKeys.status` (Gemini da env). **Resta solo Task 9**: scelta fase
+successiva (produzione Vercel Pro + dominio + hardening, oppure Fase 2) — **decisione
+utente**. Dettagli e caveat: `handoff.md` (sezione «Fase 1f» + «RIPRENDI DA QUI»).
