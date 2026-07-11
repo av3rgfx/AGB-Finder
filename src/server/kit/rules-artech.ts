@@ -319,21 +319,27 @@ export const artechAntaRibaltaLegno: RuleModule = {
       ruleDescription: `Incontri nottolino sede ${input.seatMm} aria ${input.airGapMm} (passo ${PILOT.passoVerticaleMm} mm)`,
     });
 
-    const verticali = pick(
-      CHIUSURE_VERTICALI,
-      input.heightMm,
-      "H",
-      "artech.verticali",
-      "chiusure verticali",
-    );
-    for (const part of verticali.parts)
-      lines.push({
-        position: part.position,
-        code: part.code,
-        quantity: part.quantity,
-        ruleId: "artech.verticali",
-        ruleDescription: part.descr,
-      });
+    // Task 1 (Fase 1g): chiusure supplementari opzionali, default OFF. Il set
+    // obbligatorio (12 righe/17 pezzi) non le richiede; solo il toggle ON
+    // riproduce la distinta storica (16 righe/21 pezzi) — e con essa il
+    // vincolo di banda 1520-2120mm (pick() lancia fuori banda).
+    if (input.supplementaryClosures) {
+      const verticali = pick(
+        CHIUSURE_VERTICALI,
+        input.heightMm,
+        "H",
+        "artech.verticali",
+        "chiusure verticali",
+      );
+      for (const part of verticali.parts)
+        lines.push({
+          position: part.position,
+          code: part.code,
+          quantity: part.quantity,
+          ruleId: "artech.verticali",
+          ruleDescription: part.descr,
+        });
+    }
 
     return lines;
   },

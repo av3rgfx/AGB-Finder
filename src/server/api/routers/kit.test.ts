@@ -104,12 +104,14 @@ describe("kit.generate", () => {
     requestUpdate.mockResolvedValue({});
     const caller = createCallerFactory(appRouter)(makeCtx(agent));
     const output = await caller.kit.generate({ kitRequestId: "k1" });
-    expect(output.lines).toHaveLength(16);
+    // Task 1 (Fase 1g): validInput non imposta supplementaryClosures →
+    // default OFF → set obbligatorio (12 righe), non più 16.
+    expect(output.lines).toHaveLength(12);
     expect(componentCreateMany).toHaveBeenCalled();
     const rows = componentCreateMany.mock.calls[0]![0].data;
     expect(rows[0]).toMatchObject({ kitRequestId: "k1", componentCode: expect.any(String), ruleId: expect.any(String) });
     expect(requestUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ status: "COMPLETED", totalComponents: 16 }) }),
+      expect.objectContaining({ data: expect.objectContaining({ status: "COMPLETED", totalComponents: 12 }) }),
     );
     expect(activityCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ type: "KIT_GENERATED" }) });
   });
