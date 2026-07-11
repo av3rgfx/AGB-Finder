@@ -11,16 +11,23 @@
 |-------|--------|
 | **Data** | 2026-07-10 |
 | **Fase in corso** | Fase 1 — MVP Gestionale |
-| **Sotto-fase** | 1a ✅ · Better Auth ✅ · 1b ✅ · 1c Chat AI ✅ (e2e reale verificato) — embedding catalogo **1.000/6.191** (cap giornaliero free-tier confermato) · **1d Kit engine ✅** · **1e Dashboard dati reali ✅ (merge PR #9)** · **Gestione API key admin ✅ (merge PR #10)** |
-| **Branch git** | `claude/handoff-md-review-6vyafm` (allineato a `origin/main` @ `2aca4e7`; nessuna PR aperta). Questo branch è la **review/riallineamento dell'handoff**: la 1e e la gestione API key erano state mergiate ma mai riportate qui. |
-| **Piano eseguito** | `docs/superpowers/plans/2026-07-03-fase1c-chat-ai.md` (1c) · `2026-07-04-fase1d-kit-engine.md` + emendamento LEGNO (1d) · **`2026-07-06-fase1e-dashboard-dati-reali.md` (1e)** · **`2026-07-10-gestione-api-key-admin.md` (API key admin)** — tutti TDD, un commit per task |
+| **Sotto-fase** | 1a ✅ · Better Auth ✅ · 1b ✅ · 1c Chat AI ✅ · **1d Kit engine ✅** · **1e Dashboard dati reali ✅ (PR #9)** · **Gestione API key admin ✅ (PR #10)** · **1f Deploy staging 🔄 IN CORSO (app live su Vercel; manca il popolamento del DB via pipeline ops)** |
+| **Branch git** | `claude/handoff-md-review-6vyafm` (ripartito da `origin/main`). PR #11 (riallineamento handoff + spec/piano 1f + Task 1–4) e PR #12 (bump Next 15.5.20) **mergiate**. Questo aggiornamento handoff va su una nuova PR. |
+| **Piano eseguito** | 1c/1d/1e/API-key (vedi sotto) · **`docs/superpowers/plans/2026-07-10-fase1f-deploy.md` (1f, Task 1–4 [CLAUDE] ✅ mergiati; Task 5–9 in corso)** |
 
-> **⚠️ Nota di riallineamento (2026-07-10):** le sessioni 1e (2026-07-06) e
-> gestione API key (2026-07-10) hanno mergiato il lavoro su `main` (PR #9, #10)
-> **senza** un aggiornamento di fine sessione dell'handoff. Questo file era quindi
-> rimasto fermo alla 1d e indicava erroneamente «Prossima: Fase 1e» quando la 1e
-> era già completa e in `main`. Sezioni **Fase 1e** e **Gestione API key admin**
-> aggiunte sotto; task pendenti e cronologia aggiornati.
+> **▶ RIPRENDI DA QUI (Fase 1f — deploy staging, IN CORSO).**
+> L'app è **LIVE** su Vercel: **https://catalogo-finder-kappa.vercel.app** (piano
+> Hobby). Neon + Upstash collegati; workflow ops/CI su `main`; Next bumpato a
+> **15.5.20** (Vercel blocca le versioni vulnerabili — vedi Problemi).
+> **MANCA il popolamento del DB**: la **pipeline ops (Task 7) NON è ancora stata
+> lanciata** → Neon è **vuoto** (niente tabelle né admin) → **il login NON funziona
+> ancora** (è atteso).
+> **➡ PROSSIMO PASSO: GitHub → Actions → _Ops — Neon_ → Run workflow → branch `main`.**
+> Fa `migrate deploy` → `import:agb` (6.191) → `db:seed` (admin) + `db:seed:kit` →
+> `embed:products` (billing Gemini attivo → gira intero, ~10–20 min).
+> Poi **login**: `admin@ufptrade.local` / password = valore del secret
+> **`SEED_ADMIN_PASSWORD`** (nel password manager — NON nel repo). Infine Task 8
+> (verifica e2e) e Task 9 (chiusura docs). Dettagli: sezione «Fase 1f» sotto.
 
 ## Stato attuale in breve
 
@@ -194,36 +201,57 @@ piano `docs/superpowers/plans/2026-07-10-gestione-api-key-admin.md`. Il modello
 > La decisione aperta resta il **billing** della key (per superare il cap
 > free-tier ~1.000 ed embeddare i 6.191 prodotti), non il "come" applicarla.
 
+## Fase 1f — deploy staging (IN CORSO)
+
+Spec `docs/superpowers/specs/2026-07-10-fase1f-deploy-design.md`, piano
+`docs/superpowers/plans/2026-07-10-fase1f-deploy.md`. Verdetto council: procedere
+con 1f ed embeddare come step finale (NON una GH Action anticipata). Scelta ops:
+la dev-container web **filtra la 5432**, quindi le operazioni DB girano da **GitHub
+Actions** (rete aperta → Neon:5432 ok).
+
+### Fatto ✅ (PR #11 e #12 mergiate)
+| Cosa | Dettaglio |
+|---|---|
+| Task 1 | `maxDuration` 120→60 in `src/app/api/trpc/[trpc]/route.ts` (cap Vercel Hobby) |
+| Task 2 | `.env.example` allineato (Better Auth, `SETTINGS_ENCRYPTION_KEY`, URL Neon pooled/direct) |
+| Task 3 | `.github/workflows/ci.yml` — Vitest su PR (verde sulla PR reale) |
+| Task 4 | `.github/workflows/ops-neon.yml` — pipeline ops `workflow_dispatch` (migrate→import→seed→embed; job punta `DATABASE_URL` al Neon **diretto**) |
+| Fix | `vitest.config.ts` forza `SETTINGS_ENCRYPTION_KEY=""` (ermeticità: senza, `resolveApiKey` interroga il DB e 2 test router falliscono) |
+| Fix | **Next 15.3.0 → 15.5.20** (PR #12): Vercel **blocca** i deploy su versioni Next vulnerabili («Vulnerable version of Next.js detected»); il build passava ma il deploy veniva rifiutato |
+| Deploy | App **LIVE** su Vercel (Hobby): **https://catalogo-finder-kappa.vercel.app** (nome `catalogo-finder` occupato → suffisso `-kappa`) |
+| Config | `NEXTAUTH_URL` corretto all'URL reale + redeploy. Env Production su Vercel: `DATABASE_URL` (Neon pooled+pgbouncer), `DIRECT_URL` (Neon diretto), `REDIS_URL` (Upstash `rediss://`), `NEXTAUTH_URL`, `NEXTAUTH_SECRET`, `IP_HASH_SECRET`, `SETTINGS_ENCRYPTION_KEY`, `GEMINI_API_KEY`, `GEMINI_MODEL` |
+| Infra utente | **Neon** (progetto "Catalogo Finder", `eu-west-2`) · **Upstash** (`catalogo-finder`, EU) · **GitHub Secrets**: `NEON_DIRECT_URL`, `GEMINI_API_KEY`, `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` · **billing Gemini attivo** |
+
+### Da fare 🔲 — riprendere da qui
+1. **Task 7 — lanciare la pipeline ops** (il DB Neon è ancora **vuoto** → login KO):
+   GitHub → **Actions** → *Ops — Neon* → **Run workflow** → `main`. Fa
+   `migrate deploy` (schema + pgvector) → `import:agb` (6.191) → `db:seed` (admin) +
+   `db:seed:kit` → `embed:products` (~10–20 min, billing attivo). Idempotente.
+   - Verifica dai log: `✓ Prodotti unici: 6191`, `Completato: N embedding generati`.
+2. **Login**: `admin@ufptrade.local` / password = secret **`SEED_ADMIN_PASSWORD`**
+   (nel password manager — mai nel repo).
+3. **Task 8 — verifica e2e** sullo staging: `/impostazioni` (testa/salva key) ·
+   creare un agente · `/archivio` (ricerca testuale + **ibrida** su embedding reali) ·
+   `/assistente` (chat tool-use entro 60s) · `/richieste/nuova` (kit ARTECH) · `/dashboard`.
+4. **Task 9 — chiusura fase**: aggiornare `handoff.md` + `CLAUDE.md` STATO (Fase 1
+   MVP completa); definire la fase successiva (hardening produzione / Vercel Pro + dominio, o Fase 2).
+
+### Note / landmine 1f
+- **Vercel Hobby** = uso non commerciale + cap function 60s. Per la produzione vera
+  serve **Pro** (termini + headroom 300s → rialzare `maxDuration`; + deployment protection).
+- **Preview deploy Vercel falliscono** finché le env stanno solo su Production
+  (l'ambiente Preview non le ha → `env.ts` fa fallire il build). Per lo staging non serve.
+- **Next vulnerabile**: tenere Next su una release non flaggata da Vercel (era 15.3.0 → 15.5.20).
+
 ## Task pendenti
 
 ### Immediati
 - [X] GEMINI_API_KEY in `.env` (fornita 2026-07-04; anche nel transcript sessione)
-- [ ] **Embedding catalogo (0/6.191 su Neon)**: l'utente ha creato un **progetto
-  Neon** (`eu-west-2`, "Catalogo Finder", Neon Auth OFF — usiamo Better Auth) e
-  fornito una key Gemini valida (testata: HTTP 200 su `embedContent`). Scelta:
-  **embedding durevole su Neon**. **BLOCCO INFRA scoperto (2026-07-10)**: da
-  Claude Code web **la porta 5432 (Postgres TCP) è filtrata** — solo HTTPS/443
-  passa (proxy HTTP/HTTPS + firewall di porta). `prisma migrate deploy` /
-  `import:agb` / `embed:products` parlano 5432 → **non raggiungono Neon da qui**.
-  I livelli di rete (None/Trusted/**Full**/Custom) sono **domain-based** sul proxy
-  HTTP/HTTPS: verosimilmente **non aprono la 5432** (test: TCP raw a Neon:443 passa
-  anche se Neon non è in allowlist; Neon:5432 va in timeout). **Vie durevoli reali**:
-  (a) driver **serverless Neon su 443** (script ops one-shot: DDL via `migrate diff`
-  + insert/update SQL sul driver HTTP — codice glue usa-e-getta, +1 dip); (b) girare
-  la pipeline standard **da Vercel** (Fase 1f: rete non ristretta → 5432 ok), una
-  volta sola. **NON** basta cambiare policy di rete dell'ambiente web.
-  - Runbook pipeline standard (da rete con 5432 aperta): `pnpm install` →
-    `bash scripts/setup-prisma-engines.sh` → `apt-get install -y poppler-utils` →
-    scaricare listino PDF (link in CLAUDE.md) → `set -a; source .env; set +a` →
-    `pnpm exec prisma migrate deploy` → `pnpm import:agb <pdf>` → `pnpm db:seed`
-    (+ `pnpm db:seed:kit`) → `pnpm embed:products` (idempotente, batch 50).
-  - **Persistenza config** (per non ricostruire `.env` a ogni sessione): mettere
-    `DATABASE_URL`/`DIRECT_URL` (Neon), `GEMINI_API_KEY`, `NEXTAUTH_SECRET`,
-    `IP_HASH_SECRET`, `SETTINGS_ENCRYPTION_KEY`, `REDIS_URL`, `SEED_ADMIN_*` nelle
-    **env vars dell'environment Claude Code** (sopravvivono ai ricicli; mai nel repo).
-  - NB: la key Gemini si aggiorna anche da `/impostazioni` (nessun redeploy) — vedi «Gestione API key admin».
+- [ ] **Embedding catalogo (0/6.191 su Neon)** → **inglobato nella Fase 1f**: gira
+  nella pipeline ops GitHub Actions (`embed:products`), **da lanciare (Task 7)**.
+  Il blocco 5432 della dev-container web resta valido (le operazioni DB girano da
+  GitHub Actions, non dal container); billing Gemini attivo. Vedi sezione «Fase 1f».
 - [ ] **Key Moonshot API platform** per il fallback Kimi (quella "Kimi Code" dà 401)
-- [ ] **Utente: key nelle env vars dell'environment Claude Code** (persistenza tra ricicli)
 - [X] Merge 1c su `main` (2026-07-04, merge locale + push; suite verde sul risultato)
 
 ### Da Fase 1d
@@ -254,11 +282,15 @@ piano `docs/superpowers/plans/2026-07-10-gestione-api-key-admin.md`. Il modello
 - [X] **Fase 1e — Dashboard dati reali** (merge PR #9, 2026-07-06) — vedi sezione dedicata
 - [X] **Gestione API key admin** (Settings cifrato + `/impostazioni`, merge PR #10, 2026-07-10) — vedi sezione dedicata
 
+### In corso
+- [🔄] **Fase 1f — deploy staging**: spec+piano fatti, Task 1–4 mergiati, app **live**
+  su Vercel, Next bumpato. **Resta**: lanciare la pipeline ops (Task 7) → login →
+  verifica e2e (Task 8) → chiusura docs (Task 9). Dettagli: sezione «Fase 1f».
+
 ### Sessioni future
-- [ ] **Fase 1f — deploy** (Vercel + Neon + Upstash): prossima fase di roadmap
-  (parte da brainstorming — nessuna spec ancora). Include l'embedding del catalogo
-  reale su Neon (pgvector) e la persistenza delle key/`SETTINGS_ENCRYPTION_KEY`
-  nelle env dell'ambiente.
+- [ ] **Produzione vera** dopo lo staging: Vercel **Pro** (termini commerciali +
+  `maxDuration` 300 + deployment protection) + dominio custom.
+- [ ] Fallback Kimi (key Moonshot platform) · finiture coperture · regole PVC/ALLUMINIO.
 
 ## Contesto tecnico
 
@@ -267,12 +299,12 @@ piano `docs/superpowers/plans/2026-07-10-gestione-api-key-admin.md`. Il modello
 | Database schema | [X] Migrato (nessuna migrazione nuova in 1c/1e/API-key: `Settings` era già a schema) |
 | Auth | [X] Better Auth (override better-call 1.3.7 in package.json) |
 | Chat AI | [X] Codice completo; SENZA key risponde «Assistente non configurato.» |
-| Embedding | [ ] Vettori reali non generati (serve key con billing); ramo pronto e testato con fake |
+| Embedding | [ ] Su **Neon vuoto**: da generare con la pipeline ops (Task 7). Ramo testato con fake + reale (900 su Docker in 1c) |
 | Dashboard (1e) | [X] `/dashboard` dati reali via `dashboard.overview` (KPI + ultime richieste + scorciatoie, toggle team per ADMIN) |
 | Gestione API key | [X] `/impostazioni` admin: override cifrato AES-256-GCM su `Settings` con fallback env; richiede `SETTINGS_ENCRYPTION_KEY` in env per attivarsi |
-| Docker (DB + Redis) | [X] `scripts/dev-bootstrap.sh` (seed kit templates incluso — fix `0da03e6`); admin `admin@ufptrade.local` |
+| **Deploy (1f)** | [🔄] App **live** su Vercel Hobby (`catalogo-finder-kappa.vercel.app`), Neon + Upstash collegati, workflow ops/CI su `main`, Next 15.5.20. **DB Neon vuoto** finché non gira la pipeline ops |
 | Kit engine (1d) | [X] Pilota ARTECH anta-ribalta LEGNO completo; golden 16 righe verificato su catalogo reale + browser (vedi «Fase 1d») |
-| Git | [X] `origin/main` @ `2aca4e7` (PR #10 merge); branch `claude/handoff-md-review-6vyafm` allineato |
+| Git | [X] `origin/main` @ `ad086a5` (PR #12 merge); branch `claude/handoff-md-review-6vyafm` ripartito da main |
 
 ### Regola utente — file esterni (2026-07-01)
 - **Listino AGB PDF**: se manca nell'ambiente, **chiedere il link all'utente**
@@ -320,3 +352,4 @@ piano `docs/superpowers/plans/2026-07-10-gestione-api-key-admin.md`. Il modello
 | 2026-07-06 | **Fase 1e — Dashboard dati reali** (TDD): `startOfTodayRome` · router `dashboard.overview` (scope mine/team, server autoritativo) · `DashboardClient` (KPI+oggi, ultime richieste, scorciatoie, stati loading/errore/empty). Fix `db:seed:kit` in bootstrap. **Handoff non aggiornato in questa sessione** (drift). | `claude/handoff-next-steps-p6xyzp` (PR #9) |
 | 2026-07-10 | **Gestione API key admin** (TDD): crypto AES-256-GCM · env `SETTINGS_ENCRYPTION_KEY` · service `resolveApiKey`/`setApiKey`/`getStatus` (DB→env, audit senza plaintext, version-stamp) · `getAIGateway` async + invalidazione + degrado se Redis giù · router `settings.aiKeys` (status/testConnection/set) · UI `/impostazioni`. **Handoff non aggiornato in questa sessione** (drift). | `claude/handoff-next-steps-p6xyzp` (PR #10) |
 | 2026-07-10 | **Review/riallineamento handoff**: riportate 1e + gestione API key (erano merge ma non documentate qui); aggiornati stato, task pendenti, contesto tecnico, cronologia. Prossimo passo di roadmap: Fase 1f (deploy). | `claude/handoff-md-review-6vyafm` |
+| 2026-07-10 | **Fase 1f — deploy staging**: scoperto blocco 5432 dev-container → council → spec+piano (ops via GitHub Actions) · Task 1–4 [CLAUDE] (maxDuration 120→60, `.env.example`, `ci.yml`, `ops-neon.yml`) + fix ermeticità `vitest.config` (**PR #11**) · bump **Next 15.3.0→15.5.20** perché Vercel blocca le versioni vulnerabili (**PR #12**) · **deploy staging live** su `catalogo-finder-kappa.vercel.app` (Vercel Hobby) + Neon + Upstash + GitHub Secrets · `NEXTAUTH_URL` corretto. **Resta**: lanciare la pipeline ops (Task 7 → popola Neon → login), verifica e2e (Task 8), chiusura docs (Task 9). | `claude/handoff-md-review-6vyafm` (PR #11, #12) |

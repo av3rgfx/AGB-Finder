@@ -91,5 +91,8 @@ ChatService tool-use, router chat, embedding batch, UI Assistente) ✅ + Fase 1d
 golden verificato su catalogo reale + browser) ✅ + Fase 1e (Dashboard dati reali:
 router `dashboard.overview`, KPI + ultime richieste + scorciatoie, toggle team
 ADMIN) ✅ + Gestione API key admin (Settings cifrato AES-256-GCM + `/impostazioni`,
-fallback env) ✅ — resta l'embedding del catalogo reale (serve billing sulla key).
-Prossima: Fase 1f (deploy: Vercel + Neon + Upstash) — vedi `handoff.md`.
+fallback env) ✅ + **Fase 1f (deploy staging Vercel + Neon + Upstash) 🔄 IN CORSO**:
+app **live** su `catalogo-finder-kappa.vercel.app`, workflow ops/CI su `main`,
+Next 15.5.20. **Resta**: lanciare la pipeline ops GitHub Actions (`Ops — Neon`) per
+popolare il DB (migrate + import 6.191 + seed admin + embed) → poi login + verifica
+e2e. Dettagli e passi per riprendere: `handoff.md` (sezione «Fase 1f», blocco «RIPRENDI DA QUI»).
