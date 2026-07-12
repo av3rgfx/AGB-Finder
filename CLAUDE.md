@@ -104,7 +104,16 @@ warning) · `settings.aiKeys.status` (Gemini da env). Dettagli e caveat: `handof
 condivisa) · modulo **PVC provvisorio** (cert ift, da validare con esperto) · **ALLUMINIO
 gated** (il listino 2026 non ha composizione alluminio: «PLANA» è cerniera complanare
 legno/PVC — modulo rifiuta + `isActive:false`) · colonna `KitRequest.supplementary_closures`
-+ migrazione + wizard (PVC on, ALLUMINIO off, toggle chiusure). **Restano**: merge PR #15 ·
-`migrate deploy` + `db:seed:kit` su Neon **al deploy** · validazione esperto (domande in
-`docs/superpowers/kit-assunzioni/alu.md`). Poi: scelta fase successiva (produzione Vercel
-Pro + dominio, oppure Fase 2) — **decisione utente**.
++ migrazione + wizard (PVC on, ALLUMINIO off, toggle chiusure) — **PR #15 MERGIATA**
+(migrazione applicata a Neon via ops run #2). + **Fase 1h (nuova TIPOLOGIA «anta a battente»
+ARTECH LEGNO) ✅** su branch `claude/handoff-review-irs3gv` (Opzione C **estesa**, no /llm-council,
+7 commit, gate verdi typecheck·lint·test **252**·build 13 route): l'anta proiettante richiesta
+NON è a listino 2026 (0 riscontri, come l'alluminio) → **scelta utente = a battente**.
+`artech-legno-shared.ts` (behavior-preserving, golden anta-ribalta invariato) +
+`rules-artech-battente-legno.ts` **PROVVISORIO** (cremonese Mod. 502 `A50200.15.NN` + famiglie
+condivise − meccanismo di ribalta → distinta **5 righe**) + enum `windowType` widen + seed
+per-windowType + wizard **solo-LEGNO** (PVC/ALU gated per il battente). **Restano**: **al deploy**
+`db:seed:kit` su Neon (template battente; **NESSUNA migrazione** — l'enum Postgres ha già
+`ANTA_BATTENTE`) · integration gated (`INTEGRATION_DATABASE_URL`) per verificare i codici battente
+a catalogo · validazione esperto (domande in `docs/superpowers/kit-assunzioni/{alu,pvc,battente}.md`).
+Poi: scelta fase successiva — **decisione utente**.

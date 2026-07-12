@@ -16,6 +16,7 @@ vi.mock("@/trpc/react", () => ({
 }));
 
 import { NuovaRichiestaClient } from "./nuova-client";
+import { windowTypeLabel } from "@/lib/kit-labels";
 
 afterEach(() => {
   cleanup();
@@ -102,5 +103,75 @@ describe("NuovaRichiestaClient", () => {
       expect.objectContaining({ material: "LEGNO", supplementaryClosures: false }),
     );
     expect(generateMutate).toHaveBeenCalledWith({ kitRequestId: "k9" });
+  });
+
+  it("tipologia: ANTA_RIBALTA e ANTA_BATTENTE selezionabili, altre disabilitate", () => {
+    render(<NuovaRichiestaClient />);
+    const tipo = screen.getByRole("group", { name: /tipologia/i });
+    const ribalta = within(tipo).getByRole("radio", { name: /anta.?ribalta/i }) as HTMLInputElement;
+    const battente = within(tipo).getByRole("radio", { name: /anta battente/i }) as HTMLInputElement;
+    const proiettante = within(tipo).getByRole("radio", {
+      name: new RegExp(windowTypeLabel("ANTA_PROIETTANTE"), "i"),
+    }) as HTMLInputElement;
+    expect(ribalta.checked).toBe(true);
+    expect(battente.disabled).toBe(false);
+    expect(proiettante.disabled).toBe(true); // FUTURE_WINDOW_TYPES: non ancora coperta dal generatore
+  });
+
+  it("ANTA_BATTENTE: solo LEGNO abilitato, PVC/ALLUMINIO gated", () => {
+    render(<NuovaRichiestaClient />);
+    const tipo = screen.getByRole("group", { name: /tipologia/i });
+    fireEvent.click(within(tipo).getByRole("radio", { name: /anta battente/i }));
+    const mat = screen.getByRole("group", { name: /materiale/i });
+    expect((within(mat).getByRole("radio", { name: /legno/i }) as HTMLInputElement).disabled).toBe(false);
+    expect((within(mat).getByRole("radio", { name: /pvc/i }) as HTMLInputElement).disabled).toBe(true);
+    expect((within(mat).getByRole("radio", { name: /alluminio/i }) as HTMLInputElement).disabled).toBe(true);
+  });
+
+  it("passando a ANTA_BATTENTE con PVC selezionato → materiale resettato a LEGNO", () => {
+    render(<NuovaRichiestaClient />);
+    const mat = screen.getByRole("group", { name: /materiale/i });
+    fireEvent.click(within(mat).getByRole("radio", { name: /pvc/i })); // ANTA_RIBALTA consente PVC
+    const tipo = screen.getByRole("group", { name: /tipologia/i });
+    fireEvent.click(within(tipo).getByRole("radio", { name: /anta battente/i }));
+    const mat2 = screen.getByRole("group", { name: /materiale/i });
+    expect((within(mat2).getByRole("radio", { name: /legno/i }) as HTMLInputElement).checked).toBe(true);
+  });
+
+  it("ANTA_BATTENTE: niente toggle chiusure supplementari (ribalta-only)", () => {
+    render(<NuovaRichiestaClient />);
+    const tipo = screen.getByRole("group", { name: /tipologia/i });
+    fireEvent.click(within(tipo).getByRole("radio", { name: /anta battente/i }));
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // step 2
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // step 3
+    expect(screen.queryByLabelText(/chiusure supplementari/i)).toBeNull();
+  });
+
+  it("attiva chiusure supplementari su ANTA_RIBALTA poi passa a ANTA_BATTENTE: resettate a false alla generazione", async () => {
+    createMutate.mockResolvedValue({ id: "k10", requestNumber: "KIT-2026-0002" });
+    generateMutate.mockResolvedValue({ totalComponents: 16 });
+    render(<NuovaRichiestaClient />);
+
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // step 2 (ANTA_RIBALTA)
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // step 3
+    const toggle = screen.getByLabelText(/chiusure supplementari/i) as HTMLInputElement;
+    fireEvent.click(toggle);
+    expect(toggle.checked).toBe(true);
+
+    fireEvent.click(screen.getByRole("button", { name: /indietro/i })); // torna a step 2
+    fireEvent.click(screen.getByRole("button", { name: /indietro/i })); // torna a step 1
+
+    const tipo = screen.getByRole("group", { name: /tipologia/i });
+    fireEvent.click(within(tipo).getByRole("radio", { name: /anta battente/i }));
+
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // step 2
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // step 3
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // step 4
+    fireEvent.click(screen.getByRole("button", { name: /genera kit/i }));
+
+    await vi.waitFor(() => expect(push).toHaveBeenCalledWith("/richieste/k10"));
+    expect(createMutate).toHaveBeenCalledWith(
+      expect.objectContaining({ supplementaryClosures: false }),
+    );
   });
 });
