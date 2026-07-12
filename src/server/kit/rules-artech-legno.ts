@@ -9,6 +9,7 @@
 // distinta e si correggono alla prossima distinta reale o al listino cartaceo.
 import { pick, linesFromParts, requireKey } from "./kit-shared";
 import { KitGenerationError, PILOT, type KitInput, type KitLine, type RuleModule } from "./types";
+import { PER_MANO, MOVIMENTO_ANGOLARE, incontriNottolino } from "./artech-legno-shared";
 
 type Side = KitInput["openingSide"];
 
@@ -59,21 +60,6 @@ const BRACCI_GRUPPI = [
 ] as const;
 
 /**
- * Componenti dipendenti da mano, interasse 13/battuta 20 (I13 B20 = golden,
- * unica combinazione validata). Suffissi: .01 = DX, .02 = SX.
- */
-const PER_MANO: Record<Side, { squadraAngolare: string; supportoCerniera: string }> = {
-  SINISTRA: {
-    squadraAngolare: "A50904.36.02", // "INTERASSE 13 SX" (aria 12, battuta 20)
-    supportoCerniera: "A50801.01.02", // ASSUNZIONE — vedi commento sotto
-  },
-  DESTRA: {
-    squadraAngolare: "A50904.36.01",
-    supportoCerniera: "A50801.01.01",
-  },
-};
-
-/**
  * ASSUNZIONE (gap di catalogo, riga "supporto-cerniera" dell'emendamento):
  * nel listino 2026 la famiglia "Supporto cerniera ... - Parte telaio"
  * (sottocategoria Artech · Cerniere - Legno) esiste SOLO in due varianti,
@@ -92,12 +78,7 @@ const COPERTURE_KIT: Record<string, Record<Side, string>> = {
 
 /** Componenti fissi del sistema (indipendenti da dimensioni e mano). */
 const FISSI = [
-  {
-    position: "movimento-angolare",
-    code: "A50302.01.02",
-    quantity: 2,
-    descr: "Movimento angolare 125x125",
-  },
+  MOVIMENTO_ANGOLARE,
   {
     position: "supporto-forbice",
     code: "A50702.05.00",
@@ -160,27 +141,6 @@ const CHIUSURE_VERTICALI = [
     ],
   },
 ] as const;
-
-// ── Funzioni pure ─────────────────────────────────────────────────────────
-
-/**
- * Numero incontri nottolino perimetrali (A51400.05.02).
- *
- * L'emendamento propone di verificare PRIMA l'ipotesi data-driven "somma dei
- * colonne.'not.' dei componenti mobili selezionati" (cremonese + movimenti +
- * forbice). Verificata sui dati reali 2026 NON regge: cremonese A50122.15.07
- * ha not.=2, movimento A50302.01.02 ha not.=1 (quantità 2), ma il fusto
- * forbice A50510.00.02 ha not.="-" (nessun valore, non "1" come ipotizzato).
- * Somma pesata per quantità: 2 + (1×2) + 0 = 4 ≠ 5 atteso dal golden.
- * Si usa quindi (per l'esplicita alternativa prevista dall'emendamento) la
- * formula ASSUNZIONE del piano originale, che riproduce esattamente 5:
- * 2 (base) + scatti passo 600 in altezza + scatti passo 600 in larghezza.
- */
-function incontriNottolino(widthMm: number, heightMm: number): number {
-  return (
-    2 + Math.floor(heightMm / PILOT.passoVerticaleMm) + Math.floor(widthMm / PILOT.passoVerticaleMm)
-  );
-}
 
 // ── Modulo ────────────────────────────────────────────────────────────────
 
