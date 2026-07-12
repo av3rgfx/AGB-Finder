@@ -7,6 +7,7 @@
 // scratchpad/artech-varianti.txt per il dettaglio completo dell'estrazione.
 // Le voci marcate ASSUNZIONE non sono derivabili con certezza dai dati/dalla
 // distinta e si correggono alla prossima distinta reale o al listino cartaceo.
+import { pick, linesFromParts, requireKey } from "./kit-shared";
 import { KitGenerationError, PILOT, type KitInput, type KitLine, type RuleModule } from "./types";
 
 type Side = KitInput["openingSide"];
@@ -181,41 +182,6 @@ function incontriNottolino(widthMm: number, heightMm: number): number {
   );
 }
 
-/**
- * Sceglie la riga di tabella il cui range [min,max] contiene `value`.
- * ASSUNZIONE: le bande del catalogo 2026 si sovrappongono deliberatamente ai
- * bordi (es. forbice gruppo 02 "476-604" e gruppo 03 "594-804" condividono
- * 594-604); a parità di match vince la banda più STRETTA (span minore), cioè
- * la più specifica — es. il gruppo 02 (span 128mm) vince su entrambi i
- * confini condivisi con i gruppi 01 (span 213mm) e 03 (span 210mm).
- */
-function pick<T extends { minH?: number; maxH?: number; minL?: number; maxL?: number }>(
-  table: readonly T[],
-  value: number,
-  kind: "H" | "L",
-  ruleId: string,
-  label: string,
-): T {
-  let best: T | undefined;
-  let bestSpan = Infinity;
-  for (const row of table) {
-    const min = kind === "H" ? (row.minH ?? 0) : (row.minL ?? 0);
-    const max = kind === "H" ? (row.maxH ?? Infinity) : (row.maxL ?? Infinity);
-    if (value < min || value > max) continue;
-    const span = max - min;
-    if (span < bestSpan) {
-      best = row;
-      bestSpan = span;
-    }
-  }
-  if (!best)
-    throw new KitGenerationError(
-      `Nessuna variante ${label} per ${kind === "H" ? "altezza" : "larghezza"} ${value} mm: fuori campo di applicazione ARTECH legno.`,
-      ruleId,
-    );
-  return best;
-}
-
 // ── Modulo ────────────────────────────────────────────────────────────────
 
 export const artechAntaRibaltaLegno: RuleModule = {
@@ -234,12 +200,10 @@ export const artechAntaRibaltaLegno: RuleModule = {
     const lines: KitLine[] = [];
     const finish = input.finish.toUpperCase();
 
-    const coperture = COPERTURE_KIT[finish];
-    if (!coperture)
-      throw new KitGenerationError(
-        `Finitura "${input.finish}" non disponibile per le coperture ARTECH legno.`,
-        "artech.coperture",
-      );
+    const coperture = requireKey(
+      COPERTURE_KIT, finish, "artech.coperture",
+      `Finitura "${input.finish}" non disponibile per le coperture ARTECH legno.`,
+    );
 
     // ASSUNZIONE (emendamento): hbb = heightMm - 10 (golden: 1820-10=1810,
     // bordo max incluso in A50122.15.07).
@@ -302,14 +266,7 @@ export const artechAntaRibaltaLegno: RuleModule = {
       },
     );
 
-    for (const part of FISSI)
-      lines.push({
-        position: part.position,
-        code: part.code,
-        quantity: part.quantity,
-        ruleId: "artech.fissi",
-        ruleDescription: part.descr,
-      });
+    lines.push(...linesFromParts(FISSI, "artech.fissi"));
 
     lines.push({
       position: "incontri-nottolino",
@@ -331,14 +288,7 @@ export const artechAntaRibaltaLegno: RuleModule = {
         "artech.verticali",
         "chiusure verticali",
       );
-      for (const part of verticali.parts)
-        lines.push({
-          position: part.position,
-          code: part.code,
-          quantity: part.quantity,
-          ruleId: "artech.verticali",
-          ruleDescription: part.descr,
-        });
+      lines.push(...linesFromParts(verticali.parts, "artech.verticali"));
     }
 
     return lines;

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { KitInput } from "./types";
 import { KitGenerationError } from "./types";
-import { artechAntaRibaltaLegno } from "./rules-artech";
+import { artechAntaRibaltaLegno } from "./rules-artech-legno";
 
 /**
  * Input pilota (ADR 2026-07-04 + emendamento 2026-07-04-fase1d-emendamento-legno):

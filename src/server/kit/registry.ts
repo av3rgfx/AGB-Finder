@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { KitGenerationError, type RuleModule } from "./types";
-import { artechAntaRibaltaLegno } from "./rules-artech";
+import { artechAntaRibaltaLegno } from "./rules-artech-legno";
 
 /**
  * KitTemplate.rules a DB è SOLO un puntatore versionato al modulo regole in
