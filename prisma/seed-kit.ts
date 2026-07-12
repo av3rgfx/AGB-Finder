@@ -7,6 +7,7 @@ type KitTemplateSeed = {
   material: MaterialType;
   rules: { engine: string; version: number };
   priority: number;
+  isActive: boolean;
 };
 
 // I template puntano al modulo regole in codice (registry.ts). `material` è
@@ -21,6 +22,7 @@ const TEMPLATES: KitTemplateSeed[] = [
     material: "LEGNO",
     rules: { engine: "artech-ar-legno", version: 1 },
     priority: 10,
+    isActive: true,
   },
   {
     name: "ARTECH anta-ribalta PVC",
@@ -29,6 +31,20 @@ const TEMPLATES: KitTemplateSeed[] = [
     material: "PVC",
     rules: { engine: "artech-ar-pvc", version: 1 },
     priority: 10,
+    isActive: true,
+  },
+  {
+    // Fase 1g Task 4: ALLUMINIO gated (isActive:false). Il listino 2026 non ha
+    // composizione alluminio (PLANA è cerniera complanare legno/PVC, non alu) →
+    // il modulo rifiuta e il template resta inattivo finché non arrivano i dati
+    // validati. Vedi docs/superpowers/kit-assunzioni/alu.md.
+    name: "ARTECH anta-ribalta alluminio",
+    description:
+      "Fase 1g Task 4 — ALLUMINIO NON DISPONIBILE (gated): manca il listino di composizione dedicato. Da attivare con i dati validati dall'esperto.",
+    material: "ALLUMINIO",
+    rules: { engine: "artech-ar-alu", version: 1 },
+    priority: 10,
+    isActive: false,
   },
 ];
 
@@ -41,7 +57,7 @@ export async function seedKitTemplates(db: PrismaClient) {
       material: tpl.material,
       series: "ARTECH",
       rules: tpl.rules,
-      isActive: true,
+      isActive: tpl.isActive,
       priority: tpl.priority,
     };
     const existing = await db.kitTemplate.findFirst({ where: { name: tpl.name } });
