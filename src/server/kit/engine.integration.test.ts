@@ -50,4 +50,19 @@ describe.runIf(Boolean(url))("KitEngine — integrazione su catalogo reale", () 
         (unpriced.length ? ` da validare: ${unpriced.map((l) => l.code).join(", ")}` : " tutti risolti"),
     );
   });
+
+  it("la distinta battente provvisoria si genera e segnala i codici non a listino", async () => {
+    const output = await new KitEngine(db).generate({
+      windowType: "ANTA_BATTENTE", widthMm: 600, heightMm: 1300, material: "LEGNO",
+      airGapMm: 12, axisOffsetMm: 13, rebateMm: 20, seatMm: 18,
+      openingSide: "DESTRA", openingDir: "TIRARE", finish: "ARGENTO", series: "ARTECH",
+    });
+    expect(output.lines).toHaveLength(5);
+    const unpriced = output.lines.filter((line) => line.unitPrice === null);
+    expect(output.warnings).toHaveLength(unpriced.length);
+    console.log(
+      `Battente provvisorio: ${output.lines.length - unpriced.length}/${output.lines.length} codici a listino` +
+        (unpriced.length ? `; da validare: ${unpriced.map((l) => l.code).join(", ")}` : ""),
+    );
+  });
 });

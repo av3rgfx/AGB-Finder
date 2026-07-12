@@ -89,4 +89,23 @@ describe("KitEngine.generate", () => {
       }),
     );
   });
+
+  it("seleziona il template per ANTA_BATTENTE", async () => {
+    templateFindFirst.mockResolvedValue({
+      id: "tb",
+      rules: { engine: "artech-batt-legno", version: 1 },
+    });
+    productFindMany.mockResolvedValue([]);
+    const engine = new KitEngine(db);
+    await engine.generate({ ...validInput, windowType: "ANTA_BATTENTE" });
+    expect(templateFindFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          isActive: true,
+          windowType: "ANTA_BATTENTE",
+          series: "ARTECH",
+        }),
+      }),
+    );
+  });
 });

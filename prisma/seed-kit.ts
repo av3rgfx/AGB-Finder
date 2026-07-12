@@ -1,9 +1,10 @@
 // Seed template kit: pnpm db:seed:kit
-import { PrismaClient, type MaterialType } from "@prisma/client";
+import { PrismaClient, type MaterialType, type WindowType } from "@prisma/client";
 
 type KitTemplateSeed = {
   name: string;
   description: string;
+  windowType: WindowType;
   material: MaterialType;
   rules: { engine: string; version: number };
   priority: number;
@@ -19,6 +20,7 @@ const TEMPLATES: KitTemplateSeed[] = [
   {
     name: "ARTECH anta-ribalta legno",
     description: "Pilota Fase 1d — finestra legno, mano SX/DX, verticali passo 600.",
+    windowType: "ANTA_RIBALTA",
     material: "LEGNO",
     rules: { engine: "artech-ar-legno", version: 1 },
     priority: 10,
@@ -28,6 +30,7 @@ const TEMPLATES: KitTemplateSeed[] = [
     name: "ARTECH anta-ribalta PVC",
     description:
       "Fase 1g Task 3 — finestra PVC (PROVVISORIO, da validare con esperto): struttura legno + 4 swap dalla cert ift EN 13126-8.",
+    windowType: "ANTA_RIBALTA",
     material: "PVC",
     rules: { engine: "artech-ar-pvc", version: 1 },
     priority: 10,
@@ -41,10 +44,21 @@ const TEMPLATES: KitTemplateSeed[] = [
     name: "ARTECH anta-ribalta alluminio",
     description:
       "Fase 1g Task 4 — ALLUMINIO NON DISPONIBILE (gated): manca il listino di composizione dedicato. Da attivare con i dati validati dall'esperto.",
+    windowType: "ANTA_RIBALTA",
     material: "ALLUMINIO",
     rules: { engine: "artech-ar-alu", version: 1 },
     priority: 10,
     isActive: false,
+  },
+  {
+    name: "ARTECH anta a battente legno",
+    description:
+      "Fase 1h — finestra a battente anta singola Mod. 502 (PROVVISORIO, da validare con l'agente): cremonese A50200.15.NN + cerniere/movimento/incontri condivisi col legno anta-ribalta, meno il meccanismo di ribalta.",
+    windowType: "ANTA_BATTENTE",
+    material: "LEGNO",
+    rules: { engine: "artech-batt-legno", version: 1 },
+    priority: 10,
+    isActive: true,
   },
 ];
 
@@ -53,7 +67,7 @@ export async function seedKitTemplates(db: PrismaClient) {
     const data = {
       name: tpl.name,
       description: tpl.description,
-      windowType: "ANTA_RIBALTA" as const,
+      windowType: tpl.windowType,
       material: tpl.material,
       series: "ARTECH",
       rules: tpl.rules,
