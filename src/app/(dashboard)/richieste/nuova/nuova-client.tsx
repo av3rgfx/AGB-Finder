@@ -50,7 +50,7 @@ const FUTURE_WINDOW_TYPES = [
  * anche il PVC (provvisorio). ALLUMINIO sempre gated (manca il listino).
  */
 type MaterialChoice = { value: "LEGNO" | "PVC" | "ALLUMINIO"; enabled: boolean; hint?: string };
-const MATERIAL_AVAILABILITY: Record<string, MaterialChoice[]> = {
+const MATERIAL_AVAILABILITY: Record<KitInput["windowType"], MaterialChoice[]> = {
   ANTA_RIBALTA: [
     { value: "LEGNO", enabled: true },
     { value: "PVC", enabled: true, hint: "Provvisorio — in validazione" },
@@ -58,8 +58,8 @@ const MATERIAL_AVAILABILITY: Record<string, MaterialChoice[]> = {
   ],
   ANTA_BATTENTE: [
     { value: "LEGNO", enabled: true, hint: "Provvisorio — in validazione" },
-    { value: "PVC", enabled: false, hint: "Non disponibile per a battente" },
-    { value: "ALLUMINIO", enabled: false, hint: "Non disponibile per a battente" },
+    { value: "PVC", enabled: false, hint: "Non disponibile per l'anta battente" },
+    { value: "ALLUMINIO", enabled: false, hint: "Non disponibile per l'anta battente" },
   ],
 };
 
@@ -294,14 +294,15 @@ function RadioOption({
 }
 
 function Step1Tipologia({ form, update }: StepProps) {
-  const materials = MATERIAL_AVAILABILITY[form.windowType] ?? MATERIAL_AVAILABILITY.ANTA_RIBALTA ?? [];
+  const materials = MATERIAL_AVAILABILITY[form.windowType];
 
   function selectWindowType(wt: KitInput["windowType"]) {
     update("windowType", wt);
-    const allowed = (MATERIAL_AVAILABILITY[wt] ?? [])
+    const allowed = MATERIAL_AVAILABILITY[wt]
       .filter((m) => m.enabled)
       .map((m) => m.value);
     if (!allowed.includes(form.material)) update("material", "LEGNO");
+    if (wt !== "ANTA_RIBALTA") update("supplementaryClosures", false);
   }
 
   return (
