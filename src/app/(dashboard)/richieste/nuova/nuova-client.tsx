@@ -29,6 +29,7 @@ const DEFAULT_FORM: KitInput = {
   openingSide: "SINISTRA",
   openingDir: "TIRARE",
   finish: "ARGENTO",
+  supplementaryClosures: false,
 };
 
 /** Tipologie non ancora coperte dal generatore: mostrate solo come radio disabilitate. */
@@ -311,15 +312,14 @@ function Step1Tipologia({ form, update }: StepProps) {
           <RadioOption
             name="material"
             label={materialLabel("PVC")}
-            hint="Presto disponibile"
-            checked={false}
-            onChange={() => {}}
-            disabled
+            hint="Provvisorio — in validazione"
+            checked={form.material === "PVC"}
+            onChange={() => update("material", "PVC")}
           />
           <RadioOption
             name="material"
             label={materialLabel("ALLUMINIO")}
-            hint="Presto disponibile"
+            hint="Non ancora disponibile"
             checked={false}
             onChange={() => {}}
             disabled
@@ -451,6 +451,22 @@ function Step3ManoFinitura({ form, update }: StepProps) {
           ))}
         </select>
       </div>
+
+      <div className="flex items-start gap-2">
+        <input
+          id="supplementaryClosures"
+          type="checkbox"
+          checked={form.supplementaryClosures ?? false}
+          onChange={(e) => update("supplementaryClosures", e.target.checked)}
+          className="mt-0.5 accent-brand"
+        />
+        <label htmlFor="supplementaryClosures" className="text-sm text-ink">
+          Chiusure supplementari
+          <span className="block text-xs text-ink-subtle">
+            Punti di chiusura verticali aggiuntivi (angolare + prolunghe + terminale). Opzionale.
+          </span>
+        </label>
+      </div>
     </div>
   );
 }
@@ -478,6 +494,7 @@ function Step4Riepilogo({ form }: { form: KitInput }) {
       <SummaryItem label="Mano" value={hingeSideLabel(form.openingSide)} />
       <SummaryItem label="Apertura" value={openingDirLabel(form.openingDir)} />
       <SummaryItem label="Finitura" value={form.finish} />
+      <SummaryItem label="Chiusure suppl." value={form.supplementaryClosures ? "Sì" : "No"} />
     </dl>
   );
 }
