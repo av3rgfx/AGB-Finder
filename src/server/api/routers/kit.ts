@@ -63,6 +63,7 @@ export const kitRouter = createTRPCRouter({
           openingDir: request.openingDir,
           finish: request.finish,
           series: request.series,
+          supplementaryClosures: request.supplementaryClosures,
           notes: request.notes ?? undefined,
         })
         .catch(toTRPC);

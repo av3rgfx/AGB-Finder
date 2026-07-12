@@ -70,6 +70,14 @@ describe("kit.create", () => {
     });
   });
 
+  it("inoltra supplementaryClosures nel payload create (persistito su colonna KitRequest)", async () => {
+    requestCount.mockResolvedValue(0);
+    requestCreate.mockImplementation(({ data }) => Promise.resolve({ id: "k1", ...data }));
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await caller.kit.create({ ...validInput, supplementaryClosures: true });
+    expect(requestCreate.mock.calls[0]![0].data).toMatchObject({ supplementaryClosures: true });
+  });
+
   it("input invalido → BAD_REQUEST", async () => {
     const caller = createCallerFactory(appRouter)(makeCtx(agent));
     await expect(caller.kit.create({ ...validInput, widthMm: 10 })).rejects.toMatchObject({ code: "BAD_REQUEST" });

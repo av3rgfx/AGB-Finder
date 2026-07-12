@@ -241,6 +241,7 @@ model KitRequest {
   openingDir   OpeningDirection @map("opening_direction")
   finish       String
   series       String
+  supplementaryClosures Boolean @default(false) @map("supplementary_closures")
 
   notes         String? @db.Text
   customerNotes String? @map("customer_notes") @db.Text
