@@ -32,15 +32,36 @@ const DEFAULT_FORM: KitInput = {
   supplementaryClosures: false,
 };
 
-/** Tipologie non ancora coperte dal generatore: mostrate solo come radio disabilitate. */
+/** Tipologie coperte dal generatore: radio selezionabili. */
+const ACTIVE_WINDOW_TYPES = ["ANTA_RIBALTA", "ANTA_BATTENTE"] as const;
+
+/** Tipologie non ancora coperte: radio disabilitate. */
 const FUTURE_WINDOW_TYPES = [
   "ANTA_PROIETTANTE",
-  "ANTA_BATTENTE",
   "SCORREVOLE_ALZANTE",
   "SCORREVOLE_TRASLANTE",
   "VASISTAS",
   "FINESTRA_TETTO",
 ] as const;
+
+/**
+ * Materiali disponibili per tipologia. Il battente ha solo il LEGNO (il listino
+ * 2026 non ha composizione PVC/ALLUMINIO per il battente); l'anta-ribalta espone
+ * anche il PVC (provvisorio). ALLUMINIO sempre gated (manca il listino).
+ */
+type MaterialChoice = { value: "LEGNO" | "PVC" | "ALLUMINIO"; enabled: boolean; hint?: string };
+const MATERIAL_AVAILABILITY: Record<string, MaterialChoice[]> = {
+  ANTA_RIBALTA: [
+    { value: "LEGNO", enabled: true },
+    { value: "PVC", enabled: true, hint: "Provvisorio — in validazione" },
+    { value: "ALLUMINIO", enabled: false, hint: "Non ancora disponibile" },
+  ],
+  ANTA_BATTENTE: [
+    { value: "LEGNO", enabled: true, hint: "Provvisorio — in validazione" },
+    { value: "PVC", enabled: false, hint: "Non disponibile per a battente" },
+    { value: "ALLUMINIO", enabled: false, hint: "Non disponibile per a battente" },
+  ],
+};
 
 /**
  * Finiture coperte dal generatore ARTECH legno: chiavi della tabella
@@ -273,12 +294,30 @@ function RadioOption({
 }
 
 function Step1Tipologia({ form, update }: StepProps) {
+  const materials = MATERIAL_AVAILABILITY[form.windowType] ?? MATERIAL_AVAILABILITY.ANTA_RIBALTA ?? [];
+
+  function selectWindowType(wt: KitInput["windowType"]) {
+    update("windowType", wt);
+    const allowed = (MATERIAL_AVAILABILITY[wt] ?? [])
+      .filter((m) => m.enabled)
+      .map((m) => m.value);
+    if (!allowed.includes(form.material)) update("material", "LEGNO");
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <fieldset>
         <legend className="mb-2 text-sm font-semibold text-ink">Tipologia serramento</legend>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          <RadioOption name="windowType" label={windowTypeLabel("ANTA_RIBALTA")} checked onChange={() => {}} />
+          {ACTIVE_WINDOW_TYPES.map((wt) => (
+            <RadioOption
+              key={wt}
+              name="windowType"
+              label={windowTypeLabel(wt)}
+              checked={form.windowType === wt}
+              onChange={() => selectWindowType(wt)}
+            />
+          ))}
           {FUTURE_WINDOW_TYPES.map((wt) => (
             <RadioOption
               key={wt}
@@ -303,27 +342,17 @@ function Step1Tipologia({ form, update }: StepProps) {
       <fieldset>
         <legend className="mb-2 text-sm font-semibold text-ink">Materiale</legend>
         <div className="grid grid-cols-3 gap-2">
-          <RadioOption
-            name="material"
-            label={materialLabel("LEGNO")}
-            checked={form.material === "LEGNO"}
-            onChange={() => update("material", "LEGNO")}
-          />
-          <RadioOption
-            name="material"
-            label={materialLabel("PVC")}
-            hint="Provvisorio — in validazione"
-            checked={form.material === "PVC"}
-            onChange={() => update("material", "PVC")}
-          />
-          <RadioOption
-            name="material"
-            label={materialLabel("ALLUMINIO")}
-            hint="Non ancora disponibile"
-            checked={false}
-            onChange={() => {}}
-            disabled
-          />
+          {materials.map((m) => (
+            <RadioOption
+              key={m.value}
+              name="material"
+              label={materialLabel(m.value)}
+              hint={m.hint}
+              checked={form.material === m.value}
+              onChange={m.enabled ? () => update("material", m.value) : () => {}}
+              disabled={!m.enabled}
+            />
+          ))}
         </div>
       </fieldset>
     </div>
@@ -452,21 +481,23 @@ function Step3ManoFinitura({ form, update }: StepProps) {
         </select>
       </div>
 
-      <div className="flex items-start gap-2">
-        <input
-          id="supplementaryClosures"
-          type="checkbox"
-          checked={form.supplementaryClosures ?? false}
-          onChange={(e) => update("supplementaryClosures", e.target.checked)}
-          className="mt-0.5 accent-brand"
-        />
-        <label htmlFor="supplementaryClosures" className="text-sm text-ink">
-          Chiusure supplementari
-          <span className="block text-xs text-ink-subtle">
-            Punti di chiusura verticali aggiuntivi (angolare + prolunghe + terminale). Opzionale.
-          </span>
-        </label>
-      </div>
+      {form.windowType !== "ANTA_BATTENTE" && (
+        <div className="flex items-start gap-2">
+          <input
+            id="supplementaryClosures"
+            type="checkbox"
+            checked={form.supplementaryClosures ?? false}
+            onChange={(e) => update("supplementaryClosures", e.target.checked)}
+            className="mt-0.5 accent-brand"
+          />
+          <label htmlFor="supplementaryClosures" className="text-sm text-ink">
+            Chiusure supplementari
+            <span className="block text-xs text-ink-subtle">
+              Punti di chiusura verticali aggiuntivi (angolare + prolunghe + terminale). Opzionale.
+            </span>
+          </label>
+        </div>
+      )}
     </div>
   );
 }
@@ -494,7 +525,9 @@ function Step4Riepilogo({ form }: { form: KitInput }) {
       <SummaryItem label="Mano" value={hingeSideLabel(form.openingSide)} />
       <SummaryItem label="Apertura" value={openingDirLabel(form.openingDir)} />
       <SummaryItem label="Finitura" value={form.finish} />
-      <SummaryItem label="Chiusure suppl." value={form.supplementaryClosures ? "Sì" : "No"} />
+      {form.windowType !== "ANTA_BATTENTE" && (
+        <SummaryItem label="Chiusure suppl." value={form.supplementaryClosures ? "Sì" : "No"} />
+      )}
     </dl>
   );
 }

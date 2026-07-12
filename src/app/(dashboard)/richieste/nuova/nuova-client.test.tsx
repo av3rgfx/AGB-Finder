@@ -103,4 +103,42 @@ describe("NuovaRichiestaClient", () => {
     );
     expect(generateMutate).toHaveBeenCalledWith({ kitRequestId: "k9" });
   });
+
+  it("tipologia: ANTA_RIBALTA e ANTA_BATTENTE selezionabili, altre disabilitate", () => {
+    render(<NuovaRichiestaClient />);
+    const tipo = screen.getByRole("group", { name: /tipologia/i });
+    const ribalta = within(tipo).getByRole("radio", { name: /anta.?ribalta/i }) as HTMLInputElement;
+    const battente = within(tipo).getByRole("radio", { name: /anta battente/i }) as HTMLInputElement;
+    expect(ribalta.checked).toBe(true);
+    expect(battente.disabled).toBe(false);
+  });
+
+  it("ANTA_BATTENTE: solo LEGNO abilitato, PVC/ALLUMINIO gated", () => {
+    render(<NuovaRichiestaClient />);
+    const tipo = screen.getByRole("group", { name: /tipologia/i });
+    fireEvent.click(within(tipo).getByRole("radio", { name: /anta battente/i }));
+    const mat = screen.getByRole("group", { name: /materiale/i });
+    expect((within(mat).getByRole("radio", { name: /legno/i }) as HTMLInputElement).disabled).toBe(false);
+    expect((within(mat).getByRole("radio", { name: /pvc/i }) as HTMLInputElement).disabled).toBe(true);
+    expect((within(mat).getByRole("radio", { name: /alluminio/i }) as HTMLInputElement).disabled).toBe(true);
+  });
+
+  it("passando a ANTA_BATTENTE con PVC selezionato → materiale resettato a LEGNO", () => {
+    render(<NuovaRichiestaClient />);
+    const mat = screen.getByRole("group", { name: /materiale/i });
+    fireEvent.click(within(mat).getByRole("radio", { name: /pvc/i })); // ANTA_RIBALTA consente PVC
+    const tipo = screen.getByRole("group", { name: /tipologia/i });
+    fireEvent.click(within(tipo).getByRole("radio", { name: /anta battente/i }));
+    const mat2 = screen.getByRole("group", { name: /materiale/i });
+    expect((within(mat2).getByRole("radio", { name: /legno/i }) as HTMLInputElement).checked).toBe(true);
+  });
+
+  it("ANTA_BATTENTE: niente toggle chiusure supplementari (ribalta-only)", () => {
+    render(<NuovaRichiestaClient />);
+    const tipo = screen.getByRole("group", { name: /tipologia/i });
+    fireEvent.click(within(tipo).getByRole("radio", { name: /anta battente/i }));
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // step 2
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // step 3
+    expect(screen.queryByLabelText(/chiusure supplementari/i)).toBeNull();
+  });
 });
