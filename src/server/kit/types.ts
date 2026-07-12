@@ -2,7 +2,8 @@ import { z } from "zod";
 
 /**
  * Input generico del Kit Engine (ADR 2026-07-04: nessun campo serie-specifico).
- * Pilota 1d: solo ANTA_RIBALTA / ARTECH; i letterali si allargano con le serie future.
+ * Fase 1h: windowType = ANTA_RIBALTA + ANTA_BATTENTE (serie ARTECH); i letterali
+ * si allargano con le tipologie/serie future.
  */
 export const kitInputSchema = z.object({
   windowType: z.enum(["ANTA_RIBALTA", "ANTA_BATTENTE"]),

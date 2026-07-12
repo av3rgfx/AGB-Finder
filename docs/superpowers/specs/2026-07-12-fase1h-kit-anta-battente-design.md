@@ -114,7 +114,7 @@ legno realmente condivisa.
   - rimuovere `ANTA_BATTENTE` da `FUTURE_WINDOW_TYPES`; rendere `windowType`
     effettivamente selezionabile (ANTA_RIBALTA + ANTA_BATTENTE), aggiornando `form.windowType`;
   - **disponibilità materiali per tipologia**: ANTA_BATTENTE → solo LEGNO abilitato,
-    PVC+ALLUMINIO gated («non disponibile per a battente»); ANTA_RIBALTA → comportamento
+    PVC+ALLUMINIO gated («non disponibile per l'anta battente»); ANTA_RIBALTA → comportamento
     attuale (LEGNO+PVC, ALLUMINIO gated);
   - al passaggio a ANTA_BATTENTE con materiale PVC/ALU selezionato → reset a LEGNO;
   - **nascondere** il toggle «chiusure supplementari» quando `windowType === "ANTA_BATTENTE"`
@@ -156,7 +156,7 @@ legno realmente condivisa.
 ## Non-goals
 
 - Anta doppia / quattro ante (rimandate).
-- PVC / ALLUMINIO per a battente (nessun dato).
+- PVC / ALLUMINIO per l'anta a battente (nessun dato).
 - Cremonese a maniglia centrale Mod. 506 (`A50600.15.*`).
 - Anta proiettante / vasistas / bilico / scorrevoli (altre tipologie, altre fasi).
 - Motore generico data-driven (Opzione B) — YAGNI a 2 tipologie.

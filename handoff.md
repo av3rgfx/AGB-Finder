@@ -11,34 +11,45 @@
 |-------|--------|
 | **Data** | 2026-07-12 |
 | **Fase in corso** | Fase 1 — MVP Gestionale |
-| **Sotto-fase** | 1a ✅ · Better Auth ✅ · 1b ✅ · 1c Chat AI ✅ · **1d Kit engine ✅** · **1e Dashboard dati reali ✅ (PR #9)** · **Gestione API key admin ✅ (PR #10)** · **1f Deploy staging 🔄 QUASI COMPLETA (app live su Vercel; DB Neon POPOLATO; Task 7 pipeline ops ✅ + Task 8 e2e ✅ VERIFICATO via API backend; resta solo Task 9 = chiusura docs)** · **1g Kit multi-materiale ✅ (fix LEGNO chiusure opzionali + kit-shared Opzione C + PVC provvisorio + ALLUMINIO gated + persistenza/wizard — PR #15)** |
-| **Branch git** | `claude/handoff-review-irs3gv` (ripartito da `origin/main` @ `051d3ee`). PR #11/#12/#13 (riallineamento handoff + spec/piano 1f + Task 1–4 + bump Next 15.5.20) **mergiate**. |
+| **Sotto-fase** | 1a ✅ · Better Auth ✅ · 1b ✅ · 1c Chat AI ✅ · **1d Kit engine ✅** · **1e Dashboard dati reali ✅ (PR #9)** · **Gestione API key admin ✅ (PR #10)** · **1f Deploy staging 🔄 QUASI COMPLETA (app live su Vercel; DB Neon POPOLATO; Task 7 pipeline ops ✅ + Task 8 e2e ✅ VERIFICATO via API backend; resta solo Task 9 = chiusura docs)** · **1g Kit multi-materiale ✅ (PR #15 MERGIATA)** · **1h Anta a battente ✅ (nuova TIPOLOGIA, provvisorio da listino — branch `claude/handoff-review-irs3gv`, non ancora in PR)** |
+| **Branch git** | `claude/handoff-review-irs3gv` (ripartito da `origin/main` @ `0d4f4f7` dopo il **merge PR #15**). Fase 1h: 7 commit `d4b37c2→cd457e7`, **pushati** (non ancora in PR). PR #11/#12/#13/#14/#15 **mergiate**. |
 | **Piano eseguito** | 1c/1d/1e/API-key (vedi sotto) · **`docs/superpowers/plans/2026-07-10-fase1f-deploy.md` (1f, Task 1–4 ✅ mergiati; **Task 7 ✅ eseguito** (pipeline ops); restano Task 8–9)** |
 
-> **▶ RIPRENDI DA QUI (Fase 1g — kit multi-materiale, COMPLETA su PR #15).**
-> App **LIVE** su Vercel (`catalogo-finder-kappa.vercel.app`); DB Neon popolato;
-> Fase 1f e2e verificato (dettagli sezione «Fase 1f»). **Fase 1g DONE** sul branch
-> `claude/handoff-review-irs3gv` (**PR #15**, 7 commit `b51aa11→544d94c`, gate verdi:
-> typecheck·lint·test 233+·build). Architettura **Opzione C** (verdetto LLM Council).
-> Task: (1) fix LEGNO — chiusure supplementari opzionali (default off), via l'errore
-> >2120mm; (2) `kit-shared.ts` (meccanica condivisa `pick`/`linesFromParts`/`requireKey`);
-> (3) modulo **PVC PROVVISORIO** (dati da cert ift EN 13126-8, ogni scelta `// ASSUNZIONE`);
-> (4) **ALLUMINIO gated** (`isActive:false` + modulo che rifiuta — il listino 2026 NON ha
-> composizione alluminio: «ARTech PLANA» è cerniera complanare legno/PVC, non alu →
-> assunzione piano falsificata); (5) colonna `KitRequest.supplementary_closures` +
-> migrazione + wizard (PVC on/provvisorio, ALLUMINIO off, toggle chiusure). Spec/piano:
-> `docs/superpowers/{specs,plans}/2026-07-11-fase1g-kit-materiali*`. Ledger esecuzione:
+> **▶ RIPRENDI DA QUI (Fase 1h — nuova tipologia «anta a battente», COMPLETA sul branch).**
+> App **LIVE** su Vercel (`catalogo-finder-kappa.vercel.app`); DB Neon popolato; **PR #15
+> (Fase 1g) MERGIATA** (migrazione `supplementary_closures` applicata a Neon via ops run #2).
+> **Fase 1h DONE** sul branch `claude/handoff-review-irs3gv` (ripartito da `origin/main`
+> @ `0d4f4f7` dopo il merge #15; 7 commit `d4b37c2→cd457e7`, **pushati**; gate verdi:
+> typecheck·lint·test **252 passed/9 skip**·build 13 route). È una **nuova TIPOLOGIA**, non un
+> nuovo materiale: l'**anta proiettante** richiesta NON è nel listino 2026 (0 riscontri, come
+> l'alluminio) → **scelta utente = «a battente»** (che ha schema ARTECH legno completo).
+> Architettura **Opzione C ESTESA** (no /llm-council, scelta utente):
+> - **Task 1** `artech-legno-shared.ts`: estrae la meccanica legno condivisa (cerniere `PER_MANO`,
+>   `MOVIMENTO_ANGOLARE`, `incontriNottolino`) — **behavior-preserving**, il golden anta-ribalta
+>   (12 righe/17 pezzi) resta invariato.
+> - **Task 2** `rules-artech-battente-legno.ts` (`engineId "artech-batt-legno"`) **PROVVISORIO**:
+>   cremonese Mod. 502 `A50200.15.NN` (per altezza) + famiglie condivise, **MENO il meccanismo di
+>   ribalta** → distinta **5 righe** (`// ASSUNZIONE` ovunque); enum `windowType` allargato ad
+>   `ANTA_BATTENTE` (nessuna migrazione: l'enum Postgres ce l'ha già dalla init).
+> - **Task 3** `seed-kit.ts` data-driven per-`windowType` + template battente (`isActive:true`, PROVVISORIO).
+> - **Task 4** wizard `nuova-client.tsx`: espone `ANTA_BATTENTE` **solo-LEGNO** (PVC/ALU gated per
+>   il battente), reset materiale/chiusure al cambio tipologia.
+> Spec/piano: `docs/superpowers/{specs,plans}/2026-07-12-fase1h-kit-anta-battente*`. Scheda
+> assunzioni + domande esperto: `docs/superpowers/kit-assunzioni/battente.md`. Ledger:
 > `.superpowers/sdd/progress.md`.
 > **➡ PROSSIMI PASSI**:
-> 1. **Merge PR #15** (decisione utente).
-> 2. **Al deploy della 1g**: applicare la migrazione a Neon (`migrate deploy` via pipeline
->    ops) + `db:seed:kit` (template: LEGNO/PVC attivi, ALLUMINIO `isActive:false`).
-> 3. **Con l'esperto** (lunedì): passargli le **domande** in
->    `docs/superpowers/kit-assunzioni/alu.md` (sblocco alluminio + validazione PVC); a
->    validazione fatta popolare i moduli PVC/ALU + bump `version` + `isActive` ALLUMINIO.
-> ⚠️ PVC è esposto ma **provvisorio** (hint nel wizard); ALLUMINIO non generabile finché gated.
-> ⚠️ Fase 1f: e2e fatto via **API backend** (non browser UI, limite sandbox↔Vercel); creati
-> **dati di test** in staging (1 conversazione + `KIT-2026-0001`).
+> 1. **PR Fase 1h** (branch pushato) — **decisione utente** (NON creata in automatico).
+> 2. **Al deploy**: `db:seed:kit` su Neon per inserire il template battente. **NESSUNA migrazione**
+>    (l'enum `WindowType` ha già `ANTA_BATTENTE`). Senza il seed, il wizard offre ANTA_BATTENTE ma
+>    la generazione dà «Nessun template attivo».
+> 3. **Integration gated**: girare `engine.integration.test.ts` con `INTEGRATION_DATABASE_URL` per
+>    verificare che i codici battente (`A50200.15.NN` ecc.) siano a catalogo Neon (warning attesi = 0).
+> 4. **Con l'esperto**: domande in `docs/superpowers/kit-assunzioni/{alu,pvc,battente}.md`
+>    (validazione battente provvisorio + sblocco alluminio + conferma PVC); poi bump `version`.
+> ⚠️ battente è **PROVVISORIO** (dati derivati dal listino, non validati); golden = snapshot auto-coerente.
+> ⚠️ Minor rimandati (follow-up, in `progress.md`): commento `ASSUNZIONE` orfano in `rules-artech-legno.ts`;
+> boilerplate display-string battente/legno; asserzioni del test integration battente (solo count).
+> ⚠️ Fase 1f: e2e fatto via **API backend** (non browser UI, limite sandbox↔Vercel); dati di test in staging.
 
 ## Stato attuale in breve
 

@@ -718,8 +718,8 @@ const MATERIAL_AVAILABILITY: Record<string, MaterialChoice[]> = {
   ],
   ANTA_BATTENTE: [
     { value: "LEGNO", enabled: true, hint: "Provvisorio — in validazione" },
-    { value: "PVC", enabled: false, hint: "Non disponibile per a battente" },
-    { value: "ALLUMINIO", enabled: false, hint: "Non disponibile per a battente" },
+    { value: "PVC", enabled: false, hint: "Non disponibile per l'anta battente" },
+    { value: "ALLUMINIO", enabled: false, hint: "Non disponibile per l'anta battente" },
   ],
 };
 ```
