@@ -70,6 +70,14 @@ describe("kit.create", () => {
     });
   });
 
+  it("inoltra supplementaryClosures nel payload create (persistito su colonna KitRequest)", async () => {
+    requestCount.mockResolvedValue(0);
+    requestCreate.mockImplementation(({ data }) => Promise.resolve({ id: "k1", ...data }));
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await caller.kit.create({ ...validInput, supplementaryClosures: true });
+    expect(requestCreate.mock.calls[0]![0].data).toMatchObject({ supplementaryClosures: true });
+  });
+
   it("input invalido → BAD_REQUEST", async () => {
     const caller = createCallerFactory(appRouter)(makeCtx(agent));
     await expect(caller.kit.create({ ...validInput, widthMm: 10 })).rejects.toMatchObject({ code: "BAD_REQUEST" });
@@ -104,12 +112,14 @@ describe("kit.generate", () => {
     requestUpdate.mockResolvedValue({});
     const caller = createCallerFactory(appRouter)(makeCtx(agent));
     const output = await caller.kit.generate({ kitRequestId: "k1" });
-    expect(output.lines).toHaveLength(16);
+    // Task 1 (Fase 1g): validInput non imposta supplementaryClosures →
+    // default OFF → set obbligatorio (12 righe), non più 16.
+    expect(output.lines).toHaveLength(12);
     expect(componentCreateMany).toHaveBeenCalled();
     const rows = componentCreateMany.mock.calls[0]![0].data;
     expect(rows[0]).toMatchObject({ kitRequestId: "k1", componentCode: expect.any(String), ruleId: expect.any(String) });
     expect(requestUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ status: "COMPLETED", totalComponents: 16 }) }),
+      expect.objectContaining({ data: expect.objectContaining({ status: "COMPLETED", totalComponents: 12 }) }),
     );
     expect(activityCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ type: "KIT_GENERATED" }) });
   });

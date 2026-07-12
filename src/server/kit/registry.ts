@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { KitGenerationError, type RuleModule } from "./types";
-import { artechAntaRibaltaLegno } from "./rules-artech";
+import { artechAntaRibaltaLegno } from "./rules-artech-legno";
+import { artechAntaRibaltaPvc } from "./rules-artech-pvc";
+import { artechAntaRibaltaAlu } from "./rules-artech-alu";
 
 /**
  * KitTemplate.rules a DB è SOLO un puntatore versionato al modulo regole in
@@ -16,6 +18,8 @@ export const templateRulesSchema = z
 
 export const RULE_MODULES: Record<string, RuleModule> = {
   [artechAntaRibaltaLegno.engineId]: artechAntaRibaltaLegno,
+  [artechAntaRibaltaPvc.engineId]: artechAntaRibaltaPvc,
+  [artechAntaRibaltaAlu.engineId]: artechAntaRibaltaAlu,
 };
 
 export function resolveRuleModule(rules: unknown): RuleModule {

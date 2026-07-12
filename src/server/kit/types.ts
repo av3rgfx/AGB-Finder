@@ -18,6 +18,16 @@ export const kitInputSchema = z.object({
   finish: z.string().trim().min(1).max(40),
   series: z.literal("ARTECH"),
   notes: z.string().max(2000).optional(),
+  // Task 1 (Fase 1g): gate del blocco "chiusure supplementari" LEGNO
+  // (CHIUSURE_VERTICALI in rules-artech.ts). Solo `.optional()` — NON
+  // `.optional().default(false)`: con `.default()` zod rende il campo
+  // obbligatorio nel tipo output (z.infer), il che romperebbe a typecheck
+  // ogni `KitInput` letterale esistente che non lo valorizza (es.
+  // `DEFAULT_FORM` in nuova-client.tsx, `golden` nei test kit). Il gate a
+  // valle (`if (input.supplementaryClosures)`) tratta già `undefined` come
+  // "OFF", quindi l'assenza di un default a runtime non cambia il
+  // comportamento (default = false è già garantito).
+  supplementaryClosures: z.boolean().optional(),
 });
 
 export type KitInput = z.infer<typeof kitInputSchema>;

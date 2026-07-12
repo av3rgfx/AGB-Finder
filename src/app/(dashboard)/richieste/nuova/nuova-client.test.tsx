@@ -31,7 +31,7 @@ describe("NuovaRichiestaClient", () => {
     expect(screen.getByText(/artech/i)).toBeTruthy();
   });
 
-  it("materiale: LEGNO selezionabile, PVC/ALLUMINIO disabilitati con hint «Presto disponibile»", () => {
+  it("materiale: LEGNO e PVC selezionabili, ALLUMINIO disabilitato (gated)", () => {
     render(<NuovaRichiestaClient />);
     const materiale = screen.getByRole("group", { name: /materiale/i });
     const legno = within(materiale).getByRole("radio", { name: /legno/i }) as HTMLInputElement;
@@ -40,19 +40,26 @@ describe("NuovaRichiestaClient", () => {
 
     expect(legno.checked).toBe(true);
     expect(legno.disabled).toBe(false);
-    expect(pvc.disabled).toBe(true);
-    expect(alluminio.disabled).toBe(true);
-    expect(within(materiale).getAllByText(/presto disponibile/i).length).toBeGreaterThanOrEqual(2);
+    expect(pvc.disabled).toBe(false); // PVC ora attivo (provvisorio, in validazione)
+    expect(alluminio.disabled).toBe(true); // ALLUMINIO gated: manca il listino
+    expect(within(materiale).getByText(/non ancora disponibile/i)).toBeTruthy();
   });
 
-  it("radio disabilitata: l'hint è descrizione (aria-describedby), non parte del nome accessibile", () => {
+  it("seleziona PVC aggiornando il materiale", () => {
     render(<NuovaRichiestaClient />);
     const materiale = screen.getByRole("group", { name: /materiale/i });
-    // Nome accessibile esatto = solo "PVC": l'hint non deve entrarci.
-    const pvc = within(materiale).getByRole("radio", { name: "PVC" });
-    const describedby = pvc.getAttribute("aria-describedby");
+    const pvc = within(materiale).getByRole("radio", { name: /pvc/i }) as HTMLInputElement;
+    fireEvent.click(pvc);
+    expect(pvc.checked).toBe(true);
+  });
+
+  it("radio disabilitata (ALLUMINIO): l'hint è descrizione (aria-describedby), non parte del nome accessibile", () => {
+    render(<NuovaRichiestaClient />);
+    const materiale = screen.getByRole("group", { name: /materiale/i });
+    const alu = within(materiale).getByRole("radio", { name: /alluminio/i });
+    const describedby = alu.getAttribute("aria-describedby");
     expect(describedby).toBeTruthy();
-    expect(document.getElementById(describedby!)?.textContent).toMatch(/presto disponibile/i);
+    expect(document.getElementById(describedby!)?.textContent).toMatch(/non ancora disponibile/i);
   });
 
   it("blocca lo step dimensioni se fuori range", () => {
@@ -72,6 +79,16 @@ describe("NuovaRichiestaClient", () => {
     expect(Array.from(select.options).map((o) => o.value)).toEqual(["ARGENTO"]);
   });
 
+  it("toggle chiusure supplementari: default off, attivabile", () => {
+    render(<NuovaRichiestaClient />);
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // step 2
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // step 3
+    const toggle = screen.getByLabelText(/chiusure supplementari/i) as HTMLInputElement;
+    expect(toggle.checked).toBe(false);
+    fireEvent.click(toggle);
+    expect(toggle.checked).toBe(true);
+  });
+
   it("al riepilogo genera: create → generate → redirect al dettaglio", async () => {
     createMutate.mockResolvedValue({ id: "k9", requestNumber: "KIT-2026-0001" });
     generateMutate.mockResolvedValue({ totalComponents: 20 });
@@ -81,7 +98,9 @@ describe("NuovaRichiestaClient", () => {
     fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
     fireEvent.click(screen.getByRole("button", { name: /genera kit/i }));
     await vi.waitFor(() => expect(push).toHaveBeenCalledWith("/richieste/k9"));
-    expect(createMutate).toHaveBeenCalled();
+    expect(createMutate).toHaveBeenCalledWith(
+      expect.objectContaining({ material: "LEGNO", supplementaryClosures: false }),
+    );
     expect(generateMutate).toHaveBeenCalledWith({ kitRequestId: "k9" });
   });
 });

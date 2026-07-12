@@ -45,13 +45,15 @@ describe("KitEngine.generate", () => {
     );
     const engine = new KitEngine(db);
     const output = await engine.generate(validInput);
-    expect(output.lines.length).toBe(16);
-    expect(output.totalComponents).toBe(16);
+    // Task 1 (Fase 1g): validInput non imposta supplementaryClosures →
+    // default OFF → set obbligatorio (12 righe/17 pezzi), non più 16/21.
+    expect(output.lines.length).toBe(12);
+    expect(output.totalComponents).toBe(12);
     expect(output.warnings).toEqual([]);
     const incontri = output.lines.find((l) => l.code === "A51400.05.02")!;
     expect(incontri.quantity).toBe(5);
     expect(incontri.totalPrice).toBeCloseTo(10);
-    expect(output.totalPrice).toBeCloseTo(2 * 21);
+    expect(output.totalPrice).toBeCloseTo(2 * 17);
     expect(output.templateId).toBe("t1");
   });
 
