@@ -98,6 +98,13 @@ embedding + admin). **Task 8 (e2e) ✅ VERIFICATO** (2026-07-11, login admin rea
 API backend): auth ADMIN · `dashboard.overview` · ricerca **testuale + ibrida** (query
 semantica → famiglia A50107\* per solo vettore) · **chat tool-use** (Gemini cita codici
 reali) · **kit ARTECH golden** `KIT-2026-0001` (16 righe / 21 pezzi / 90,20€, zero
-warning) · `settings.aiKeys.status` (Gemini da env). **Resta solo Task 9**: scelta fase
-successiva (produzione Vercel Pro + dominio + hardening, oppure Fase 2) — **decisione
-utente**. Dettagli e caveat: `handoff.md` (sezione «Fase 1f» + «RIPRENDI DA QUI»).
+warning) · `settings.aiKeys.status` (Gemini da env). Dettagli e caveat: `handoff.md`
+(sezione «Fase 1f»). + **Fase 1g (kit multi-materiale) ✅ su PR #14** (Opzione C da
+**LLM Council**): fix LEGNO chiusure supplementari opzionali · `kit-shared.ts` (meccanica
+condivisa) · modulo **PVC provvisorio** (cert ift, da validare con esperto) · **ALLUMINIO
+gated** (il listino 2026 non ha composizione alluminio: «PLANA» è cerniera complanare
+legno/PVC — modulo rifiuta + `isActive:false`) · colonna `KitRequest.supplementary_closures`
++ migrazione + wizard (PVC on, ALLUMINIO off, toggle chiusure). **Restano**: merge PR #14 ·
+`migrate deploy` + `db:seed:kit` su Neon **al deploy** · validazione esperto (domande in
+`docs/superpowers/kit-assunzioni/alu.md`). Poi: scelta fase successiva (produzione Vercel
+Pro + dominio, oppure Fase 2) — **decisione utente**.

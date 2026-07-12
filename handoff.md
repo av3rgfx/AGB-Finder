@@ -9,29 +9,36 @@
 
 | Campo | Valore |
 |-------|--------|
-| **Data** | 2026-07-11 |
+| **Data** | 2026-07-12 |
 | **Fase in corso** | Fase 1 — MVP Gestionale |
-| **Sotto-fase** | 1a ✅ · Better Auth ✅ · 1b ✅ · 1c Chat AI ✅ · **1d Kit engine ✅** · **1e Dashboard dati reali ✅ (PR #9)** · **Gestione API key admin ✅ (PR #10)** · **1f Deploy staging 🔄 QUASI COMPLETA (app live su Vercel; DB Neon POPOLATO; Task 7 pipeline ops ✅ + Task 8 e2e ✅ VERIFICATO via API backend; resta solo Task 9 = chiusura docs + scelta fase successiva)** |
+| **Sotto-fase** | 1a ✅ · Better Auth ✅ · 1b ✅ · 1c Chat AI ✅ · **1d Kit engine ✅** · **1e Dashboard dati reali ✅ (PR #9)** · **Gestione API key admin ✅ (PR #10)** · **1f Deploy staging 🔄 QUASI COMPLETA (app live su Vercel; DB Neon POPOLATO; Task 7 pipeline ops ✅ + Task 8 e2e ✅ VERIFICATO via API backend; resta solo Task 9 = chiusura docs)** · **1g Kit multi-materiale ✅ (fix LEGNO chiusure opzionali + kit-shared Opzione C + PVC provvisorio + ALLUMINIO gated + persistenza/wizard — PR #14)** |
 | **Branch git** | `claude/handoff-review-irs3gv` (ripartito da `origin/main` @ `051d3ee`). PR #11/#12/#13 (riallineamento handoff + spec/piano 1f + Task 1–4 + bump Next 15.5.20) **mergiate**. |
 | **Piano eseguito** | 1c/1d/1e/API-key (vedi sotto) · **`docs/superpowers/plans/2026-07-10-fase1f-deploy.md` (1f, Task 1–4 ✅ mergiati; **Task 7 ✅ eseguito** (pipeline ops); restano Task 8–9)** |
 
-> **▶ RIPRENDI DA QUI (Fase 1f — deploy staging, QUASI COMPLETA).**
-> L'app è **LIVE** su Vercel: **https://catalogo-finder-kappa.vercel.app** (piano
-> Hobby). Neon + Upstash collegati; workflow ops/CI su `main`; Next **15.5.20**.
-> **Task 7 (pipeline ops) ✅** (run #1 `29132026156`): DB Neon popolato — 6.191
-> prodotti + 6.191 embedding + admin. **Task 8 (e2e) ✅ VERIFICATO** (2026-07-11,
-> login admin reale) su TUTTI i flussi: auth ADMIN · `dashboard.overview` · ricerca
-> **testuale + ibrida** (query semantica «maniglia con chiave per anta a ribalta» →
-> famiglia **A50107\*** per solo vettore, vec≈0.72) · chat **tool-use** (Gemini cita
-> 5 codici reali) · **kit ARTECH golden** (`KIT-2026-0001` → **16 righe / 21 pezzi /
-> 90,20€**, zero warning) · `settings.aiKeys.status` (Gemini da env). Dettagli e
-> caveat: sezione «Fase 1f».
-> **➡ PROSSIMO PASSO: Task 9 — chiusura fase** (aggiornare `CLAUDE.md` STATO a
-> «Fase 1 MVP completa») **+ scegliere la fase successiva** (produzione: Vercel Pro
-> + dominio + hardening, oppure Fase 2). **Decisione dell'utente** (fine sessione).
-> ⚠️ Due caveat, sotto: (1) e2e fatto via **API backend** (non browser UI) per un
-> limite sandbox↔Vercel; (2) creati **dati di test** in staging (1 conversazione +
-> `KIT-2026-0001`) → la dashboard non è più a zero.
+> **▶ RIPRENDI DA QUI (Fase 1g — kit multi-materiale, COMPLETA su PR #14).**
+> App **LIVE** su Vercel (`catalogo-finder-kappa.vercel.app`); DB Neon popolato;
+> Fase 1f e2e verificato (dettagli sezione «Fase 1f»). **Fase 1g DONE** sul branch
+> `claude/handoff-review-irs3gv` (**PR #14**, 7 commit `b51aa11→544d94c`, gate verdi:
+> typecheck·lint·test 233+·build). Architettura **Opzione C** (verdetto LLM Council).
+> Task: (1) fix LEGNO — chiusure supplementari opzionali (default off), via l'errore
+> >2120mm; (2) `kit-shared.ts` (meccanica condivisa `pick`/`linesFromParts`/`requireKey`);
+> (3) modulo **PVC PROVVISORIO** (dati da cert ift EN 13126-8, ogni scelta `// ASSUNZIONE`);
+> (4) **ALLUMINIO gated** (`isActive:false` + modulo che rifiuta — il listino 2026 NON ha
+> composizione alluminio: «ARTech PLANA» è cerniera complanare legno/PVC, non alu →
+> assunzione piano falsificata); (5) colonna `KitRequest.supplementary_closures` +
+> migrazione + wizard (PVC on/provvisorio, ALLUMINIO off, toggle chiusure). Spec/piano:
+> `docs/superpowers/{specs,plans}/2026-07-11-fase1g-kit-materiali*`. Ledger esecuzione:
+> `.superpowers/sdd/progress.md`.
+> **➡ PROSSIMI PASSI**:
+> 1. **Merge PR #14** (decisione utente).
+> 2. **Al deploy della 1g**: applicare la migrazione a Neon (`migrate deploy` via pipeline
+>    ops) + `db:seed:kit` (template: LEGNO/PVC attivi, ALLUMINIO `isActive:false`).
+> 3. **Con l'esperto** (lunedì): passargli le **domande** in
+>    `docs/superpowers/kit-assunzioni/alu.md` (sblocco alluminio + validazione PVC); a
+>    validazione fatta popolare i moduli PVC/ALU + bump `version` + `isActive` ALLUMINIO.
+> ⚠️ PVC è esposto ma **provvisorio** (hint nel wizard); ALLUMINIO non generabile finché gated.
+> ⚠️ Fase 1f: e2e fatto via **API backend** (non browser UI, limite sandbox↔Vercel); creati
+> **dati di test** in staging (1 conversazione + `KIT-2026-0001`).
 
 ## Stato attuale in breve
 
@@ -388,3 +395,4 @@ Actions** (rete aperta → Neon:5432 ok).
 | 2026-07-10 | **Fase 1f — deploy staging**: scoperto blocco 5432 dev-container → council → spec+piano (ops via GitHub Actions) · Task 1–4 [CLAUDE] (maxDuration 120→60, `.env.example`, `ci.yml`, `ops-neon.yml`) + fix ermeticità `vitest.config` (**PR #11**) · bump **Next 15.3.0→15.5.20** perché Vercel blocca le versioni vulnerabili (**PR #12**) · **deploy staging live** su `catalogo-finder-kappa.vercel.app` (Vercel Hobby) + Neon + Upstash + GitHub Secrets · `NEXTAUTH_URL` corretto. **Resta**: lanciare la pipeline ops (Task 7 → popola Neon → login), verifica e2e (Task 8), chiusura docs (Task 9). | `claude/handoff-md-review-6vyafm` (PR #11, #12) |
 | 2026-07-11 | **Fase 1f — Task 7 (pipeline ops) ESEGUITO**: lanciata la GH Action _Ops — Neon_ (run #1 `29132026156`) → **verde in ~35 min**: `migrate deploy` (schema + pgvector/pg_trgm) · `import:agb` **6.191** · `db:seed` admin + `db:seed:kit` · `embed:products` **6.191/6.191** (`Completato: 6191 embedding generati.`). **Neon ora popolato**; smoke test non autenticato OK (`/login` 200, «Accedi — UFPtrade»). **Resta**: Task 8 (verifica e2e autenticata — serve la password admin dall'utente) + Task 9 (chiusura docs). | `claude/handoff-review-irs3gv` |
 | 2026-07-11 | **Fase 1f — Task 8 (e2e) VERIFICATO**: login admin reale fornito dall'utente → verifica end-to-end via **API backend** (browser bloccato da challenge Vercel↔proxy sandbox: scoperto e diagnosticato). Passano TUTTI i flussi contro Neon popolato: auth Better Auth (role ADMIN, createdAt=seed) · `dashboard.overview` · `product.search` **testuale+ibrida** (semantica «maniglia con chiave…» → A50107\* per solo vettore vec≈0.72) · **chat tool-use** (Gemini cita 5 codici reali) · **kit ARTECH golden** `KIT-2026-0001` **16 righe/21 pezzi/90,20€** zero warning · `settings.aiKeys.status` (Gemini da env). Creati dati test in staging (1 conv + KIT-2026-0001). **Resta solo Task 9** (docs + scelta fase successiva). | `claude/handoff-review-irs3gv` |
+| 2026-07-12 | **Fase 1g — kit multi-materiale (SDD subagent-driven)**: spec+piano approvati + **LLM Council** (4/4 → Opzione C: `kit-shared` meccanica condivisa, moduli per-materiale isolati). 5 task TDD (7 commit `b51aa11→544d94c`, **PR #14**, gate verdi): (1) fix LEGNO chiusure supplementari opzionali (default off); (2) estrazione `kit-shared.ts` (refactor puro); (3) modulo **PVC provvisorio** (cert ift, `//ASSUNZIONE`) + scheda esperto; (4) **ALLUMINIO gated** — scoperto che il listino 2026 NON ha composizione alluminio («PLANA»=cerniera complanare legno/PVC, non alu, assunzione piano falsificata) → modulo rifiuta + `isActive:false` + domande esperto; (5) colonna `KitRequest.supplementary_closures` + migrazione + wiring `kit.generate` + wizard (PVC on/provvisorio, ALLUMINIO off, toggle). Task 1-3 review individuali *Approved*; Task 4-5 fatti inline (session limit) + review finale inline. **Resta**: merge PR #14 · `migrate deploy`+`db:seed:kit` su Neon al deploy · validazione esperto (`docs/superpowers/kit-assunzioni/`). | `claude/handoff-review-irs3gv` (PR #14) |
