@@ -8,6 +8,7 @@ const listData = [
   { id: "u3", email: "xuser@no-email.ufptrade.local", username: "xuser", firstName: "Sara", lastName: "Bianchi", role: "AGENT", status: "ACTIVE", createdAt: new Date() },
 ];
 const createMut = vi.fn(); const createReset = vi.fn(); const setActiveMut = vi.fn();
+const updateMut = vi.fn(); const updateReset = vi.fn();
 vi.mock("@/trpc/react", () => ({
   api: {
     user: {
@@ -16,7 +17,7 @@ vi.mock("@/trpc/react", () => ({
       setActive: { useMutation: () => ({ mutate: setActiveMut, isPending: false }) },
       setRole: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       resetPassword: { useMutation: () => ({ mutate: vi.fn(), isPending: false, error: null }) },
-      update: { useMutation: () => ({ mutate: vi.fn(), isPending: false, error: null }) },
+      update: { useMutation: () => ({ mutate: updateMut, reset: updateReset, isPending: false, error: null }) },
       delete: { useMutation: () => ({ mutate: vi.fn(), isPending: false, error: null }) },
     },
   },
@@ -104,5 +105,38 @@ describe("UtentiClient", () => {
     const selfRow = rows.find((r) => within(r).queryByText("admin@x.it"));
     expect(within(selfRow!).queryByRole("button", { name: /elimina/i })).toBeNull();
     expect(within(selfRow!).queryAllByRole("button")).toHaveLength(0);
+  });
+  it("apre Modifica e salva le modifiche", () => {
+    render(<UtentiClient currentUserId="u1" />);
+    const rows = screen.getAllByRole("row");
+    const marioRow = rows.find((r) => within(r).queryByText("mario@x.it"));
+    fireEvent.click(within(marioRow!).getByRole("button", { name: /modifica/i }));
+    fireEvent.change(screen.getByLabelText(/^nome/i), { target: { value: "Mario2" } });
+    fireEvent.click(screen.getByRole("button", { name: /salva/i }));
+    expect(updateMut).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "u2", firstName: "Mario2", lastName: "Rossi", email: "mario@x.it" }),
+    );
+  });
+  it("pre-compila con email vuota per gli account con email-segnaposto", () => {
+    render(<UtentiClient currentUserId="u1" />);
+    const rows = screen.getAllByRole("row");
+    const xuserRow = rows.find((r) => within(r).queryByText("@xuser · nessuna email"));
+    fireEvent.click(within(xuserRow!).getByRole("button", { name: /modifica/i }));
+    expect((screen.getByLabelText(/^email/i) as HTMLInputElement).value).toBe("");
+    expect((screen.getByLabelText(/^username/i) as HTMLInputElement).value).toBe("xuser");
+    fireEvent.click(screen.getByRole("button", { name: /salva/i }));
+    expect(updateMut.mock.calls[0]?.[0]).not.toHaveProperty("email");
+    expect(updateMut).toHaveBeenCalledWith(expect.objectContaining({ id: "u3", username: "xuser" }));
+  });
+  it("blocca il salvataggio se nome o cognome sono vuoti", () => {
+    render(<UtentiClient currentUserId="u1" />);
+    const rows = screen.getAllByRole("row");
+    const marioRow = rows.find((r) => within(r).queryByText("mario@x.it"));
+    fireEvent.click(within(marioRow!).getByRole("button", { name: /modifica/i }));
+    fireEvent.change(screen.getByLabelText(/^nome/i), { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: /salva/i }));
+    expect(updateMut).not.toHaveBeenCalled();
+    expect(updateReset).toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toBeTruthy();
   });
 });

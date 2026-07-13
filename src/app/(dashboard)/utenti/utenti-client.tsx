@@ -5,9 +5,20 @@ import type { UserRole } from "@/lib/authz";
 
 const ROLE_LABEL: Record<UserRole, string> = { AGENT: "Agente", ADMIN: "Amministratore" };
 
+type UserListItem = {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  status: string;
+  username?: string | null;
+};
+
 export function UtentiClient({ currentUserId }: { currentUserId: string }) {
   const users = api.user.list.useQuery();
   const [creating, setCreating] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserListItem | null>(null);
   const utils = { refetch: () => void users.refetch() };
 
   if (users.isPending) return <p className="text-sm text-ink-subtle">Caricamento…</p>;
@@ -36,21 +47,26 @@ export function UtentiClient({ currentUserId }: { currentUserId: string }) {
           </thead>
           <tbody>
             {users.data.map((u) => (
-              <UserRow key={u.id} user={u} isSelf={u.id === currentUserId} onChanged={utils.refetch} />
+              <UserRow key={u.id} user={u} isSelf={u.id === currentUserId} onChanged={utils.refetch}
+                onEdit={(u) => { setCreating(false); setEditingUser(u); }} />
             ))}
           </tbody>
         </table>
       </div>
 
       {creating && <CreateUserForm onClose={() => setCreating(false)} onCreated={() => { setCreating(false); utils.refetch(); }} />}
+      {editingUser && (
+        <EditUserForm user={editingUser} onClose={() => setEditingUser(null)}
+          onSaved={() => { setEditingUser(null); utils.refetch(); }} />
+      )}
     </div>
   );
 }
 
 const PLACEHOLDER_EMAIL_DOMAIN = "@no-email.ufptrade.local";
 
-function UserRow({ user, isSelf, onChanged }:
-  { user: { id: string; email: string; firstName: string; lastName: string; role: string; status: string; username?: string | null }; isSelf: boolean; onChanged: () => void }) {
+function UserRow({ user, isSelf, onChanged, onEdit }:
+  { user: UserListItem; isSelf: boolean; onChanged: () => void; onEdit: (user: UserListItem) => void }) {
   const setActive = api.user.setActive.useMutation({ onSuccess: onChanged });
   const setRole = api.user.setRole.useMutation({ onSuccess: onChanged });
   const del = api.user.delete.useMutation({ onSuccess: onChanged });
@@ -70,6 +86,10 @@ function UserRow({ user, isSelf, onChanged }:
       <td className="px-3 py-2 text-right">
         {!isSelf && (
           <div className="flex justify-end gap-2">
+            <button type="button" onClick={() => onEdit(user)}
+              className="rounded border border-line-strong px-2 py-1 text-xs hover:border-brand">
+              Modifica
+            </button>
             <button type="button" onClick={() => setActive.mutate({ id: user.id, active: !active })}
               className="rounded border border-line-strong px-2 py-1 text-xs hover:border-brand">
               {active ? "Disattiva" : "Attiva"}
@@ -161,6 +181,62 @@ function CreateUserForm({ onClose, onCreated }: { onClose: () => void; onCreated
           onClick={handleCreate}
           className="rounded bg-brand px-3 py-2 text-sm font-medium text-white hover:bg-brand-dark disabled:opacity-50">
           {create.isPending ? "Creazione…" : "Crea"}
+        </button>
+        <button type="button" onClick={onClose} className="rounded border border-line-strong px-3 py-2 text-sm">Annulla</button>
+      </div>
+    </div>
+  );
+}
+
+function EditUserForm({ user, onClose, onSaved }:
+  { user: UserListItem; onClose: () => void; onSaved: () => void }) {
+  const isPlaceholder = user.email.endsWith(PLACEHOLDER_EMAIL_DOMAIN);
+  const [form, setForm] = useState({
+    firstName: user.firstName,
+    lastName: user.lastName,
+    email: isPlaceholder ? "" : user.email,
+    username: user.username ?? "",
+  });
+  const [formError, setFormError] = useState<string | null>(null);
+  const update = api.user.update.useMutation({ onSuccess: onSaved });
+  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  function handleSave() {
+    const firstName = form.firstName.trim();
+    const lastName = form.lastName.trim();
+    const email = form.email.trim();
+    const username = form.username.trim();
+    if (!firstName || !lastName) {
+      update.reset();
+      setFormError("Nome e cognome sono obbligatori.");
+      return;
+    }
+    setFormError(null);
+    update.mutate({
+      id: user.id, firstName, lastName,
+      ...(email ? { email } : {}),
+      ...(username ? { username } : {}),
+    });
+  }
+
+  return (
+    <div className="rounded-lg border border-line bg-surface p-4">
+      <h2 className="mb-3 font-semibold text-ink">Modifica utente</h2>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field label="Nome" id="edit-firstName" value={form.firstName} onChange={set("firstName")} />
+        <Field label="Cognome" id="edit-lastName" value={form.lastName} onChange={set("lastName")} />
+        <Field label="Email (opzionale)" id="edit-email" type="email" value={form.email} onChange={set("email")} />
+        <Field label="Username" id="edit-username" value={form.username} onChange={set("username")} />
+      </div>
+      <p className="mt-2 text-xs text-ink-subtle">Lascia vuoto un campo per non modificarlo.</p>
+      {formError && <p role="alert" className="mt-2 text-sm text-danger">{formError}</p>}
+      {update.error && <p role="alert" className="mt-2 text-sm text-danger">{update.error.message}</p>}
+      <div className="mt-4 flex gap-2">
+        <button type="button" disabled={update.isPending}
+          onClick={handleSave}
+          className="rounded bg-brand px-3 py-2 text-sm font-medium text-white hover:bg-brand-dark disabled:opacity-50">
+          {update.isPending ? "Salvataggio…" : "Salva"}
         </button>
         <button type="button" onClick={onClose} className="rounded border border-line-strong px-3 py-2 text-sm">Annulla</button>
       </div>
