@@ -116,6 +116,7 @@ describe("user.create (username / senza email)", () => {
         body: expect.objectContaining({ email: "mrossi@no-email.ufptrade.local" }),
       }),
     );
+    expect(updateArgs?.where).toEqual({ id: "newUser1" });
     expect(updateArgs?.data).toMatchObject({ username: "mrossi", displayUsername: "mrossi" });
   });
 
@@ -306,6 +307,26 @@ describe("user.update", () => {
       }),
     );
     expect(res.email).toBe("mario@rossi.it");
+  });
+
+  it("normalizza l'email a lowercase (Better Auth normalizza sempre a login/creazione; l'indice email è case-sensitive)", async () => {
+    userFindFirst.mockResolvedValue(null); // nessun conflitto
+    const caller = createCallerFactory(appRouter)(makeCtx(admin, dbStub));
+    const res = await caller.user.update({
+      id: "u2",
+      firstName: "Mario",
+      lastName: "Rossi",
+      email: "Mario.Rossi@UFP.it",
+    });
+    expect(userFindFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { email: "mario.rossi@ufp.it", id: { not: "u2" } } }),
+    );
+    expect(userUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ email: "mario.rossi@ufp.it" }),
+      }),
+    );
+    expect(res.email).toBe("mario.rossi@ufp.it");
   });
 
   it("BLOCCA (CONFLICT) il cambio email già in uso da un altro utente", async () => {

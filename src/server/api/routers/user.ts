@@ -16,6 +16,12 @@ const userSelect = {
 
 const PLACEHOLDER_DOMAIN = "no-email.ufptrade.local";
 
+const usernameSchema = z
+  .string()
+  .min(3)
+  .max(32)
+  .regex(/^[a-z0-9._-]+$/i, "Username: lettere, numeri, . _ -");
+
 type Ctx = {
   db: typeof import("@/server/db").db;
   session: { user: { id: string } };
@@ -58,12 +64,7 @@ export const userRouter = createTRPCRouter({
       z
         .object({
           email: z.string().email().optional(),
-          username: z
-            .string()
-            .min(3)
-            .max(32)
-            .regex(/^[a-z0-9._-]+$/i, "Username: lettere, numeri, . _ -")
-            .optional(),
+          username: usernameSchema.optional(),
           firstName: z.string().min(1),
           lastName: z.string().min(1),
           password: z.string().min(8, "La password deve avere almeno 8 caratteri"),
@@ -93,6 +94,7 @@ export const userRouter = createTRPCRouter({
           where: { id: created.user.id },
           data: { username, displayUsername: input.username },
         });
+        return { ...created.user, username, displayUsername: input.username };
       }
       return created.user;
     }),
@@ -160,19 +162,15 @@ export const userRouter = createTRPCRouter({
         firstName: z.string().min(1),
         lastName: z.string().min(1),
         email: z.string().email().optional(),
-        username: z
-          .string()
-          .min(3)
-          .max(32)
-          .regex(/^[a-z0-9._-]+$/i, "Username: lettere, numeri, . _ -")
-          .optional(),
+        username: usernameSchema.optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const username = input.username?.toLowerCase();
-      if (input.email) {
+      const email = input.email?.toLowerCase();
+      if (email) {
         const clash = await ctx.db.user.findFirst({
-          where: { email: input.email, id: { not: input.id } },
+          where: { email, id: { not: input.id } },
           select: { id: true },
         });
         if (clash) throw new TRPCError({ code: "CONFLICT", message: "Email già in uso." });
@@ -190,7 +188,7 @@ export const userRouter = createTRPCRouter({
           firstName: input.firstName,
           lastName: input.lastName,
           name: `${input.firstName} ${input.lastName}`,
-          ...(input.email ? { email: input.email } : {}),
+          ...(email ? { email } : {}),
           ...(username ? { username, displayUsername: input.username } : {}),
         },
         select: { id: true, firstName: true, lastName: true, email: true, username: true },
