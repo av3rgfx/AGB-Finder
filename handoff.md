@@ -39,9 +39,17 @@
 >   Ledger: `.superpowers/sdd/progress.md`.
 >
 > **➡ RESTA:**
-> 1. **PR unica A+B** dal branch.
-> 2. **Al deploy**: applicare la **migrazione `username`** a Neon **via ops** (aggiunge `users.username`/
->    `display_username` + unique). Senza, in prod la colonna manca → login username e creazione account rotti.
+> 1. **PR unica A+B** dal branch → **creata: PR #17** (`https://github.com/av3rgfx/AGB-Finder/pull/17`).
+> 2. **⚠️ MIGRAZIONE `username` MAI applicata a Neon** (ultimo ops = run #3, 2026-07-12, su `main`
+>    pre-feature). **CONSEGUENZA CRITICA**: un deployment di **questo branch** (preview PR #17 o staging
+>    se punta al branch) ha il **login COMPLETAMENTE rotto — anche con email** — perché lo schema Prisma
+>    del branch dichiara `users.username`/`display_username`, colonne assenti su Neon → **ogni** query
+>    sulla tabella `users` (incluso il find-by-email del login) fallisce → «Credenziali non valide».
+>    **Sintomo osservato a fine sessione 2026-07-13** (screenshot utente, login `admin@ufptrade.local`).
+>    `main` **non** è affetto (la feature non è ancora mergiata; il suo schema non ha le colonne).
+>    **FIX**: lanciare **ops-neon SUL BRANCH `claude/handoff-review-irs3gv`** (workflow_dispatch → `migrate
+>    deploy` applica `20260713094200_username`) — oppure **merge PR #17 → ops su `main`**. La migrazione è
+>    additiva (colonne nullable): innocua anche per `main`. **Nessun seed necessario** per la sola feature.
 > 3. **Minor differiti** (non-bloccanti, dalla review): create non atomico su race stesso-username (orfano
 >    raro); placeholder email non rigenerata al rename username; TOCTOU `assertNotLastActiveAdmin` (solo con
 >    2 admin simultanei opposti); alcuni id inesistenti → 500 invece di NOT_FOUND.

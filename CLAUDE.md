@@ -127,4 +127,7 @@ con email O username** (plugin Better Auth `username`) + **account senza email**
 fix: `usernameSchema` allineato al validator del plugin (max 30, no trattino, altrimenti account
 non-autenticabile), rimossa route `setStatus` non guardata, pre-check email → `CONFLICT`. **RESTA al
 deploy**: applicare la **migrazione `username`** a Neon via ops (`20260713094200_username` — aggiunge
-`users.username`/`display_username` + unique; nessun'altra migrazione). **PR A+B unica** (branch pushato).
+`users.username`/`display_username` + unique; nessun'altra migrazione). **PR A+B unica → PR #17**.
+⚠️ **Finché la migrazione non è su Neon, un deployment di questo branch ha il login rotto anche via
+email** (lo schema Prisma del branch interroga colonne assenti → ogni query `users` fallisce). `main`
+non è affetto (feature non mergiata). Fix: ops-neon **sul branch**, oppure merge #17 → ops su `main`.
