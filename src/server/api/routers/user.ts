@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, adminProcedure } from "@/server/api/trpc";
 import { auth } from "@/server/auth/config";
 
@@ -11,6 +12,34 @@ const userSelect = {
   status: true,
   createdAt: true,
 } as const;
+
+type Ctx = { db: typeof import("@/server/db").db; session: { user: { id: string } }; headers: Headers };
+
+function assertNotSelf(ctx: { session: { user: { id: string } } }, targetId: string) {
+  if (targetId === ctx.session.user.id)
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Non puoi eseguire questa operazione sul tuo stesso account.",
+    });
+}
+
+/** Blocca l'operazione se il target è l'ULTIMO admin attivo (role ADMIN, non bannato, ACTIVE). */
+async function assertNotLastActiveAdmin(ctx: Ctx, targetId: string) {
+  const target = await ctx.db.user.findUnique({
+    where: { id: targetId },
+    select: { role: true },
+  });
+  if (!target) throw new TRPCError({ code: "NOT_FOUND", message: "Utente non trovato." });
+  if (target.role !== "ADMIN") return;
+  const otherActiveAdmins = await ctx.db.user.count({
+    where: { id: { not: targetId }, role: "ADMIN", banned: { not: true }, status: "ACTIVE" },
+  });
+  if (otherActiveAdmins === 0)
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Operazione negata: deve restare almeno un amministratore attivo.",
+    });
+}
 
 /**
  * User administration. Admin-only — agents never self-register (project rule).
@@ -54,4 +83,28 @@ export const userRouter = createTRPCRouter({
         select: { id: true, status: true },
       }),
     ),
+
+  setRole: adminProcedure
+    .input(z.object({ id: z.string(), role: z.enum(["AGENT", "ADMIN"]) }))
+    .mutation(async ({ ctx, input }) => {
+      assertNotSelf(ctx, input.id);
+      if (input.role === "AGENT") await assertNotLastActiveAdmin(ctx, input.id);
+      await auth.api.setRole({ headers: ctx.headers, body: { userId: input.id, role: input.role } });
+      return { id: input.id, role: input.role };
+    }),
+
+  setActive: adminProcedure
+    .input(z.object({ id: z.string(), active: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      assertNotSelf(ctx, input.id);
+      if (!input.active) await assertNotLastActiveAdmin(ctx, input.id);
+      if (input.active) {
+        await auth.api.unbanUser({ headers: ctx.headers, body: { userId: input.id } });
+      } else {
+        await auth.api.banUser({ headers: ctx.headers, body: { userId: input.id } });
+      }
+      const status = input.active ? "ACTIVE" : "INACTIVE";
+      await ctx.db.user.update({ where: { id: input.id }, data: { status } });
+      return { id: input.id, status };
+    }),
 });
