@@ -1,7 +1,7 @@
 import "server-only";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
-import { admin } from "better-auth/plugins";
+import { admin, username } from "better-auth/plugins";
 import { createAccessControl } from "better-auth/plugins/access";
 import { adminAc, defaultStatements } from "better-auth/plugins/admin/access";
 import { nextCookies } from "better-auth/next-js";
@@ -46,6 +46,7 @@ export const auth = betterAuth({
 
   plugins: [
     admin({ ac, roles, defaultRole: "AGENT", adminRoles: ["ADMIN"] }),
+    username(),
     nextCookies(), // must be the last plugin
   ],
 });
