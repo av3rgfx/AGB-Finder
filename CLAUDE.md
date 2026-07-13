@@ -35,6 +35,10 @@ Tailwind CSS 3 · Vitest · pnpm. Deploy target: Vercel + Neon + Upstash.
 - Tutte le query via **Prisma**. **Raw SQL solo per pgvector**, incapsulato nel
   solo modulo `RAGEngine` (`$queryRaw`/`$executeRaw`) — e nelle migrazioni.
 - UI **in italiano**. Codici prodotto in **font monospace** (JetBrains Mono).
+- **Ogni design UI/UX si fa per MOBILE *e* desktop, mai solo desktop.** Ogni pagina o
+  componente nuovo/modificato va progettato e implementato **responsive** (mobile-first),
+  e **verificato a viewport mobile** (≤ 375px) prima di considerarlo concluso. Nessuna
+  funzionalità va nascosta o resa inutilizzabile su mobile.
 - **Admin crea tutti gli account** — nessuna self-registration.
 - RBAC: `PUBLIC` → `AGENT` → `ADMIN`.
 
@@ -42,7 +46,8 @@ Tailwind CSS 3 · Vitest · pnpm. Deploy target: Vercel + Neon + Upstash.
 1. **Usa sempre `/using-superpowers`** quando sviluppi (poi le skill che indica:
    brainstorming → writing-plans → esecuzione TDD).
 2. **Usa sempre `/llm-council`** per dubbi, quesiti, incongruenze, problematiche.
-3. **Usa sempre `/impeccable`** quando sviluppi/progetti UI/UX.
+3. **Usa sempre `/impeccable`** quando sviluppi/progetti UI/UX — **sempre in versione
+   mobile *e* desktop**, con verifica a viewport mobile (vedi REGOLE INVIOLABILI).
 4. **Usa sempre `/ponytail`** ogni volta che scrivi codice e programmi
    (scrittura, refactor, fix, review, scelta librerie/dipendenze): soluzione
    più semplice e minimale che funziona (YAGNI, riuso, stdlib prima delle
