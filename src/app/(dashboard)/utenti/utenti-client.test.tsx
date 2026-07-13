@@ -28,6 +28,9 @@ describe("UtentiClient", () => {
     render(<UtentiClient currentUserId="u1" />);
     expect(screen.getByText("mario@x.it")).toBeTruthy();
     expect(screen.getByText(/Rossi/)).toBeTruthy();
+    expect(screen.getByText("Agente")).toBeTruthy();
+    expect(screen.getByText("Amministratore")).toBeTruthy();
+    expect(screen.getAllByText("Attivo").length).toBeGreaterThan(0);
   });
   it("apre il form Nuovo utente e crea", () => {
     render(<UtentiClient currentUserId="u1" />);
@@ -46,5 +49,6 @@ describe("UtentiClient", () => {
     const rows = screen.getAllByRole("row");
     const selfRow = rows.find((r) => within(r).queryByText("admin@x.it"));
     expect(within(selfRow!).queryByRole("button", { name: /elimina/i })).toBeNull();
+    expect(within(selfRow!).queryAllByRole("button")).toHaveLength(0);
   });
 });

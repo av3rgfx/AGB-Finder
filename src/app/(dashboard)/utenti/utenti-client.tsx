@@ -1,9 +1,9 @@
 "use client";
 import { useState } from "react";
 import { api } from "@/trpc/react";
+import type { UserRole } from "@/lib/authz";
 
-type Role = "AGENT" | "ADMIN";
-const ROLE_LABEL: Record<Role, string> = { AGENT: "Agente", ADMIN: "Amministratore" };
+const ROLE_LABEL: Record<UserRole, string> = { AGENT: "Agente", ADMIN: "Amministratore" };
 
 export function UtentiClient({ currentUserId }: { currentUserId: string }) {
   const users = api.user.list.useQuery();
@@ -27,11 +27,11 @@ export function UtentiClient({ currentUserId }: { currentUserId: string }) {
         <table className="w-full text-sm">
           <thead className="border-b border-line text-left text-ink-subtle">
             <tr>
-              <th className="px-3 py-2 font-medium">Nome</th>
-              <th className="px-3 py-2 font-medium">Email</th>
-              <th className="px-3 py-2 font-medium">Ruolo</th>
-              <th className="px-3 py-2 font-medium">Stato</th>
-              <th className="px-3 py-2 font-medium text-right">Azioni</th>
+              <th scope="col" className="px-3 py-2 font-medium">Nome</th>
+              <th scope="col" className="px-3 py-2 font-medium">Email</th>
+              <th scope="col" className="px-3 py-2 font-medium">Ruolo</th>
+              <th scope="col" className="px-3 py-2 font-medium">Stato</th>
+              <th scope="col" className="px-3 py-2 font-medium text-right">Azioni</th>
             </tr>
           </thead>
           <tbody>
@@ -57,7 +57,7 @@ function UserRow({ user, isSelf, onChanged }:
     <tr className="border-b border-line last:border-0">
       <td className="px-3 py-2 text-ink">{user.firstName} {user.lastName}</td>
       <td className="px-3 py-2 text-ink-muted">{user.email}</td>
-      <td className="px-3 py-2">{ROLE_LABEL[user.role as Role] ?? user.role}</td>
+      <td className="px-3 py-2">{ROLE_LABEL[user.role as UserRole] ?? user.role}</td>
       <td className="px-3 py-2">
         <span className={active ? "text-success" : "text-danger"}>{active ? "Attivo" : "Disattivato"}</span>
       </td>
@@ -80,6 +80,8 @@ function UserRow({ user, isSelf, onChanged }:
             </button>
           </div>
         )}
+        {setActive.error && <p role="alert" className="mt-1 text-xs text-danger">{setActive.error.message}</p>}
+        {setRole.error && <p role="alert" className="mt-1 text-xs text-danger">{setRole.error.message}</p>}
         {del.error && <p role="alert" className="mt-1 text-xs text-danger">{del.error.message}</p>}
       </td>
     </tr>
@@ -89,16 +91,19 @@ function UserRow({ user, isSelf, onChanged }:
 function ResetPasswordButton({ id }: { id: string }) {
   const reset = api.user.resetPassword.useMutation();
   return (
-    <button type="button"
-      onClick={() => { const p = prompt("Nuova password (min 8 caratteri):"); if (p) reset.mutate({ id, password: p }); }}
-      className="rounded border border-line-strong px-2 py-1 text-xs hover:border-brand">
-      Reset password
-    </button>
+    <>
+      <button type="button"
+        onClick={() => { const p = prompt("Nuova password (min 8 caratteri):"); if (p) reset.mutate({ id, password: p }); }}
+        className="rounded border border-line-strong px-2 py-1 text-xs hover:border-brand">
+        Reset password
+      </button>
+      {reset.error && <p role="alert" className="mt-1 text-xs text-danger">{reset.error.message}</p>}
+    </>
   );
 }
 
 function CreateUserForm({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
-  const [form, setForm] = useState({ email: "", firstName: "", lastName: "", password: "", role: "AGENT" as Role });
+  const [form, setForm] = useState({ email: "", firstName: "", lastName: "", password: "", role: "AGENT" as UserRole });
   const create = api.user.create.useMutation({ onSuccess: onCreated });
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
