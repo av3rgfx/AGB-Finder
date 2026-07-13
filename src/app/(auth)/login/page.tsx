@@ -17,7 +17,7 @@ function Wordmark({ className }: { className?: string }) {
 
 export default function LoginPage() {
   return (
-    <main className="grid min-h-screen lg:grid-cols-[1fr_480px]">
+    <main className="grid min-h-screen grid-cols-1 lg:grid-cols-[1fr_480px]">
       {/* Brand panel — hidden on tablet/mobile (wireframe §2.5) */}
       <aside
         className="relative hidden flex-col items-center justify-center overflow-hidden bg-brand px-12 text-white lg:flex"

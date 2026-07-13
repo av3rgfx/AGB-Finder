@@ -20,7 +20,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
         <Sidebar role={session.user.role ?? "AGENT"} />
       </div>
       <div className="flex min-h-screen flex-col">
-        <TopBar name={name} initials={initials} />
+        <TopBar name={name} initials={initials} role={session.user.role ?? "AGENT"} />
         <main className="flex-1 bg-surface-page p-4 sm:p-6">{children}</main>
       </div>
     </div>
