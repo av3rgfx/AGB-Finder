@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutDashboard, MessageSquare, Package, ClipboardList, Settings } from "lucide-react";
+import { LayoutDashboard, MessageSquare, Package, ClipboardList, Settings, Users } from "lucide-react";
 import { NavItem, type NavItemProps } from "./nav-item";
 
 const PRIMARY_NAV: NavItemProps[] = [
@@ -10,7 +10,8 @@ const PRIMARY_NAV: NavItemProps[] = [
   { href: "/richieste", label: "Richieste Kit", icon: ClipboardList },
 ];
 
-export function Sidebar() {
+export function Sidebar({ role }: { role: string }) {
+  const isAdmin = role === "ADMIN";
   return (
     <aside className="flex h-full w-full flex-col bg-surface-sidebar">
       <div className="flex h-16 items-center px-5">
@@ -25,9 +26,12 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="border-t border-white/[0.06] px-3 py-3">
-        <NavItem href="/impostazioni" label="Impostazioni" icon={Settings} />
-      </div>
+      {isAdmin && (
+        <div className="border-t border-white/[0.06] px-3 py-3">
+          <NavItem href="/utenti" label="Utenti" icon={Users} />
+          <NavItem href="/impostazioni" label="Impostazioni" icon={Settings} />
+        </div>
+      )}
     </aside>
   );
 }
