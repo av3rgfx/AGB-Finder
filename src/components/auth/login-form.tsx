@@ -37,14 +37,18 @@ export function LoginForm() {
     event.preventDefault();
     setError(null);
 
+    const id = email.trim();
     const errors: { email?: string; password?: string } = {};
-    if (!EMAIL_RE.test(email)) errors.email = "Inserisci un'email valida.";
+    if (!id) errors.email = "Inserisci email o username.";
     if (password.length < 6) errors.password = "La password deve avere almeno 6 caratteri.";
     setFieldError(errors);
     if (Object.keys(errors).length > 0) return;
 
     setLoading(true);
-    const { error } = await authClient.signIn.email({ email, password, rememberMe: remember });
+    const isEmail = EMAIL_RE.test(id);
+    const { error } = isEmail
+      ? await authClient.signIn.email({ email: id, password, rememberMe: remember })
+      : await authClient.signIn.username({ username: id, password, rememberMe: remember });
     setLoading(false);
 
     if (error) {
@@ -53,7 +57,7 @@ export function LoginForm() {
     }
 
     try {
-      if (remember) localStorage.setItem(REMEMBER_KEY, email);
+      if (remember) localStorage.setItem(REMEMBER_KEY, id);
       else localStorage.removeItem(REMEMBER_KEY);
     } catch {
       /* ignore */
@@ -77,13 +81,13 @@ export function LoginForm() {
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="email" className="text-sm font-medium text-ink-muted">
-          Email
+          Email o username
         </label>
         <Input
           id="email"
-          type="email"
+          type="text"
           autoComplete="username"
-          placeholder="nome@utensilferramenta.it"
+          placeholder="nome@utensilferramenta.it oppure username"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           invalid={Boolean(fieldError.email)}

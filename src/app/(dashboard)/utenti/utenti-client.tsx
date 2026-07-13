@@ -47,8 +47,10 @@ export function UtentiClient({ currentUserId }: { currentUserId: string }) {
   );
 }
 
+const PLACEHOLDER_EMAIL_DOMAIN = "@no-email.ufptrade.local";
+
 function UserRow({ user, isSelf, onChanged }:
-  { user: { id: string; email: string; firstName: string; lastName: string; role: string; status: string }; isSelf: boolean; onChanged: () => void }) {
+  { user: { id: string; email: string; firstName: string; lastName: string; role: string; status: string; username?: string | null }; isSelf: boolean; onChanged: () => void }) {
   const setActive = api.user.setActive.useMutation({ onSuccess: onChanged });
   const setRole = api.user.setRole.useMutation({ onSuccess: onChanged });
   const del = api.user.delete.useMutation({ onSuccess: onChanged });
@@ -56,7 +58,11 @@ function UserRow({ user, isSelf, onChanged }:
   return (
     <tr className="border-b border-line last:border-0">
       <td className="px-3 py-2 text-ink">{user.firstName} {user.lastName}</td>
-      <td className="px-3 py-2 text-ink-muted">{user.email}</td>
+      <td className="px-3 py-2 text-ink-muted">
+        {user.email.endsWith(PLACEHOLDER_EMAIL_DOMAIN)
+          ? <span className="text-ink-subtle">@{user.username} · nessuna email</span>
+          : user.email}
+      </td>
       <td className="px-3 py-2">{ROLE_LABEL[user.role as UserRole] ?? user.role}</td>
       <td className="px-3 py-2">
         <span className={active ? "text-success" : "text-danger"}>{active ? "Attivo" : "Disattivato"}</span>
@@ -103,17 +109,37 @@ function ResetPasswordButton({ id }: { id: string }) {
 }
 
 function CreateUserForm({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
-  const [form, setForm] = useState({ email: "", firstName: "", lastName: "", password: "", role: "AGENT" as UserRole });
+  const [form, setForm] = useState({ email: "", username: "", firstName: "", lastName: "", password: "", role: "AGENT" as UserRole });
+  const [formError, setFormError] = useState<string | null>(null);
   const create = api.user.create.useMutation({ onSuccess: onCreated });
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  function handleCreate() {
+    if (!form.email && !form.username) {
+      setFormError("Devi specificare almeno un'email o uno username.");
+      return;
+    }
+    setFormError(null);
+    const payload = {
+      firstName: form.firstName,
+      lastName: form.lastName,
+      password: form.password,
+      role: form.role,
+      ...(form.email ? { email: form.email } : {}),
+      ...(form.username ? { username: form.username } : {}),
+    };
+    create.mutate(payload);
+  }
+
   return (
     <div className="rounded-lg border border-line bg-surface p-4">
       <h2 className="mb-3 font-semibold text-ink">Nuovo utente</h2>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Nome" id="firstName" value={form.firstName} onChange={set("firstName")} />
         <Field label="Cognome" id="lastName" value={form.lastName} onChange={set("lastName")} />
-        <Field label="Email" id="email" type="email" value={form.email} onChange={set("email")} />
+        <Field label="Email (opzionale)" id="email" type="email" value={form.email} onChange={set("email")} />
+        <Field label="Username" id="username" value={form.username} onChange={set("username")} />
         <Field label="Password" id="password" type="password" value={form.password} onChange={set("password")} />
         <div className="flex flex-col gap-1.5">
           <label htmlFor="role" className="text-sm text-ink-muted">Ruolo</label>
@@ -124,10 +150,12 @@ function CreateUserForm({ onClose, onCreated }: { onClose: () => void; onCreated
           </select>
         </div>
       </div>
+      <p className="mt-2 text-xs text-ink-subtle">Inserisci almeno un&apos;email o uno username.</p>
+      {formError && <p role="alert" className="mt-2 text-sm text-danger">{formError}</p>}
       {create.error && <p role="alert" className="mt-2 text-sm text-danger">{create.error.message}</p>}
       <div className="mt-4 flex gap-2">
         <button type="button" disabled={create.isPending}
-          onClick={() => create.mutate(form)}
+          onClick={handleCreate}
           className="rounded bg-brand px-3 py-2 text-sm font-medium text-white hover:bg-brand-dark disabled:opacity-50">
           {create.isPending ? "Creazione…" : "Crea"}
         </button>
