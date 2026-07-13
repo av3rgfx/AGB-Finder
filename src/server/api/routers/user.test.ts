@@ -92,7 +92,7 @@ describe("user.create (username / senza email)", () => {
   });
 
   it("con username e senza email → sintetizza email-segnaposto e passa username", async () => {
-    userFindUnique.mockResolvedValueOnce(null); // nessun clash sullo username
+    userFindUnique.mockResolvedValue(null); // nessun clash su username né su email-segnaposto
     createUserApi.mockResolvedValueOnce({
       user: { id: "newUser1", email: "mrossi@no-email.ufptrade.local" },
     });
@@ -141,6 +141,31 @@ describe("user.create (username / senza email)", () => {
         password: "password1",
         role: "AGENT",
       }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(createUserApi).not.toHaveBeenCalled();
+  });
+
+  it("rifiuta uno username col trattino (non ammesso dal plugin Better Auth) con BAD_REQUEST", async () => {
+    const caller = createCallerFactory(appRouter)(makeCtx(admin, dbStub));
+    await expect(
+      caller.user.create({ username: "mario-rossi", firstName: "M", lastName: "R", password: "password1", role: "AGENT" }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(createUserApi).not.toHaveBeenCalled();
+  });
+
+  it("rifiuta uno username troppo lungo (>30) con BAD_REQUEST", async () => {
+    const caller = createCallerFactory(appRouter)(makeCtx(admin, dbStub));
+    await expect(
+      caller.user.create({ username: "a".repeat(31), firstName: "M", lastName: "R", password: "password1", role: "AGENT" }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(createUserApi).not.toHaveBeenCalled();
+  });
+
+  it("rifiuta un'email già in uso con CONFLICT (pre-check, senza chiamare Better Auth)", async () => {
+    userFindUnique.mockResolvedValueOnce({ id: "existing-email" }); // clash sull'email
+    const caller = createCallerFactory(appRouter)(makeCtx(admin, dbStub));
+    await expect(
+      caller.user.create({ email: "mario@rossi.it", firstName: "M", lastName: "R", password: "password1", role: "AGENT" }),
     ).rejects.toMatchObject({ code: "CONFLICT" });
     expect(createUserApi).not.toHaveBeenCalled();
   });

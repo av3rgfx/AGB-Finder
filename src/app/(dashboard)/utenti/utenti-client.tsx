@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { api } from "@/trpc/react";
 import type { UserRole } from "@/lib/authz";
+import { isPlaceholderEmail } from "@/lib/placeholder-email";
 
 const ROLE_LABEL: Record<UserRole, string> = { AGENT: "Agente", ADMIN: "Amministratore" };
 
@@ -28,7 +29,7 @@ export function UtentiClient({ currentUserId }: { currentUserId: string }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex justify-end">
-        <button type="button" onClick={() => setCreating(true)}
+        <button type="button" onClick={() => { setEditingUser(null); setCreating(true); }}
           className="rounded bg-brand px-3 py-2 text-sm font-medium text-white hover:bg-brand-dark">
           Nuovo utente
         </button>
@@ -63,8 +64,6 @@ export function UtentiClient({ currentUserId }: { currentUserId: string }) {
   );
 }
 
-const PLACEHOLDER_EMAIL_DOMAIN = "@no-email.ufptrade.local";
-
 function UserRow({ user, isSelf, onChanged, onEdit }:
   { user: UserListItem; isSelf: boolean; onChanged: () => void; onEdit: (user: UserListItem) => void }) {
   const setActive = api.user.setActive.useMutation({ onSuccess: onChanged });
@@ -75,7 +74,7 @@ function UserRow({ user, isSelf, onChanged, onEdit }:
     <tr className="border-b border-line last:border-0">
       <td className="px-3 py-2 text-ink">{user.firstName} {user.lastName}</td>
       <td className="px-3 py-2 text-ink-muted">
-        {user.email.endsWith(PLACEHOLDER_EMAIL_DOMAIN)
+        {isPlaceholderEmail(user.email)
           ? <span className="text-ink-subtle">@{user.username} · nessuna email</span>
           : user.email}
       </td>
@@ -190,7 +189,7 @@ function CreateUserForm({ onClose, onCreated }: { onClose: () => void; onCreated
 
 function EditUserForm({ user, onClose, onSaved }:
   { user: UserListItem; onClose: () => void; onSaved: () => void }) {
-  const isPlaceholder = user.email.endsWith(PLACEHOLDER_EMAIL_DOMAIN);
+  const isPlaceholder = isPlaceholderEmail(user.email);
   const [form, setForm] = useState({
     firstName: user.firstName,
     lastName: user.lastName,
@@ -229,7 +228,7 @@ function EditUserForm({ user, onClose, onSaved }:
         <Field label="Email (opzionale)" id="edit-email" type="email" value={form.email} onChange={set("email")} />
         <Field label="Username" id="edit-username" value={form.username} onChange={set("username")} />
       </div>
-      <p className="mt-2 text-xs text-ink-subtle">Lascia vuoto un campo per non modificarlo.</p>
+      <p className="mt-2 text-xs text-ink-subtle">Nome e cognome sono obbligatori. Lascia vuoti email/username per non modificarli.</p>
       {formError && <p role="alert" className="mt-2 text-sm text-danger">{formError}</p>}
       {update.error && <p role="alert" className="mt-2 text-sm text-danger">{update.error.message}</p>}
       <div className="mt-4 flex gap-2">

@@ -128,6 +128,16 @@ describe("UtentiClient", () => {
     expect(updateMut.mock.calls[0]?.[0]).not.toHaveProperty("email");
     expect(updateMut).toHaveBeenCalledWith(expect.objectContaining({ id: "u3", username: "xuser" }));
   });
+  it("aprire «Nuovo utente» chiude il pannello di modifica", () => {
+    render(<UtentiClient currentUserId="u1" />);
+    const rows = screen.getAllByRole("row");
+    const marioRow = rows.find((r) => within(r).queryByText("mario@x.it"));
+    fireEvent.click(within(marioRow!).getByRole("button", { name: /modifica/i }));
+    expect(screen.getByRole("heading", { name: /modifica utente/i })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /nuovo utente/i }));
+    expect(screen.queryByRole("heading", { name: /modifica utente/i })).toBeNull();
+    expect(screen.getByRole("heading", { name: /nuovo utente/i })).toBeTruthy();
+  });
   it("blocca il salvataggio se nome o cognome sono vuoti", () => {
     render(<UtentiClient currentUserId="u1" />);
     const rows = screen.getAllByRole("row");

@@ -40,7 +40,7 @@ export function LoginForm() {
     const id = email.trim();
     const errors: { email?: string; password?: string } = {};
     if (!id) errors.email = "Inserisci email o username.";
-    if (password.length < 6) errors.password = "La password deve avere almeno 6 caratteri.";
+    if (!password) errors.password = "Inserisci la password.";
     setFieldError(errors);
     if (Object.keys(errors).length > 0) return;
 

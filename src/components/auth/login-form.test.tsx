@@ -53,6 +53,17 @@ describe("LoginForm", () => {
     expect(screen.getByText("Inserisci email o username.")).toBeTruthy();
   });
 
+  it("blocks submit and shows a validation message for an empty password", async () => {
+    const user = userEvent.setup();
+    render(<LoginForm />);
+    await user.type(screen.getByLabelText(/email o username/i), "mario@rossi.it");
+    await user.click(screen.getByRole("button", { name: /^accedi$/i }));
+
+    expect(signInEmail).not.toHaveBeenCalled();
+    expect(signInUsername).not.toHaveBeenCalled();
+    expect(screen.getByText("Inserisci la password.")).toBeTruthy();
+  });
+
   it("calls authClient.signIn.username when the identifier is not an email", async () => {
     signInUsername.mockResolvedValue({ data: {}, error: null });
     const user = userEvent.setup();

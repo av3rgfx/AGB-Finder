@@ -55,7 +55,6 @@ model User {
   @@index([email])
   @@index([role])
   @@index([status])
-  @@index([username])
   @@map("users")
 }
 

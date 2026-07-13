@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, adminProcedure } from "@/server/api/trpc";
 import { auth } from "@/server/auth/config";
+import { placeholderEmailFor } from "@/lib/placeholder-email";
 
 const userSelect = {
   id: true,
@@ -14,13 +15,15 @@ const userSelect = {
   createdAt: true,
 } as const;
 
-const PLACEHOLDER_DOMAIN = "no-email.ufptrade.local";
-
+// Deve combaciare col validator del plugin Better Auth `username` (default
+// /^[a-zA-Z0-9_.]+$/, lunghezza max 30): il plugin ri-valida lo username al
+// login, quindi uno username accettato qui ma non dal plugin creerebbe un
+// account che non può mai autenticarsi (INVALID_USERNAME / USERNAME_TOO_LONG).
 const usernameSchema = z
   .string()
   .min(3)
-  .max(32)
-  .regex(/^[a-z0-9._-]+$/i, "Username: lettere, numeri, . _ -");
+  .max(30)
+  .regex(/^[a-z0-9._]+$/i, "Username: lettere, numeri, . e _");
 
 type Ctx = {
   db: typeof import("@/server/db").db;
@@ -78,7 +81,11 @@ export const userRouter = createTRPCRouter({
         const clash = await ctx.db.user.findUnique({ where: { username }, select: { id: true } });
         if (clash) throw new TRPCError({ code: "CONFLICT", message: "Username già in uso." });
       }
-      const email = input.email ?? `${username}@${PLACEHOLDER_DOMAIN}`;
+      // `username!`: il refine garantisce email || username, quindi qui (email assente) è definito.
+      const email = input.email ?? placeholderEmailFor(username!);
+      // Pre-check unicità email → CONFLICT pulito (senza, Better Auth solleverebbe un 500).
+      const emailClash = await ctx.db.user.findUnique({ where: { email }, select: { id: true } });
+      if (emailClash) throw new TRPCError({ code: "CONFLICT", message: "Email già in uso." });
       const created = await auth.api.createUser({
         headers: ctx.headers,
         body: {
@@ -102,16 +109,6 @@ export const userRouter = createTRPCRouter({
   list: adminProcedure.query(({ ctx }) =>
     ctx.db.user.findMany({ select: userSelect, orderBy: { createdAt: "desc" } }),
   ),
-
-  setStatus: adminProcedure
-    .input(z.object({ id: z.string(), status: z.enum(["ACTIVE", "INACTIVE", "SUSPENDED"]) }))
-    .mutation(({ ctx, input }) =>
-      ctx.db.user.update({
-        where: { id: input.id },
-        data: { status: input.status },
-        select: { id: true, status: true },
-      }),
-    ),
 
   setRole: adminProcedure
     .input(z.object({ id: z.string(), role: z.enum(["AGENT", "ADMIN"]) }))
