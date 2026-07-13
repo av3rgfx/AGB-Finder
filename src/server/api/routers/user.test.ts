@@ -4,14 +4,16 @@ import { createTRPCRouter, createCallerFactory, type TRPCContext } from "@/serve
 // `user.ts` calls `auth.api.*` (Better Auth admin plugin). Mocked so setRole/setActive
 // tests never construct the real Better Auth instance or touch a real database —
 // mirrors the pattern in `settings.test.ts` (vi.hoisted + vi.mock factory).
-const { createUserApi, setRoleApi, banApi, unbanApi, setPasswordApi, removeUserApi } = vi.hoisted(() => ({
-  createUserApi: vi.fn(),
-  setRoleApi: vi.fn(),
-  banApi: vi.fn(),
-  unbanApi: vi.fn(),
-  setPasswordApi: vi.fn(),
-  removeUserApi: vi.fn(),
-}));
+const { createUserApi, setRoleApi, banApi, unbanApi, setPasswordApi, removeUserApi } = vi.hoisted(
+  () => ({
+    createUserApi: vi.fn(),
+    setRoleApi: vi.fn(),
+    banApi: vi.fn(),
+    unbanApi: vi.fn(),
+    setPasswordApi: vi.fn(),
+    removeUserApi: vi.fn(),
+  }),
+);
 vi.mock("@/server/auth/config", () => ({
   auth: {
     api: {
@@ -36,10 +38,12 @@ const userCount = vi.fn();
 const userUpdate = vi.fn();
 const kitRequestCount = vi.fn();
 const conversationCount = vi.fn();
+const settingsCount = vi.fn();
 const dbStub = {
   user: { findUnique: userFindUnique, count: userCount, update: userUpdate },
   kitRequest: { count: kitRequestCount },
   conversation: { count: conversationCount },
+  settings: { count: settingsCount },
 };
 
 const makeCtx = (session: unknown, db: unknown = {}): TRPCContext => ({
@@ -66,16 +70,16 @@ describe("user.create authorization", () => {
 
   it("rejects an invalid email with BAD_REQUEST (input validation)", async () => {
     const caller = createCallerFactory(appRouter)(makeCtx(admin));
-    await expect(
-      caller.user.create({ ...input, email: "not-an-email" }),
-    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    await expect(caller.user.create({ ...input, email: "not-an-email" })).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+    });
   });
 
   it("rejects a too-short password with BAD_REQUEST", async () => {
     const caller = createCallerFactory(appRouter)(makeCtx(admin));
-    await expect(
-      caller.user.create({ ...input, password: "short" }),
-    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    await expect(caller.user.create({ ...input, password: "short" })).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+    });
   });
 });
 
@@ -111,17 +115,17 @@ describe("user.setRole", () => {
     userFindUnique.mockResolvedValueOnce({ role: "ADMIN" });
     userCount.mockResolvedValueOnce(0); // nessun altro admin attivo
     const caller = createCallerFactory(appRouter)(makeCtx(admin, dbStub));
-    await expect(
-      caller.user.setRole({ id: "uAdminUnico", role: "AGENT" }),
-    ).rejects.toThrow(/almeno un amministratore/i);
+    await expect(caller.user.setRole({ id: "uAdminUnico", role: "AGENT" })).rejects.toThrow(
+      /almeno un amministratore/i,
+    );
     expect(setRoleApi).not.toHaveBeenCalled();
   });
 
   it("BLOCCA l'operazione su sé stessi", async () => {
     const caller = createCallerFactory(appRouter)(makeCtx(admin, dbStub));
-    await expect(
-      caller.user.setRole({ id: admin.user.id, role: "AGENT" }),
-    ).rejects.toThrow(/tuo stesso account/i);
+    await expect(caller.user.setRole({ id: admin.user.id, role: "AGENT" })).rejects.toThrow(
+      /tuo stesso account/i,
+    );
     expect(setRoleApi).not.toHaveBeenCalled();
   });
 });
@@ -158,12 +162,12 @@ describe("user.setActive", () => {
     userFindUnique.mockResolvedValueOnce({ role: "ADMIN" });
     userCount.mockResolvedValueOnce(0);
     const caller = createCallerFactory(appRouter)(makeCtx(admin, dbStub));
-    await expect(
-      caller.user.setActive({ id: "uAdminUnico", active: false }),
-    ).rejects.toThrow(/almeno un amministratore/i);
-    await expect(
-      caller.user.setActive({ id: admin.user.id, active: false }),
-    ).rejects.toThrow(/tuo stesso account/i);
+    await expect(caller.user.setActive({ id: "uAdminUnico", active: false })).rejects.toThrow(
+      /almeno un amministratore/i,
+    );
+    await expect(caller.user.setActive({ id: admin.user.id, active: false })).rejects.toThrow(
+      /tuo stesso account/i,
+    );
     expect(banApi).not.toHaveBeenCalled();
   });
 });
@@ -184,18 +188,20 @@ describe("user.resetPassword", () => {
 
   it("rifiuta password < 8", async () => {
     const caller = createCallerFactory(appRouter)(makeCtx(admin, dbStub));
-    await expect(
-      caller.user.resetPassword({ id: "u2", password: "corta" }),
-    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    await expect(caller.user.resetPassword({ id: "u2", password: "corta" })).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+    });
     expect(setPasswordApi).not.toHaveBeenCalled();
   });
 });
 
 describe("user.update", () => {
   beforeEach(() => {
-    userUpdate.mockReset().mockImplementation(
-      ({ data }: { data: Record<string, unknown> }) => Promise.resolve({ id: "u2", ...data }),
-    );
+    userUpdate
+      .mockReset()
+      .mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+        Promise.resolve({ id: "u2", ...data }),
+      );
   });
 
   it("aggiorna nome/cognome e ricompone name", async () => {
@@ -218,12 +224,14 @@ describe("user.delete", () => {
     userCount.mockReset();
     kitRequestCount.mockReset();
     conversationCount.mockReset();
+    settingsCount.mockReset();
   });
 
   it("elimina se 0 record collegati", async () => {
     userFindUnique.mockResolvedValueOnce({ role: "AGENT" }); // non-admin: niente guardia ultimo-admin
     kitRequestCount.mockResolvedValueOnce(0);
     conversationCount.mockResolvedValueOnce(0);
+    settingsCount.mockResolvedValueOnce(0);
     const caller = createCallerFactory(appRouter)(makeCtx(admin, dbStub));
     const res = await caller.user.delete({ id: "u2" });
     expect(removeUserApi).toHaveBeenCalledWith(expect.objectContaining({ body: { userId: "u2" } }));
@@ -234,8 +242,22 @@ describe("user.delete", () => {
     userFindUnique.mockResolvedValueOnce({ role: "AGENT" });
     kitRequestCount.mockResolvedValueOnce(2);
     conversationCount.mockResolvedValueOnce(0);
+    settingsCount.mockResolvedValueOnce(0);
     const caller = createCallerFactory(appRouter)(makeCtx(admin, dbStub));
     await expect(caller.user.delete({ id: "u3" })).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: expect.stringMatching(/record collegati|disattiv/i),
+    });
+    expect(removeUserApi).not.toHaveBeenCalled();
+  });
+
+  it("BLOCCA (CONFLICT) se ha impostazioni collegate (Settings.updatedBy, kit/conv = 0)", async () => {
+    userFindUnique.mockResolvedValueOnce({ role: "AGENT" });
+    kitRequestCount.mockResolvedValueOnce(0);
+    conversationCount.mockResolvedValueOnce(0);
+    settingsCount.mockResolvedValueOnce(1);
+    const caller = createCallerFactory(appRouter)(makeCtx(admin, dbStub));
+    await expect(caller.user.delete({ id: "u4" })).rejects.toMatchObject({
       code: "CONFLICT",
       message: expect.stringMatching(/record collegati|disattiv/i),
     });
@@ -248,7 +270,9 @@ describe("user.delete", () => {
 
     userFindUnique.mockResolvedValueOnce({ role: "ADMIN" });
     userCount.mockResolvedValueOnce(0);
-    await expect(caller.user.delete({ id: "uAdminUnico" })).rejects.toThrow(/almeno un amministratore/i);
+    await expect(caller.user.delete({ id: "uAdminUnico" })).rejects.toThrow(
+      /almeno un amministratore/i,
+    );
     expect(removeUserApi).not.toHaveBeenCalled();
   });
 });

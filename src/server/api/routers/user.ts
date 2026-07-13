@@ -13,7 +13,11 @@ const userSelect = {
   createdAt: true,
 } as const;
 
-type Ctx = { db: typeof import("@/server/db").db; session: { user: { id: string } }; headers: Headers };
+type Ctx = {
+  db: typeof import("@/server/db").db;
+  session: { user: { id: string } };
+  headers: Headers;
+};
 
 function assertNotSelf(ctx: { session: { user: { id: string } } }, targetId: string) {
   if (targetId === ctx.session.user.id)
@@ -89,7 +93,10 @@ export const userRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       assertNotSelf(ctx, input.id);
       if (input.role === "AGENT") await assertNotLastActiveAdmin(ctx, input.id);
-      await auth.api.setRole({ headers: ctx.headers, body: { userId: input.id, role: input.role } });
+      await auth.api.setRole({
+        headers: ctx.headers,
+        body: { userId: input.id, role: input.role },
+      });
       return { id: input.id, role: input.role };
     }),
 
@@ -109,7 +116,12 @@ export const userRouter = createTRPCRouter({
     }),
 
   resetPassword: adminProcedure
-    .input(z.object({ id: z.string(), password: z.string().min(8, "La password deve avere almeno 8 caratteri") }))
+    .input(
+      z.object({
+        id: z.string(),
+        password: z.string().min(8, "La password deve avere almeno 8 caratteri"),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       await auth.api.setUserPassword({
         headers: ctx.headers,
@@ -132,21 +144,21 @@ export const userRouter = createTRPCRouter({
       }),
     ),
 
-  delete: adminProcedure
-    .input(z.object({ id: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      assertNotSelf(ctx, input.id);
-      await assertNotLastActiveAdmin(ctx, input.id);
-      const [kits, convs] = await Promise.all([
-        ctx.db.kitRequest.count({ where: { agentId: input.id } }),
-        ctx.db.conversation.count({ where: { agentId: input.id } }),
-      ]);
-      if (kits > 0 || convs > 0)
-        throw new TRPCError({
-          code: "CONFLICT",
-          message: "Utente con record collegati (richieste/conversazioni): disattivalo invece di eliminarlo.",
-        });
-      await auth.api.removeUser({ headers: ctx.headers, body: { userId: input.id } });
-      return { id: input.id };
-    }),
+  delete: adminProcedure.input(z.object({ id: z.string() })).mutation(async ({ ctx, input }) => {
+    assertNotSelf(ctx, input.id);
+    await assertNotLastActiveAdmin(ctx, input.id);
+    const [kits, convs, settingsRefs] = await Promise.all([
+      ctx.db.kitRequest.count({ where: { agentId: input.id } }),
+      ctx.db.conversation.count({ where: { agentId: input.id } }),
+      ctx.db.settings.count({ where: { updatedBy: input.id } }),
+    ]);
+    if (kits > 0 || convs > 0 || settingsRefs > 0)
+      throw new TRPCError({
+        code: "CONFLICT",
+        message:
+          "Utente con record collegati (richieste/conversazioni/impostazioni): disattivalo invece di eliminarlo.",
+      });
+    await auth.api.removeUser({ headers: ctx.headers, body: { userId: input.id } });
+    return { id: input.id };
+  }),
 });
