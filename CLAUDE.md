@@ -132,7 +132,11 @@ con email O username** (plugin Better Auth `username`) + **account senza email**
 fix: `usernameSchema` allineato al validator del plugin (max 30, no trattino, altrimenti account
 non-autenticabile), rimossa route `setStatus` non guardata, pre-check email → `CONFLICT`. **RESTA al
 deploy**: applicare la **migrazione `username`** a Neon via ops (`20260713094200_username` — aggiunge
-`users.username`/`display_username` + unique; nessun'altra migrazione). **PR A+B unica → PR #17**.
-⚠️ **Finché la migrazione non è su Neon, un deployment di questo branch ha il login rotto anche via
-email** (lo schema Prisma del branch interroga colonne assenti → ogni query `users` fallisce). `main`
-non è affetto (feature non mergiata). Fix: ops-neon **sul branch**, oppure merge #17 → ops su `main`.
+`users.username`/`display_username` + unique; nessun'altra migrazione). **PR A+B unica → PR #17 MERGIATA**;
+**migrazione `username` APPLICATA a Neon via ops run #4** (login email/username OK in produzione).
++ **UI mobile responsive + regola mobile-first ✅ (PR #18 MERGIATA, live)**: il layout mobile era
+inutilizzabile (sidebar `hidden md:block` senza alternativa) → **hamburger + drawer** (Sidebar riusata),
+TopBar mobile, **`/utenti` azioni in menu ⋯** (dropdown `position:fixed` per non farsi ritagliare
+dall'`overflow-x-auto`), fix griglia login (`grid-cols-1`). Verifica screenshot Chromium a 375px.
+**Stato: tutto (PR #11–#18) mergiato e LIVE** su `catalogo-finder-kappa.vercel.app`; Neon allineato;
+nessuna azione ops pendente. **Prossimo passo: scelta fase successiva — decisione utente.**

@@ -9,13 +9,14 @@
 
 | Campo | Valore |
 |-------|--------|
-| **Data** | 2026-07-13 |
+| **Data** | 2026-07-13 (sessione conclusa) |
 | **Fase in corso** | Fase 1 — MVP Gestionale |
-| **Sotto-fase** | 1a ✅ · Better Auth ✅ · 1b ✅ · 1c Chat AI ✅ · **1d Kit engine ✅** · **1e Dashboard dati reali ✅ (PR #9)** · **Gestione API key admin ✅ (PR #10)** · **1f Deploy staging 🔄 QUASI COMPLETA** · **1g Kit multi-materiale ✅ (PR #15 MERGIATA)** · **1h Anta a battente ✅ (PR #16 MERGIATA; template battente seedato su Neon via ops run #3)** · **Gestione utenti admin + login username ✅ (branch `claude/handoff-review-irs3gv`, pronto per PR unica A+B)** |
-| **Branch git** | `claude/handoff-review-irs3gv` (**ripartito da `origin/main` dopo il merge PR #16**). Gestione-utenti: 14 commit `33e3227→1623211`, **pushati** (PR A+B da creare). PR #11–#16 **mergiate**. |
-| **Piano eseguito** | `docs/superpowers/plans/2026-07-13-gestione-utenti-admin.md` (Fase A A1–A4 + Fase B B1–B4, tutti ✅) · spec `docs/superpowers/specs/2026-07-13-gestione-utenti-admin-design.md` |
+| **Sotto-fase** | 1a ✅ · Better Auth ✅ · 1b ✅ · 1c Chat AI ✅ · **1d Kit engine ✅** · **1e Dashboard ✅ (#9)** · **API key admin ✅ (#10)** · **1f Deploy staging 🔄 QUASI COMPLETA** · **1g Kit multi-materiale ✅ (#15)** · **1h Anta a battente ✅ (#16, template su Neon via ops #3)** · **Gestione utenti admin + login username ✅ (PR #17 MERGIATA; migrazione `username` applicata a Neon via ops #4)** · **UI mobile responsive + regola mobile-first ✅ (PR #18 MERGIATA, live)** |
+| **Branch git** | `claude/handoff-review-irs3gv` (ripartito da `origin/main`). **PR #11–#18 tutte mergiate.** Nessun lavoro in sospeso sul branch. |
+| **Stato deploy** | **LIVE e sano** su `catalogo-finder-kappa.vercel.app` (login 200; rotte protette 307; HTML servito include il fix `grid-cols-1` di #18). Neon allineato (migrazione `username` applicata via **ops run #4**). **Nessuna azione ops pendente.** |
+| **Piani/spec** | `docs/superpowers/{plans,specs}/2026-07-13-gestione-utenti-admin*` (Fase A A1–A4 + Fase B B1–B4 ✅). Regola mobile-first in `CLAUDE.md` §REGOLE INVIOLABILI. |
 
-> **▶ RIPRENDI DA QUI (Gestione utenti admin + login username — COMPLETA sul branch, pronta per PR).**
+> **▶ RIPRENDI DA QUI — sessione chiusa 2026-07-13: TUTTO mergiato e in produzione, niente in sospeso.**
 > Feature richiesta dall'utente: sezione **solo-admin** per creare/gestire utenti + login anche con
 > **nome utente** (oltre che email), inclusi **account senza email**. Sviluppata **subagent-driven**
 > (SDD) sul branch `claude/handoff-review-irs3gv` (ripartito da `origin/main` dopo il merge #16),
@@ -38,21 +39,29 @@
 >   indice username ridondante, costante segnaposto condivisa, UI (pannelli, hint, copy login).
 >   Ledger: `.superpowers/sdd/progress.md`.
 >
-> **➡ RESTA:**
-> 1. **PR unica A+B** dal branch → **creata: PR #17** (`https://github.com/av3rgfx/AGB-Finder/pull/17`).
-> 2. **⚠️ MIGRAZIONE `username` MAI applicata a Neon** (ultimo ops = run #3, 2026-07-12, su `main`
->    pre-feature). **CONSEGUENZA CRITICA**: un deployment di **questo branch** (preview PR #17 o staging
->    se punta al branch) ha il **login COMPLETAMENTE rotto — anche con email** — perché lo schema Prisma
->    del branch dichiara `users.username`/`display_username`, colonne assenti su Neon → **ogni** query
->    sulla tabella `users` (incluso il find-by-email del login) fallisce → «Credenziali non valide».
->    **Sintomo osservato a fine sessione 2026-07-13** (screenshot utente, login `admin@ufptrade.local`).
->    `main` **non** è affetto (la feature non è ancora mergiata; il suo schema non ha le colonne).
->    **FIX**: lanciare **ops-neon SUL BRANCH `claude/handoff-review-irs3gv`** (workflow_dispatch → `migrate
->    deploy` applica `20260713094200_username`) — oppure **merge PR #17 → ops su `main`**. La migrazione è
->    additiva (colonne nullable): innocua anche per `main`. **Nessun seed necessario** per la sola feature.
-> 3. **Minor differiti** (non-bloccanti, dalla review): create non atomico su race stesso-username (orfano
->    raro); placeholder email non rigenerata al rename username; TOCTOU `assertNotLastActiveAdmin` (solo con
->    2 admin simultanei opposti); alcuni id inesistenti → 500 invece di NOT_FOUND.
+> **✅ FATTO (tutto chiuso in questa sessione):**
+> 1. **PR #17 MERGIATA** (gestione utenti + login username).
+> 2. **Migrazione `20260713094200_username` APPLICATA a Neon** via **ops run #4** (13/07): aggiunge
+>    `users.username`/`display_username` + unique. Login (email *e* username) OK in produzione.
+>    *(Nota storica: al primo merge #17 il login si era rotto perché la migrazione non era ancora su Neon —
+>    lo schema Prisma interrogava colonne assenti; risolto lanciando ops-neon sul branch.)*
+> 3. **PR #18 MERGIATA** — **UI mobile responsive + regola mobile-first**: sidebar era `hidden md:block`
+>    senza alternativa (niente nav <768px) → **hamburger + drawer** (Sidebar riusata; overlay/slide-in;
+>    chiusura Esc/backdrop/cambio-rotta); TopBar mobile; **`/utenti` azioni in menu ⋯** (dropdown
+>    `position: fixed` per non farsi ritagliare dall'`overflow-x-auto`); fix griglia login (`grid-cols-1`).
+>    Nuova **REGOLA INVIOLABILE** in `CLAUDE.md`: UI mobile+desktop con verifica a viewport ≤375px.
+>    La X rossa sulla CI di #18 era un **outage GitHub Actions** (Service Unavailable nel download action),
+>    non il codice — CI su `main` post-merge verde.
+> 4. **Deploy verificato LIVE** su `catalogo-finder-kappa.vercel.app` (login 200; HTML servito con `grid-cols-1`).
+>
+> **Minor differiti** (non-bloccanti, gestione-utenti — dalla review opus): create non atomico su race
+> stesso-username (orfano raro); placeholder email non rigenerata al rename username; TOCTOU
+> `assertNotLastActiveAdmin` (solo con 2 admin simultanei opposti); alcuni id inesistenti → 500 anziché
+> NOT_FOUND. **Kit provvisori** (PVC/ALU/battente) ancora da validare con l'esperto AGB.
+> **Verifica mobile su dispositivo reale** consigliata (le pagine dietro login non erano screenshottabili in
+> sandbox senza DB; verificate via harness a 375px).
+>
+> **➡ PROSSIMO PASSO**: scelta della fase successiva — **decisione utente**. Nessun debito bloccante.
 >
 > ---
 >
