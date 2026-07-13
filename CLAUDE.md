@@ -116,4 +116,15 @@ per-windowType + wizard **solo-LEGNO** (PVC/ALU gated per il battente). **Restan
 `db:seed:kit` su Neon (template battente; **NESSUNA migrazione** — l'enum Postgres ha già
 `ANTA_BATTENTE`) · integration gated (`INTEGRATION_DATABASE_URL`) per verificare i codici battente
 a catalogo · validazione esperto (domande in `docs/superpowers/kit-assunzioni/{alu,pvc,battente}.md`).
-Poi: scelta fase successiva — **decisione utente**.
+Poi: scelta fase successiva — **decisione utente**. + **Gestione utenti admin + login username ✅**
+su branch `claude/handoff-review-irs3gv` (dopo il merge Fase 1h #16; SDD 3 subagent-round + review
+finale opus, gate verdi typecheck·lint·test **293**·build 14 route): sezione admin **/utenti**
+(crea · elenca · cambia ruolo · attiva/disattiva[**ban**+status] · reset password · **modifica** ·
+elimina), **ogni mutation `adminProcedure`** con **paletti anti-lockout** (mai su self né sull'ultimo
+admin attivo; `delete` bloccato se ci sono record collegati kit/conversazioni/**settings**) · **login
+con email O username** (plugin Better Auth `username`) + **account senza email** reale (email-segnaposto
+`<username>@no-email.ufptrade.local`, unica costante `src/lib/placeholder-email.ts`). Review finale →
+fix: `usernameSchema` allineato al validator del plugin (max 30, no trattino, altrimenti account
+non-autenticabile), rimossa route `setStatus` non guardata, pre-check email → `CONFLICT`. **RESTA al
+deploy**: applicare la **migrazione `username`** a Neon via ops (`20260713094200_username` — aggiunge
+`users.username`/`display_username` + unique; nessun'altra migrazione). **PR A+B unica** (branch pushato).

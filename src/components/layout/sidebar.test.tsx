@@ -17,21 +17,33 @@ afterEach(cleanup);
 
 describe("Sidebar", () => {
   it("renders the primary navigation labels", () => {
-    render(<Sidebar />);
+    render(<Sidebar role="ADMIN" />);
     for (const label of ["Dashboard", "Assistente", "Archivio", "Richieste Kit", "Impostazioni"]) {
       expect(screen.getByText(label)).toBeTruthy();
     }
   });
 
   it("marks the current route as the active page", () => {
-    render(<Sidebar />);
+    render(<Sidebar role="ADMIN" />);
     const link = screen.getByText("Dashboard").closest("a");
     expect(link?.getAttribute("aria-current")).toBe("page");
   });
 
   it("does not mark a non-current route as active", () => {
-    render(<Sidebar />);
+    render(<Sidebar role="ADMIN" />);
     const link = screen.getByText("Archivio").closest("a");
     expect(link?.getAttribute("aria-current")).toBeNull();
+  });
+
+  it("shows the admin section (Utenti + Impostazioni) for the ADMIN role", () => {
+    render(<Sidebar role="ADMIN" />);
+    expect(screen.getByText("Utenti")).toBeTruthy();
+    expect(screen.getByText("Impostazioni")).toBeTruthy();
+  });
+
+  it("hides the admin section (Utenti + Impostazioni) for non-admin roles", () => {
+    render(<Sidebar role="AGENT" />);
+    expect(screen.queryByText("Utenti")).toBeNull();
+    expect(screen.queryByText("Impostazioni")).toBeNull();
   });
 });

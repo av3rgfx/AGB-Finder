@@ -9,13 +9,46 @@
 
 | Campo | Valore |
 |-------|--------|
-| **Data** | 2026-07-12 |
+| **Data** | 2026-07-13 |
 | **Fase in corso** | Fase 1 — MVP Gestionale |
-| **Sotto-fase** | 1a ✅ · Better Auth ✅ · 1b ✅ · 1c Chat AI ✅ · **1d Kit engine ✅** · **1e Dashboard dati reali ✅ (PR #9)** · **Gestione API key admin ✅ (PR #10)** · **1f Deploy staging 🔄 QUASI COMPLETA (app live su Vercel; DB Neon POPOLATO; Task 7 pipeline ops ✅ + Task 8 e2e ✅ VERIFICATO via API backend; resta solo Task 9 = chiusura docs)** · **1g Kit multi-materiale ✅ (PR #15 MERGIATA)** · **1h Anta a battente ✅ (nuova TIPOLOGIA, provvisorio da listino — branch `claude/handoff-review-irs3gv`, non ancora in PR)** |
-| **Branch git** | `claude/handoff-review-irs3gv` (ripartito da `origin/main` @ `0d4f4f7` dopo il **merge PR #15**). Fase 1h: 7 commit `d4b37c2→cd457e7`, **pushati** (non ancora in PR). PR #11/#12/#13/#14/#15 **mergiate**. |
-| **Piano eseguito** | 1c/1d/1e/API-key (vedi sotto) · **`docs/superpowers/plans/2026-07-10-fase1f-deploy.md` (1f, Task 1–4 ✅ mergiati; **Task 7 ✅ eseguito** (pipeline ops); restano Task 8–9)** |
+| **Sotto-fase** | 1a ✅ · Better Auth ✅ · 1b ✅ · 1c Chat AI ✅ · **1d Kit engine ✅** · **1e Dashboard dati reali ✅ (PR #9)** · **Gestione API key admin ✅ (PR #10)** · **1f Deploy staging 🔄 QUASI COMPLETA** · **1g Kit multi-materiale ✅ (PR #15 MERGIATA)** · **1h Anta a battente ✅ (PR #16 MERGIATA; template battente seedato su Neon via ops run #3)** · **Gestione utenti admin + login username ✅ (branch `claude/handoff-review-irs3gv`, pronto per PR unica A+B)** |
+| **Branch git** | `claude/handoff-review-irs3gv` (**ripartito da `origin/main` dopo il merge PR #16**). Gestione-utenti: 14 commit `33e3227→1623211`, **pushati** (PR A+B da creare). PR #11–#16 **mergiate**. |
+| **Piano eseguito** | `docs/superpowers/plans/2026-07-13-gestione-utenti-admin.md` (Fase A A1–A4 + Fase B B1–B4, tutti ✅) · spec `docs/superpowers/specs/2026-07-13-gestione-utenti-admin-design.md` |
 
-> **▶ RIPRENDI DA QUI (Fase 1h — nuova tipologia «anta a battente», COMPLETA sul branch).**
+> **▶ RIPRENDI DA QUI (Gestione utenti admin + login username — COMPLETA sul branch, pronta per PR).**
+> Feature richiesta dall'utente: sezione **solo-admin** per creare/gestire utenti + login anche con
+> **nome utente** (oltre che email), inclusi **account senza email**. Sviluppata **subagent-driven**
+> (SDD) sul branch `claude/handoff-review-irs3gv` (ripartito da `origin/main` dopo il merge #16),
+> 14 commit `33e3227→1623211`, **pushati**, gate verdi: typecheck·lint·**test 293/9 skip**·build 14 route.
+>
+> **Cosa c'è (Fase A backend+UI · Fase B username):**
+> - Router `user` (`src/server/api/routers/user.ts`), **ogni mutation `adminProcedure`**:
+>   `create · list · setRole · setActive`(ban+status) `· resetPassword · update · delete`. **Anti-lockout**:
+>   mai su self né sull'ultimo admin attivo; `delete` bloccato se l'utente ha record collegati
+>   (kit_requests / conversations / **settings**, tutte FK `RESTRICT`).
+> - Pagina **`/utenti`** (`src/app/(dashboard)/utenti/`), server-gated ADMIN, + voce nav admin-only.
+>   Tabella + azioni + form **crea** e **modifica** (nome/cognome/email/username).
+> - **Login email O username** (`login-form.tsx` instrada `signIn.email`/`.username`) + plugin Better Auth
+>   `username` (`config.ts`/`auth-client.ts`) + colonne `username`/`display_username` (schema + migrazione
+>   `20260713094200_username`). **Account senza email** → email-segnaposto
+>   `<username>@no-email.ufptrade.local` (costante unica `src/lib/placeholder-email.ts`).
+> - Review finale **opus** (0 Critical, 2 Important **fixati**): `usernameSchema` allineato al validator
+>   del plugin (max 30, **no trattino** — altrimenti account creabile ma **non autenticabile**);
+>   **rimossa** la route `setStatus` (non guardata, 0 consumer). Minor fixati: pre-check email→CONFLICT,
+>   indice username ridondante, costante segnaposto condivisa, UI (pannelli, hint, copy login).
+>   Ledger: `.superpowers/sdd/progress.md`.
+>
+> **➡ RESTA:**
+> 1. **PR unica A+B** dal branch.
+> 2. **Al deploy**: applicare la **migrazione `username`** a Neon **via ops** (aggiunge `users.username`/
+>    `display_username` + unique). Senza, in prod la colonna manca → login username e creazione account rotti.
+> 3. **Minor differiti** (non-bloccanti, dalla review): create non atomico su race stesso-username (orfano
+>    raro); placeholder email non rigenerata al rename username; TOCTOU `assertNotLastActiveAdmin` (solo con
+>    2 admin simultanei opposti); alcuni id inesistenti → 500 invece di NOT_FOUND.
+>
+> ---
+>
+> **▶ STORICO (Fase 1h — «anta a battente», MERGIATA PR #16; template seedato su Neon via ops run #3).**
 > App **LIVE** su Vercel (`catalogo-finder-kappa.vercel.app`); DB Neon popolato; **PR #15
 > (Fase 1g) MERGIATA** (migrazione `supplementary_closures` applicata a Neon via ops run #2).
 > **Fase 1h DONE** sul branch `claude/handoff-review-irs3gv` (ripartito da `origin/main`

@@ -26,6 +26,10 @@ model User {
   emailVerified Boolean @default(false) @map("email_verified")
   image         String?
 
+  // Better Auth username plugin (Fase B — login senza email)
+  username        String? @unique
+  displayUsername String? @map("display_username")
+
   // Domain fields
   firstName String @map("first_name")
   lastName  String @map("last_name")
