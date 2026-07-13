@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { MoreVertical } from "lucide-react";
 import { api } from "@/trpc/react";
 import type { UserRole } from "@/lib/authz";
 import { isPlaceholderEmail } from "@/lib/placeholder-email";
@@ -69,6 +70,7 @@ function UserRow({ user, isSelf, onChanged, onEdit }:
   const setActive = api.user.setActive.useMutation({ onSuccess: onChanged });
   const setRole = api.user.setRole.useMutation({ onSuccess: onChanged });
   const del = api.user.delete.useMutation({ onSuccess: onChanged });
+  const reset = api.user.resetPassword.useMutation();
   const active = user.status === "ACTIVE";
   return (
     <tr className="border-b border-line last:border-0">
@@ -84,46 +86,98 @@ function UserRow({ user, isSelf, onChanged, onEdit }:
       </td>
       <td className="px-3 py-2 text-right">
         {!isSelf && (
-          <div className="flex justify-end gap-2">
-            <button type="button" onClick={() => onEdit(user)}
-              className="rounded border border-line-strong px-2 py-1 text-xs hover:border-brand">
-              Modifica
-            </button>
-            <button type="button" onClick={() => setActive.mutate({ id: user.id, active: !active })}
-              className="rounded border border-line-strong px-2 py-1 text-xs hover:border-brand">
-              {active ? "Disattiva" : "Attiva"}
-            </button>
-            <button type="button" onClick={() => setRole.mutate({ id: user.id, role: user.role === "ADMIN" ? "AGENT" : "ADMIN" })}
-              className="rounded border border-line-strong px-2 py-1 text-xs hover:border-brand">
-              {user.role === "ADMIN" ? "→ Agente" : "→ Admin"}
-            </button>
-            <ResetPasswordButton id={user.id} />
-            <button type="button"
-              onClick={() => { if (confirm(`Eliminare ${user.firstName} ${user.lastName}?`)) del.mutate({ id: user.id }); }}
-              className="rounded border border-danger/40 px-2 py-1 text-xs text-danger hover:bg-danger/5">
-              Elimina
-            </button>
-          </div>
+          <RowActions
+            active={active}
+            isAdmin={user.role === "ADMIN"}
+            onEdit={() => onEdit(user)}
+            onToggleActive={() => setActive.mutate({ id: user.id, active: !active })}
+            onToggleRole={() => setRole.mutate({ id: user.id, role: user.role === "ADMIN" ? "AGENT" : "ADMIN" })}
+            onReset={() => { const p = prompt("Nuova password (min 8 caratteri):"); if (p) reset.mutate({ id: user.id, password: p }); }}
+            onDelete={() => { if (confirm(`Eliminare ${user.firstName} ${user.lastName}?`)) del.mutate({ id: user.id }); }}
+          />
         )}
         {setActive.error && <p role="alert" className="mt-1 text-xs text-danger">{setActive.error.message}</p>}
         {setRole.error && <p role="alert" className="mt-1 text-xs text-danger">{setRole.error.message}</p>}
+        {reset.error && <p role="alert" className="mt-1 text-xs text-danger">{reset.error.message}</p>}
         {del.error && <p role="alert" className="mt-1 text-xs text-danger">{del.error.message}</p>}
       </td>
     </tr>
   );
 }
 
-function ResetPasswordButton({ id }: { id: string }) {
-  const reset = api.user.resetPassword.useMutation();
+/**
+ * Menu azioni per riga (⋯). Compatto: una sola colonna «Azioni» stretta invece di
+ * 5 bottoni — essenziale su mobile. Il menu usa `position: fixed` (posizionato dal
+ * rect del bottone) perché la tabella è in `overflow-x-auto`, che ritaglierebbe un
+ * dropdown `absolute`. Si chiude su scroll/resize/Esc/click-fuori.
+ */
+function RowActions({ active, isAdmin, onEdit, onToggleActive, onToggleRole, onReset, onDelete }: {
+  active: boolean;
+  isAdmin: boolean;
+  onEdit: () => void;
+  onToggleActive: () => void;
+  onToggleRole: () => void;
+  onReset: () => void;
+  onDelete: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+
+  function toggle() {
+    if (open) return setOpen(false);
+    const r = btnRef.current?.getBoundingClientRect();
+    if (r) setPos({ top: r.bottom + 4, right: window.innerWidth - r.right });
+    setOpen(true);
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const item = "block w-full rounded px-3 py-2 text-left text-sm text-ink transition-colors hover:bg-surface-sunken";
+  const run = (fn: () => void) => () => { setOpen(false); fn(); };
+
   return (
-    <>
-      <button type="button"
-        onClick={() => { const p = prompt("Nuova password (min 8 caratteri):"); if (p) reset.mutate({ id, password: p }); }}
-        className="rounded border border-line-strong px-2 py-1 text-xs hover:border-brand">
-        Reset password
+    <div className="inline-block text-left">
+      <button
+        ref={btnRef}
+        type="button"
+        onClick={toggle}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label="Azioni utente"
+        className="grid size-8 place-items-center rounded border border-line-strong text-ink-muted transition-colors hover:border-brand hover:text-brand"
+      >
+        <MoreVertical className="size-4" aria-hidden />
       </button>
-      {reset.error && <p role="alert" className="mt-1 text-xs text-danger">{reset.error.message}</p>}
-    </>
+      {open && pos && (
+        <>
+          <button type="button" aria-hidden tabIndex={-1} onClick={() => setOpen(false)} className="fixed inset-0 z-30 cursor-default" />
+          <div
+            role="menu"
+            style={{ top: pos.top, right: pos.right }}
+            className="fixed z-40 w-48 rounded-md border border-line bg-surface p-1 shadow-pop"
+          >
+            <button type="button" role="menuitem" onClick={run(onEdit)} className={item}>Modifica</button>
+            <button type="button" role="menuitem" onClick={run(onToggleActive)} className={item}>{active ? "Disattiva" : "Attiva"}</button>
+            <button type="button" role="menuitem" onClick={run(onToggleRole)} className={item}>{isAdmin ? "Rendi Agente" : "Rendi Admin"}</button>
+            <button type="button" role="menuitem" onClick={run(onReset)} className={item}>Reset password</button>
+            <button type="button" role="menuitem" onClick={run(onDelete)} className={`${item} text-danger hover:bg-danger/5`}>Elimina</button>
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 

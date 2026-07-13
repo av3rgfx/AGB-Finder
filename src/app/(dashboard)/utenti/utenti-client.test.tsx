@@ -110,7 +110,8 @@ describe("UtentiClient", () => {
     render(<UtentiClient currentUserId="u1" />);
     const rows = screen.getAllByRole("row");
     const marioRow = rows.find((r) => within(r).queryByText("mario@x.it"));
-    fireEvent.click(within(marioRow!).getByRole("button", { name: /modifica/i }));
+    fireEvent.click(within(marioRow!).getByRole("button", { name: /azioni/i }));
+    fireEvent.click(within(marioRow!).getByRole("menuitem", { name: /modifica/i }));
     fireEvent.change(screen.getByLabelText(/^nome/i), { target: { value: "Mario2" } });
     fireEvent.click(screen.getByRole("button", { name: /salva/i }));
     expect(updateMut).toHaveBeenCalledWith(
@@ -121,7 +122,8 @@ describe("UtentiClient", () => {
     render(<UtentiClient currentUserId="u1" />);
     const rows = screen.getAllByRole("row");
     const xuserRow = rows.find((r) => within(r).queryByText("@xuser · nessuna email"));
-    fireEvent.click(within(xuserRow!).getByRole("button", { name: /modifica/i }));
+    fireEvent.click(within(xuserRow!).getByRole("button", { name: /azioni/i }));
+    fireEvent.click(within(xuserRow!).getByRole("menuitem", { name: /modifica/i }));
     expect((screen.getByLabelText(/^email/i) as HTMLInputElement).value).toBe("");
     expect((screen.getByLabelText(/^username/i) as HTMLInputElement).value).toBe("xuser");
     fireEvent.click(screen.getByRole("button", { name: /salva/i }));
@@ -132,7 +134,8 @@ describe("UtentiClient", () => {
     render(<UtentiClient currentUserId="u1" />);
     const rows = screen.getAllByRole("row");
     const marioRow = rows.find((r) => within(r).queryByText("mario@x.it"));
-    fireEvent.click(within(marioRow!).getByRole("button", { name: /modifica/i }));
+    fireEvent.click(within(marioRow!).getByRole("button", { name: /azioni/i }));
+    fireEvent.click(within(marioRow!).getByRole("menuitem", { name: /modifica/i }));
     expect(screen.getByRole("heading", { name: /modifica utente/i })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /nuovo utente/i }));
     expect(screen.queryByRole("heading", { name: /modifica utente/i })).toBeNull();
@@ -142,7 +145,8 @@ describe("UtentiClient", () => {
     render(<UtentiClient currentUserId="u1" />);
     const rows = screen.getAllByRole("row");
     const marioRow = rows.find((r) => within(r).queryByText("mario@x.it"));
-    fireEvent.click(within(marioRow!).getByRole("button", { name: /modifica/i }));
+    fireEvent.click(within(marioRow!).getByRole("button", { name: /azioni/i }));
+    fireEvent.click(within(marioRow!).getByRole("menuitem", { name: /modifica/i }));
     fireEvent.change(screen.getByLabelText(/^nome/i), { target: { value: "" } });
     fireEvent.click(screen.getByRole("button", { name: /salva/i }));
     expect(updateMut).not.toHaveBeenCalled();

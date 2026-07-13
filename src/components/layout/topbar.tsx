@@ -1,18 +1,42 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
-import { Search, Bell, ChevronDown, LogOut } from "lucide-react";
+import { Search, Bell, ChevronDown, LogOut, Menu, X } from "lucide-react";
+import { Sidebar } from "./sidebar";
 
 export interface TopBarProps {
   name: string;
   initials: string;
+  role: string;
 }
 
-export function TopBar({ name, initials }: TopBarProps) {
+export function TopBar({ name, initials, role }: TopBarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
+
+  // Chiudi il drawer al cambio di rotta (i link della Sidebar navigano).
+  useEffect(() => {
+    setNavOpen(false);
+  }, [pathname]);
+
+  // Esc chiude il drawer; blocca lo scroll del body mentre è aperto.
+  useEffect(() => {
+    if (!navOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setNavOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [navOpen]);
 
   async function handleSignOut() {
     await authClient.signOut();
@@ -21,8 +45,18 @@ export function TopBar({ name, initials }: TopBarProps) {
   }
 
   return (
-    <header className="flex h-16 items-center justify-between gap-4 border-b border-line bg-surface px-4 sm:px-6">
-      <div className="relative w-full max-w-md">
+    <header className="flex h-16 items-center gap-2 border-b border-line bg-surface px-4 sm:gap-4 sm:px-6">
+      <button
+        type="button"
+        onClick={() => setNavOpen(true)}
+        aria-label="Apri menu di navigazione"
+        aria-expanded={navOpen}
+        className="grid size-10 shrink-0 place-items-center rounded text-ink-muted transition-colors hover:bg-surface-sunken md:hidden"
+      >
+        <Menu className="size-5" />
+      </button>
+
+      <div className="relative min-w-0 flex-1 sm:max-w-md">
         <Search
           className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-subtle"
           aria-hidden
@@ -35,11 +69,11 @@ export function TopBar({ name, initials }: TopBarProps) {
         />
       </div>
 
-      <div className="flex items-center gap-1 sm:gap-2">
+      <div className="flex shrink-0 items-center gap-1 sm:gap-2">
         <button
           type="button"
           aria-label="Notifiche"
-          className="grid size-10 place-items-center rounded text-ink-muted transition-colors hover:bg-surface-sunken"
+          className="hidden size-10 place-items-center rounded text-ink-muted transition-colors hover:bg-surface-sunken sm:grid"
         >
           <Bell className="size-5" />
         </button>
@@ -85,6 +119,29 @@ export function TopBar({ name, initials }: TopBarProps) {
           )}
         </div>
       </div>
+
+      {/* Drawer di navigazione mobile (< md). La sidebar desktop resta in layout.tsx. */}
+      {navOpen && (
+        <div className="fixed inset-0 z-40 md:hidden" role="dialog" aria-modal="true" aria-label="Navigazione">
+          <button
+            type="button"
+            aria-label="Chiudi menu"
+            onClick={() => setNavOpen(false)}
+            className="absolute inset-0 animate-fade-in bg-ink/40"
+          />
+          <div className="absolute inset-y-0 left-0 flex w-[264px] max-w-[82%] animate-drawer-in flex-col shadow-modal">
+            <button
+              type="button"
+              onClick={() => setNavOpen(false)}
+              aria-label="Chiudi menu"
+              className="absolute right-2 top-4 z-10 grid size-9 place-items-center rounded text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+            >
+              <X className="size-5" />
+            </button>
+            <Sidebar role={role} />
+          </div>
+        </div>
+      )}
     </header>
   );
 }
