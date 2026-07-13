@@ -4,11 +4,13 @@ import { createTRPCRouter, createCallerFactory, type TRPCContext } from "@/serve
 // `user.ts` calls `auth.api.*` (Better Auth admin plugin). Mocked so setRole/setActive
 // tests never construct the real Better Auth instance or touch a real database —
 // mirrors the pattern in `settings.test.ts` (vi.hoisted + vi.mock factory).
-const { createUserApi, setRoleApi, banApi, unbanApi } = vi.hoisted(() => ({
+const { createUserApi, setRoleApi, banApi, unbanApi, setPasswordApi, removeUserApi } = vi.hoisted(() => ({
   createUserApi: vi.fn(),
   setRoleApi: vi.fn(),
   banApi: vi.fn(),
   unbanApi: vi.fn(),
+  setPasswordApi: vi.fn(),
+  removeUserApi: vi.fn(),
 }));
 vi.mock("@/server/auth/config", () => ({
   auth: {
@@ -17,6 +19,8 @@ vi.mock("@/server/auth/config", () => ({
       setRole: setRoleApi,
       banUser: banApi,
       unbanUser: unbanApi,
+      setUserPassword: setPasswordApi,
+      removeUser: removeUserApi,
     },
   },
 }));
@@ -30,7 +34,13 @@ const appRouter = createTRPCRouter({ user: userRouter });
 const userFindUnique = vi.fn();
 const userCount = vi.fn();
 const userUpdate = vi.fn();
-const dbStub = { user: { findUnique: userFindUnique, count: userCount, update: userUpdate } };
+const kitRequestCount = vi.fn();
+const conversationCount = vi.fn();
+const dbStub = {
+  user: { findUnique: userFindUnique, count: userCount, update: userUpdate },
+  kitRequest: { count: kitRequestCount },
+  conversation: { count: conversationCount },
+};
 
 const makeCtx = (session: unknown, db: unknown = {}): TRPCContext => ({
   db: db as TRPCContext["db"],
@@ -155,5 +165,90 @@ describe("user.setActive", () => {
       caller.user.setActive({ id: admin.user.id, active: false }),
     ).rejects.toThrow(/tuo stesso account/i);
     expect(banApi).not.toHaveBeenCalled();
+  });
+});
+
+describe("user.resetPassword", () => {
+  beforeEach(() => {
+    setPasswordApi.mockReset().mockResolvedValue(undefined);
+  });
+
+  it("imposta una nuova password (min 8) via admin API", async () => {
+    const caller = createCallerFactory(appRouter)(makeCtx(admin, dbStub));
+    const res = await caller.user.resetPassword({ id: "u2", password: "nuovapass1" });
+    expect(setPasswordApi).toHaveBeenCalledWith(
+      expect.objectContaining({ body: { userId: "u2", newPassword: "nuovapass1" } }),
+    );
+    expect(res).toEqual({ id: "u2" });
+  });
+
+  it("rifiuta password < 8", async () => {
+    const caller = createCallerFactory(appRouter)(makeCtx(admin, dbStub));
+    await expect(
+      caller.user.resetPassword({ id: "u2", password: "corta" }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(setPasswordApi).not.toHaveBeenCalled();
+  });
+});
+
+describe("user.update", () => {
+  beforeEach(() => {
+    userUpdate.mockReset().mockImplementation(
+      ({ data }: { data: Record<string, unknown> }) => Promise.resolve({ id: "u2", ...data }),
+    );
+  });
+
+  it("aggiorna nome/cognome e ricompone name", async () => {
+    const caller = createCallerFactory(appRouter)(makeCtx(admin, dbStub));
+    const res = await caller.user.update({ id: "u2", firstName: "Mario", lastName: "Rossi" });
+    expect(res.firstName).toBe("Mario");
+    expect(userUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "u2" },
+        data: { firstName: "Mario", lastName: "Rossi", name: "Mario Rossi" },
+      }),
+    );
+  });
+});
+
+describe("user.delete", () => {
+  beforeEach(() => {
+    removeUserApi.mockReset().mockResolvedValue(undefined);
+    userFindUnique.mockReset();
+    userCount.mockReset();
+    kitRequestCount.mockReset();
+    conversationCount.mockReset();
+  });
+
+  it("elimina se 0 record collegati", async () => {
+    userFindUnique.mockResolvedValueOnce({ role: "AGENT" }); // non-admin: niente guardia ultimo-admin
+    kitRequestCount.mockResolvedValueOnce(0);
+    conversationCount.mockResolvedValueOnce(0);
+    const caller = createCallerFactory(appRouter)(makeCtx(admin, dbStub));
+    const res = await caller.user.delete({ id: "u2" });
+    expect(removeUserApi).toHaveBeenCalledWith(expect.objectContaining({ body: { userId: "u2" } }));
+    expect(res).toEqual({ id: "u2" });
+  });
+
+  it("BLOCCA (CONFLICT) se ha record collegati", async () => {
+    userFindUnique.mockResolvedValueOnce({ role: "AGENT" });
+    kitRequestCount.mockResolvedValueOnce(2);
+    conversationCount.mockResolvedValueOnce(0);
+    const caller = createCallerFactory(appRouter)(makeCtx(admin, dbStub));
+    await expect(caller.user.delete({ id: "u3" })).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: expect.stringMatching(/record collegati|disattiv/i),
+    });
+    expect(removeUserApi).not.toHaveBeenCalled();
+  });
+
+  it("BLOCCA sé stessi e l'ultimo admin attivo", async () => {
+    const caller = createCallerFactory(appRouter)(makeCtx(admin, dbStub));
+    await expect(caller.user.delete({ id: admin.user.id })).rejects.toThrow(/tuo stesso account/i);
+
+    userFindUnique.mockResolvedValueOnce({ role: "ADMIN" });
+    userCount.mockResolvedValueOnce(0);
+    await expect(caller.user.delete({ id: "uAdminUnico" })).rejects.toThrow(/almeno un amministratore/i);
+    expect(removeUserApi).not.toHaveBeenCalled();
   });
 });

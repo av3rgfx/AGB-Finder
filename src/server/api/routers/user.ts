@@ -107,4 +107,46 @@ export const userRouter = createTRPCRouter({
       await ctx.db.user.update({ where: { id: input.id }, data: { status } });
       return { id: input.id, status };
     }),
+
+  resetPassword: adminProcedure
+    .input(z.object({ id: z.string(), password: z.string().min(8, "La password deve avere almeno 8 caratteri") }))
+    .mutation(async ({ ctx, input }) => {
+      await auth.api.setUserPassword({
+        headers: ctx.headers,
+        body: { userId: input.id, newPassword: input.password },
+      });
+      return { id: input.id };
+    }),
+
+  update: adminProcedure
+    .input(z.object({ id: z.string(), firstName: z.string().min(1), lastName: z.string().min(1) }))
+    .mutation(({ ctx, input }) =>
+      ctx.db.user.update({
+        where: { id: input.id },
+        data: {
+          firstName: input.firstName,
+          lastName: input.lastName,
+          name: `${input.firstName} ${input.lastName}`,
+        },
+        select: { id: true, firstName: true, lastName: true },
+      }),
+    ),
+
+  delete: adminProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      assertNotSelf(ctx, input.id);
+      await assertNotLastActiveAdmin(ctx, input.id);
+      const [kits, convs] = await Promise.all([
+        ctx.db.kitRequest.count({ where: { agentId: input.id } }),
+        ctx.db.conversation.count({ where: { agentId: input.id } }),
+      ]);
+      if (kits > 0 || convs > 0)
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Utente con record collegati (richieste/conversazioni): disattivalo invece di eliminarlo.",
+        });
+      await auth.api.removeUser({ headers: ctx.headers, body: { userId: input.id } });
+      return { id: input.id };
+    }),
 });
