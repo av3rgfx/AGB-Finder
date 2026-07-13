@@ -74,8 +74,10 @@ account/hashing/sessioni). Nomi API da confermare in planning (roughly: `setRole
 - **`update`** (nuovo) — `{ id, firstName?, lastName? }` (in Fase A solo nome/cognome, via
   `ctx.db.user.update` + `name` ricomposto). Email/username: Fase B (richiedono controllo unicità
   e coerenza col record account Better Auth — da verificare in planning).
-- **`delete`** (nuovo) — `{ id }` → **precondizione**: 0 `kitRequests` e 0 `conversations`
-  (query di conteggio); se >0 → `TRPCError` (code `CONFLICT`) «utente con record collegati:
+- **`delete`** (nuovo) — `{ id }` → **precondizione**: 0 `kitRequests`, 0 `conversations` **e
+  0 `settings`** (query di conteggio). *Nota (corretta in impl. A2): `Settings.updatedBy` è una
+  FK `ON DELETE RESTRICT` non-null, quindi va conteggiata anch'essa — la stesura iniziale la
+  ometteva.* Se un conteggio >0 → `TRPCError` (code `CONFLICT`) «utente con record collegati:
   disattivalo invece di eliminarlo». Altrimenti `auth.api.removeUser`. **Guardia**:
   `id != self` e non l'ultimo ADMIN.
 
