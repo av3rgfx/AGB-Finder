@@ -34,13 +34,14 @@ const appRouter = createTRPCRouter({ user: userRouter });
 // Minimal `db.user` stub for the anti-lockout helper (findUnique/count) and the
 // setActive status update. Reset before each test in the describe blocks below.
 const userFindUnique = vi.fn();
+const userFindFirst = vi.fn();
 const userCount = vi.fn();
 const userUpdate = vi.fn();
 const kitRequestCount = vi.fn();
 const conversationCount = vi.fn();
 const settingsCount = vi.fn();
 const dbStub = {
-  user: { findUnique: userFindUnique, count: userCount, update: userUpdate },
+  user: { findUnique: userFindUnique, findFirst: userFindFirst, count: userCount, update: userUpdate },
   kitRequest: { count: kitRequestCount },
   conversation: { count: conversationCount },
   settings: { count: settingsCount },
@@ -80,6 +81,67 @@ describe("user.create authorization", () => {
     await expect(caller.user.create({ ...input, password: "short" })).rejects.toMatchObject({
       code: "BAD_REQUEST",
     });
+  });
+});
+
+describe("user.create (username / senza email)", () => {
+  beforeEach(() => {
+    createUserApi.mockReset();
+    userFindUnique.mockReset();
+    userUpdate.mockReset();
+  });
+
+  it("con username e senza email → sintetizza email-segnaposto e passa username", async () => {
+    userFindUnique.mockResolvedValueOnce(null); // nessun clash sullo username
+    createUserApi.mockResolvedValueOnce({
+      user: { id: "newUser1", email: "mrossi@no-email.ufptrade.local" },
+    });
+    let updateArgs: { where: unknown; data: Record<string, unknown> } | undefined;
+    userUpdate.mockImplementationOnce((args: { where: unknown; data: Record<string, unknown> }) => {
+      updateArgs = args;
+      return Promise.resolve({ id: "newUser1", ...args.data });
+    });
+    const caller = createCallerFactory(appRouter)(makeCtx(admin, dbStub));
+
+    await caller.user.create({
+      username: "mrossi",
+      firstName: "Mario",
+      lastName: "Rossi",
+      password: "password1",
+      role: "AGENT",
+    });
+
+    expect(createUserApi).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({ email: "mrossi@no-email.ufptrade.local" }),
+      }),
+    );
+    expect(updateArgs?.data).toMatchObject({ username: "mrossi", displayUsername: "mrossi" });
+  });
+
+  it("rifiuta se manca sia email sia username", async () => {
+    const caller = createCallerFactory(appRouter)(makeCtx(admin, dbStub));
+    // Messaggio verbatim del refine (vedi user.ts): "Fornisci almeno un'email o uno username."
+    // — nota "un'email o UNO username", per cui un regex tipo /email o username/ non la intercetta.
+    await expect(
+      caller.user.create({ firstName: "A", lastName: "B", password: "password1", role: "AGENT" }),
+    ).rejects.toThrow("Fornisci almeno un'email o uno username");
+    expect(createUserApi).not.toHaveBeenCalled();
+  });
+
+  it("rifiuta username già in uso (CONFLICT, senza chiamare Better Auth)", async () => {
+    userFindUnique.mockResolvedValueOnce({ id: "existing1" }); // clash sullo username
+    const caller = createCallerFactory(appRouter)(makeCtx(admin, dbStub));
+    await expect(
+      caller.user.create({
+        username: "mrossi",
+        firstName: "Mario",
+        lastName: "Rossi",
+        password: "password1",
+        role: "AGENT",
+      }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(createUserApi).not.toHaveBeenCalled();
   });
 });
 
@@ -197,6 +259,7 @@ describe("user.resetPassword", () => {
 
 describe("user.update", () => {
   beforeEach(() => {
+    userFindFirst.mockReset();
     userUpdate
       .mockReset()
       .mockImplementation(({ data }: { data: Record<string, unknown> }) =>
@@ -204,7 +267,7 @@ describe("user.update", () => {
       );
   });
 
-  it("aggiorna nome/cognome e ricompone name", async () => {
+  it("aggiorna nome/cognome e ricompone name (nessun controllo unicità se email/username assenti)", async () => {
     const caller = createCallerFactory(appRouter)(makeCtx(admin, dbStub));
     const res = await caller.user.update({ id: "u2", firstName: "Mario", lastName: "Rossi" });
     expect(res.firstName).toBe("Mario");
@@ -214,6 +277,53 @@ describe("user.update", () => {
         data: { firstName: "Mario", lastName: "Rossi", name: "Mario Rossi" },
       }),
     );
+    expect(userFindFirst).not.toHaveBeenCalled();
+  });
+
+  it("cambia email e username quando non ci sono conflitti", async () => {
+    userFindFirst.mockResolvedValue(null); // nessun conflitto né su email né su username
+    const caller = createCallerFactory(appRouter)(makeCtx(admin, dbStub));
+    const res = await caller.user.update({
+      id: "u2",
+      firstName: "Mario",
+      lastName: "Rossi",
+      email: "mario@rossi.it",
+      username: "MRossi",
+    });
+    expect(userFindFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { email: "mario@rossi.it", id: { not: "u2" } } }),
+    );
+    expect(userFindFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { username: "mrossi", id: { not: "u2" } } }),
+    );
+    expect(userUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          email: "mario@rossi.it",
+          username: "mrossi",
+          displayUsername: "MRossi",
+        }),
+      }),
+    );
+    expect(res.email).toBe("mario@rossi.it");
+  });
+
+  it("BLOCCA (CONFLICT) il cambio email già in uso da un altro utente", async () => {
+    userFindFirst.mockResolvedValueOnce({ id: "other" }); // clash sull'email
+    const caller = createCallerFactory(appRouter)(makeCtx(admin, dbStub));
+    await expect(
+      caller.user.update({ id: "u2", firstName: "Mario", lastName: "Rossi", email: "mario@rossi.it" }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(userUpdate).not.toHaveBeenCalled();
+  });
+
+  it("BLOCCA (CONFLICT) il cambio username già in uso da un altro utente", async () => {
+    userFindFirst.mockResolvedValueOnce({ id: "other" }); // clash sullo username
+    const caller = createCallerFactory(appRouter)(makeCtx(admin, dbStub));
+    await expect(
+      caller.user.update({ id: "u2", firstName: "Mario", lastName: "Rossi", username: "mrossi" }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(userUpdate).not.toHaveBeenCalled();
   });
 });
 

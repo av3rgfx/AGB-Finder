@@ -6,12 +6,15 @@ import { auth } from "@/server/auth/config";
 const userSelect = {
   id: true,
   email: true,
+  username: true,
   firstName: true,
   lastName: true,
   role: true,
   status: true,
   createdAt: true,
 } as const;
+
+const PLACEHOLDER_DOMAIN = "no-email.ufptrade.local";
 
 type Ctx = {
   db: typeof import("@/server/db").db;
@@ -52,25 +55,45 @@ async function assertNotLastActiveAdmin(ctx: Ctx, targetId: string) {
 export const userRouter = createTRPCRouter({
   create: adminProcedure
     .input(
-      z.object({
-        email: z.string().email(),
-        firstName: z.string().min(1),
-        lastName: z.string().min(1),
-        password: z.string().min(8, "La password deve avere almeno 8 caratteri"),
-        role: z.enum(["AGENT", "ADMIN"]).default("AGENT"),
-      }),
+      z
+        .object({
+          email: z.string().email().optional(),
+          username: z
+            .string()
+            .min(3)
+            .max(32)
+            .regex(/^[a-z0-9._-]+$/i, "Username: lettere, numeri, . _ -")
+            .optional(),
+          firstName: z.string().min(1),
+          lastName: z.string().min(1),
+          password: z.string().min(8, "La password deve avere almeno 8 caratteri"),
+          role: z.enum(["AGENT", "ADMIN"]).default("AGENT"),
+        })
+        .refine((v) => v.email || v.username, { message: "Fornisci almeno un'email o uno username." }),
     )
     .mutation(async ({ ctx, input }) => {
+      const username = input.username?.toLowerCase();
+      if (username) {
+        const clash = await ctx.db.user.findUnique({ where: { username }, select: { id: true } });
+        if (clash) throw new TRPCError({ code: "CONFLICT", message: "Username già in uso." });
+      }
+      const email = input.email ?? `${username}@${PLACEHOLDER_DOMAIN}`;
       const created = await auth.api.createUser({
         headers: ctx.headers,
         body: {
-          email: input.email,
+          email,
           password: input.password,
           name: `${input.firstName} ${input.lastName}`,
           role: input.role,
           data: { firstName: input.firstName, lastName: input.lastName },
         },
       });
+      if (username) {
+        await ctx.db.user.update({
+          where: { id: created.user.id },
+          data: { username, displayUsername: input.username },
+        });
+      }
       return created.user;
     }),
 
@@ -131,18 +154,48 @@ export const userRouter = createTRPCRouter({
     }),
 
   update: adminProcedure
-    .input(z.object({ id: z.string(), firstName: z.string().min(1), lastName: z.string().min(1) }))
-    .mutation(({ ctx, input }) =>
-      ctx.db.user.update({
+    .input(
+      z.object({
+        id: z.string(),
+        firstName: z.string().min(1),
+        lastName: z.string().min(1),
+        email: z.string().email().optional(),
+        username: z
+          .string()
+          .min(3)
+          .max(32)
+          .regex(/^[a-z0-9._-]+$/i, "Username: lettere, numeri, . _ -")
+          .optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const username = input.username?.toLowerCase();
+      if (input.email) {
+        const clash = await ctx.db.user.findFirst({
+          where: { email: input.email, id: { not: input.id } },
+          select: { id: true },
+        });
+        if (clash) throw new TRPCError({ code: "CONFLICT", message: "Email già in uso." });
+      }
+      if (username) {
+        const clash = await ctx.db.user.findFirst({
+          where: { username, id: { not: input.id } },
+          select: { id: true },
+        });
+        if (clash) throw new TRPCError({ code: "CONFLICT", message: "Username già in uso." });
+      }
+      return ctx.db.user.update({
         where: { id: input.id },
         data: {
           firstName: input.firstName,
           lastName: input.lastName,
           name: `${input.firstName} ${input.lastName}`,
+          ...(input.email ? { email: input.email } : {}),
+          ...(username ? { username, displayUsername: input.username } : {}),
         },
-        select: { id: true, firstName: true, lastName: true },
-      }),
-    ),
+        select: { id: true, firstName: true, lastName: true, email: true, username: true },
+      });
+    }),
 
   delete: adminProcedure.input(z.object({ id: z.string() })).mutation(async ({ ctx, input }) => {
     assertNotSelf(ctx, input.id);
