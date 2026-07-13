@@ -3,7 +3,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
-import { Mail, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { User, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -52,7 +52,7 @@ export function LoginForm() {
     setLoading(false);
 
     if (error) {
-      setError("Email o password errate.");
+      setError("Credenziali non valide.");
       return;
     }
 
@@ -92,7 +92,7 @@ export function LoginForm() {
           onChange={(e) => setEmail(e.target.value)}
           invalid={Boolean(fieldError.email)}
           aria-describedby={fieldError.email ? "email-error" : undefined}
-          leadingIcon={<Mail className="size-5" aria-hidden />}
+          leadingIcon={<User className="size-5" aria-hidden />}
           disabled={loading}
         />
         {fieldError.email && (

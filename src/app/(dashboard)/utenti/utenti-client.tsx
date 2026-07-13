@@ -116,7 +116,10 @@ function CreateUserForm({ onClose, onCreated }: { onClose: () => void; onCreated
     setForm((f) => ({ ...f, [k]: e.target.value }));
 
   function handleCreate() {
-    if (!form.email && !form.username) {
+    const email = form.email.trim();
+    const username = form.username.trim();
+    if (!email && !username) {
+      create.reset();
       setFormError("Devi specificare almeno un'email o uno username.");
       return;
     }
@@ -126,8 +129,8 @@ function CreateUserForm({ onClose, onCreated }: { onClose: () => void; onCreated
       lastName: form.lastName,
       password: form.password,
       role: form.role,
-      ...(form.email ? { email: form.email } : {}),
-      ...(form.username ? { username: form.username } : {}),
+      ...(email ? { email } : {}),
+      ...(username ? { username } : {}),
     };
     create.mutate(payload);
   }

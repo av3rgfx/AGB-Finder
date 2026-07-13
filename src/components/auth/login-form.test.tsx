@@ -41,6 +41,18 @@ describe("LoginForm", () => {
     expect(screen.getByText("Inserisci email o username.")).toBeTruthy();
   });
 
+  it("blocks submit for a whitespace-only identifier", async () => {
+    const user = userEvent.setup();
+    render(<LoginForm />);
+    await user.type(screen.getByLabelText(/email o username/i), "   ");
+    await user.type(screen.getByLabelText("Password"), "password1");
+    await user.click(screen.getByRole("button", { name: /^accedi$/i }));
+
+    expect(signInEmail).not.toHaveBeenCalled();
+    expect(signInUsername).not.toHaveBeenCalled();
+    expect(screen.getByText("Inserisci email o username.")).toBeTruthy();
+  });
+
   it("calls authClient.signIn.username when the identifier is not an email", async () => {
     signInUsername.mockResolvedValue({ data: {}, error: null });
     const user = userEvent.setup();
@@ -81,6 +93,6 @@ describe("LoginForm", () => {
     await user.type(screen.getByLabelText("Password"), "wrongpass");
     await user.click(screen.getByRole("button", { name: /^accedi$/i }));
 
-    expect(await screen.findByText("Email o password errate.")).toBeTruthy();
+    expect(await screen.findByText("Credenziali non valide.")).toBeTruthy();
   });
 });

@@ -7,12 +7,12 @@ const listData = [
   { id: "u2", email: "mario@x.it", firstName: "Mario", lastName: "Rossi", role: "AGENT", status: "ACTIVE", createdAt: new Date() },
   { id: "u3", email: "xuser@no-email.ufptrade.local", username: "xuser", firstName: "Sara", lastName: "Bianchi", role: "AGENT", status: "ACTIVE", createdAt: new Date() },
 ];
-const createMut = vi.fn(); const setActiveMut = vi.fn();
+const createMut = vi.fn(); const createReset = vi.fn(); const setActiveMut = vi.fn();
 vi.mock("@/trpc/react", () => ({
   api: {
     user: {
       list: { useQuery: () => ({ data: listData, isPending: false, isError: false, refetch: vi.fn() }) },
-      create: { useMutation: () => ({ mutate: createMut, isPending: false, error: null }) },
+      create: { useMutation: () => ({ mutate: createMut, reset: createReset, isPending: false, error: null }) },
       setActive: { useMutation: () => ({ mutate: setActiveMut, isPending: false }) },
       setRole: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       resetPassword: { useMutation: () => ({ mutate: vi.fn(), isPending: false, error: null }) },
@@ -75,6 +75,28 @@ describe("UtentiClient", () => {
     fireEvent.click(screen.getByRole("button", { name: /crea/i }));
     expect(createMut).not.toHaveBeenCalled();
     expect(screen.getByRole("alert")).toBeTruthy();
+    expect(createReset).toHaveBeenCalled(); // azzera un eventuale errore backend residuo
+  });
+  it("blocca la creazione se l'identificativo è solo spazi", () => {
+    render(<UtentiClient currentUserId="u1" />);
+    fireEvent.click(screen.getByRole("button", { name: /nuovo utente/i }));
+    fireEvent.change(screen.getByLabelText(/^username/i), { target: { value: "   " } });
+    fireEvent.change(screen.getByLabelText(/^nome/i), { target: { value: "Nuo" } });
+    fireEvent.change(screen.getByLabelText(/cognome/i), { target: { value: "Vo" } });
+    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: "password1" } });
+    fireEvent.click(screen.getByRole("button", { name: /crea/i }));
+    expect(createMut).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toBeTruthy();
+  });
+  it("rimuove gli spazi da email/username prima di creare", () => {
+    render(<UtentiClient currentUserId="u1" />);
+    fireEvent.click(screen.getByRole("button", { name: /nuovo utente/i }));
+    fireEvent.change(screen.getByLabelText(/^username/i), { target: { value: "  mrossi  " } });
+    fireEvent.change(screen.getByLabelText(/^nome/i), { target: { value: "Nuo" } });
+    fireEvent.change(screen.getByLabelText(/cognome/i), { target: { value: "Vo" } });
+    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: "password1" } });
+    fireEvent.click(screen.getByRole("button", { name: /crea/i }));
+    expect(createMut).toHaveBeenCalledWith(expect.objectContaining({ username: "mrossi" }));
   });
   it("non mostra azioni distruttive sul proprio account", () => {
     render(<UtentiClient currentUserId="u1" />);
