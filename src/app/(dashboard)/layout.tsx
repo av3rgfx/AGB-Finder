@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/server/auth/config";
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/topbar";
+import { ListinoViewerProvider } from "@/components/listino/listino-viewer-provider";
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -21,7 +22,9 @@ export default async function DashboardLayout({ children }: { children: ReactNod
       </div>
       <div className="flex min-h-screen flex-col">
         <TopBar name={name} initials={initials} role={session.user.role ?? "AGENT"} />
-        <main className="flex-1 bg-surface-page p-4 sm:p-6">{children}</main>
+        <main className="flex-1 bg-surface-page p-4 sm:p-6">
+          <ListinoViewerProvider>{children}</ListinoViewerProvider>
+        </main>
       </div>
     </div>
   );

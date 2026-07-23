@@ -1,4 +1,5 @@
 import { CopyCodeButton } from "@/components/product/copy-code-button";
+import { ListinoButton } from "@/components/listino/listino-button";
 import { formatPrice } from "@/lib/format";
 
 export interface DistintaComponent {
@@ -10,6 +11,7 @@ export interface DistintaComponent {
   unitPrice: number;
   totalPrice: number;
   ruleDescription: string | null;
+  listinoPage: number | null;
 }
 
 export function DistintaTable({
@@ -50,7 +52,10 @@ export function DistintaTable({
               <tr key={component.id} className="border-t border-line hover:bg-surface-sunken/50">
                 <td className="px-4 py-2 text-ink-subtle">{component.position}</td>
                 <td className="px-4 py-2">
-                  <CopyCodeButton code={component.componentCode} />
+                  <span className="inline-flex items-center gap-1.5">
+                    <CopyCodeButton code={component.componentCode} />
+                    <ListinoButton code={component.componentCode} page={component.listinoPage} />
+                  </span>
                 </td>
                 <td className="px-4 py-2 text-ink" title={component.ruleDescription ?? undefined}>
                   {component.componentName}

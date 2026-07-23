@@ -146,7 +146,10 @@ export function DettaglioClient({ id }: { id: string }) {
 
         {hasDistinta ? (
           <DistintaTable
-            components={r.components}
+            components={r.components.map((c) => ({
+              ...c,
+              listinoPage: c.product?.listinoPage ?? null,
+            }))}
             totalPrice={r.totalPrice ?? 0}
             warnings={warnings}
           />
