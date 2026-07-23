@@ -19,10 +19,18 @@ async function main() {
   console.log(`Codici con pagina: ${pages.length}. Aggiornamento…`);
 
   const db = new PrismaClient();
+  // Batch da 500 in transazione (come upsertCatalog): una transazione ogni 500
+  // codici invece di 6.191 round-trip singoli su Neon (da ~30 min a pochi secondi).
+  const BATCH = 500;
   let updated = 0;
-  for (const { agbCode, page } of pages) {
-    const res = await db.product.updateMany({ where: { agbCode }, data: { listinoPage: page } });
-    updated += res.count;
+  for (let i = 0; i < pages.length; i += BATCH) {
+    const batch = pages.slice(i, i + BATCH);
+    const results = await db.$transaction(
+      batch.map(({ agbCode, page }) =>
+        db.product.updateMany({ where: { agbCode }, data: { listinoPage: page } }),
+      ),
+    );
+    updated += results.reduce((sum, r) => sum + r.count, 0);
   }
   await db.$disconnect();
   console.log(`✓ Backfill completato: ${updated}/${pages.length} prodotti aggiornati.`);

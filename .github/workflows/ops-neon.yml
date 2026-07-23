@@ -37,10 +37,8 @@ jobs:
           echo "PDF scaricato: $(wc -c < listino.pdf) byte, $(pdfinfo listino.pdf | awk '/Pages/{print $2}') pagine"
       - name: Migrate deploy (Neon + pgvector/pg_trgm)
         run: pnpm exec prisma migrate deploy
-      - name: Import catalogo (6.191 prodotti)
+      - name: Import catalogo (6.191 prodotti, popola anche listino_page)
         run: pnpm import:agb listino.pdf
-      - name: Backfill pagine listino (Product.listinoPage — feature «visualizza nel listino»)
-        run: pnpm backfill:pages listino.pdf
       - name: Seed admin + template kit
         run: |
           pnpm db:seed
