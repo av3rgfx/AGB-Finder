@@ -9,14 +9,59 @@
 
 | Campo | Valore |
 |-------|--------|
-| **Data** | 2026-07-13 (sessione conclusa) |
+| **Data** | 2026-07-23 (sessione conclusa) |
 | **Fase in corso** | Fase 1 — MVP Gestionale |
-| **Sotto-fase** | 1a ✅ · Better Auth ✅ · 1b ✅ · 1c Chat AI ✅ · **1d Kit engine ✅** · **1e Dashboard ✅ (#9)** · **API key admin ✅ (#10)** · **1f Deploy staging 🔄 QUASI COMPLETA** · **1g Kit multi-materiale ✅ (#15)** · **1h Anta a battente ✅ (#16, template su Neon via ops #3)** · **Gestione utenti admin + login username ✅ (PR #17 MERGIATA; migrazione `username` applicata a Neon via ops #4)** · **UI mobile responsive + regola mobile-first ✅ (PR #18 MERGIATA, live)** |
-| **Branch git** | `claude/handoff-review-irs3gv` (ripartito da `origin/main`). **PR #11–#18 tutte mergiate.** Nessun lavoro in sospeso sul branch. |
-| **Stato deploy** | **LIVE e sano** su `catalogo-finder-kappa.vercel.app` (login 200; rotte protette 307; HTML servito include il fix `grid-cols-1` di #18). Neon allineato (migrazione `username` applicata via **ops run #4**). **Nessuna azione ops pendente.** |
-| **Piani/spec** | `docs/superpowers/{plans,specs}/2026-07-13-gestione-utenti-admin*` (Fase A A1–A4 + Fase B B1–B4 ✅). Regola mobile-first in `CLAUDE.md` §REGOLE INVIOLABILI. |
+| **Sotto-fase** | 1a ✅ · Better Auth ✅ · 1b ✅ · 1c Chat AI ✅ · **1d Kit engine ✅** · **1e Dashboard ✅ (#9)** · **API key admin ✅ (#10)** · **1f Deploy staging 🔄** · **1g Kit multi-materiale ✅ (#15)** · **1h Anta a battente ✅ (#16)** · **Gestione utenti + login username ✅ (#17)** · **UI mobile responsive ✅ (#18)** · **1i Vasistas ✅ (PR #20, aperta)** · **«Visualizza nel listino» ✅ (PR #21, aperta)** |
+| **Branch git** | **2 branch/PR APERTI (non mergiati):** `claude/handoff-md-review-erkjm0` → **PR #20** (Fase 1i vasistas) · `claude/listino-viewer` → **PR #21** (visualizza nel listino). Precedenti #11–#18 mergiati. |
+| **Stato deploy** | **LIVE** su `catalogo-finder-kappa.vercel.app` (invariato). **Azioni ops PENDENTI** al merge delle due PR — vedi «RIPRENDI DA QUI». |
+| **Piani/spec** | `docs/superpowers/{specs,plans}/2026-07-23-fase1i-kit-vasistas-legno*` e `2026-07-23-listino-viewer*`. |
 
-> **▶ RIPRENDI DA QUI — sessione chiusa 2026-07-13: TUTTO mergiato e in produzione, niente in sospeso.**
+> **▶ RIPRENDI DA QUI — sessione chiusa 2026-07-23: due feature costruite, DUE PR APERTE, azioni ops pendenti.**
+>
+> Due lavori indipendenti in questa sessione, ognuno sul suo branch/PR (gate verdi:
+> typecheck·lint·test·build):
+>
+> **A) Fase 1i — nuova tipologia «Vasistas» ARTECH LEGNO** — `claude/handoff-md-review-erkjm0` → **PR #20**.
+> Terza tipologia del kit engine (dopo anta-ribalta e battente). PROVVISORIA (come battente/PVC):
+> distinta derivata dallo schema di montaggio del listino 2026 (pag. 416), anta singola, E.15, solo LEGNO.
+> Verifica listino: delle 5 tipologie mancanti nel wizard **solo la vasistas** è ARTECH (proiettante/tetto = 0
+> riscontri; scorrevoli/Galileo = sistemi separati classi G/M). Modulo `rules-artech-vasistas-legno.ts`
+> (`engineId "artech-vasistas-legno"`): cremonese `A50111.15` per GR + **catena DSS** `A50190.00.00`/incontro
+> `A51400.05.03` (aggiunta perché A50111 richiede il DSS a parte) + forbici `A50545` (1/2 per GR) + supporto/
+> perno + terminale + movimento angolare + limitatore + incontri via colonna NOT.(GR). Guardie: solo LEGNO,
+> superficie ≤ 2 m², campo GR01–GR06. Enum `windowType` += `VASISTAS` (nessuna migrazione, l'enum Postgres ce
+> l'ha già), registry, seed `isActive:true`, wizard (solo-LEGNO, toggle chiusure nascosto). Golden 10 righe/12
+> pezzi (GR03). Scheda `docs/superpowers/kit-assunzioni/vasistas.md` — **10 domande per l'esperto AGB**.
+> **Ops al merge #20:** `db:seed:kit` su Neon per il template vasistas. **NESSUNA migrazione.**
+>
+> **B) «Visualizza nel listino» — viewer PDF in-app** — `claude/listino-viewer` → **PR #21**.
+> Pulsante accanto a ogni codice (distinta kit + dettaglio prodotto) che apre un viewer `react-pdf` alla pagina
+> del listino dove il codice è a prezzo, **evidenziandolo**. Mappatura codice→pagina deterministica: parser
+> `parse-listino.ts` reso page-aware (`pagina fisica = 1 + form-feed cumulati`, **calibrato**: vasistas «pag.
+> 416» stampata = pagina fisica **418** del PDF) → colonna `Product.listinoPage` (**migrazione**
+> `20260723120000_add_listino_page`) → backfill. PDF su **Vercel Blob** dietro auth (route `/api/listino` con
+> Range → PDF.js scarica solo la pagina). `react-pdf` lazy (`next/dynamic`). `listinoPage` esposto in
+> `product.search`/`kit.get`. Componenti in `src/components/listino/` (viewer, provider+hook `useListinoViewer`,
+> pulsante, evidenziatore). Il pulsante è su **distinta kit** e **dettaglio prodotto** (NON sulle card della
+> lista risultati, per evitare `button` dentro `<Link>` — follow-up facile con «stretched link»).
+> Env `LISTINO_PDF_URL` opzionale → feature off (pulsante nascosto + route 503) se assente.
+> **Ops al merge #21 (3 passi, servono per attivarla):**
+> 1. **Vercel Blob**: `qpdf --linearize` del listino → upload su Blob → impostare `LISTINO_PDF_URL` (Vercel
+>    Production + `.env` locale). Serve un token Blob (come Neon/Upstash).
+> 2. **Migrazione** `add_listino_page` su Neon (`prisma migrate deploy` via ops GitHub Actions).
+> 3. **Backfill** pagine su Neon: `pnpm backfill:pages <listino.pdf>` (idempotente, no re-import).
+> Poi **verifica UI in browser** (rendering + evidenziazione, mobile ≤375px): non testabile in jsdom.
+>
+> **➡ PROSSIMI PASSI:** (1) mergiare PR #20 e #21 (decisione utente); (2) eseguire le azioni ops sopra;
+> (3) validare con l'esperto AGB i kit provvisori (vasistas + battente/PVC/ALU); (4) scegliere la fase
+> successiva. Le due PR sono indipendenti (branch separati da `main`), mergiabili in qualsiasi ordine.
+>
+> ⚠️ La vasistas è **più provvisoria del battente** (~10 assunzioni: offset HBB, DSS, quantità movimento/
+> terminale, formula incontri, battuta). Codici reali a listino, ma la *forma* va validata dall'esperto.
+>
+> ---
+>
+> **▶ STORICO (sessione 2026-07-13) — TUTTO mergiato e in produzione, niente in sospeso.**
 > Feature richiesta dall'utente: sezione **solo-admin** per creare/gestire utenti + login anche con
 > **nome utente** (oltre che email), inclusi **account senza email**. Sviluppata **subagent-driven**
 > (SDD) sul branch `claude/handoff-review-irs3gv` (ripartito da `origin/main` dopo il merge #16),
