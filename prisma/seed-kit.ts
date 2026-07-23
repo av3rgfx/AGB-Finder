@@ -60,6 +60,16 @@ const TEMPLATES: KitTemplateSeed[] = [
     priority: 10,
     isActive: true,
   },
+  {
+    name: "ARTECH vasistas legno",
+    description:
+      "Fase 1i — finestra vasistas (apertura a ribalta pura) anta singola legno (PROVVISORIO, da validare con l'agente): cremonese A50111.15 per GR + catena DSS A50190/A51400.05.03 + forbici A50545 + incontri via colonna NOT.(GR), variante base pag.416.",
+    windowType: "VASISTAS",
+    material: "LEGNO",
+    rules: { engine: "artech-vasistas-legno", version: 1 },
+    priority: 10,
+    isActive: true,
+  },
 ];
 
 export async function seedKitTemplates(db: PrismaClient) {

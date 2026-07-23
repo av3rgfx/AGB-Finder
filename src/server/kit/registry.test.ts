@@ -7,6 +7,11 @@ describe("registry moduli regole", () => {
     expect(module_.engineId).toBe("artech-ar-legno");
   });
 
+  it("risolve il modulo vasistas legno", () => {
+    const module_ = resolveRuleModule({ engine: "artech-vasistas-legno", version: 1 });
+    expect(module_.engineId).toBe("artech-vasistas-legno");
+  });
+
   it("engine non registrato → errore esplicito", () => {
     expect(() => resolveRuleModule({ engine: "eclipse-v9", version: 1 })).toThrow(/eclipse-v9/);
   });

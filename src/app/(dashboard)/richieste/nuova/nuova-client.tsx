@@ -33,14 +33,13 @@ const DEFAULT_FORM: KitInput = {
 };
 
 /** Tipologie coperte dal generatore: radio selezionabili. */
-const ACTIVE_WINDOW_TYPES = ["ANTA_RIBALTA", "ANTA_BATTENTE"] as const;
+const ACTIVE_WINDOW_TYPES = ["ANTA_RIBALTA", "ANTA_BATTENTE", "VASISTAS"] as const;
 
 /** Tipologie non ancora coperte: radio disabilitate. */
 const FUTURE_WINDOW_TYPES = [
   "ANTA_PROIETTANTE",
   "SCORREVOLE_ALZANTE",
   "SCORREVOLE_TRASLANTE",
-  "VASISTAS",
   "FINESTRA_TETTO",
 ] as const;
 
@@ -60,6 +59,11 @@ const MATERIAL_AVAILABILITY: Record<KitInput["windowType"], MaterialChoice[]> = 
     { value: "LEGNO", enabled: true, hint: "Provvisorio — in validazione" },
     { value: "PVC", enabled: false, hint: "Non disponibile per l'anta battente" },
     { value: "ALLUMINIO", enabled: false, hint: "Non disponibile per l'anta battente" },
+  ],
+  VASISTAS: [
+    { value: "LEGNO", enabled: true, hint: "Provvisorio — in validazione" },
+    { value: "PVC", enabled: false, hint: "Non disponibile per la vasistas" },
+    { value: "ALLUMINIO", enabled: false, hint: "Non disponibile per la vasistas" },
   ],
 };
 
@@ -482,7 +486,7 @@ function Step3ManoFinitura({ form, update }: StepProps) {
         </select>
       </div>
 
-      {form.windowType !== "ANTA_BATTENTE" && (
+      {form.windowType === "ANTA_RIBALTA" && (
         <div className="flex items-start gap-2">
           <input
             id="supplementaryClosures"
@@ -526,7 +530,7 @@ function Step4Riepilogo({ form }: { form: KitInput }) {
       <SummaryItem label="Mano" value={hingeSideLabel(form.openingSide)} />
       <SummaryItem label="Apertura" value={openingDirLabel(form.openingDir)} />
       <SummaryItem label="Finitura" value={form.finish} />
-      {form.windowType !== "ANTA_BATTENTE" && (
+      {form.windowType === "ANTA_RIBALTA" && (
         <SummaryItem label="Chiusure suppl." value={form.supplementaryClosures ? "Sì" : "No"} />
       )}
     </dl>
