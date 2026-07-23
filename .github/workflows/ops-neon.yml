@@ -39,6 +39,8 @@ jobs:
         run: pnpm exec prisma migrate deploy
       - name: Import catalogo (6.191 prodotti)
         run: pnpm import:agb listino.pdf
+      - name: Backfill pagine listino (Product.listinoPage — feature «visualizza nel listino»)
+        run: pnpm backfill:pages listino.pdf
       - name: Seed admin + template kit
         run: |
           pnpm db:seed
