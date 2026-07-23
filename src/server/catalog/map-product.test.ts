@@ -10,6 +10,7 @@ import {
 
 const row = (partial: Partial<ParsedRow>): ParsedRow => ({
   agbCode: "B00590.15.03",
+  page: 1,
   priceCents: 123,
   category: "SERRATURE",
   subcategory: "Incontri - Sicurezza",
@@ -84,6 +85,10 @@ describe("toProductData", () => {
       colonne: { lunghezza: "238 mm", finitura: "Ottonato lucido" },
     });
     expect(data.specifications).not.toHaveProperty("mano");
+  });
+
+  it("porta la pagina fisica in listinoPage", () => {
+    expect(toProductData(row({ page: 418 })).listinoPage).toBe(418);
   });
 });
 

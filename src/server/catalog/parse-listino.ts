@@ -3,6 +3,8 @@
 
 export interface ParsedRow {
   agbCode: string;
+  /** Pagina FISICA del PDF (1-based) dove la riga di prezzo appare = deep-link listino. */
+  page: number;
   priceCents: number;
   category: string;
   subcategory: string | null;
@@ -112,6 +114,9 @@ export function parseListino(text: string): ParseResult {
   };
   const rows: ParsedRow[] = [];
 
+  // Pagina fisica corrente: 1 + form-feed (\f) cumulati. Calibrato sul listino
+  // 2026 (la vasistas «pag. 416» è alla pagina fisica 418 del PDF = deep-link).
+  let currentPage = 1;
   let category = "";
   let subcategory: string | null = null;
   let groupTitle: string | null = null;
@@ -120,6 +125,8 @@ export function parseListino(text: string): ParseResult {
   let carriedCells: Record<string, string> = {};
 
   for (const rawLine of text.split("\n")) {
+    const ffOnLine = (rawLine.match(/\f/g) ?? []).length;
+    if (ffOnLine > 0) currentPage += ffOnLine;
     const line = rawLine.replaceAll("\f", "");
     const trimmed = line.trim();
     const hasCode = CODE_TOKEN.test(line);
@@ -163,6 +170,7 @@ export function parseListino(text: string): ParseResult {
         : null;
       rows.push({
         agbCode: sig[1]!,
+        page: currentPage,
         packBox: Number(sig[2]!),
         packCarton: Number(sig[3]!),
         priceCents: parsePriceCents(sig[4]!),

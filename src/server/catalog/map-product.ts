@@ -12,6 +12,7 @@ export interface ProductUpsertData {
   stockQuantity: 0;
   specifications: Record<string, unknown>;
   categorySlug: string;
+  listinoPage: number | null;
 }
 
 export function slugifyCategory(header: string): string {
@@ -75,6 +76,7 @@ export function toProductData(row: ParsedRow): ProductUpsertData {
     stockQuantity: 0,
     specifications,
     categorySlug: slugifyCategory(row.category),
+    listinoPage: row.page,
   };
 }
 
