@@ -11,53 +11,55 @@
 |-------|--------|
 | **Data** | 2026-07-23 (sessione conclusa) |
 | **Fase in corso** | Fase 1 — MVP Gestionale |
-| **Sotto-fase** | 1a ✅ · Better Auth ✅ · 1b ✅ · 1c Chat AI ✅ · **1d Kit engine ✅** · **1e Dashboard ✅ (#9)** · **API key admin ✅ (#10)** · **1f Deploy staging 🔄** · **1g Kit multi-materiale ✅ (#15)** · **1h Anta a battente ✅ (#16)** · **Gestione utenti + login username ✅ (#17)** · **UI mobile responsive ✅ (#18)** · **1i Vasistas ✅ (PR #20, aperta)** · **«Visualizza nel listino» ✅ (PR #21, aperta)** |
-| **Branch git** | **2 branch/PR APERTI (non mergiati):** `claude/handoff-md-review-erkjm0` → **PR #20** (Fase 1i vasistas) · `claude/listino-viewer` → **PR #21** (visualizza nel listino). Precedenti #11–#18 mergiati. |
-| **Stato deploy** | **LIVE** su `catalogo-finder-kappa.vercel.app` (invariato). **Azioni ops PENDENTI** al merge delle due PR — vedi «RIPRENDI DA QUI». |
+| **Sotto-fase** | 1a ✅ · Better Auth ✅ · 1b ✅ · 1c Chat AI ✅ · **1d Kit engine ✅** · **1e Dashboard ✅ (#9)** · **API key admin ✅ (#10)** · **1f Deploy staging 🔄** · **1g Kit multi-materiale ✅ (#15)** · **1h Anta a battente ✅ (#16)** · **Gestione utenti + login username ✅ (#17)** · **UI mobile responsive ✅ (#18)** · **1i Vasistas ✅ (#20)** · **«Visualizza nel listino» ✅ (#21, ATTIVO)** · **ottimizz. ops backfill ✅ (#22)** · **fix immagini viewer ✅ (#23)** |
+| **Branch git** | **PR #20–#23 TUTTE MERGIATE** (`claude/handoff-md-review-erkjm0`, `claude/listino-viewer`, `claude/optimize-backfill`, `claude/fix-listino-images`). Precedenti #11–#18 mergiate. Nessun branch in sospeso. |
+| **Stato deploy** | **LIVE** su `catalogo-finder-kappa.vercel.app`. Neon allineato (**ops run 30024919979**: migrazione `add_listino_page` + import + seed vasistas + pagine popolate). Viewer listino **ATTIVATO** (Vercel Blob + `LISTINO_PDF_URL` impostati dall'utente). ⚠️ **1 problema aperto: immagini viewer parziali → Opzione B (vedi «RIPRENDI DA QUI»).** |
 | **Piani/spec** | `docs/superpowers/{specs,plans}/2026-07-23-fase1i-kit-vasistas-legno*` e `2026-07-23-listino-viewer*`. |
 
-> **▶ RIPRENDI DA QUI — sessione chiusa 2026-07-23: due feature costruite, DUE PR APERTE, azioni ops pendenti.**
+> **▶ RIPRENDI DA QUI — sessione chiusa 2026-07-23: 4 PR mergiate e in produzione; 1 problema aperto sul viewer → Opzione B.**
 >
-> Due lavori indipendenti in questa sessione, ognuno sul suo branch/PR (gate verdi:
-> typecheck·lint·test·build):
+> Tutto ciò che è stato costruito in questa sessione è **mergiato, in produzione e (per il viewer) attivato**.
+> Resta **un solo problema** sul viewer listino → il prossimo lavoro è l'**Opzione B** (vedi in fondo).
 >
-> **A) Fase 1i — nuova tipologia «Vasistas» ARTECH LEGNO** — `claude/handoff-md-review-erkjm0` → **PR #20**.
-> Terza tipologia del kit engine (dopo anta-ribalta e battente). PROVVISORIA (come battente/PVC):
-> distinta derivata dallo schema di montaggio del listino 2026 (pag. 416), anta singola, E.15, solo LEGNO.
-> Verifica listino: delle 5 tipologie mancanti nel wizard **solo la vasistas** è ARTECH (proiettante/tetto = 0
-> riscontri; scorrevoli/Galileo = sistemi separati classi G/M). Modulo `rules-artech-vasistas-legno.ts`
-> (`engineId "artech-vasistas-legno"`): cremonese `A50111.15` per GR + **catena DSS** `A50190.00.00`/incontro
-> `A51400.05.03` (aggiunta perché A50111 richiede il DSS a parte) + forbici `A50545` (1/2 per GR) + supporto/
-> perno + terminale + movimento angolare + limitatore + incontri via colonna NOT.(GR). Guardie: solo LEGNO,
-> superficie ≤ 2 m², campo GR01–GR06. Enum `windowType` += `VASISTAS` (nessuna migrazione, l'enum Postgres ce
-> l'ha già), registry, seed `isActive:true`, wizard (solo-LEGNO, toggle chiusure nascosto). Golden 10 righe/12
-> pezzi (GR03). Scheda `docs/superpowers/kit-assunzioni/vasistas.md` — **10 domande per l'esperto AGB**.
-> **Ops al merge #20:** `db:seed:kit` su Neon per il template vasistas. **NESSUNA migrazione.**
+> **Cosa è entrato in produzione (gate verdi typecheck·lint·test·build su ogni PR):**
+> - **#20 — Fase 1i «Vasistas» ARTECH LEGNO** (`claude/handoff-md-review-erkjm0`). Terza tipologia del kit
+>   engine, PROVVISORIA. Modulo `rules-artech-vasistas-legno.ts`: cremonese `A50111.15` per GR + catena DSS
+>   `A50190.00.00`/incontro `A51400.05.03` + forbici `A50545` (1/2 per GR) + supporto/perno + terminale +
+>   movimento angolare + limitatore + incontri via colonna NOT.(GR). Guardie: solo LEGNO, superficie ≤ 2 m²,
+>   campo GR01–GR06. Enum `windowType` += `VASISTAS`, registry, seed `isActive:true`, wizard solo-LEGNO. Golden
+>   10 righe/12 pezzi. **10 assunzioni per l'esperto** in `docs/superpowers/kit-assunzioni/vasistas.md`.
+> - **#21 — «Visualizza nel listino»** (`claude/listino-viewer`). Pulsante su distinta kit + dettaglio prodotto
+>   → viewer `react-pdf` alla pagina del listino col codice **evidenziato**. Mappatura codice→pagina: parser
+>   page-aware (`pagina fisica = 1 + form-feed`, calibrato: vasistas «pag.416» = pagina fisica **418**) →
+>   `Product.listinoPage` (migrazione `20260723120000_add_listino_page`). PDF su
+>   **Vercel Blob** dietro auth (route `/api/listino` con Range). Componenti in `src/components/listino/`.
+> - **#22 — ottimizzazione ops** (`claude/optimize-backfill`): backfill in batch (500/transazione, da ~30 min a
+>   secondi) + rimosso lo step `Backfill` ridondante dal workflow (l'`import:agb` popola già `listino_page`).
+> - **#23 — fix immagini viewer** (`claude/fix-listino-images`): rimosso `disableAutoFetch` dal `<Document>`
+>   (con quello PDF.js non recuperava gli XObject immagine). **Parziale** — vedi problema aperto.
 >
-> **B) «Visualizza nel listino» — viewer PDF in-app** — `claude/listino-viewer` → **PR #21**.
-> Pulsante accanto a ogni codice (distinta kit + dettaglio prodotto) che apre un viewer `react-pdf` alla pagina
-> del listino dove il codice è a prezzo, **evidenziandolo**. Mappatura codice→pagina deterministica: parser
-> `parse-listino.ts` reso page-aware (`pagina fisica = 1 + form-feed cumulati`, **calibrato**: vasistas «pag.
-> 416» stampata = pagina fisica **418** del PDF) → colonna `Product.listinoPage` (**migrazione**
-> `20260723120000_add_listino_page`) → backfill. PDF su **Vercel Blob** dietro auth (route `/api/listino` con
-> Range → PDF.js scarica solo la pagina). `react-pdf` lazy (`next/dynamic`). `listinoPage` esposto in
-> `product.search`/`kit.get`. Componenti in `src/components/listino/` (viewer, provider+hook `useListinoViewer`,
-> pulsante, evidenziatore). Il pulsante è su **distinta kit** e **dettaglio prodotto** (NON sulle card della
-> lista risultati, per evitare `button` dentro `<Link>` — follow-up facile con «stretched link»).
-> Env `LISTINO_PDF_URL` opzionale → feature off (pulsante nascosto + route 503) se assente.
-> **Ops al merge #21 (3 passi, servono per attivarla):**
-> 1. **Vercel Blob**: `qpdf --linearize` del listino → upload su Blob → impostare `LISTINO_PDF_URL` (Vercel
->    Production + `.env` locale). Serve un token Blob (come Neon/Upstash).
-> 2. **Migrazione** `add_listino_page` su Neon (`prisma migrate deploy` via ops GitHub Actions).
-> 3. **Backfill** pagine su Neon: `pnpm backfill:pages <listino.pdf>` (idempotente, no re-import).
-> Poi **verifica UI in browser** (rendering + evidenziazione, mobile ≤375px): non testabile in jsdom.
+> **Ops eseguite (dall'utente):** run GitHub Actions **«Ops — Neon» 30024919979** = migrazione `add_listino_page`
+> + import (popola le pagine) + `db:seed:kit` (template vasistas) + embed(skip). **Viewer attivato**: listino
+> linearizzato caricato su Vercel Blob + `LISTINO_PDF_URL` impostata. Il viewer **funziona** (apre alla pagina
+> giusta, evidenzia il codice).
 >
-> **➡ PROSSIMI PASSI:** (1) mergiare PR #20 e #21 (decisione utente); (2) eseguire le azioni ops sopra;
-> (3) validare con l'esperto AGB i kit provvisori (vasistas + battente/PVC/ALU); (4) scegliere la fase
-> successiva. Le due PR sono indipendenti (branch separati da `main`), mergiabili in qualsiasi ordine.
+> **⚠️ PROBLEMA APERTO (unico) — immagini del viewer parziali.** Nel viewer le foto prodotto si vedono **solo in
+> parte** (poche). Causa: con le range-request PDF.js **disegna la pagina prima che tutti gli XObject immagine
+> (grossi) siano arrivati e non ri-disegna**; in più le molte richieste-range concorrenti verso la route proxy
+> possono non completare tutte. Il fix #23 (via `disableAutoFetch` off) ha migliorato ma non risolto.
 >
-> ⚠️ La vasistas è **più provvisoria del battente** (~10 assunzioni: offset HBB, DSS, quantità movimento/
-> terminale, formula incontri, battuta). Codici reali a listino, ma la *forma* va validata dall'esperto.
+> **➡ PROSSIMO PASSO DECISO — OPZIONE B: pre-split del listino in pagine singole.** Ogni pagina diventa un file
+> minuscolo (~100–300 KB) con **tutte** le sue immagini → il viewer carica solo quella pagina → veloce, immagini
+> complete, ottimo su mobile (regola mobile-first), evidenziazione preservata (text-layer intatto). Comporta:
+> (a) script di **split** del PDF linearizzato in ~959 paginette (`pdfseparate` di poppler, già in ops) +
+> **upload su Vercel Blob**; (b) **route** `/api/listino?page=N` che serve la singola paginetta; (c) **viewer**
+> che carica `?page=N` come documento a pagina singola (prev/next → altri file). Vedi il prompt di apertura
+> sessione preparato dall'utente. Alternativa scartata: `disableRange` (scarica 41 MB interi → tutte le immagini
+> ma pesante su mobile + rischio limite 60s della route). Opzione B è la scelta corretta.
+>
+> **Altri task ancora aperti (non bloccanti):** validazione esperto AGB dei kit provvisori (vasistas +
+> battente/PVC/ALU — schede in `docs/superpowers/kit-assunzioni/`); pulsante listino anche sulle card della
+> lista risultati archivio (follow-up «stretched link», oggi solo su distinta kit + dettaglio prodotto).
 >
 > ---
 >
