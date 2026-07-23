@@ -1,0 +1,37 @@
+name: Ops — Split listino (pagine singole su Vercel Blob)
+on:
+  workflow_dispatch:
+    inputs:
+      listino_url:
+        description: "URL diretto del listino AGB PDF (DEVE essere la stessa edizione del backfill)"
+        required: false
+        default: "https://drive.usercontent.google.com/download?id=1TugU94aM6OP557ELiLQpH0nUxhxrXMUz&export=download&confirm=t"
+jobs:
+  split:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Enable corepack (pnpm 10)
+        run: corepack enable
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+      - name: Install poppler-utils (pdfseparate/pdftotext/pdfinfo)
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils
+      - name: Download listino PDF
+        run: |
+          curl -sSL "${{ github.event.inputs.listino_url }}" -o listino.pdf
+          head -c 5 listino.pdf | grep -q '%PDF' || { echo "::error::Il download non è un PDF valido"; exit 1; }
+          echo "PDF scaricato: $(wc -c < listino.pdf) byte, $(pdfinfo listino.pdf | awk '/Pages/{print $2}') pagine"
+      - name: Split + upload su Vercel Blob
+        run: |
+          test -n "$BLOB_READ_WRITE_TOKEN" || { echo "::error::Secret BLOB_READ_WRITE_TOKEN mancante"; exit 1; }
+          pnpm split:listino listino.pdf
+      - name: Prossimi passi
+        run: |
+          echo "::notice::Copia LISTINO_TOTAL_PAGES e LISTINO_PAGE_URL_TEMPLATE (dai log dello step precedente) nelle env Vercel (Production), rimuovi LISTINO_PDF_URL, poi redeploy."

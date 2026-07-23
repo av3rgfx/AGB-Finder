@@ -21,6 +21,7 @@
     "import:agb": "tsx --env-file-if-exists=.env scripts/import-agb.ts",
     "embed:products": "tsx --env-file-if-exists=.env scripts/embed-products.ts",
     "backfill:pages": "tsx --env-file-if-exists=.env scripts/backfill-listino-pages.ts",
+    "split:listino": "tsx --env-file-if-exists=.env scripts/split-listino.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
@@ -55,6 +56,7 @@
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@vercel/blob": "^2.6.1",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
     "eslint": "^8.57.1",
