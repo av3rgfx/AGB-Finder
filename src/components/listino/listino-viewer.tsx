@@ -11,7 +11,11 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url,
 ).toString();
 
-const PDF_OPTIONS = { disableAutoFetch: true, disableStream: false } as const;
+// NON impostare `disableAutoFetch: true`: con quell'opzione PDF.js carica testo e
+// grafica vettoriale ma NON recupera gli XObject immagine della pagina (le foto
+// dei prodotti restavano bianche). Coi default (auto-fetch attivo) PDF.js recupera
+// anche le immagini; le range-request restano usate (fetch progressivo del file).
+const PDF_OPTIONS = {} as const;
 
 export function ListinoViewer({
   code,
