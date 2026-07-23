@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { ParsedRow } from "./parse-listino";
 import {
+  collectListinoPages,
   composeName,
   categoryDisplayName,
   dedupeRows,
@@ -89,6 +90,20 @@ describe("toProductData", () => {
 
   it("porta la pagina fisica in listinoPage", () => {
     expect(toProductData(row({ page: 418 })).listinoPage).toBe(418);
+  });
+});
+
+describe("collectListinoPages", () => {
+  it("una coppia {agbCode,page} per codice, ultima occorrenza vince", () => {
+    const out = collectListinoPages([
+      row({ agbCode: "A00001.00.00", page: 5 }),
+      row({ agbCode: "A00001.00.00", page: 9 }),
+      row({ agbCode: "B00002.00.00", page: 12 }),
+    ]);
+    expect(out).toEqual([
+      { agbCode: "A00001.00.00", page: 9 },
+      { agbCode: "B00002.00.00", page: 12 },
+    ]);
   });
 });
 

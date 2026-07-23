@@ -86,3 +86,8 @@ export function dedupeRows(rows: ParsedRow[]): ParsedRow[] {
   for (const row of rows) byCode.set(row.agbCode, row);
   return [...byCode.values()];
 }
+
+/** Coppie {agbCode, page} per il backfill: dedupe per codice (ultima occorrenza vince). */
+export function collectListinoPages(rows: ParsedRow[]): { agbCode: string; page: number }[] {
+  return dedupeRows(rows).map((row) => ({ agbCode: row.agbCode, page: row.page }));
+}

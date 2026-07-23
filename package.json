@@ -20,6 +20,7 @@
     "db:studio": "prisma studio",
     "import:agb": "tsx --env-file-if-exists=.env scripts/import-agb.ts",
     "embed:products": "tsx --env-file-if-exists=.env scripts/embed-products.ts",
+    "backfill:pages": "tsx --env-file-if-exists=.env scripts/backfill-listino-pages.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
