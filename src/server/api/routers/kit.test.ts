@@ -167,7 +167,7 @@ describe("kit.list / kit.get", () => {
           sortOrder: 0,
           ruleId: "r1",
           ruleDescription: "Test Rule",
-          product: { id: "p1", agbCode: "X", name: "N", isAvailable: true },
+          product: { id: "p1", agbCode: "X", name: "N", isAvailable: true, listinoPage: 418 },
         },
       ],
     });
@@ -180,7 +180,7 @@ describe("kit.list / kit.get", () => {
           components: expect.objectContaining({
             include: expect.objectContaining({
               product: expect.objectContaining({
-                select: { id: true, agbCode: true, name: true, isAvailable: true },
+                select: { id: true, agbCode: true, name: true, isAvailable: true, listinoPage: true },
               }),
             }),
           }),
@@ -189,7 +189,7 @@ describe("kit.list / kit.get", () => {
     );
     expect(result.components).toHaveLength(1);
     expect(result.components[0]).toMatchObject({
-      product: { agbCode: "X" },
+      product: { agbCode: "X", listinoPage: 418 },
       unitPrice: 99.99,
       totalPrice: 99.99,
     });
