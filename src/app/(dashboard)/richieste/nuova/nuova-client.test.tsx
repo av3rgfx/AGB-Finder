@@ -174,4 +174,31 @@ describe("NuovaRichiestaClient", () => {
       expect.objectContaining({ supplementaryClosures: false }),
     );
   });
+
+  it("VASISTAS è selezionabile e mostra solo LEGNO (PVC/ALLUMINIO gated)", () => {
+    render(<NuovaRichiestaClient />);
+    const tipo = screen.getByRole("group", { name: /tipologia/i });
+    const vasistas = within(tipo).getByRole("radio", {
+      name: new RegExp(windowTypeLabel("VASISTAS"), "i"),
+    }) as HTMLInputElement;
+    expect(vasistas.disabled).toBe(false);
+    fireEvent.click(vasistas);
+    expect(vasistas.checked).toBe(true);
+
+    const mat = screen.getByRole("group", { name: /materiale/i });
+    expect((within(mat).getByRole("radio", { name: /legno/i }) as HTMLInputElement).disabled).toBe(false);
+    expect((within(mat).getByRole("radio", { name: /pvc/i }) as HTMLInputElement).disabled).toBe(true);
+    expect((within(mat).getByRole("radio", { name: /alluminio/i }) as HTMLInputElement).disabled).toBe(true);
+  });
+
+  it("VASISTAS: niente toggle chiusure supplementari (come il battente)", () => {
+    render(<NuovaRichiestaClient />);
+    const tipo = screen.getByRole("group", { name: /tipologia/i });
+    fireEvent.click(
+      within(tipo).getByRole("radio", { name: new RegExp(windowTypeLabel("VASISTAS"), "i") }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // step 2
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // step 3
+    expect(screen.queryByLabelText(/chiusure supplementari/i)).toBeNull();
+  });
 });
