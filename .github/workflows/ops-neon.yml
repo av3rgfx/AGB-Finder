@@ -31,8 +31,12 @@ jobs:
       - name: Prisma generate
         run: pnpm exec prisma generate
       - name: Download listino PDF
+        # L'input non fidato passa da una env var (mai interpolato nello script) per
+        # evitare command-injection sul runner (secret DB/Gemini/seed in scope).
+        env:
+          LISTINO_URL: ${{ github.event.inputs.listino_url }}
         run: |
-          curl -sSL "${{ github.event.inputs.listino_url }}" -o listino.pdf
+          curl -sSL "$LISTINO_URL" -o listino.pdf
           head -c 5 listino.pdf | grep -q '%PDF' || { echo "::error::Il download non è un PDF valido"; exit 1; }
           echo "PDF scaricato: $(wc -c < listino.pdf) byte, $(pdfinfo listino.pdf | awk '/Pages/{print $2}') pagine"
       - name: Migrate deploy (Neon + pgvector/pg_trgm)

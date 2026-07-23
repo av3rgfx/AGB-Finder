@@ -24,8 +24,12 @@ jobs:
       - name: Install poppler-utils (pdfseparate/pdftotext/pdfinfo)
         run: sudo apt-get update && sudo apt-get install -y poppler-utils
       - name: Download listino PDF
+        # L'input non fidato passa da una env var (mai interpolato nello script) per
+        # evitare command-injection sul runner (il token Blob è in scope).
+        env:
+          LISTINO_URL: ${{ github.event.inputs.listino_url }}
         run: |
-          curl -sSL "${{ github.event.inputs.listino_url }}" -o listino.pdf
+          curl -sSL "$LISTINO_URL" -o listino.pdf
           head -c 5 listino.pdf | grep -q '%PDF' || { echo "::error::Il download non è un PDF valido"; exit 1; }
           echo "PDF scaricato: $(wc -c < listino.pdf) byte, $(pdfinfo listino.pdf | awk '/Pages/{print $2}') pagine"
       - name: Split + upload su Vercel Blob
