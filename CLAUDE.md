@@ -159,3 +159,14 @@ disegna prima che tutti gli XObject immagine arrivino) → **prossimo passo deci
 PDF in pagine singole su Blob + route `/api/listino?page=N` + viewer a pagina singola)**. Altri task aperti
 (non bloccanti): validazione esperto kit provvisori (vasistas/battente/PVC/ALU); pulsante listino sulle card
 archivio (stretched-link). Dettagli e prompt Opzione B: `handoff.md` §RIPRENDI DA QUI.
++ **Opzione B (viewer a PAGINE SINGOLE) ✅ su branch `claude/listino-page-split-n8ofuk` (PR da aprire)**:
+risolve le immagini parziali pre-splittando il listino in ~959 paginette su Vercel Blob (ognuna un file
+minuscolo con tutte le sue immagini → scaricata per intero, niente Range). `scripts/split-listino.ts`
+(`pdfseparate` + `@vercel/blob`, naming `listino/page-N.pdf` idempotente) + workflow `ops-split-listino.yml`
+(secret `BLOB_READ_WRITE_TOKEN`) · route `/api/listino?page=N` (auth, param validato anti-SSRF, no Range) ·
+env `LISTINO_PAGE_URL_TEMPLATE` + `LISTINO_TOTAL_PAGES` (al posto di `LISTINO_PDF_URL`) · viewer a pagina
+singola (`<Page pageNumber={1}>`, `totalPages` via prop dal layout server) **+ fix mobile-first** del
+`width` fisso 720px (ora responsive via `ResizeObserver`). Gate verdi (typecheck·lint·test **332**·build).
+**AZIONI OPS al merge:** secret `BLOB_READ_WRITE_TOKEN` → run `Ops — Split listino` → impostare le 2 env su
+Vercel (dai log) e rimuovere `LISTINO_PDF_URL` → redeploy → verifica browser ≤375px. Dettagli: `handoff.md`
+§RIPRENDI DA QUI e `docs/superpowers/{specs,plans}/2026-07-23-listino-page-split*`.
