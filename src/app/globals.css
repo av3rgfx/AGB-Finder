@@ -70,3 +70,10 @@
 .animate-fade-in {
   animation: fade-in 150ms ease-out;
 }
+
+/* Evidenziazione codice nel viewer del listino (react-pdf text-layer). */
+.listino-hl {
+  background: rgb(250 204 21 / 0.55);
+  color: inherit;
+  border-radius: 2px;
+}

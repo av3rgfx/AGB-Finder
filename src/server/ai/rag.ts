@@ -25,6 +25,7 @@ export interface SearchHit {
   priceUnit: string;
   isAvailable: boolean;
   stockQuantity: number;
+  listinoPage: number | null;
   categoryId: string;
   categoryName: string;
   textScore: number;
@@ -65,6 +66,7 @@ const HIT_PROJECTION = Prisma.sql`
   p.price_unit          AS "priceUnit",
   p.is_available        AS "isAvailable",
   p.stock_quantity      AS "stockQuantity",
+  p.listino_page        AS "listinoPage",
   p.category_id         AS "categoryId",
   c.name                AS "categoryName"`;
 

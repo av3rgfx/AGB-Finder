@@ -6,6 +6,7 @@ import { api } from "@/trpc/react";
 import { formatPrice } from "@/lib/format";
 import { AvailabilityDot, ProductCard } from "./product-card";
 import { CopyCodeButton } from "./copy-code-button";
+import { ListinoButton } from "@/components/listino/listino-button";
 import { SpecTable } from "./spec-table";
 
 export function ProductDetail({ id }: { id: string }) {
@@ -49,7 +50,10 @@ export function ProductDetail({ id }: { id: string }) {
 
       <header className="flex flex-col gap-3 rounded-md border border-line bg-surface p-6 shadow-card">
         <div className="flex flex-wrap items-center gap-3">
-          <CopyCodeButton code={p.agbCode} />
+          <span className="inline-flex items-center gap-1.5">
+            <CopyCodeButton code={p.agbCode} />
+            <ListinoButton code={p.agbCode} page={p.listinoPage} />
+          </span>
           <span className="rounded bg-surface-sunken px-2 py-0.5 text-xs text-ink-muted">
             {p.category.name}
           </span>

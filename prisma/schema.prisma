@@ -169,6 +169,9 @@ model Product {
   widthMm  Int?     @map("width_mm")
   heightMm Int?     @map("height_mm")
 
+  // Pagina FISICA del listino PDF dove il codice è a prezzo (feature «visualizza nel listino»).
+  listinoPage Int? @map("listino_page")
+
   // Search & AI. Indexes are created manually in the migration (GIN / HNSW).
   searchVector Unsupported("tsvector")?     @map("search_vector")
   embedding    Unsupported("vector(768)")? // gemini-embedding-001 @ 768 dims

@@ -12,6 +12,7 @@ export interface ProductUpsertData {
   stockQuantity: 0;
   specifications: Record<string, unknown>;
   categorySlug: string;
+  listinoPage: number | null;
 }
 
 export function slugifyCategory(header: string): string {
@@ -75,6 +76,7 @@ export function toProductData(row: ParsedRow): ProductUpsertData {
     stockQuantity: 0,
     specifications,
     categorySlug: slugifyCategory(row.category),
+    listinoPage: row.page,
   };
 }
 
@@ -83,4 +85,9 @@ export function dedupeRows(rows: ParsedRow[]): ParsedRow[] {
   const byCode = new Map<string, ParsedRow>();
   for (const row of rows) byCode.set(row.agbCode, row);
   return [...byCode.values()];
+}
+
+/** Coppie {agbCode, page} per il backfill: dedupe per codice (ultima occorrenza vince). */
+export function collectListinoPages(rows: ParsedRow[]): { agbCode: string; page: number }[] {
+  return dedupeRows(rows).map((row) => ({ agbCode: row.agbCode, page: row.page }));
 }

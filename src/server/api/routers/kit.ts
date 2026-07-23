@@ -118,7 +118,7 @@ export const kitRouter = createTRPCRouter({
           orderBy: { sortOrder: "asc" },
           include: {
             product: {
-              select: { id: true, agbCode: true, name: true, isAvailable: true },
+              select: { id: true, agbCode: true, name: true, isAvailable: true, listinoPage: true },
             },
           },
         },

@@ -128,6 +128,27 @@ const FIXTURE_IMPOSTE = [
   "                           Silver Powerage     1000   1    H00900.01.21   10 10         4,19   E1",
 ].join("\n");
 
+describe("parseListino — pagina fisica per riga", () => {
+  it("assegna la pagina = 1 + numero di form-feed cumulati", () => {
+    const header =
+      "\f                   CERNIERE                                                                         LISTINO 2026";
+    const cols =
+      "  Diametro                                        CODICE                             Confezione   Imballo      €    CS";
+    const rowLine = "                 E00119.14.03   20   20        3,20   F3";
+    const { rows } = parseListino(["riga di pagina uno", header, cols, rowLine].join("\n"));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.page).toBe(2);
+  });
+
+  it("resta a pagina 1 senza form-feed", () => {
+    const cols =
+      "  Diametro                                        CODICE                             Confezione   Imballo      €    CS";
+    const rowLine = "                 E00119.14.03   20   20        3,20   F3";
+    const { rows } = parseListino([cols, rowLine].join("\n"));
+    expect(rows[0]!.page).toBe(1);
+  });
+});
+
 describe("parseListino — colonne e attributi", () => {
   it("estrae finitura e mano (normalizzata DX/SX) dalle colonne; le celle vuote ereditano", () => {
     const { rows } = parseListino(FIXTURE_CERNIERE);

@@ -30,6 +30,9 @@ const envSchema = z.object({
   IP_HASH_SECRET: z.string().min(1),
   SETTINGS_ENCRYPTION_KEY: z.string().optional(),
 
+  // PDF del listino su Vercel Blob (feature «visualizza nel listino»); assente = feature off.
+  LISTINO_PDF_URL: z.string().url().optional(),
+
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 });
 

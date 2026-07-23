@@ -8,6 +8,7 @@ import { upsertCatalog, type ImportReport } from "../src/server/catalog/import-c
 type SeedInput = Partial<ParsedRow> & Pick<ParsedRow, "agbCode" | "priceCents" | "category">;
 
 const row = (partial: SeedInput): ParsedRow => ({
+  page: 1, // seed sintetico (dev/test senza PDF): la pagina reale arriva dal backfill in prod
   subcategory: null,
   groupTitle: null,
   material: null,
