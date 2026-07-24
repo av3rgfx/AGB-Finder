@@ -11,6 +11,7 @@ import { ProductRow } from "@/components/product/product-row";
 import { ProductFilters } from "@/components/product/product-filters";
 import { ActiveFilterChips } from "@/components/product/active-filter-chips";
 import { RecentSearches } from "@/components/product/recent-searches";
+import { RecentlyViewed } from "@/components/product/recently-viewed";
 import { CopyLinkButton } from "@/components/product/copy-link-button";
 import { useArchivioSearch } from "@/lib/use-archivio-search";
 import { clearScroll, loadScroll, shouldRestoreScroll } from "@/lib/archivio-scroll";
@@ -190,6 +191,7 @@ export function ArchivioClient() {
                 title="Cerca nel catalogo AGB"
                 detail="Digita un termine (es. “cerniera anta ribalta”) o un codice prodotto (es. B00590)."
               />
+              <RecentlyViewed />
               <RecentSearches recent={recent.data ?? []} onPick={pickQuery} />
             </div>
           ) : search.isPending ? (
