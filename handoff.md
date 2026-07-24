@@ -9,41 +9,100 @@
 
 | Campo | Valore |
 |-------|--------|
-| **Data** | 2026-07-24 (sessione UX Archivio — PR aperta, da mergiare) |
+| **Data** | 2026-07-24 (sessione CONCLUSA — UX Archivio + follow-up MERGIATI e in `main`) |
 | **Fase in corso** | Fase 1 — MVP Gestionale |
-| **Sotto-fase** | …**IMMAGINI PRODOTTO ✅ (#27)** · **UX ARCHIVIO ✅ (branch `claude/archivio-ux-persistence-aj3zvy`, PR aperta)**: persistenza ricerca (URL+localStorage) · ritorno-alla-lista con scroll (verificato browser) · cronologia 7gg · thumbnail/chip/empty-state. |
-| **Branch git** | **PR #25–#27 MERGIATE.** Corrente: **`claude/archivio-ux-persistence-aj3zvy`** (da `origin/main`, 13 commit, pushato) — **PR aperta, attende merge (chiedere ok utente prima di mergiare).** |
-| **Stato deploy** | **LIVE** su `catalogo-finder-kappa.vercel.app`. UX Archivio: **NESSUNA azione ops** al merge (no migrazione, no dep, no env) → deploy Vercel standard. |
-| **Piani/spec** | `docs/superpowers/{specs,plans}/2026-07-24-archivio-ux*` · `…-immagini-prodotto-design.md`. |
+| **Sotto-fase** | …#27 · **UX ARCHIVIO ✅ (PR #29 + #30 MERGIATE)**: persistenza ricerca (URL+localStorage) · ritorno-alla-lista con scroll (verificato browser) · cronologia 7gg · thumbnail · chip filtri · empty-state · scorciatoia `/` · copia-link · visti-di-recente · listino sulle card. |
+| **Branch git** | **PR #25–#30 MERGIATE.** Nessun branch in sospeso. Prossima sessione: **branch fresco da `origin/main`**. |
+| **Stato deploy** | **LIVE** su `catalogo-finder-kappa.vercel.app`. UX Archivio in `main` (merge #29+#30) → deploy Vercel standard, **NESSUNA azione ops** (no migrazione/dep/env). |
+| **Piani/spec** | `docs/superpowers/{specs,plans}/2026-07-24-archivio-ux*` (+ `…-follow-up*`). **Prossimo: chat Assistente** (vedi §RIPRENDI). |
 
-> **▶ RIPRENDI DA QUI — UX Archivio ✅ (branch `claude/archivio-ux-persistence-aj3zvy`, PR APERTA, da mergiare).**
+> **▶ RIPRENDI DA QUI — PROSSIMA SESSIONE: rifare la UI/UX della CHAT ASSISTENTE (professionale, tipo Gemini).**
 >
-> **Cosa è stato fatto (13 commit TDD, gate verdi typecheck·lint·test 369·build, verifica browser desktop+mobile):**
-> - **Persistenza** (req.1): `query`/`filtri`/`pagina` negli **URL searchParams** (letti `useSearchParams` sotto
->   `<Suspense>` in `archivio/page.tsx`; scrittura `router.replace(…,{scroll:false})`); **vista** in `localStorage`.
-> - **Ritorno-alla-lista con scroll** (req.2, priorità #1): snapshot `scrollY` per-chiave in `sessionStorage`
->   (`src/lib/archivio-scroll.ts`), `history.scrollRestoration='manual'`, ripristino `rAF` una volta dopo i dati in
->   cache. **Salvataggio su `pointerdown` (cattura) + `pagehide`** — MAI su `scroll`/unmount (Next scrolla in cima
->   aprendo il dettaglio → salverebbe 0: bug scovato in verifica browser e corretto).
-> - **Cronologia 7gg** (req.3): `product.recentSearches` read-side su `ActivityLog` (`src/lib/recent-searches.ts`) →
->   «Ricerche recenti» nell'empty-state.
-> - **Extra**: thumbnail card/righe (riservate; `ProductImage` esteso con `fallback` + `ProductThumb`), chip filtri
->   attivi + azzera, empty-state con suggerimenti. Hook `use-archivio-search.ts`; moduli puri con test.
-> - Spec+piano: `docs/superpowers/{specs,plans}/2026-07-24-archivio-ux*`. Critica adversariale 3-lenti recepita
->   (Suspense, race scroll nativo, reset pagina, YAGNI): vedi §12 della spec.
+> Seguire il workflow: `/using-superpowers` → brainstorming → `/llm-council` (soprattutto per la **scelta STREAMING**)
+> → `/impeccable` (UI, **mobile-first ≤375px** + desktop) → `/writing-plans` → esecuzione TDD; `/ponytail` per il
+> codice. Partire da un **branch fresco da `origin/main`**. Vincoli CLAUDE.md: TS strict, API via tRPC/Prisma, UI
+> italiano, codici in mono, mobile-first. A fine: gate verdi + **verifica browser (desktop + mobile ≤375px)** + PR
+> (chiedere ok prima di aprire/mergiare) + AZIONI OPS.
 >
-> **FOLLOW-UP (stesso branch, estende PR #29) — le 4 idee prima fuori scope, tutte ✅ (verifica browser 12/12):**
-> - **(A) Scorciatoia `/`** → focus ricerca (`is-editable-target.ts`; `Esc` sfoca; hint `<kbd>` desktop).
-> - **(B) «Copia link»** dell'URL della ricerca (feedback «Copiato»).
-> - **(C) «Visti di recente»** via `localStorage` (`recently-viewed.ts`, dedup/cap 8; registrato in `product-detail`;
->   rail nell'empty-state).
-> - **(D) Pulsante listino su card/righe** (stretched-link; `listinoPage` già in `product.search`; sulla riga solo
->   desktop). Gate verdi (**test 380**). Spec/piano: `…2026-07-24-archivio-ux-follow-up*`. **Nessuna azione ops.**
+> **PROMPT DI APERTURA (l'utente lo incolla):**
+> > Nuova sessione. Riparti da un BRANCH FRESCO da origin/main. Segui il workflow: /using-superpowers → brainstorming
+> > → /llm-council (soprattutto per la scelta STREAMING) → /impeccable per la UI (SEMPRE mobile ≤375px + desktop) →
+> > /writing-plans → esecuzione TDD; /ponytail per il codice minimale. Vincoli CLAUDE.md: TS strict, tutte le API via
+> > tRPC/Prisma, UI in italiano, codici in mono, mobile-first. A fine lavoro: gate verdi (typecheck·lint·test·build)
+> > + verifica browser (desktop + mobile ≤375px) + PR (chiedi il mio ok prima di aprirla/mergiarla) + indica le
+> > eventuali AZIONI OPS.
+> >
+> > OBIETTIVO — Rifare la CHAT DELL'ASSISTENTE. Oggi è una bozza grezza (Fase 1c) e su mobile la UI/UX è scomoda.
+> > Voglio trasformarla in una chat AI completa e professionale, vicina a un prodotto come Gemini: streaming delle
+> > risposte, gestione conversazioni completa, ottima esperienza mobile, azioni sui messaggi, rendering ricco.
+> > Requisiti che ho in mente (da studiare e proporre insieme, poi allinearci sullo scope):
+> > 1. STREAMING delle risposte token-by-token con pulsante STOP, e stati chiari durante i tool («Sto cercando nel
+> >    catalogo…») dato che l'assistente fa ricerca prodotti prima di rispondere.
+> > 2. MOBILE-FIRST: il pannello «prodotti citati» oggi è nascosto su mobile (hidden lg) → renderlo accessibile
+> >    (bottom-sheet/tab); drawer per le conversazioni; composer che gestisce bene la tastiera.
+> > 3. GESTIONE CONVERSAZIONI completa: lista/drawer con ricerca, rinomina, elimina, raggruppo per data (oggi solo
+> >    un menu a tendina + archivia).
+> > 4. AZIONI MESSAGGIO: copia risposta, rigenera, modifica-e-reinvia, feedback 👍/👎.
+> > 5. RENDERING RICCO: markdown + copia dei blocchi di codice, card prodotto inline, codici in mono.
+> > 6. PERSISTENZA della conversazione aperta (sopravvive a refresh, es. in URL).
+> > Fai prima uno STUDIO della chat attuale (file in handoff.md §RIPRENDI DA QUI), proponi idee e tradeoff
+> > (soprattutto sull'architettura dello streaming su Vercel col nostro AIGateway + tool-use), e allineati con me su
+> > cosa fare prima di implementare.
 >
-> **➡ PROSSIMI PASSI:** 1) **mergiare la PR** (chiedere ok utente). **NESSUNA azione ops** (no migrazione/dep/env)
-> → deploy Vercel standard. 2) Verifica UI reale in produzione (le thumbnail useranno le foto vere di `product_images`).
-> 3) Scelta fase successiva = decisione utente. Idee UX rimaste (non richieste): scorciatoia `/`, prodotti visti di
-> recente, pulsante «copia link» ricerca condivisibile (l'URL è già condivisibile), pulsante listino sulle card.
+> **STATO ATTUALE (grezzo) — file chiave:**
+> - `src/app/(dashboard)/assistente/assistente-client.tsx` — layout 60/40, conversazioni via `<select>`, stato in `useState`.
+> - `src/components/chat/{message-bubble,chat-input,product-panel}.tsx`.
+> - Router `src/server/api/routers/chat.ts` (**create/list/get/send/retry/archive** — manca rename/delete) · service
+>   `src/server/chat/service.ts` (loop tool-use `search_products`) · `src/server/ai/gateway.ts` (**NON-streaming**).
+>
+> **PAIN POINTS RICOGNITI (2026-07-24):**
+> - **Mobile inusabile**: pannello prodotti `hidden lg:block` → su mobile NON si vedono i prodotti citati; header va a
+>   capo; `<select>` conversazioni scomodo; altezza fissa `calc(100dvh-8.5rem)` gestisce male tastiera/chrome mobile.
+> - **Nessuno streaming**: la risposta appare tutta insieme dopo il giro `send`+invalidate (2s–2min sotto rate limit);
+>   «Sta scrivendo…» è un pulse statico, non token-by-token.
+> - **Gestione conversazioni povera**: solo `<select>` + archivia. Niente lista/drawer, rename, elimina, ricerca,
+>   raggruppo per data, pin (il router non ha rename/delete).
+> - **Nessuna persistenza**: `conversationId` in `useState` → si perde al refresh (come il bug archivio già risolto;
+>   candidato: `?c=<id>` in URL).
+> - **Rendering basico**: solo codici AGB→mono (regex); niente markdown/liste/tabelle, niente copia code-block.
+> - **Nessuna azione messaggio**: solo retry-su-errore. Manca copia risposta, rigenera, modifica-e-reinvia, feedback.
+> - **Composer basico**: textarea 2 righe fissa (no auto-grow), niente pulsante STOP, niente hint/allegati.
+> - **Scroll**: sempre a fondo, niente pulsante «scorri in fondo».
+>
+> **IDEE (da vagliare in brainstorming, allinearsi su scope):**
+> - **Streaming token-by-token + STOP** — DECISIONE ARCHITETTURALE #1 (`/llm-council`): SSE via route handler vs tRPC
+>   `httpBatchStreamLink`/subscription vs restare non-streaming migliorando la percezione. Cap Vercel 60s. Il gateway
+>   è non-streaming e il service fa **tool-use loop** → mostrare stati «Sto cercando…» durante i tool, poi streammare
+>   la risposta finale.
+> - **Layout mobile-first**: chat a tutta altezza; **drawer conversazioni** (hamburger, come la sidebar già fatta);
+>   **prodotti citati come bottom-sheet/tab** accessibile su mobile; composer sticky (dvh + safe-area).
+> - **Conversazioni**: lista/drawer con titolo+data, raggruppo per data, **ricerca**, **rinomina**, **elimina**, pin
+>   (estendere `chat.ts`).
+> - **Rendering ricco**: markdown + **copia code-block** + card prodotto inline; codici sempre in mono.
+> - **Azioni messaggio**: copia, **rigenera**, modifica-e-reinvia, feedback 👍/👎 (log su `ActivityLog`?).
+> - **Composer**: textarea auto-grow, Enter invia / Shift+Enter a capo (già), **STOP**, contatore, follow-up suggeriti.
+> - **Persistenza conversazione** in URL (`?c=<id>`) → refresh/back tornano alla stessa chat.
+> - **Empty-state/onboarding** accogliente; **scroll intelligente** (autoscroll solo se vicino al fondo + «scorri in fondo»).
+>
+> **NOTA API/ambiente**: la chat gira su **Gemini** (Kimi fallback non attivo); a quota libera le risposte possono
+> impiegare 1–2 min sotto 429 (retry+backoff del gateway) → lo streaming/feedback di stato conta doppio. Per la
+> verifica browser locale serve una `GEMINI_API_KEY` reale (o si testa la UI con provider mockato/stub).
+>
+> ---
+>
+> **▶ STORICO — sessione 2026-07-24: UX ARCHIVIO ✅ (PR #29 + #30 MERGIATE e in `main`).**
+>
+> **Core + primi extra (PR #29):** persistenza ricerca in **URL searchParams** (`useSearchParams` sotto `<Suspense>`,
+> `router.replace(…,{scroll:false})`) + **vista** in `localStorage`; **ritorno-alla-lista con scroll** (snapshot
+> `scrollY` per-chiave in `sessionStorage`, `history.scrollRestoration='manual'`, ripristino `rAF` post-dati;
+> salvataggio su `pointerdown`+`pagehide`, MAI su scroll/unmount — bug scovato in verifica browser); **cronologia 7gg**
+> (`product.recentSearches` read-side su `ActivityLog`); thumbnail (`ProductImage`+`fallback`, `ProductThumb`), chip
+> filtri, empty-state. Critica adversariale 3-lenti recepita (spec §12). **Follow-up (PR #30):** scorciatoia `/`
+> (`is-editable-target.ts`), «copia link», «visti di recente» (`localStorage`, `recently-viewed.ts`), pulsante listino
+> su card/righe (stretched-link, `listinoPage` già in `product.search`). Gate verdi (**test 380**), verifica browser
+> desktop+mobile ≤375px (12/12). **NESSUNA azione ops.** Spec/piani: `docs/superpowers/{specs,plans}/2026-07-24-archivio-ux*`.
+> *(Nota processo: la #29 fu mergiata dall'utente mentre giravano i follow-up → i commit follow-up sono stati rebasati
+> su `main` e aperti/mergiati come PR nuova #30, mai impilati su storia già mergiata.)*
 >
 > ---
 >
