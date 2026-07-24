@@ -16,43 +16,47 @@
 | **Stato deploy** | **LIVE** su `catalogo-finder-kappa.vercel.app`. Neon allineato (**ops run 30024919979**: migrazione `add_listino_page` + import + seed vasistas + pagine popolate). Viewer listino **ATTIVATO** (Vercel Blob + `LISTINO_PDF_URL` impostati dall'utente). ⚠️ **1 problema aperto: immagini viewer parziali → Opzione B (vedi «RIPRENDI DA QUI»).** |
 | **Piani/spec** | `docs/superpowers/{specs,plans}/2026-07-23-fase1i-kit-vasistas-legno*` e `2026-07-23-listino-viewer*`. |
 
-> **▶ RIPRENDI DA QUI — 2026-07-23 (Opzione B implementata): viewer listino a PAGINE SINGOLE, pronto per PR + ops.**
+> **▶ RIPRENDI DA QUI — 2026-07-24 (Opzione B, store PRIVATO): PR #25 MERGIATA, follow-up privato da mergiare + ri-split.**
 >
-> **Opzione B FATTA** sul branch **`claude/listino-page-split-n8ofuk`** (fresco da `origin/main` dopo #20–#24).
-> Risolve il problema delle **immagini parziali** del viewer: il listino non è più un unico PDF da 41 MB servito
-> via Range, ma **~959 paginette** su Vercel Blob (ognuna un file minuscolo con TUTTE le sue immagini → scaricata
-> per intero → immagini complete, veloce, ottima su mobile, evidenziazione preservata).
+> Viewer listino a **PAGINE SINGOLE** (Opzione B): il listino non è più un unico PDF da 41 MB servito via Range,
+> ma **~959 paginette** su Vercel Blob (ognuna un file minuscolo con TUTTE le sue immagini → scaricata per intero
+> → immagini complete, veloce, ottima su mobile, evidenziazione preservata).
 >
-> **Cosa è entrato (gate verdi: typecheck · lint · test 332 · build 14 route):**
-> - **env** (`src/env.ts`, `.env.example`): rimossa `LISTINO_PDF_URL`; aggiunte `LISTINO_PAGE_URL_TEMPLATE`
->   (URL con placeholder `{page}`) e `LISTINO_TOTAL_PAGES` (`z.coerce.number`). Entrambe assenti = feature off.
-> - **route** `src/app/api/listino/route.ts` + `page-param.ts`: `GET /api/listino?page=N` (auth 401, 503 se env
->   off, **param validato anti-SSRF** `^[1-9]\d*$` in `[1,total]` → 400, `fetch` del template, stream **200
->   application/pdf**, upstream !ok → 502). **Niente Range.**
-> - **split** `scripts/split-listino.ts` + `src/server/catalog/listino-blob.ts`: `pdfseparate page-%d.pdf` →
->   `@vercel/blob` `put("listino/page-N.pdf", …, {access:"public", addRandomSuffix:false, allowOverwrite:true})`
->   con retry; stampa `LISTINO_TOTAL_PAGES` + `LISTINO_PAGE_URL_TEMPLATE` (da `page-1`) + deep-link vasistas.
->   Spot-check soft: `page-418.pdf` contiene `A50111`. `@vercel/blob` in **devDependencies** (la route usa `fetch`).
-> - **ops** `.github/workflows/ops-split-listino.yml` (`workflow_dispatch`, secret **`BLOB_READ_WRITE_TOKEN`**).
-> - **viewer** `listino-viewer.tsx`: `<Document file="/api/listino?page=N">` + **`<Page pageNumber={1}>`**;
->   rimossi `numPages`/`onLoadSuccess`; `totalPages` come **prop** (layout server → provider → viewer); footer
->   `pag. N / totale`; prev/next per pagina. **Fix mobile-first** del `width` fisso 720px → **responsive** via
->   `ResizeObserver` (`Math.min(720, larghezza-misurata)`) → niente overflow a ≤375px.
-> - **/llm-council** (design) + **review adversarial** (workflow) fatti; spec/piano in
->   `docs/superpowers/{specs,plans}/2026-07-23-listino-page-split*`.
+> **STATO:** **PR #25 MERGIATA** (versione «Blob pubblico»). Al primo run ops lo split è **fallito**:
+> `Cannot use public access on a private store` → il Blob store dell'utente è **PRIVATO**. **Follow-up** sul branch
+> **`claude/listino-page-split-n8ofuk`** (ripartito da `origin/main` dopo #25) che adatta il codice allo store
+> privato — **da mergiare**, poi **ri-lanciare lo split**.
 >
-> **➡ AZIONI OPS (utente, dopo il merge della PR):**
-> 1. Aggiungere il **GitHub secret `BLOB_READ_WRITE_TOKEN`** (token Read/Write dello store Blob).
-> 2. Lanciare la GH Action **«Ops — Split listino»** → split+upload delle paginette. Dai log copiare
->    **`LISTINO_TOTAL_PAGES`** e **`LISTINO_PAGE_URL_TEMPLATE`**.
-> 3. Su **Vercel (Production)**: impostare quelle 2 env, **rimuovere `LISTINO_PDF_URL`**, poi **redeploy**.
-> 4. (Opzionale) eliminare dal Blob il vecchio `listino.pdf` monolitico.
-> 5. **Verifica browser** (≤375px + desktop): un codice → pagina giusta, **immagini complete**, codice
->    evidenziato, nessun overflow orizzontale.
+> **Cosa fa il follow-up (gate verdi: typecheck · lint · test 330 · build):**
+> - **env** (`src/env.ts`, `.env.example`): **`BLOB_READ_WRITE_TOKEN`** (al posto di `LISTINO_PAGE_URL_TEMPLATE`)
+>   + `LISTINO_TOTAL_PAGES`. Entrambe assenti = feature off.
+> - **route** `src/app/api/listino/route.ts` + `page-param.ts`: `GET /api/listino?page=N` — auth 401 · 503 se env
+>   off · **param anti-SSRF** `^[1-9]\d*$` in `[1,total]` → 400 · legge la paginetta **privata** lato server via
+>   `@vercel/blob` `get("listino/page-N.pdf", {access:"private", token})` · stream **200 application/pdf** · null/errore → 502.
+> - **split** `scripts/split-listino.ts`: `pdfseparate page-%d.pdf` → `put(..., {access:"private", …})` con retry;
+>   stampa `LISTINO_TOTAL_PAGES`. `@vercel/blob` ora in **dependencies** (la route lo importa a runtime).
+>   Rimosso l'helper `pageUrlTemplateFromUrl` (non serve un URL pubblico).
+> - **viewer/provider/layout**: invariati (`<Page pageNumber={1}>`, `totalPages` via prop, width responsive `ResizeObserver`).
+> - **ops** `ops-split-listino.yml` invariato (secret `BLOB_READ_WRITE_TOKEN`).
+> - Il listino NON è **mai** raggiungibile pubblicamente (risolve del tutto il finding low di enumerabilità).
 >
-> **Nota edizione:** lo split DEVE girare sulla **stessa edizione** del listino che ha popolato
-> `Product.listinoPage` (stesso link registrato). A ogni nuova edizione: re-run backfill (`ops-neon`) **e**
-> `ops-split-listino` insieme.
+> **➡ AZIONI OPS (utente):**
+> 1. **Mergiare il follow-up** (nuova PR).  2. **Secret `BLOB_READ_WRITE_TOKEN`** già presente (aggiunto per il run #1).
+> 3. **Ri-lanciare** la GH Action **«Ops — Split listino»** → carica le ~959 paginette **private**. Dal log copiare
+>    **`LISTINO_TOTAL_PAGES`**.
+> 4. Su **Vercel (Production)**: impostare **`BLOB_READ_WRITE_TOKEN`** (stesso token dello store) + **`LISTINO_TOTAL_PAGES`**,
+>    **rimuovere `LISTINO_PDF_URL`**, poi **redeploy**.
+> 5. (Opz.) eliminare dal Blob il vecchio `listino.pdf` monolitico.
+> 6. **Verifica browser** (≤375px + desktop): un codice → pagina giusta, **immagini complete**, codice evidenziato,
+>    nessun overflow orizzontale.
+>
+> **Nota edizione:** lo split DEVE girare sulla **stessa edizione** del listino che ha popolato `Product.listinoPage`
+> (stesso link registrato; il run #1 ha confermato **959 pagine**). A ogni nuova edizione: re-run backfill (`ops-neon`)
+> **e** `ops-split-listino` insieme.
+>
+> **Nota spot-check:** il warning «page-418 NON contiene A50111» è **soft e atteso** (la pagina di calibrazione è lo
+> schema di montaggio; il codice può non comparirvi). La numerazione fisica combacia col monolite già verificato LIVE
+> (vasistas = pagina 418) → i deep-link sono corretti; verifica reale = browser dopo il deploy.
 >
 > ---
 >
