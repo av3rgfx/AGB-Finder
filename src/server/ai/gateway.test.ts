@@ -4,7 +4,7 @@ import { CircuitBreaker } from "./breaker";
 import { RateLimiter } from "./ratelimit";
 import { ProviderHttpError } from "./errors";
 import { AIGateway } from "./gateway";
-import type { ChatProvider, ChatResult } from "./providers/types";
+import type { ChatProvider, ChatResult, ProviderChunk } from "./providers/types";
 
 const OK: ChatResult = { text: "ok", toolCalls: [], modelUsed: "m", tokensUsed: 1 };
 
@@ -13,6 +13,26 @@ function provider(
   impl: () => Promise<ChatResult>,
 ): ChatProvider & { chat: ReturnType<typeof vi.fn> } {
   return { name, chat: vi.fn(impl) } as never;
+}
+
+/** Provider fake per lo streaming: chat() non usato dai test ma richiesto dall'interfaccia ChatProvider. */
+function streamProvider(
+  name: string,
+  chunks: ProviderChunk[],
+): ChatProvider & { chatStream: ReturnType<typeof vi.fn> } {
+  return {
+    name,
+    chat: vi.fn(() => Promise.resolve(OK)),
+    chatStream: vi.fn(async function* () {
+      for (const chunk of chunks) yield chunk;
+    }),
+  } as never;
+}
+
+async function drain<T>(gen: AsyncGenerator<T>): Promise<T[]> {
+  const out: T[] = [];
+  for await (const item of gen) out.push(item);
+  return out;
 }
 
 let redis: FakeRedis;
@@ -92,6 +112,55 @@ describe("AIGateway.chat", () => {
       name: "AIUnavailableError",
     });
     expect(await redis.get("cb:gemini:fail")).toBe("1");
+  });
+});
+
+describe("AIGateway.chatStream", () => {
+  it("oltre 20 msg/min per utente → RateLimitedError", async () => {
+    const gemini = streamProvider("gemini", []);
+    const gw = gateway([gemini]);
+    for (let i = 0; i < 20; i++) await drain(gw.chatStream([], [], { userId: "u1" }));
+    await expect(drain(gw.chatStream([], [], { userId: "u1" }))).rejects.toMatchObject({
+      name: "RateLimitedError",
+    });
+  });
+
+  it("breaker aperto → salta il provider senza chiamarlo → AIUnavailableError", async () => {
+    const gemini = streamProvider("gemini", []);
+    const breaker = new CircuitBreaker(redis);
+    for (let i = 0; i < 5; i++) await breaker.recordFailure("gemini");
+    await expect(
+      drain(gateway([gemini], { breaker }).chatStream([], [], { userId: "u1" })),
+    ).rejects.toMatchObject({ name: "AIUnavailableError" });
+    expect(gemini.chatStream).not.toHaveBeenCalled();
+  });
+
+  it("inoltra i chunk e registra il successo sul breaker", async () => {
+    const chunks: ProviderChunk[] = [{ type: "text-delta", text: "hi" }];
+    const gemini = streamProvider("gemini", chunks);
+    const breaker = new CircuitBreaker(redis);
+    const recordSuccess = vi.spyOn(breaker, "recordSuccess");
+    const out = await drain(gateway([gemini], { breaker }).chatStream([], [], { userId: "u1" }));
+    expect(out).toEqual(chunks);
+    expect(recordSuccess).toHaveBeenCalledWith("gemini");
+  });
+
+  it("errore del provider a metà stream → registra il fallimento sul breaker e rilancia", async () => {
+    const error = new ProviderHttpError("gemini", 500);
+    const gemini: ChatProvider = {
+      name: "gemini",
+      chat: vi.fn(() => Promise.resolve(OK)),
+      chatStream: vi.fn(async function* () {
+        yield { type: "text-delta", text: "hi" } as ProviderChunk;
+        throw error;
+      }),
+    } as never;
+    const breaker = new CircuitBreaker(redis);
+    const recordFailure = vi.spyOn(breaker, "recordFailure");
+    await expect(
+      drain(gateway([gemini], { breaker }).chatStream([], [], { userId: "u1" })),
+    ).rejects.toBe(error);
+    expect(recordFailure).toHaveBeenCalledWith("gemini");
   });
 });
 

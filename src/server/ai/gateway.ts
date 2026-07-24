@@ -13,7 +13,13 @@ import {
   RateLimitedError,
 } from "./errors";
 import { GeminiChatProvider } from "./providers/gemini";
-import type { ChatMessage, ChatProvider, ChatResult, ToolDeclaration } from "./providers/types";
+import type {
+  ChatMessage,
+  ChatProvider,
+  ChatResult,
+  ProviderChunk,
+  ToolDeclaration,
+} from "./providers/types";
 
 export interface GatewayDeps {
   providers: ChatProvider[];
@@ -97,6 +103,40 @@ export class AIGateway {
     // Saltati solo per budget → è un problema di carico, non di disponibilità.
     if (skippedForBudget && !sawFailure) throw new RateLimitedError();
     throw new AIUnavailableError();
+  }
+
+  /**
+   * Percorso streaming (per lo STOP lato client): stesse guardie di `chat()`
+   * (rate limit utente → breaker → rate limit provider → timeout) ma **nessun
+   * fallback e nessun retry server-side** — con un solo provider, ritentare a
+   * metà stream duplicherebbe token già inoltrati al client (verdetto LLM
+   * Council). Il timeout interno è combinato con l'eventuale AbortSignal del
+   * chiamante: chi arriva prima interrompe il fetch al provider.
+   */
+  async *chatStream(
+    messages: ChatMessage[],
+    tools: ToolDeclaration[],
+    opts: { userId: string; signal?: AbortSignal },
+  ): AsyncGenerator<ProviderChunk> {
+    const [provider] = this.deps.providers;
+    if (!provider) throw new AINotConfiguredError();
+    if (!(await this.deps.limiter.consume(`user:${opts.userId}`, USER_RPM, WINDOW_SEC)))
+      throw new RateLimitedError();
+    if (await this.deps.breaker.isOpen(provider.name)) throw new AIUnavailableError();
+    if (
+      !(await this.deps.limiter.consume(`provider:${provider.name}`, PROVIDER_RPM, WINDOW_SEC))
+    )
+      throw new RateLimitedError();
+
+    const timeout = AbortSignal.timeout(this.timeoutMs);
+    const signal = opts.signal ? AbortSignal.any([opts.signal, timeout]) : timeout;
+    try {
+      for await (const chunk of provider.chatStream(messages, tools, signal)) yield chunk;
+      await this.deps.breaker.recordSuccess(provider.name);
+    } catch (error) {
+      await this.deps.breaker.recordFailure(provider.name);
+      throw error;
+    }
   }
 
   /** Embedding della query di ricerca: null su qualunque errore → degrado al ramo testuale. */
