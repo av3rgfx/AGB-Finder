@@ -18,4 +18,11 @@ describe("ProductImage", () => {
     fireEvent.error(screen.getByRole("img"));
     expect(container.querySelector("img")).toBeNull();
   });
+
+  it("mostra il fallback su errore quando fornito", () => {
+    render(<ProductImage code="X" fallback={<span data-testid="ph">ph</span>} />);
+    fireEvent.error(screen.getByRole("img"));
+    expect(screen.getByTestId("ph")).toBeDefined();
+    expect(screen.queryByRole("img")).toBeNull();
+  });
 });

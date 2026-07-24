@@ -9,18 +9,37 @@
 
 | Campo | Valore |
 |-------|--------|
-| **Data** | 2026-07-24 (sessione CONCLUSA — immagini prodotto live) |
+| **Data** | 2026-07-24 (sessione UX Archivio — PR aperta, da mergiare) |
 | **Fase in corso** | Fase 1 — MVP Gestionale |
-| **Sotto-fase** | …#18 ✅ · **1i Vasistas ✅ (#20)** · **«Visualizza nel listino» ✅ (#21–#23)** · **Opzione B viewer pagine singole ✅ (#25 + #26, store privato)** · **IMMAGINI PRODOTTO ✅ (#27, popolate: 7082 su Neon)** |
-| **Branch git** | **PR #25 · #26 · #27 MERGIATE** (tutte da `claude/listino-page-split-n8ofuk`, ripartito da main tra una e l'altra). Nessun branch in sospeso. |
-| **Stato deploy** | **LIVE** su `catalogo-finder-kappa.vercel.app`. Viewer listino a **pagine singole** (Blob privato, `BLOB_READ_WRITE_TOKEN`+`LISTINO_TOTAL_PAGES=959`). **Immagini prodotto**: tabella `product_images` popolata (**ops run 30089631152**, `✓ 7082 immagini`), route `/api/product-image` live (401 senza auth), UI sulla scheda. **Nessun problema aperto bloccante.** |
-| **Piani/spec** | `docs/superpowers/specs/2026-07-24-immagini-prodotto-design.md` · `2026-07-23-listino-page-split*`. |
+| **Sotto-fase** | …**IMMAGINI PRODOTTO ✅ (#27)** · **UX ARCHIVIO ✅ (branch `claude/archivio-ux-persistence-aj3zvy`, PR aperta)**: persistenza ricerca (URL+localStorage) · ritorno-alla-lista con scroll (verificato browser) · cronologia 7gg · thumbnail/chip/empty-state. |
+| **Branch git** | **PR #25–#27 MERGIATE.** Corrente: **`claude/archivio-ux-persistence-aj3zvy`** (da `origin/main`, 13 commit, pushato) — **PR aperta, attende merge (chiedere ok utente prima di mergiare).** |
+| **Stato deploy** | **LIVE** su `catalogo-finder-kappa.vercel.app`. UX Archivio: **NESSUNA azione ops** al merge (no migrazione, no dep, no env) → deploy Vercel standard. |
+| **Piani/spec** | `docs/superpowers/{specs,plans}/2026-07-24-archivio-ux*` · `…-immagini-prodotto-design.md`. |
 
-> **▶ RIPRENDI DA QUI — PROSSIMA SESSIONE: UX Archivio (persistenza stato ricerca + cronologia).**
+> **▶ RIPRENDI DA QUI — UX Archivio ✅ (branch `claude/archivio-ux-persistence-aj3zvy`, PR APERTA, da mergiare).**
 >
-> Richieste dell'utente (fine sessione 2026-07-24). Seguire il workflow: `/using-superpowers` → brainstorming
-> → `/llm-council` per i dubbi → `/impeccable` (UI, mobile+desktop ≤375px) → `/writing-plans` → esecuzione TDD;
-> `/ponytail` per il codice minimale. Partire da un **branch fresco da `origin/main`**.
+> **Cosa è stato fatto (13 commit TDD, gate verdi typecheck·lint·test 369·build, verifica browser desktop+mobile):**
+> - **Persistenza** (req.1): `query`/`filtri`/`pagina` negli **URL searchParams** (letti `useSearchParams` sotto
+>   `<Suspense>` in `archivio/page.tsx`; scrittura `router.replace(…,{scroll:false})`); **vista** in `localStorage`.
+> - **Ritorno-alla-lista con scroll** (req.2, priorità #1): snapshot `scrollY` per-chiave in `sessionStorage`
+>   (`src/lib/archivio-scroll.ts`), `history.scrollRestoration='manual'`, ripristino `rAF` una volta dopo i dati in
+>   cache. **Salvataggio su `pointerdown` (cattura) + `pagehide`** — MAI su `scroll`/unmount (Next scrolla in cima
+>   aprendo il dettaglio → salverebbe 0: bug scovato in verifica browser e corretto).
+> - **Cronologia 7gg** (req.3): `product.recentSearches` read-side su `ActivityLog` (`src/lib/recent-searches.ts`) →
+>   «Ricerche recenti» nell'empty-state.
+> - **Extra**: thumbnail card/righe (riservate; `ProductImage` esteso con `fallback` + `ProductThumb`), chip filtri
+>   attivi + azzera, empty-state con suggerimenti. Hook `use-archivio-search.ts`; moduli puri con test.
+> - Spec+piano: `docs/superpowers/{specs,plans}/2026-07-24-archivio-ux*`. Critica adversariale 3-lenti recepita
+>   (Suspense, race scroll nativo, reset pagina, YAGNI): vedi §12 della spec.
+>
+> **➡ PROSSIMI PASSI:** 1) **mergiare la PR** (chiedere ok utente). **NESSUNA azione ops** (no migrazione/dep/env)
+> → deploy Vercel standard. 2) Verifica UI reale in produzione (le thumbnail useranno le foto vere di `product_images`).
+> 3) Scelta fase successiva = decisione utente. Idee UX rimaste (non richieste): scorciatoia `/`, prodotti visti di
+> recente, pulsante «copia link» ricerca condivisibile (l'URL è già condivisibile), pulsante listino sulle card.
+>
+> ---
+>
+> **▶ STORICO — sessione 2026-07-24 (mattina): IMMAGINI PRODOTTO ✅ (#27).** (dettagli sotto)
 >
 > **PROMPT DI APERTURA (l'utente lo incolla; qui per memoria):**
 >

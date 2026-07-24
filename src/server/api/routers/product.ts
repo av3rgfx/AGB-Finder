@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { agentProcedure, createTRPCRouter, publicProcedure } from "@/server/api/trpc";
 import { getAIGateway } from "@/server/ai/gateway";
 import { RAGEngine } from "@/server/ai/rag";
+import { deriveRecentSearches } from "@/lib/recent-searches";
 
 const searchFiltersInput = z.object({
   categoryId: z.string().min(1).optional(),
@@ -95,4 +96,18 @@ export const productRouter = createTRPCRouter({
       }),
     )
     .query(({ ctx, input }) => new RAGEngine(ctx.db).getRelated(input.productId, input.limit)),
+
+  /** Ricerche recenti dell'utente (ultimi 7 giorni), derivate read-side dai log. */
+  recentSearches: agentProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(20).default(8) }).optional())
+    .query(async ({ ctx, input }) => {
+      const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const rows = await ctx.db.activityLog.findMany({
+        where: { userId: ctx.session.user.id, type: "PRODUCT_SEARCHED", createdAt: { gte: since } },
+        orderBy: { createdAt: "desc" },
+        take: 100,
+        select: { metadata: true },
+      });
+      return deriveRecentSearches(rows, { limit: input?.limit ?? 8 });
+    }),
 });

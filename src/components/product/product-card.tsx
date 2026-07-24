@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { ProductThumb } from "./product-thumb";
 
 export interface ProductSummary {
   id: string;
@@ -30,6 +31,7 @@ export function ProductCard({ product }: { product: ProductSummary }) {
       href={`/archivio/${product.id}`}
       className="group flex flex-col gap-3 rounded-md border border-line bg-surface p-4 shadow-card transition-shadow duration-150 ease-out-quart hover:shadow-pop focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
     >
+      <ProductThumb code={product.agbCode} variant="card" />
       <div className="flex items-center justify-between gap-2">
         <span className="font-mono text-xs text-ink-subtle">{product.agbCode}</span>
         <AvailabilityDot available={product.isAvailable} />
