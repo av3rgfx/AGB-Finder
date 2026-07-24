@@ -174,5 +174,13 @@ Vercel (dai log) e rimuovere `LISTINO_PDF_URL` → redeploy → verifica browser
 private store`): lo store Blob è **PRIVATO** → **follow-up** (branch ripartito da main dopo #25, nuova PR): env
 **`BLOB_READ_WRITE_TOKEN`** al posto di `LISTINO_PAGE_URL_TEMPLATE`; la route legge le paginette **private** lato
 server via `@vercel/blob` `get(access:"private", token)`; `@vercel/blob` in **dependencies**; listino mai pubblico.
-Gate verdi (test **330**). **RESTA:** mergiare il follow-up, **ri-lanciare lo split** (upload privato), impostare
-`BLOB_READ_WRITE_TOKEN` + `LISTINO_TOTAL_PAGES` su Vercel, redeploy, verifica browser.
+Gate verdi (test **330**). **PR #25 + #26 MERGIATE**; split privato ri-lanciato (run #2, 959 paginette private).
++ **IMMAGINI PRODOTTO ✅ (branch `claude/listino-page-split-n8ofuk`, PR da aprire)**: scoperta la **causa radice**
+del «immagini viewer» — le foto del listino sono **JPEG2000** e **PDF.js non le decodifica** (il range/split non
+c'entravano). **Scelta utente: estrarre le foto dal PDF e mostrarle sulla scheda prodotto** (poppler decodifica il
+jpx → PNG → `<img>` native). Tabella **`ProductImage`** (separata da Product) + migrazione `add_product_images` ·
+helper puro di mappatura **immagine→codice per banda verticale** (`listino-images.ts`) · script `extract:images` +
+workflow `ops-extract-images.yml` · route `/api/product-image?code=…` (auth, byte dal DB) · UI `ProductImage`
+(`<img onError hide>`) sulla scheda dettaglio. Gate verdi (test **341**). **RESTA:** mergiare la PR, lanciare
+`Ops — Estrai immagini prodotto` (migrazione + popola `product_images`), verifica browser. Dettagli:
+`handoff.md` §RIPRENDI DA QUI e `docs/superpowers/specs/2026-07-24-immagini-prodotto-design.md`.
