@@ -119,7 +119,8 @@ export class GeminiChatProvider implements ChatProvider {
       };
       try {
         payload = JSON.parse(data) as typeof payload;
-      } catch {
+      } catch (error) {
+        console.warn("GeminiChatProvider: frame SSE non-JSON ignorato", error);
         continue;
       }
       for (const part of payload.candidates?.[0]?.content?.parts ?? []) {
