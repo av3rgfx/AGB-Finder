@@ -23,6 +23,7 @@ professionale vicino a Gemini: **streaming** delle risposte con **STOP** e stati
 | D4 | **Rendering markdown = `react-markdown` + `remark-gfm`** (libreria matura, no `innerHTML`/XSS, gestisce liste/tabelle/code-block). | Utente |
 | D5 | **Scope v1 = solo core** (vedi §9). Feedback 👍/👎, pin, modifica-e-reinvia, resume stream → v2. **Zero migrazioni, zero azioni ops DB.** | Utente |
 | D6 | **Rimozione procedure non-streaming** `chat.send`/`chat.retry`: tutto il turno passa dal route handler. | Utente |
+| D7 | **Trattamento messaggi = A1** (AI a **tutta larghezza**, niente bolla/side-stripe; utente = pill a destra) — aggiorna la voce "Chat Message" di DESIGN.md. **Prodotti citati = B1** (card **inline** sotto la risposta che le cita, via chip espandibile «N prodotti», dai `referencedProductIds` per-messaggio). Nessun pannello laterale / bottom-sheet. | Utente (anteprima) |
 
 ## 3. Architettura
 
@@ -103,7 +104,7 @@ type ChatEvent =
 - **Tolgo** `send`, `retry`.
 - **Aggiungo** `rename({conversationId, title})` (`title` trim, 1–80) e `delete({conversationId})` (soft → `status: DELETED`).
 - **`list`**: aggiungo `search?: string` (Prisma `contains`, case-insensitive, su `title`) e restituisco `updatedAt` (già presente) per il raggruppo-per-data lato client.
-- `create`, `get`, `archive` restano. `get`: aggiungo `listinoPage` a `PRODUCT_SUMMARY` (per il pulsante listino sulle card).
+- `create`, `get`, `archive` restano. **`get` (per B1 = card inline):** restituisce i messaggi con i prodotti **risolti per-messaggio** — ogni ASSISTANT porta `products: ChatProductSummary[]` dai propri `referencedProductIds` (non più una lista piatta deduplicata a livello conversazione). `PRODUCT_SUMMARY` += `listinoPage` (per il pulsante listino). Il `done` dello stream porta gli stessi `products` del turno appena concluso, così la card compare senza refetch.
 - Tutte `agentProcedure` + `ownConversation()` riusato.
 
 ### 5.3 System prompt (abilita markdown)
@@ -123,17 +124,19 @@ Superficie (grep `kimi|Kimi|MOONSHOT|moonshot|KIMI`):
 
 > La UI/UX di dettaglio (gerarchia, stati, motion, copy, token, verifica ≤375px) è prodotta dal passo `/impeccable`. Qui i vincoli e i componenti.
 
-### 6.1 Layout & mobile-first (≤375px + desktop)
+### 6.1 Layout & mobile-first (≤375px + desktop) — **A1 + B1: due sole zone (conversazioni + chat)**
 - Chat a **tutta altezza** (`100dvh` + `env(safe-area-inset-*)`), **niente** `hidden lg:block` che nasconde funzioni.
-- **Composer sticky** in basso: textarea **auto-grow** (min 1 riga, max ~6), **Invio** invia / **Shift+Invio** a capo (già), pulsante **Invia** che diventa **STOP** durante lo stream, contatore caratteri. Gestione tastiera mobile (dvh dinamico).
-- **Conversazioni = drawer** (riuso pattern `topbar.tsx`: backdrop + Esc + body-scroll-lock + chiusura su route): **ricerca** (input filtro live), **raggruppo per data** (Oggi / Ieri / Ultimi 7 giorni / Più vecchie), voce attiva evidenziata, **menu ⋯** per **rinomina**/**elimina**/**archivia** (dropdown `position:fixed` anti-clipping da `utenti-client.tsx`), «Nuova conversazione».
-- **Prodotti citati**: desktop = pannello laterale (come oggi ma responsivo); mobile = **bottom-sheet / tab** accessibile (riuso overlay/portal `listino-viewer` o sheet dedicato) con badge conteggio.
+- **Desktop (≥1024px):** *rail conversazioni* ~280px **collassabile** (default aperta, toggle) + *colonna chat* centrata (larghezza leggibile ~720–760px), composer sticky in basso. Nessuna terza colonna prodotti (B1).
+- **Mobile (≤1023px):** chat a tutta larghezza; conversazioni in **drawer overlay** (riuso `topbar.tsx`); header compatto ☰ · titolo troncato · ＋ nuova.
+- **Composer sticky** in basso: textarea **auto-grow** (min 1 riga, max ~6), **Invio** invia / **Shift+Invio** a capo (già), pulsante **Invia** che diventa **STOP** durante lo stream, contatore caratteri (appare oltre ~3500/4000). Gestione tastiera mobile (dvh dinamico).
+- **Conversazioni (rail/drawer):** **ricerca** (input filtro live), **raggruppo per data** (Oggi / Ieri / Ultimi 7 giorni / Più vecchie), voce attiva evidenziata (`brand-light`), **menu ⋯** per **rinomina** (inline edit) / **archivia** / **elimina** (conferma inline, no modal) — dropdown `position:fixed` anti-clipping da `utenti-client.tsx`, «＋ Nuova conversazione».
 
-### 6.2 Rendering messaggi
-- **`react-markdown` + `remark-gfm`**; renderer custom: **code-block** con pulsante **copia** (pattern `CopyCodeButton`), `inline code` mono, tabelle/liste GFM. **Nessun** `rehype-raw` (no HTML grezzo → no XSS).
-- Codici AGB in **mono** (mantengo la regex attuale come plugin/segmentazione dentro i nodi testo, oppure via renderer).
-- **Card prodotto**: nel pannello/sheet, con **thumbnail** (`ProductThumb code`), badge disponibilità, **prezzo**, link `/archivio/[id]`, **pulsante listino** (`ListinoButton code page`, con `listinoPage` ora nel summary).
-- Stati: **stream in corso** (cursore/typing), **stati tool** («Sto cercando nel catalogo…»), **errore recoverable** (banner + countdown + Riprova), **errore fatale**.
+### 6.2 Rendering messaggi — **A1 (tutta larghezza)**
+- **AI = blocco a tutta larghezza** (niente bolla, niente side-stripe): segno assistente (pallino brand + «Assistente»), contenuto markdown che scorre sul fondo pagina, divisore sottile tra i turni. **Utente = pill compatta a destra** su `surface-sunken`.
+- **`react-markdown` + `remark-gfm`**; renderer custom: **code-block** con pulsante **copia** (pattern `CopyCodeButton`), `inline code` mono, tabelle/liste GFM (a tutta larghezza → niente scroll forzato). **Nessun** `rehype-raw` (no HTML grezzo → no XSS).
+- Codici AGB in **mono** (mantengo la regex attuale come segmentazione dentro i nodi testo del renderer).
+- **Card prodotto inline (B1):** sotto la risposta AI, chip espandibile «**N prodotti**» → lista compatta di card, ciascuna: **thumbnail** (`ProductThumb code`), codice **mono** + copia (`CopyCodeButton`), nome (link `/archivio/[id]`), **prezzo**, badge disponibilità, **pulsante listino** (`ListinoButton code page`). Alimentate dai `products` per-messaggio (`get`) e dal `done` del turno.
+- Stati: **stream in corso** (cursore typing ▍), **stati tool** («Sto cercando nel catalogo…» → «Trovati N risultati»), **errore recoverable** (banner + countdown + Riprova), **errore fatale** (banner + Rigenera).
 
 ### 6.3 Azioni messaggio
 - Su risposta ASSISTANT completata: **Copia** (testo markdown, feedback 2s) e **Rigenera** (`mode:'regenerate'`).

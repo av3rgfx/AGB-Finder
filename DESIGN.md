@@ -90,11 +90,14 @@
 - Small pill: 6px radius, 4px 10px padding, 12px/500
 - Variants: brand (orange light), success (green light), warning (yellow light), error (red light)
 
-### Chat Message
-- Agent: White bg, left-aligned, N200 left border 3px
-- AI: Brand Orange Light bg, left-aligned, Brand Orange left border 3px
-- User: N100 bg, right-aligned
-- Product code blocks: mono font, copy button, subtle bg
+### Chat Message (rev. 2026-07-24 — chat streaming "tipo Gemini")
+- AI: **full-width block, no bubble, no side-stripe**, left-aligned on page bg; small brand assistant mark (dot + "Assistente"); subtle divider between turns. Renders rich markdown (lists, tables, code blocks) full-width so data breathes.
+- User: N100 (surface-sunken) bg, right-aligned compact pill
+- Streaming: typing cursor while text streams; inline tool-status chips ("Sto cercando nel catalogo…")
+- Product code blocks / codes: mono font, copy button, subtle bg
+- Cited products: **inline cards below the AI answer** (thumbnail, mono code + copy, name, price, availability badge, archivio/listino links), via an expandable "N prodotti" chip
+- Message actions (below completed AI answer): Copia, Rigenera
+> Supersedes the previous bubble + 3px left-border treatment (side-stripe accents are an anti-pattern; bubbles cramped tables/code).
 
 ## Layout Patterns
 
