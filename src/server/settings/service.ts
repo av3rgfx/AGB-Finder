@@ -4,7 +4,7 @@ import { env } from "@/env";
 import type { RedisLike } from "@/server/ai/redis";
 import { decrypt, encrypt, isCryptoConfigured } from "./crypto";
 
-export type AiProvider = "gemini" | "kimi";
+export type AiProvider = "gemini";
 export type SettingsDb = Pick<PrismaClient, "settings" | "activityLog">;
 
 const KEY_VERSION_REDIS = "settings:ai-keys:version";
@@ -12,7 +12,6 @@ const CATEGORY = "API_KEYS" as const;
 
 const PROVIDERS: Record<AiProvider, { settingsKey: string; envKey: () => string | undefined }> = {
   gemini: { settingsKey: "GEMINI_API_KEY", envKey: () => env.GEMINI_API_KEY },
-  kimi: { settingsKey: "KIMI_API_KEY", envKey: () => env.KIMI_API_KEY },
 };
 
 export interface KeyStatus {

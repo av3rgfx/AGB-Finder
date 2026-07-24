@@ -20,11 +20,9 @@ const envSchema = z.object({
   // Redis (Upstash / local)
   REDIS_URL: z.string().min(1),
 
-  // AI providers (optional in Fondamenta — wired in later phases)
+  // AI provider (Gemini-only — provider secondario dormiente rimosso 2026-07-24, nessun consumatore residuo)
   GEMINI_API_KEY: z.string().optional(),
   GEMINI_MODEL: z.string().default("gemini-2.5-flash"),
-  KIMI_API_KEY: z.string().optional(),
-  KIMI_MODEL: z.string().default("kimi-k2.6"),
 
   // Security
   IP_HASH_SECRET: z.string().min(1),

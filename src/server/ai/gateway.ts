@@ -13,7 +13,6 @@ import {
   RateLimitedError,
 } from "./errors";
 import { GeminiChatProvider } from "./providers/gemini";
-import { KimiChatProvider } from "./providers/kimi";
 import type { ChatMessage, ChatProvider, ChatResult, ToolDeclaration } from "./providers/types";
 
 export interface GatewayDeps {
@@ -48,8 +47,11 @@ class QueryEmbeddings implements EmbeddingService {
 /**
  * UNICO punto di uscita verso i provider AI (regola di progetto, come il
  * RAGEngine per il raw SQL): rate limit per utente e per provider, circuit
- * breaker distribuito, timeout 30s, 1 retry con jitter su 429/5xx, fallback
- * Gemini→Kimi. Qualunque errore di un provider fa scattare il fallback.
+ * breaker distribuito, timeout 30s, 1 retry con jitter su 429/5xx. Gemini-only
+ * (il provider secondario dormiente è stato rimosso 2026-07-24: kit gen ora
+ * deterministico, nessun consumatore residuo — verdetto LLM Council). L'array
+ * `providers` resta generico (0 o 1 elemento oggi) per non chiudere la porta
+ * a un provider futuro.
  */
 export class AIGateway {
   private readonly timeoutMs: number;
@@ -113,6 +115,11 @@ export class AIGateway {
     return this.deps.queryEmbeddings ? new QueryEmbeddings(this) : undefined;
   }
 
+  /** Nomi dei provider configurati, nell'ordine di priorità. Solo per test. */
+  providerNames(): string[] {
+    return this.deps.providers.map((p) => p.name);
+  }
+
   private async callWithRetry(
     provider: ChatProvider,
     messages: ChatMessage[],
@@ -135,10 +142,8 @@ const VERSION_TTL_MS = 30_000;
 
 async function buildGateway(redis: RedisLike): Promise<AIGateway> {
   const geminiKey = await resolveApiKey(db, "gemini");
-  const kimiKey = await resolveApiKey(db, "kimi");
   const providers: ChatProvider[] = [];
   if (geminiKey) providers.push(new GeminiChatProvider(geminiKey, env.GEMINI_MODEL));
-  if (kimiKey) providers.push(new KimiChatProvider(kimiKey, env.KIMI_MODEL));
   const queryEmbeddings = geminiKey
     ? new GeminiEmbeddingService(geminiKey, "RETRIEVAL_QUERY", (input, init) =>
         fetch(input, { ...init, signal: AbortSignal.timeout(3000) }),

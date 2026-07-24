@@ -5,8 +5,8 @@ import { getRedis } from "@/server/ai/redis";
 import { testProviderKey } from "@/server/ai/test-connection";
 import { getStatus, resolveApiKey, setApiKey, type AiProvider } from "@/server/settings/service";
 
-const providerSchema = z.enum(["gemini", "kimi"]);
-const ALL_PROVIDERS: AiProvider[] = ["gemini", "kimi"];
+const providerSchema = z.enum(["gemini"]);
+const ALL_PROVIDERS: AiProvider[] = ["gemini"];
 
 export const settingsRouter = createTRPCRouter({
   aiKeys: createTRPCRouter({
