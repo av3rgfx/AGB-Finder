@@ -1,39 +1,77 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef } from "react";
 import { keepPreviousData } from "@tanstack/react-query";
 import { LayoutGrid, List, PackageSearch, Search } from "lucide-react";
 import { api } from "@/trpc/react";
-import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ProductCard } from "@/components/product/product-card";
 import { ProductRow } from "@/components/product/product-row";
-import { ProductFilters, type ArchivioFilters } from "@/components/product/product-filters";
+import { ProductFilters } from "@/components/product/product-filters";
+import { useArchivioSearch } from "@/lib/use-archivio-search";
+import { clearScroll, loadScroll, shouldRestoreScroll } from "@/lib/archivio-scroll";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 24;
 
 export function ArchivioClient() {
-  const [query, setQuery] = useState("");
-  const [filters, setFiltersState] = useState<ArchivioFilters>({});
-  // Vista lista di default: densità prima di tutto (PRODUCT.md — "information density").
-  const [view, setView] = useState<"list" | "grid">("list");
-  const [offset, setOffset] = useState(0);
+  const {
+    queryInput,
+    setQueryInput,
+    committed,
+    offset,
+    setFilters,
+    setPage,
+    view,
+    setView,
+    viewLoaded,
+    scrollKey,
+  } = useArchivioSearch(PAGE_SIZE);
 
-  const debouncedQuery = useDebouncedValue(query.trim(), 300);
-  const setFilters = (next: ArchivioFilters) => {
-    setFiltersState(next);
-    setOffset(0);
-  };
+  const categories = api.product.listCategories.useQuery();
+  const categoriesReady = !committed.filters.categoryId || categories.isSuccess;
 
   const search = api.product.search.useQuery(
-    { query: debouncedQuery, filters, limit: PAGE_SIZE, offset },
-    { enabled: debouncedQuery.length > 0, placeholderData: keepPreviousData },
+    { query: committed.query, filters: committed.filters, limit: PAGE_SIZE, offset },
+    {
+      enabled: committed.query.length > 0,
+      placeholderData: keepPreviousData,
+      staleTime: 5 * 60_000,
+      gcTime: 30 * 60_000,
+    },
   );
 
   const hits = search.data?.hits ?? [];
   const total = search.data?.total ?? 0;
+
+  // p fuori range (URL condiviso / drift): 0 hit ma offset>0 → torna a pagina 1.
+  useEffect(() => {
+    if (search.isSuccess && hits.length === 0 && offset > 0) setPage(1);
+  }, [search.isSuccess, hits.length, offset, setPage]);
+
+  // Ripristino scroll: una volta, dopo il passaggio nativo (doppio rAF).
+  const restored = useRef(false);
+  useEffect(() => {
+    const savedY = loadScroll(scrollKey);
+    const go = shouldRestoreScroll({
+      hasData: Boolean(search.data),
+      isPlaceholder: search.isPlaceholderData,
+      viewLoaded,
+      categoriesReady,
+      alreadyRestored: restored.current,
+      savedY,
+    });
+    if (!go || savedY === null) return;
+    restored.current = true;
+    const raf = requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        window.scrollTo(0, savedY);
+        clearScroll(scrollKey);
+      }),
+    );
+    return () => cancelAnimationFrame(raf);
+  }, [search.data, search.isPlaceholderData, viewLoaded, categoriesReady, scrollKey]);
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-6">
@@ -42,15 +80,13 @@ export function ArchivioClient() {
         <div className="flex items-center gap-2">
           <div className="flex-1">
             <Input
+              id="archivio-search"
               type="search"
               aria-label="Cerca nel catalogo"
               placeholder="Cerca per nome, categoria o codice AGB…"
               leadingIcon={<Search className="size-4" aria-hidden />}
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setOffset(0);
-              }}
+              value={queryInput}
+              onChange={(e) => setQueryInput(e.target.value)}
             />
           </div>
           <div
@@ -87,14 +123,14 @@ export function ArchivioClient() {
       </header>
 
       <div className="grid items-start gap-6 md:grid-cols-[220px_1fr]">
-        <ProductFilters filters={filters} onChange={setFilters} />
+        <ProductFilters filters={committed.filters} onChange={setFilters} />
 
         <section
           aria-label="Risultati"
           aria-busy={search.isFetching}
           className="flex min-w-0 flex-col gap-4"
         >
-          {debouncedQuery.length === 0 ? (
+          {committed.query.length === 0 ? (
             <EmptyState
               title="Cerca nel catalogo AGB"
               detail="Digita un termine (es. “cerniera anta ribalta”) o un codice prodotto (es. B00590)."
@@ -111,7 +147,7 @@ export function ArchivioClient() {
           ) : hits.length === 0 ? (
             <EmptyState
               title="Nessun risultato"
-              detail={`Nessun prodotto trovato per “${debouncedQuery}”. Prova con un termine diverso o rimuovi i filtri.`}
+              detail={`Nessun prodotto trovato per “${committed.query}”. Prova con un termine diverso o rimuovi i filtri.`}
             />
           ) : (
             <>
@@ -134,7 +170,7 @@ export function ArchivioClient() {
                   ))}
                 </div>
               )}
-              <Pagination offset={offset} total={total} onChange={setOffset} />
+              <Pagination page={committed.page} total={total} onChange={setPage} />
             </>
           )}
         </section>
@@ -157,7 +193,10 @@ function SkeletonList() {
   return (
     <div className="flex flex-col gap-0 overflow-hidden rounded-md border border-line" aria-hidden>
       {Array.from({ length: 8 }, (_, i) => (
-        <div key={i} className="flex items-center gap-4 border-b border-line bg-surface px-4 py-3 last:border-b-0">
+        <div
+          key={i}
+          className="flex items-center gap-4 border-b border-line bg-surface px-4 py-3 last:border-b-0"
+        >
           <span className="h-3 w-28 animate-pulse rounded bg-surface-sunken" />
           <span className="h-3 flex-1 animate-pulse rounded bg-surface-sunken" />
           <span className="h-3 w-16 animate-pulse rounded bg-surface-sunken" />
@@ -168,15 +207,16 @@ function SkeletonList() {
 }
 
 function Pagination({
-  offset,
+  page,
   total,
   onChange,
 }: {
-  offset: number;
+  page: number;
   total: number;
-  onChange: (offset: number) => void;
+  onChange: (page: number) => void;
 }) {
   if (total <= PAGE_SIZE) return null;
+  const offset = (page - 1) * PAGE_SIZE;
   const from = offset + 1;
   const to = Math.min(offset + PAGE_SIZE, total);
   return (
@@ -185,20 +225,10 @@ function Pagination({
         {from}–{to} di {total}
       </p>
       <div className="flex gap-2">
-        <Button
-          variant="secondary"
-          size="sm"
-          disabled={offset === 0}
-          onClick={() => onChange(Math.max(0, offset - PAGE_SIZE))}
-        >
+        <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => onChange(page - 1)}>
           Precedente
         </Button>
-        <Button
-          variant="secondary"
-          size="sm"
-          disabled={to >= total}
-          onClick={() => onChange(offset + PAGE_SIZE)}
-        >
+        <Button variant="secondary" size="sm" disabled={to >= total} onClick={() => onChange(page + 1)}>
           Successiva
         </Button>
       </div>
