@@ -9,40 +9,73 @@
 
 | Campo | Valore |
 |-------|--------|
-| **Data** | 2026-07-23 (Opzione B — viewer a pagine singole) |
+| **Data** | 2026-07-24 (sessione CONCLUSA — immagini prodotto live) |
 | **Fase in corso** | Fase 1 — MVP Gestionale |
-| **Sotto-fase** | 1a ✅ · Better Auth ✅ · 1b ✅ · 1c Chat AI ✅ · **1d Kit engine ✅** · **1e Dashboard ✅ (#9)** · **API key admin ✅ (#10)** · **1f Deploy staging 🔄** · **1g Kit multi-materiale ✅ (#15)** · **1h Anta a battente ✅ (#16)** · **Gestione utenti + login username ✅ (#17)** · **UI mobile responsive ✅ (#18)** · **1i Vasistas ✅ (#20)** · **«Visualizza nel listino» ✅ (#21, ATTIVO)** · **ottimizz. ops backfill ✅ (#22)** · **fix immagini viewer ✅ (#23)** |
-| **Branch git** | **PR #20–#23 TUTTE MERGIATE** (`claude/handoff-md-review-erkjm0`, `claude/listino-viewer`, `claude/optimize-backfill`, `claude/fix-listino-images`). Precedenti #11–#18 mergiate. Nessun branch in sospeso. |
-| **Stato deploy** | **LIVE** su `catalogo-finder-kappa.vercel.app`. Neon allineato (**ops run 30024919979**: migrazione `add_listino_page` + import + seed vasistas + pagine popolate). Viewer listino **ATTIVATO** (Vercel Blob + `LISTINO_PDF_URL` impostati dall'utente). ⚠️ **1 problema aperto: immagini viewer parziali → Opzione B (vedi «RIPRENDI DA QUI»).** |
-| **Piani/spec** | `docs/superpowers/{specs,plans}/2026-07-23-fase1i-kit-vasistas-legno*` e `2026-07-23-listino-viewer*`. |
+| **Sotto-fase** | …#18 ✅ · **1i Vasistas ✅ (#20)** · **«Visualizza nel listino» ✅ (#21–#23)** · **Opzione B viewer pagine singole ✅ (#25 + #26, store privato)** · **IMMAGINI PRODOTTO ✅ (#27, popolate: 7082 su Neon)** |
+| **Branch git** | **PR #25 · #26 · #27 MERGIATE** (tutte da `claude/listino-page-split-n8ofuk`, ripartito da main tra una e l'altra). Nessun branch in sospeso. |
+| **Stato deploy** | **LIVE** su `catalogo-finder-kappa.vercel.app`. Viewer listino a **pagine singole** (Blob privato, `BLOB_READ_WRITE_TOKEN`+`LISTINO_TOTAL_PAGES=959`). **Immagini prodotto**: tabella `product_images` popolata (**ops run 30089631152**, `✓ 7082 immagini`), route `/api/product-image` live (401 senza auth), UI sulla scheda. **Nessun problema aperto bloccante.** |
+| **Piani/spec** | `docs/superpowers/specs/2026-07-24-immagini-prodotto-design.md` · `2026-07-23-listino-page-split*`. |
 
-> **▶ RIPRENDI DA QUI — 2026-07-24 (IMMAGINI PRODOTTO): feature nuova su branch `claude/listino-page-split-n8ofuk`, PR da aprire + run ops.**
+> **▶ RIPRENDI DA QUI — PROSSIMA SESSIONE: UX Archivio (persistenza stato ricerca + cronologia).**
 >
-> **CAUSA RADICE del «immagini viewer»:** le foto del listino sono **JPEG2000 (jpx)** (1503/1790) e
-> **PDF.js non le decodifica** → per questo non si vedevano nel viewer, né il range né lo split c'entravano.
-> Le PR #25/#26 (Opzione B pagine singole, store privato) sono **MERGIATE e corrette** (viewer utile per
-> «trova il codice»; le foto jpx lì restano vuote — limite PDF.js). **Decisione utente: estrarre le foto dal
-> PDF e mostrarle sulla scheda prodotto** (poppler decodifica il jpx → PNG → `<img>` native, niente PDF.js).
+> Richieste dell'utente (fine sessione 2026-07-24). Seguire il workflow: `/using-superpowers` → brainstorming
+> → `/llm-council` per i dubbi → `/impeccable` (UI, mobile+desktop ≤375px) → `/writing-plans` → esecuzione TDD;
+> `/ponytail` per il codice minimale. Partire da un **branch fresco da `origin/main`**.
 >
-> **Cosa è stato costruito (gate verdi: typecheck·lint·test 341·build):**
-> - **`ProductImage`** (Prisma, tabella separata da Product: agbCode PK, data Bytes, mimeType) + migrazione
->   `20260724100000_add_product_images`.
-> - **`src/server/catalog/listino-images.ts`** (puro, testato): parse `pdftohtml -xml`, filtro decorativo,
->   **mappatura immagine→codice per banda verticale** + fallback nearest.
-> - **`scripts/extract-listino-images.ts`** (ops, idempotente) + **`.github/workflows/ops-extract-images.yml`**:
->   per pagina `pdftohtml -xml -fmt png` → mappa → upsert `product_images` (solo codici a catalogo). Dry-run
->   verificato sul PDF reale (pagg. 298-305 → 107 mappature corrette).
-> - **route `/api/product-image?code=…`** (auth, valida il codice, streamma i byte dal DB, 404 se assente).
-> - **UI**: componente `ProductImage` (`<img onError hide>`) nell'header di `ProductDetail`, responsive.
-> - Spec: `docs/superpowers/specs/2026-07-24-immagini-prodotto-design.md`.
+> **PROMPT DI APERTURA (l'utente lo incolla; qui per memoria):**
 >
-> **➡ AZIONI OPS (utente, dopo il merge della PR):**
-> 1. Lanciare la GH Action **«Ops — Estrai immagini prodotto»** (applica la migrazione + popola `product_images`
->    dal listino; ~5-8 min). Nessuna env nuova, nessun Blob.
-> 2. **Verifica**: aprire una scheda prodotto con foto (codici di pag. ~100/300) → la foto compare.
+> > Miglioriamo la UX dell'**Archivio**. Tre cose:
+> > 1. **Persistenza delle scelte di visualizzazione + della ricerca**: la modalità vista (lista compressa /
+> >    griglia a riquadri), la query, i filtri e la pagina devono **sopravvivere al refresh** (ora si azzerano).
+> > 2. **(La più importante) Ritorno alla lista dopo il dettaglio**: se cerco un prodotto (es. «cerniera»),
+> >    ottengo una lista lunga; se apro un prodotto e poi torno indietro, **la ricerca si resetta** invece di
+> >    riportarmi alla lista dov'ero (con la stessa posizione di scroll). Va risolto.
+> > 3. **Cronologia ricerche settimanale per utente**: salvare le ricerche fatte da ciascun utente (finestra
+> >    ~7 giorni) e mostrarle (es. «ricerche recenti») per riusarle.
+> >
+> > Poi fai uno **studio della situazione** e proponi altri miglioramenti UX sensati.
 >
-> **Tradeoff noto**: una foto di famiglia è salvata per ogni codice (duplicazione byte, ~50-120 MB su Neon);
-> se serve, si deduplica per hash in futuro (YAGNI ora). Thumbnail nelle card di ricerca = follow-up.
+> **CONTESTO TECNICO GIÀ RICOGNITO (per non ripartire da zero):**
+> - **File chiave**: `src/app/(dashboard)/archivio/archivio-client.tsx` — oggi lo stato è tutto in **`useState`**
+>   (`query`, `filters`, `view` `"list"|"grid"`, `offset`) → **si perde all'unmount** (back dalla scheda
+>   `/archivio/[id]`) **e al refresh**. È esattamente la causa dei problemi 1 e 2.
+> - La ricerca è `api.product.search` (debounce 300ms, react-query `keepPreviousData`), navigazione al dettaglio
+>   via `<Link>` in `ProductCard`/`ProductRow`.
+> - **Search history — riuso**: `ActivityLog` **già logga** `PRODUCT_SEARCHED` con la query (vedi
+>   `product.search` router + `dashboard.ts`) → la «cronologia settimanale» si può **derivare da lì** (query tRPC
+>   ultimi 7 giorni, distinte) senza nuova tabella, oppure con una tabella dedicata se si vuole di più.
+> - **Approcci candidati (da valutare nel brainstorming/council):**
+>   - Stato ricerca in **URL searchParams** (`?q=&view=&offset=&…`) via `useSearchParams`+`router.replace`
+>     → sopravvive a refresh **e** back **e** è condivisibile; react-query (staleTime) tiene i risultati in cache
+>     al ritorno → niente ricarica. **Scroll restoration** su back (App Router lo fa se non si rimonta lo stato).
+>   - Preferenza `view` persistita anche in `localStorage` (preferenza «dispositivo», non per-ricerca).
+>   - Alternativa/aggiunta: mantenere la lista montata (nessuna navigazione «hard») — ma i `<Link>` App Router
+>     già preservano la history; il problema è lo stato client, non la history.
+> - **Vincoli progetto**: TS strict; **tutte le API via tRPC/Prisma**; UI in italiano, codici in mono;
+>   **mobile-first** (verifica ≤375px); niente over-engineering (ponytail).
+> - **Idee extra da vagliare nello «studio»** (non richieste esplicitamente, proporre e far scegliere):
+>   «prodotti visti di recente», ricerche salvate/preferite, chip dei filtri attivi + «azzera», ricerca
+>   condivisibile via URL, empty-state con suggerimenti, scorciatoie tastiera, thumbnail immagine prodotto nelle
+>   card/righe (ora la foto c'è solo sul dettaglio), paginazione «carica altro» vs pagine.
+>
+> **Stato attuale (tutto LIVE, niente debito bloccante):** vedi tabella sopra. App su
+> `catalogo-finder-kappa.vercel.app`; Neon allineato; immagini prodotto popolate (7082).
+>
+> ---
+>
+> **▶ STORICO — 2026-07-24 (IMMAGINI PRODOTTO ✅ live): PR #27 MERGIATA + ops run 30089631152 (`✓ 7082 immagini`).**
+>
+> **CAUSA RADICE del «immagini viewer»:** le foto del listino sono **JPEG2000 (jpx)** (1503/1790) e **PDF.js non le
+> decodifica** → non si vedevano nel viewer (né range né split c'entravano). **Soluzione:** estratte dal PDF con
+> poppler (decodifica il jpx → PNG) e mostrate sulla **scheda prodotto** come `<img>` native. Costruito: tabella
+> `ProductImage` (separata da Product) + migrazione `20260724100000_add_product_images`; helper puro
+> `listino-images.ts` (mappatura immagine→codice per banda verticale); `scripts/extract-listino-images.ts` +
+> `ops-extract-images.yml`; route `/api/product-image?code=…` (auth, byte dal DB); UI `ProductImage`
+> (`<img onError hide>`) sull'header di `ProductDetail`. Gate verdi (test **341**). **Ops fatto** (run 30089631152,
+> `✓ 7082 immagini salvate in product_images`); route verificata live (401 senza auth). Spec:
+> `docs/superpowers/specs/2026-07-24-immagini-prodotto-design.md`.
+> **Tradeoff noto**: foto di famiglia salvata per ogni codice (duplicazione byte); dedup per hash = follow-up.
+> Thumbnail nelle card = follow-up (vedi «idee extra» sopra).
 >
 > ---
 >
