@@ -2,14 +2,9 @@
 
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
+import { type ArchivioFilters } from "@/lib/archivio-search-params";
 
-export interface ArchivioFilters {
-  categoryId?: string;
-  priceMin?: number;
-  priceMax?: number;
-  material?: string;
-  inStockOnly?: boolean;
-}
+export type { ArchivioFilters };
 
 const inputClass =
   "h-9 w-full rounded border border-line-strong bg-surface px-2.5 text-sm text-ink placeholder:text-ink-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40";
