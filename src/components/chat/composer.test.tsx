@@ -50,6 +50,14 @@ describe("Composer", () => {
     expect(onStop).toHaveBeenCalled();
   });
 
+  it("Invio durante la composizione IME non invia (isComposing)", () => {
+    const onSend = vi.fn();
+    render(<Composer onSend={onSend} streaming={false} onStop={vi.fn()} />);
+    fireEvent.change(textarea(), { target: { value: "ねこ" } });
+    fireEvent.keyDown(textarea(), { key: "Enter", isComposing: true });
+    expect(onSend).not.toHaveBeenCalled();
+  });
+
   it("Invio non invia mentre streaming", () => {
     const onSend = vi.fn();
     render(<Composer onSend={onSend} streaming onStop={vi.fn()} />);

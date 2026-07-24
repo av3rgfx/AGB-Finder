@@ -56,6 +56,9 @@ export function Composer({ onSend, streaming, onStop, disabled }: ComposerProps)
           placeholder="Chiedi all'assistente…"
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => {
+            // IME (giapponese/cinese/coreano ecc.): Invio conferma la composizione del carattere,
+            // non deve inviare il messaggio a metà digitazione.
+            if (e.nativeEvent.isComposing) return;
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
               submit();
