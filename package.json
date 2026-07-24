@@ -22,6 +22,7 @@
     "embed:products": "tsx --env-file-if-exists=.env scripts/embed-products.ts",
     "backfill:pages": "tsx --env-file-if-exists=.env scripts/backfill-listino-pages.ts",
     "split:listino": "tsx --env-file-if-exists=.env scripts/split-listino.ts",
+    "extract:images": "tsx --env-file-if-exists=.env scripts/extract-listino-images.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
