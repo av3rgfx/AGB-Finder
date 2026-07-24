@@ -11,6 +11,7 @@ import { ProductRow } from "@/components/product/product-row";
 import { ProductFilters } from "@/components/product/product-filters";
 import { ActiveFilterChips } from "@/components/product/active-filter-chips";
 import { RecentSearches } from "@/components/product/recent-searches";
+import { CopyLinkButton } from "@/components/product/copy-link-button";
 import { useArchivioSearch } from "@/lib/use-archivio-search";
 import { clearScroll, loadScroll, shouldRestoreScroll } from "@/lib/archivio-scroll";
 import { isEditableTarget } from "@/lib/is-editable-target";
@@ -213,10 +214,13 @@ export function ArchivioClient() {
                 onRemove={(keys) => clearFilter(...keys)}
                 onClearAll={clearAllFilters}
               />
-              <p className="text-sm text-ink-subtle" aria-live="polite">
-                {total} {total === 1 ? "prodotto trovato" : "prodotti trovati"}
-                {search.data ? ` · ${search.data.queryTimeMs} ms` : null}
-              </p>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm text-ink-subtle" aria-live="polite">
+                  {total} {total === 1 ? "prodotto trovato" : "prodotti trovati"}
+                  {search.data ? ` · ${search.data.queryTimeMs} ms` : null}
+                </p>
+                <CopyLinkButton />
+              </div>
               {view === "grid" ? (
                 <ul className="grid list-none grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                   {hits.map((hit) => (
