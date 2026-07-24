@@ -82,4 +82,16 @@ describe("MarkdownMessage", () => {
   it("non lancia eccezioni con una tabella a metà (streaming)", () => {
     expect(() => render(<MarkdownMessage content={"| Codice | Pre"} />)).not.toThrow();
   });
+
+  it("non rende cliccabile un link con href javascript: (XSS guard)", () => {
+    render(<MarkdownMessage content={"[clicca qui](javascript:alert(1))"} />);
+    expect(screen.queryByRole("link")).toBeNull();
+    expect(screen.getByText("clicca qui")).toBeTruthy();
+  });
+
+  it("rende cliccabile un link https: normale", () => {
+    render(<MarkdownMessage content={"[sito AGB](https://example.com/listino)"} />);
+    const link = screen.getByRole("link", { name: "sito AGB" });
+    expect(link.getAttribute("href")).toBe("https://example.com/listino");
+  });
 });

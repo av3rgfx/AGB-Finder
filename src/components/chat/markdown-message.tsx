@@ -20,6 +20,26 @@ function extractText(node: HastLikeNode): string {
   return (node.children ?? []).map(extractText).join("");
 }
 
+const SAFE_LINK_PROTOCOLS = new Set(["http:", "https:", "mailto:"]);
+
+/**
+ * Il modello può generare un link con qualunque schema, incluso `javascript:` —
+ * cliccabile darebbe esecuzione di codice arbitrario nel contesto dell'app. Si
+ * risolve contro una base fittizia (per accettare anche URL relativi, che ereditano
+ * lo schema http/https della base) e si permette solo lo schema esplicitamente in
+ * whitelist. `new URL(...)` lancia su input non parsabile: qualunque eccezione è
+ * trattata come URL non sicuro, mai propagata (il rendering non deve mai esplodere).
+ */
+function sanitizeHref(href: string | undefined): string | undefined {
+  if (!href) return undefined;
+  try {
+    const url = new URL(href, "https://placeholder.invalid");
+    return SAFE_LINK_PROTOCOLS.has(url.protocol) ? href : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * Rende una risposta AI in markdown (liste, grassetto, link, tabelle GFM, code block)
  * con i codici prodotto AGB sempre in monospace, anche dentro il testo "prosa"
@@ -42,11 +62,17 @@ export function MarkdownMessage({ content }: { content: string }) {
           ol: ({ children }) => <ol className="my-2 list-decimal pl-5">{children}</ol>,
           li: ({ children }) => <li className="my-0.5">{children}</li>,
           strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-          a: ({ children, href }) => (
-            <a href={href} className="text-info underline">
-              {children}
-            </a>
-          ),
+          a: ({ children, href }) => {
+            const safeHref = sanitizeHref(href);
+            // Schema non sicuro (es. javascript:): niente <a>, solo il testo — evita un
+            // link cliccabile che eseguirebbe codice invece di navigare.
+            if (!safeHref) return <>{children}</>;
+            return (
+              <a href={safeHref} className="text-info underline">
+                {children}
+              </a>
+            );
+          },
           table: ({ children }) => (
             <div className="my-2 overflow-x-auto">
               <table className="w-full border-collapse text-xs">{children}</table>
