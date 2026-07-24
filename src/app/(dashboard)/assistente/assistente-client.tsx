@@ -29,11 +29,13 @@ export function AssistenteClient() {
   const create = api.chat.create.useMutation();
   // STOPGAP TEMPORANEO (Task 6): chat.send/chat.retry sono stati rimossi — il turno passa
   // ora da POST /api/chat/stream (Task 5). Questa UI è sostituita interamente dal Task 11
-  // (streaming); nel frattempo questi stub evitano di rompere il typecheck senza riscriverla.
+  // (streaming); nel frattempo lo stub non può più inviare, ma riflette `sendError` così
+  // il banner esistente mostra l'errore invece di fallire in silenzio.
+  const [sendError, setSendError] = useState<string | null>(null);
   const send = {
     isPending: false,
-    isError: false,
-    error: { message: "" },
+    isError: sendError !== null,
+    error: { message: sendError ?? "" },
     mutateAsync: async (_input: { conversationId: string; content: string }) => {
       throw new Error("Assistente in aggiornamento: riprova più tardi.");
     },
@@ -59,6 +61,7 @@ export function AssistenteClient() {
 
   const handleSend = async (content: string) => {
     setPendingContent(content);
+    setSendError(null);
     try {
       let id = conversationId;
       if (!id) {
@@ -67,7 +70,7 @@ export function AssistenteClient() {
       }
       await send.mutateAsync({ conversationId: id, content });
     } catch {
-      // Errore già rappresentato da send.isError (banner con «Riprova»).
+      setSendError("Invio non disponibile: chat in aggiornamento.");
     } finally {
       setPendingContent(null);
     }
