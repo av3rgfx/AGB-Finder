@@ -1,5 +1,6 @@
 import { ProviderHttpError } from "../errors";
-import type { ChatMessage, ChatProvider, ChatResult, ToolCall, ToolDeclaration } from "./types";
+import { sseEvents } from "./sse";
+import type { ChatMessage, ChatProvider, ChatResult, ProviderChunk, ToolCall, ToolDeclaration } from "./types";
 
 interface GeminiPart {
   text?: string;
@@ -91,5 +92,43 @@ export class GeminiChatProvider implements ChatProvider {
       modelUsed: this.model,
       tokensUsed: payload.usageMetadata?.totalTokenCount ?? null,
     };
+  }
+
+  async *chatStream(
+    messages: ChatMessage[],
+    tools: ToolDeclaration[],
+    signal: AbortSignal,
+  ): AsyncGenerator<ProviderChunk> {
+    const response = await this.fetchImpl(
+      `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:streamGenerateContent?alt=sse`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": this.apiKey },
+        body: JSON.stringify(toGeminiRequest(messages, tools)),
+        signal,
+      },
+    );
+    if (!response.ok) throw new ProviderHttpError(this.name, response.status);
+    if (!response.body) throw new ProviderHttpError(this.name, 502);
+    let toolIndex = 0;
+    for await (const data of sseEvents(response.body)) {
+      // Alcuni provider terminano lo stream con un sentinel non-JSON (es. "[DONE]"): lo ignoriamo.
+      let payload: {
+        candidates?: { content?: { parts?: GeminiPart[] } }[];
+        usageMetadata?: { totalTokenCount?: number };
+      };
+      try {
+        payload = JSON.parse(data) as typeof payload;
+      } catch {
+        continue;
+      }
+      for (const part of payload.candidates?.[0]?.content?.parts ?? []) {
+        if (part.text) yield { type: "text-delta", text: part.text };
+        if (part.functionCall)
+          yield { type: "tool-call", call: { id: `call_${toolIndex++}`, name: part.functionCall.name, arguments: part.functionCall.args ?? {} } };
+      }
+      if (payload.usageMetadata?.totalTokenCount != null)
+        yield { type: "usage", tokens: payload.usageMetadata.totalTokenCount };
+    }
   }
 }
