@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { api } from "@/trpc/react";
+import { pushViewed } from "@/lib/recently-viewed";
 import { formatPrice } from "@/lib/format";
 import { AvailabilityDot, ProductCard } from "./product-card";
 import { CopyCodeButton } from "./copy-code-button";
@@ -16,6 +18,17 @@ export function ProductDetail({ id }: { id: string }) {
     { productId: id, limit: 4 },
     { enabled: product.isSuccess },
   );
+
+  // Registra la visita per «Prodotti visti di recente» (localStorage, per-dispositivo).
+  useEffect(() => {
+    if (product.isSuccess) {
+      pushViewed({
+        id: product.data.id,
+        agbCode: product.data.agbCode,
+        name: product.data.name,
+      });
+    }
+  }, [product.isSuccess, product.data?.id, product.data?.agbCode, product.data?.name]);
 
   if (product.isPending) {
     return (
