@@ -13,6 +13,7 @@ import { ActiveFilterChips } from "@/components/product/active-filter-chips";
 import { RecentSearches } from "@/components/product/recent-searches";
 import { useArchivioSearch } from "@/lib/use-archivio-search";
 import { clearScroll, loadScroll, shouldRestoreScroll } from "@/lib/archivio-scroll";
+import { isEditableTarget } from "@/lib/is-editable-target";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 24;
@@ -105,6 +106,20 @@ export function ArchivioClient() {
     };
   }, [search.data, search.isPlaceholderData, viewLoaded, categoriesReady, scrollKey]);
 
+  // Scorciatoia «/» per focalizzare la ricerca (se non si sta già scrivendo); Esc sfoca.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "/" && !isEditableTarget(e.target)) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      } else if (e.key === "Escape" && document.activeElement === searchInputRef.current) {
+        searchInputRef.current?.blur();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-6">
       <header className="flex flex-col gap-4">
@@ -118,6 +133,11 @@ export function ArchivioClient() {
               aria-label="Cerca nel catalogo"
               placeholder="Cerca per nome, categoria o codice AGB…"
               leadingIcon={<Search className="size-4" aria-hidden />}
+              trailingSlot={
+                <kbd className="pointer-events-none hidden select-none rounded border border-line-strong bg-surface-sunken px-1.5 py-0.5 font-mono text-[11px] text-ink-subtle sm:inline-block">
+                  /
+                </kbd>
+              }
               value={queryInput}
               onChange={(e) => setQueryInput(e.target.value)}
             />
