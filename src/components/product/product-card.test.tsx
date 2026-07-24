@@ -1,6 +1,11 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
+
+vi.mock("@/components/listino/listino-viewer-provider", () => ({
+  useListinoViewer: () => ({ open: () => undefined }),
+}));
+
 import { ProductCard } from "./product-card";
 
 afterEach(cleanup);
@@ -35,5 +40,10 @@ describe("ProductCard", () => {
   it("espone lo stato di disponibilità in modo accessibile", () => {
     render(<ProductCard product={{ ...product, isAvailable: false }} />);
     expect(screen.getByLabelText("Non disponibile")).toBeDefined();
+  });
+
+  it("con listinoPage mostra il pulsante listino", () => {
+    render(<ProductCard product={{ ...product, listinoPage: 42 }} />);
+    expect(screen.getByLabelText("Visualizza B00590.15.03 nel listino")).toBeDefined();
   });
 });
