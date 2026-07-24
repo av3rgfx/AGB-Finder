@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { ProductCard } from "@/components/product/product-card";
 import { ProductRow } from "@/components/product/product-row";
 import { ProductFilters } from "@/components/product/product-filters";
+import { ActiveFilterChips } from "@/components/product/active-filter-chips";
 import { useArchivioSearch } from "@/lib/use-archivio-search";
 import { clearScroll, loadScroll, shouldRestoreScroll } from "@/lib/archivio-scroll";
 import { cn } from "@/lib/utils";
@@ -22,6 +23,8 @@ export function ArchivioClient() {
     committed,
     offset,
     setFilters,
+    clearFilter,
+    clearAllFilters,
     setPage,
     view,
     setView,
@@ -151,6 +154,12 @@ export function ArchivioClient() {
             />
           ) : (
             <>
+              <ActiveFilterChips
+                filters={committed.filters}
+                categoryName={(id) => categories.data?.find((c) => c.id === id)?.name}
+                onRemove={(keys) => clearFilter(...keys)}
+                onClearAll={clearAllFilters}
+              />
               <p className="text-sm text-ink-subtle" aria-live="polite">
                 {total} {total === 1 ? "prodotto trovato" : "prodotti trovati"}
                 {search.data ? ` · ${search.data.queryTimeMs} ms` : null}
