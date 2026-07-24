@@ -184,7 +184,7 @@ workflow `ops-extract-images.yml` · route `/api/product-image?code=…` (auth, 
 (`<img onError hide>`) sulla scheda dettaglio. Gate verdi (test **341**). **PR #27 MERGIATA + ops run 30089631152
 (`✓ 7082 immagini salvate in product_images`)**; route verificata live (401 senza auth). Dettagli:
 `docs/superpowers/specs/2026-07-24-immagini-prodotto-design.md`.
-+ **UX Archivio ✅ su branch `claude/archivio-ux-persistence-aj3zvy` (PR da aprire)**: workflow completo
++ **UX Archivio ✅ (PR #29 MERGIATA e in `main`)**: workflow completo
 (brainstorming → /llm-council → critica adversariale 3-lenti → /impeccable → piano → TDD). **(1) Persistenza**:
 query/filtri/pagina negli **URL searchParams** (`useSearchParams` sotto `<Suspense>` in `archivio/page.tsx`,
 scrittura `router.replace(…,{scroll:false})`), **vista** in `localStorage` (idratata post-mount, no flash).
@@ -199,7 +199,7 @@ attivi + azzera · empty-state con suggerimenti. Moduli puri `archivio-search-pa
 browser reale (Chromium desktop + mobile 375px)** ha confermato il ripristino scroll (1073→1073 · 900→900) e
 **scovato 2 bug** poi corretti (salvataggio a 0; rAF annullato dalla cleanup). **Nessuna migrazione, nessuna dep,
 NESSUNA AZIONE OPS.** Spec/piano: `docs/superpowers/{specs,plans}/2026-07-24-archivio-ux*`.
-+ **UX Archivio — follow-up ✅ (stesso branch, estende PR #29)**: 4 idee prima fuori scope, tutte a basso
++ **UX Archivio — follow-up ✅ (PR #30 MERGIATA e in `main`)**: 4 idee prima fuori scope, tutte a basso
 rischio. **(A) Scorciatoia `/`** focalizza la ricerca (helper puro `is-editable-target.ts` per non intercettare
 mentre si scrive; `Esc` sfoca; hint `<kbd>` desktop). **(B) «Copia link»** copia l'URL della ricerca (già
 condivisibile) con feedback. **(C) «Visti di recente»** via **`localStorage`** (`recently-viewed.ts`: dedup, cap 8;
@@ -209,3 +209,9 @@ overlay + `ListinoButton` fratello z-index → apre il viewer senza navigare); s
 resta la scheda). Gate verdi (typecheck·lint·**test 380/+11**·build). **Verifica browser (Chromium desktop +
 mobile 375px): 12/12 check verdi.** Nessuna migrazione, nessuna dep, **NESSUNA AZIONE OPS**. Spec/piano:
 `docs/superpowers/{specs,plans}/2026-07-24-archivio-ux-follow-up*`.
++ **PROSSIMA SESSIONE (decisa dall'utente) = CHAT ASSISTENTE professionale (tipo Gemini)**: la chat Fase 1c è una
+bozza grezza e su mobile è scomoda. Rifarne UI/UX: **streaming** risposte + STOP (decisione architetturale #1 →
+`/llm-council`), **mobile-first** (il pannello prodotti è `hidden lg` → renderlo accessibile; drawer conversazioni;
+composer con tastiera), **gestione conversazioni** completa (lista/ricerca/rinomina/elimina; estendere `chat.ts`),
+**azioni messaggio** (copia/rigenera/modifica-reinvia/feedback), **rendering ricco** (markdown+copia code-block),
+**persistenza** conversazione (URL). File e pain points in `handoff.md` §RIPRENDI DA QUI.
