@@ -26,13 +26,22 @@ export function AssistenteClient() {
     { enabled: conversationId !== null },
   );
 
-  const invalidate = () => {
-    void utils.chat.get.invalidate();
-    void utils.chat.list.invalidate();
-  };
   const create = api.chat.create.useMutation();
-  const send = api.chat.send.useMutation({ onSettled: invalidate });
-  const retry = api.chat.retry.useMutation({ onSettled: invalidate });
+  // STOPGAP TEMPORANEO (Task 6): chat.send/chat.retry sono stati rimossi — il turno passa
+  // ora da POST /api/chat/stream (Task 5). Questa UI è sostituita interamente dal Task 11
+  // (streaming); nel frattempo questi stub evitano di rompere il typecheck senza riscriverla.
+  const send = {
+    isPending: false,
+    isError: false,
+    error: { message: "" },
+    mutateAsync: async (_input: { conversationId: string; content: string }) => {
+      throw new Error("Assistente in aggiornamento: riprova più tardi.");
+    },
+  };
+  const retry = {
+    isPending: false,
+    mutate: (_input: { conversationId: string }) => {},
+  };
   const archive = api.chat.archive.useMutation({
     onSuccess: () => {
       setConversationId(null);
@@ -41,7 +50,7 @@ export function AssistenteClient() {
   });
 
   const messages = thread.data?.messages ?? [];
-  const products = thread.data?.products ?? [];
+  const products = messages.flatMap((m) => m.products);
   const busy = send.isPending || retry.isPending || create.isPending;
 
   useEffect(() => {
