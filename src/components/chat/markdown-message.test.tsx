@@ -1,0 +1,85 @@
+// @vitest-environment jsdom
+import { describe, it, expect, afterEach, vi } from "vitest";
+import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
+import { MarkdownMessage } from "./markdown-message";
+
+afterEach(cleanup);
+
+describe("MarkdownMessage", () => {
+  it("rende una lista puntata", () => {
+    render(<MarkdownMessage content={"- primo\n- secondo"} />);
+    expect(screen.getByText("primo").tagName).toBe("LI");
+    expect(screen.getByText("secondo").tagName).toBe("LI");
+  });
+
+  it("rende una tabella GFM", () => {
+    const md = "| Codice | Prezzo |\n| --- | --- |\n| A50122 | 12,50 EUR |";
+    const { container } = render(<MarkdownMessage content={md} />);
+    expect(container.querySelector("table")).not.toBeNull();
+    expect(screen.getByText("Prezzo").tagName).toBe("TH");
+    expect(screen.getByText("12,50 EUR").tagName).toBe("TD");
+  });
+
+  it("rende il grassetto", () => {
+    render(<MarkdownMessage content={"testo **importante** qui"} />);
+    expect(screen.getByText("importante").tagName).toBe("STRONG");
+  });
+
+  it("rende in monospace un codice AGB nel testo prosa", () => {
+    render(<MarkdownMessage content={"Ti consiglio la A50122 per l'anta."} />);
+    const code = screen.getByText("A50122");
+    expect(code.tagName).toBe("CODE");
+    expect(code.className).toContain("font-mono");
+  });
+
+  it("rende in monospace un codice AGB dentro una cella di tabella", () => {
+    const md = "| Codice |\n| --- |\n| A50122 |";
+    render(<MarkdownMessage content={md} />);
+    const code = screen.getByText("A50122");
+    expect(code.tagName).toBe("CODE");
+  });
+
+  it("rende un blocco di codice con pulsante di copia funzionante", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    const md = "```\nA50122\nB00590.15.03\n```";
+    render(<MarkdownMessage content={md} />);
+    const button = screen.getByRole("button", { name: "Copia codice" });
+    fireEvent.click(button);
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith("A50122\nB00590.15.03"));
+  });
+
+  it("non annida <pre> dentro <pre> per un blocco di codice", () => {
+    const md = "```\nconst x = 1;\n```";
+    const { container } = render(<MarkdownMessage content={md} />);
+    expect(container.querySelectorAll("pre").length).toBe(1);
+  });
+
+  it("NON raddoppia il wrapping di un codice AGB dentro un blocco di codice fenced", () => {
+    const md = "```\nA50122\n```";
+    const { container } = render(<MarkdownMessage content={md} />);
+    const codeEls = container.querySelectorAll("code");
+    // un solo <code>: quello del blocco — nessun <code> (inline-mono) annidato dentro
+    expect(codeEls.length).toBe(1);
+    expect(codeEls[0]?.textContent).toBe("A50122");
+    expect(codeEls[0]?.querySelector("code")).toBeNull();
+  });
+
+  it("non rende HTML grezzo presente nel contenuto (XSS guard)", () => {
+    const { container } = render(
+      <MarkdownMessage content={'testo <img src=x onerror="window.__pwned = true"> fine'} />,
+    );
+    expect(container.querySelector("img")).toBeNull();
+    expect((window as unknown as { __pwned?: boolean }).__pwned).toBeUndefined();
+  });
+
+  it("non lancia eccezioni con markdown incompleto (fence non chiusa, streaming)", () => {
+    expect(() =>
+      render(<MarkdownMessage content={"testo prima\n```ts\nconst x = 1;"} />),
+    ).not.toThrow();
+  });
+
+  it("non lancia eccezioni con una tabella a metà (streaming)", () => {
+    expect(() => render(<MarkdownMessage content={"| Codice | Pre"} />)).not.toThrow();
+  });
+});
