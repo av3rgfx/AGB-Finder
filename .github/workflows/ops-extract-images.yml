@@ -1,0 +1,40 @@
+name: Ops — Estrai immagini prodotto (dal listino → DB)
+on:
+  workflow_dispatch:
+    inputs:
+      listino_url:
+        description: "URL diretto del listino AGB PDF (stessa edizione del catalogo)"
+        required: false
+        default: "https://drive.usercontent.google.com/download?id=1TugU94aM6OP557ELiLQpH0nUxhxrXMUz&export=download&confirm=t"
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      DATABASE_URL: ${{ secrets.NEON_DIRECT_URL }}
+      DIRECT_URL: ${{ secrets.NEON_DIRECT_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Enable corepack (pnpm 10)
+        run: corepack enable
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+      - name: Install poppler-utils (pdftohtml/pdfinfo)
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils
+      - name: Prisma generate
+        run: pnpm exec prisma generate
+      - name: Migrate deploy (crea product_images se manca)
+        run: pnpm exec prisma migrate deploy
+      - name: Download listino PDF
+        # Input non fidato via env var (mai interpolato nel run) → no command-injection.
+        env:
+          LISTINO_URL: ${{ github.event.inputs.listino_url }}
+        run: |
+          curl -sSL "$LISTINO_URL" -o listino.pdf
+          head -c 5 listino.pdf | grep -q '%PDF' || { echo "::error::Il download non è un PDF valido"; exit 1; }
+          echo "PDF scaricato: $(wc -c < listino.pdf) byte, $(pdfinfo listino.pdf | awk '/Pages/{print $2}') pagine"
+      - name: Estrai immagini prodotto → product_images
+        run: pnpm extract:images listino.pdf

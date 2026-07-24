@@ -6,6 +6,7 @@ import { api } from "@/trpc/react";
 import { formatPrice } from "@/lib/format";
 import { AvailabilityDot, ProductCard } from "./product-card";
 import { CopyCodeButton } from "./copy-code-button";
+import { ProductImage } from "./product-image";
 import { ListinoButton } from "@/components/listino/listino-button";
 import { SpecTable } from "./spec-table";
 
@@ -48,23 +49,29 @@ export function ProductDetail({ id }: { id: string }) {
         <ArrowLeft className="size-4" aria-hidden /> Archivio
       </Link>
 
-      <header className="flex flex-col gap-3 rounded-md border border-line bg-surface p-6 shadow-card">
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="inline-flex items-center gap-1.5">
-            <CopyCodeButton code={p.agbCode} />
-            <ListinoButton code={p.agbCode} page={p.listinoPage} />
-          </span>
-          <span className="rounded bg-surface-sunken px-2 py-0.5 text-xs text-ink-muted">
-            {p.category.name}
-          </span>
-          <span className="inline-flex items-center gap-1.5 text-xs text-ink-subtle">
-            <AvailabilityDot available={p.isAvailable} />
-            {p.isAvailable ? "Disponibile" : "Non disponibile"}
-          </span>
+      <header className="flex flex-col gap-4 rounded-md border border-line bg-surface p-6 shadow-card sm:flex-row sm:items-start">
+        <ProductImage
+          code={p.agbCode}
+          className="mx-auto w-40 max-w-full shrink-0 rounded border border-line bg-white object-contain sm:mx-0 sm:w-48"
+        />
+        <div className="flex min-w-0 flex-1 flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="inline-flex items-center gap-1.5">
+              <CopyCodeButton code={p.agbCode} />
+              <ListinoButton code={p.agbCode} page={p.listinoPage} />
+            </span>
+            <span className="rounded bg-surface-sunken px-2 py-0.5 text-xs text-ink-muted">
+              {p.category.name}
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-xs text-ink-subtle">
+              <AvailabilityDot available={p.isAvailable} />
+              {p.isAvailable ? "Disponibile" : "Non disponibile"}
+            </span>
+          </div>
+          <h1 className="text-xl font-semibold text-ink">{p.name}</h1>
+          {p.shortDescription && <p className="text-sm text-ink-subtle">{p.shortDescription}</p>}
+          <p className="text-2xl font-semibold tabular-nums text-ink">{formatPrice(p.basePrice)}</p>
         </div>
-        <h1 className="text-xl font-semibold text-ink">{p.name}</h1>
-        {p.shortDescription && <p className="text-sm text-ink-subtle">{p.shortDescription}</p>}
-        <p className="text-2xl font-semibold tabular-nums text-ink">{formatPrice(p.basePrice)}</p>
       </header>
 
       <section aria-labelledby="spec-heading" className="flex flex-col gap-3">

@@ -16,7 +16,37 @@
 | **Stato deploy** | **LIVE** su `catalogo-finder-kappa.vercel.app`. Neon allineato (**ops run 30024919979**: migrazione `add_listino_page` + import + seed vasistas + pagine popolate). Viewer listino **ATTIVATO** (Vercel Blob + `LISTINO_PDF_URL` impostati dall'utente). ⚠️ **1 problema aperto: immagini viewer parziali → Opzione B (vedi «RIPRENDI DA QUI»).** |
 | **Piani/spec** | `docs/superpowers/{specs,plans}/2026-07-23-fase1i-kit-vasistas-legno*` e `2026-07-23-listino-viewer*`. |
 
-> **▶ RIPRENDI DA QUI — 2026-07-24 (Opzione B, store PRIVATO): PR #25 MERGIATA, follow-up privato da mergiare + ri-split.**
+> **▶ RIPRENDI DA QUI — 2026-07-24 (IMMAGINI PRODOTTO): feature nuova su branch `claude/listino-page-split-n8ofuk`, PR da aprire + run ops.**
+>
+> **CAUSA RADICE del «immagini viewer»:** le foto del listino sono **JPEG2000 (jpx)** (1503/1790) e
+> **PDF.js non le decodifica** → per questo non si vedevano nel viewer, né il range né lo split c'entravano.
+> Le PR #25/#26 (Opzione B pagine singole, store privato) sono **MERGIATE e corrette** (viewer utile per
+> «trova il codice»; le foto jpx lì restano vuote — limite PDF.js). **Decisione utente: estrarre le foto dal
+> PDF e mostrarle sulla scheda prodotto** (poppler decodifica il jpx → PNG → `<img>` native, niente PDF.js).
+>
+> **Cosa è stato costruito (gate verdi: typecheck·lint·test 341·build):**
+> - **`ProductImage`** (Prisma, tabella separata da Product: agbCode PK, data Bytes, mimeType) + migrazione
+>   `20260724100000_add_product_images`.
+> - **`src/server/catalog/listino-images.ts`** (puro, testato): parse `pdftohtml -xml`, filtro decorativo,
+>   **mappatura immagine→codice per banda verticale** + fallback nearest.
+> - **`scripts/extract-listino-images.ts`** (ops, idempotente) + **`.github/workflows/ops-extract-images.yml`**:
+>   per pagina `pdftohtml -xml -fmt png` → mappa → upsert `product_images` (solo codici a catalogo). Dry-run
+>   verificato sul PDF reale (pagg. 298-305 → 107 mappature corrette).
+> - **route `/api/product-image?code=…`** (auth, valida il codice, streamma i byte dal DB, 404 se assente).
+> - **UI**: componente `ProductImage` (`<img onError hide>`) nell'header di `ProductDetail`, responsive.
+> - Spec: `docs/superpowers/specs/2026-07-24-immagini-prodotto-design.md`.
+>
+> **➡ AZIONI OPS (utente, dopo il merge della PR):**
+> 1. Lanciare la GH Action **«Ops — Estrai immagini prodotto»** (applica la migrazione + popola `product_images`
+>    dal listino; ~5-8 min). Nessuna env nuova, nessun Blob.
+> 2. **Verifica**: aprire una scheda prodotto con foto (codici di pag. ~100/300) → la foto compare.
+>
+> **Tradeoff noto**: una foto di famiglia è salvata per ogni codice (duplicazione byte, ~50-120 MB su Neon);
+> se serve, si deduplica per hash in futuro (YAGNI ora). Thumbnail nelle card di ricerca = follow-up.
+>
+> ---
+>
+> **▶ STORICO — 2026-07-24 (Opzione B, store PRIVATO): PR #25 + #26 MERGIATE.**
 >
 > Viewer listino a **PAGINE SINGOLE** (Opzione B): il listino non è più un unico PDF da 41 MB servito via Range,
 > ma **~959 paginette** su Vercel Blob (ognuna un file minuscolo con TUTTE le sue immagini → scaricata per intero
