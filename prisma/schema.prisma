@@ -189,6 +189,18 @@ model Product {
   @@map("products")
 }
 
+/// Foto prodotto estratta dal listino PDF (feature «immagini prodotto»). Tabella
+/// separata da Product così i byte non finiscono nelle query di catalogo/dettaglio;
+/// chiave = agbCode (una foto per codice). Popolata dallo script di estrazione ops.
+model ProductImage {
+  agbCode   String   @id @map("agb_code")
+  data      Bytes
+  mimeType  String   @map("mime_type")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("product_images")
+}
+
 // ═══════════════════════════════════════════════════════════════
 // 3. KIT SYSTEM
 // ═══════════════════════════════════════════════════════════════
