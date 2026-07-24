@@ -2,7 +2,9 @@
 // listino», Opzione B). Ogni pagina diventa un file minuscolo con TUTTE le sue
 // immagini: il viewer la scarica per intero → immagini complete, veloce, mobile-friendly.
 //
-// Idempotente (allowOverwrite): ri-eseguibile su una nuova edizione del listino.
+// Store PRIVATO: le paginette sono caricate con access:"private" e lette dalla route
+// lato server col token (mai raggiungibili pubblicamente). Idempotente (allowOverwrite):
+// ri-eseguibile su una nuova edizione del listino.
 // Uso (in ops, con poppler installato):
 //   BLOB_READ_WRITE_TOKEN=... pnpm split:listino <listino.pdf>
 //
@@ -14,7 +16,6 @@ import { readFileSync, mkdtempSync, readdirSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { put } from "@vercel/blob";
-import { pageUrlTemplateFromUrl } from "../src/server/catalog/listino-blob";
 
 // Punto di calibrazione noto (parse-listino.ts): la vasistas «pag. 416» è alla
 // pagina fisica 418 e il suo cremonese è A50111.*. Spot-check soft dopo lo split.
@@ -30,7 +31,7 @@ async function putWithRetry(pathname: string, body: Buffer, token: string, attem
   for (let i = 0; i < attempts; i++) {
     try {
       return await put(pathname, body, {
-        access: "public",
+        access: "private",
         token,
         addRandomSuffix: false,
         allowOverwrite: true,
@@ -91,31 +92,28 @@ async function main() {
       console.log(
         txt.includes(CALIBRATION.code)
           ? `✓ Calibrazione OK: page-${CALIBRATION.page}.pdf contiene ${CALIBRATION.code} (vasistas).`
-          : `⚠ page-${CALIBRATION.page}.pdf NON contiene ${CALIBRATION.code}: il PDF potrebbe non essere l'edizione del backfill.`,
+          : `⚠ page-${CALIBRATION.page}.pdf NON contiene ${CALIBRATION.code} (spot-check soft: la ` +
+              `pagina di calibrazione è lo schema di montaggio, il codice può non comparirvi — non blocca).`,
       );
     } catch {
       /* pdftotext è solo per lo spot-check, non blocca */
     }
   }
 
-  // 4. Upload su Vercel Blob (naming prevedibile listino/page-N.pdf, idempotente).
-  console.log(`Upload di ${total} paginette su Vercel Blob …`);
-  let page1Url = "";
+  // 4. Upload su Vercel Blob PRIVATO (naming prevedibile listino/page-N.pdf, idempotente).
+  console.log(`Upload di ${total} paginette su Vercel Blob (privato) …`);
   for (const f of files) {
     const n = pageNumber(f);
     const body = readFileSync(join(outDir, f));
-    const { url } = await putWithRetry(`listino/page-${n}.pdf`, body, token);
-    if (n === 1) page1Url = url;
+    await putWithRetry(`listino/page-${n}.pdf`, body, token);
     if (n % 50 === 0 || n === total) console.log(`  ${n}/${total} …`);
   }
 
-  const template = pageUrlTemplateFromUrl(page1Url);
   console.log("\n✓ Split completato. Imposta su Vercel (Production) e fai redeploy:\n");
   console.log(`  LISTINO_TOTAL_PAGES=${total}`);
-  console.log(`  LISTINO_PAGE_URL_TEMPLATE=${template}`);
-  console.log(`\nVerifica il deep-link vasistas (pagina ${CALIBRATION.page}):`);
-  console.log(`  ${template.replace("{page}", String(CALIBRATION.page))}`);
-  console.log("\nRicorda: rimuovi la vecchia env LISTINO_PDF_URL (non più letta).");
+  console.log(`  BLOB_READ_WRITE_TOKEN=<il token dello store>  (se non già presente nel progetto)`);
+  console.log("\nLe paginette sono private: la route /api/listino le legge col token.");
+  console.log("Ricorda: rimuovi la vecchia env LISTINO_PDF_URL (non più letta).");
 }
 
 main().catch((e) => {

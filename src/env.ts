@@ -31,14 +31,11 @@ const envSchema = z.object({
   SETTINGS_ENCRYPTION_KEY: z.string().optional(),
 
   // Listino su Vercel Blob, pre-splittato in pagine singole (feature «visualizza nel
-  // listino», Opzione B). Template dell'URL della paginetta con placeholder «{page}»
-  // (es. https://…/listino/page-{page}.pdf) + numero totale di pagine. Entrambe assenti
-  // = feature off. Server-only: il client passa sempre e solo da /api/listino.
-  LISTINO_PAGE_URL_TEMPLATE: z
-    .string()
-    .url()
-    .refine((v) => v.includes("{page}"), "manca il placeholder {page}")
-    .optional(),
+  // listino», Opzione B). Lo store è PRIVATO: la route legge la paginetta lato server
+  // col token (`get(access:"private")`), quindi il PDF non è mai raggiungibile
+  // pubblicamente. `BLOB_READ_WRITE_TOKEN` è anche il nome che l'SDK usa di default.
+  // Entrambe assenti = feature off. Server-only: il client passa sempre e solo da /api/listino.
+  BLOB_READ_WRITE_TOKEN: z.string().optional(),
   LISTINO_TOTAL_PAGES: z.coerce.number().int().positive().optional(),
 
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),

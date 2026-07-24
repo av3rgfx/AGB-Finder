@@ -2,6 +2,17 @@
 
 **Data:** 2026-07-23 · **Stato:** design approvato (utente) + validato da council · **Branch:** `claude/listino-page-split-n8ofuk` (fresco da `origin/main` dopo il merge #20–#24)
 
+> **⚠ AGGIORNAMENTO 2026-07-24 (store PRIVATO).** Al primo run ops lo split ha rivelato che
+> il Blob store dell'utente è **privato** (`Cannot use public access on a private store`).
+> Pivot dal template-URL pubblico a una lettura **server-side col token**: lo split carica con
+> `access:"private"` e la route legge la paginetta con `@vercel/blob` `get(pathname,{access:"private",token})`.
+> Conseguenze (sostituiscono i dettagli «pubblici» qui sotto): **env** = `BLOB_READ_WRITE_TOKEN`
+> (al posto di `LISTINO_PAGE_URL_TEMPLATE`) + `LISTINO_TOTAL_PAGES`; `@vercel/blob` passa a
+> **dependencies** (la route lo importa a runtime); il listino non è **mai** raggiungibile
+> pubblicamente (risolve del tutto il finding low sull'enumerabilità); l'helper
+> `pageUrlTemplateFromUrl` è rimosso (non serve più un URL pubblico). Il resto del design
+> (split per pagina, viewer a pagina singola, mobile-first, anti-SSRF sul param) è invariato.
+
 ## Contesto e problema
 
 La feature «visualizza nel listino» (PR #21, LIVE) apre un viewer `react-pdf` alla

@@ -1,5 +1,10 @@
 # Listino viewer — Opzione B (pagine singole) — Implementation Plan
 
+> **⚠ AGGIORNAMENTO 2026-07-24 (store PRIVATO).** Il Blob store è privato → lo split usa
+> `access:"private"` e la route legge via `@vercel/blob` `get(pathname,{access:"private",token})`.
+> Env: **`BLOB_READ_WRITE_TOKEN`** + `LISTINO_TOTAL_PAGES` (niente `LISTINO_PAGE_URL_TEMPLATE`);
+> `@vercel/blob` in **dependencies**; rimosso l'helper `pageUrlTemplateFromUrl`. Vedi la nota nel design.
+
 **Goal:** Servire il listino come **pagine singole** su Vercel Blob; il viewer carica solo la
 paginetta target (scaricata per intero → immagini complete) invece dell'intero PDF via Range.
 

@@ -170,3 +170,9 @@ singola (`<Page pageNumber={1}>`, `totalPages` via prop dal layout server) **+ f
 **AZIONI OPS al merge:** secret `BLOB_READ_WRITE_TOKEN` → run `Ops — Split listino` → impostare le 2 env su
 Vercel (dai log) e rimuovere `LISTINO_PDF_URL` → redeploy → verifica browser ≤375px. Dettagli: `handoff.md`
 §RIPRENDI DA QUI e `docs/superpowers/{specs,plans}/2026-07-23-listino-page-split*`.
+**PR #25 MERGIATA** (versione Blob pubblico). Al primo run ops lo split è fallito (`Cannot use public access on a
+private store`): lo store Blob è **PRIVATO** → **follow-up** (branch ripartito da main dopo #25, nuova PR): env
+**`BLOB_READ_WRITE_TOKEN`** al posto di `LISTINO_PAGE_URL_TEMPLATE`; la route legge le paginette **private** lato
+server via `@vercel/blob` `get(access:"private", token)`; `@vercel/blob` in **dependencies**; listino mai pubblico.
+Gate verdi (test **330**). **RESTA:** mergiare il follow-up, **ri-lanciare lo split** (upload privato), impostare
+`BLOB_READ_WRITE_TOKEN` + `LISTINO_TOTAL_PAGES` su Vercel, redeploy, verifica browser.
