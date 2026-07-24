@@ -10,6 +10,7 @@ import { ProductCard } from "@/components/product/product-card";
 import { ProductRow } from "@/components/product/product-row";
 import { ProductFilters } from "@/components/product/product-filters";
 import { ActiveFilterChips } from "@/components/product/active-filter-chips";
+import { RecentSearches } from "@/components/product/recent-searches";
 import { useArchivioSearch } from "@/lib/use-archivio-search";
 import { clearScroll, loadScroll, shouldRestoreScroll } from "@/lib/archivio-scroll";
 import { cn } from "@/lib/utils";
@@ -34,6 +35,16 @@ export function ArchivioClient() {
 
   const categories = api.product.listCategories.useQuery();
   const categoriesReady = !committed.filters.categoryId || categories.isSuccess;
+
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const recent = api.product.recentSearches.useQuery(undefined, {
+    enabled: committed.query.length === 0,
+    staleTime: 0,
+  });
+  const pickQuery = (q: string) => {
+    setQueryInput(q);
+    searchInputRef.current?.focus();
+  };
 
   const search = api.product.search.useQuery(
     { query: committed.query, filters: committed.filters, limit: PAGE_SIZE, offset },
@@ -84,6 +95,7 @@ export function ArchivioClient() {
           <div className="flex-1">
             <Input
               id="archivio-search"
+              ref={searchInputRef}
               type="search"
               aria-label="Cerca nel catalogo"
               placeholder="Cerca per nome, categoria o codice AGB…"
@@ -134,10 +146,13 @@ export function ArchivioClient() {
           className="flex min-w-0 flex-col gap-4"
         >
           {committed.query.length === 0 ? (
-            <EmptyState
-              title="Cerca nel catalogo AGB"
-              detail="Digita un termine (es. “cerniera anta ribalta”) o un codice prodotto (es. B00590)."
-            />
+            <div className="flex flex-col items-center gap-6">
+              <EmptyState
+                title="Cerca nel catalogo AGB"
+                detail="Digita un termine (es. “cerniera anta ribalta”) o un codice prodotto (es. B00590)."
+              />
+              <RecentSearches recent={recent.data ?? []} onPick={pickQuery} />
+            </div>
           ) : search.isPending ? (
             <SkeletonList />
           ) : search.isError ? (
