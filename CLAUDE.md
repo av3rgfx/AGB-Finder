@@ -181,6 +181,10 @@ c'entravano). **Scelta utente: estrarre le foto dal PDF e mostrarle sulla scheda
 jpx → PNG → `<img>` native). Tabella **`ProductImage`** (separata da Product) + migrazione `add_product_images` ·
 helper puro di mappatura **immagine→codice per banda verticale** (`listino-images.ts`) · script `extract:images` +
 workflow `ops-extract-images.yml` · route `/api/product-image?code=…` (auth, byte dal DB) · UI `ProductImage`
-(`<img onError hide>`) sulla scheda dettaglio. Gate verdi (test **341**). **RESTA:** mergiare la PR, lanciare
-`Ops — Estrai immagini prodotto` (migrazione + popola `product_images`), verifica browser. Dettagli:
-`handoff.md` §RIPRENDI DA QUI e `docs/superpowers/specs/2026-07-24-immagini-prodotto-design.md`.
+(`<img onError hide>`) sulla scheda dettaglio. Gate verdi (test **341**). **PR #27 MERGIATA + ops run 30089631152
+(`✓ 7082 immagini salvate in product_images`)**; route verificata live (401 senza auth). Dettagli:
+`docs/superpowers/specs/2026-07-24-immagini-prodotto-design.md`.
++ **PROSSIMA SESSIONE (decisa dall'utente) = UX Archivio**: persistenza dello stato ricerca (vista lista/griglia,
+query, filtri, pagina) su refresh **e** al ritorno dalla scheda dettaglio (oggi `archivio-client.tsx` tiene tutto
+in `useState` → si azzera) · **cronologia ricerche settimanale per utente** (riuso `ActivityLog.PRODUCT_SEARCHED`) ·
++ studio di altri miglioramenti UX. Prompt e contesto in `handoff.md` §RIPRENDI DA QUI.
