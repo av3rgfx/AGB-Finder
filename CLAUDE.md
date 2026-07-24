@@ -199,3 +199,13 @@ attivi + azzera · empty-state con suggerimenti. Moduli puri `archivio-search-pa
 browser reale (Chromium desktop + mobile 375px)** ha confermato il ripristino scroll (1073→1073 · 900→900) e
 **scovato 2 bug** poi corretti (salvataggio a 0; rAF annullato dalla cleanup). **Nessuna migrazione, nessuna dep,
 NESSUNA AZIONE OPS.** Spec/piano: `docs/superpowers/{specs,plans}/2026-07-24-archivio-ux*`.
++ **UX Archivio — follow-up ✅ (stesso branch, estende PR #29)**: 4 idee prima fuori scope, tutte a basso
+rischio. **(A) Scorciatoia `/`** focalizza la ricerca (helper puro `is-editable-target.ts` per non intercettare
+mentre si scrive; `Esc` sfoca; hint `<kbd>` desktop). **(B) «Copia link»** copia l'URL della ricerca (già
+condivisibile) con feedback. **(C) «Visti di recente»** via **`localStorage`** (`recently-viewed.ts`: dedup, cap 8;
+registrato nella scheda dettaglio; rail nell'empty-state). **(D) Pulsante listino su card/righe**: `listinoPage`
+(già restituito da `product.search`) esposto in `ProductSummary`; card/riga ristrutturate **stretched-link** (anchor
+overlay + `ListinoButton` fratello z-index → apre il viewer senza navigare); sulla riga solo desktop (a ≤375px
+resta la scheda). Gate verdi (typecheck·lint·**test 380/+11**·build). **Verifica browser (Chromium desktop +
+mobile 375px): 12/12 check verdi.** Nessuna migrazione, nessuna dep, **NESSUNA AZIONE OPS**. Spec/piano:
+`docs/superpowers/{specs,plans}/2026-07-24-archivio-ux-follow-up*`.

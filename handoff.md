@@ -32,6 +32,14 @@
 > - Spec+piano: `docs/superpowers/{specs,plans}/2026-07-24-archivio-ux*`. Critica adversariale 3-lenti recepita
 >   (Suspense, race scroll nativo, reset pagina, YAGNI): vedi §12 della spec.
 >
+> **FOLLOW-UP (stesso branch, estende PR #29) — le 4 idee prima fuori scope, tutte ✅ (verifica browser 12/12):**
+> - **(A) Scorciatoia `/`** → focus ricerca (`is-editable-target.ts`; `Esc` sfoca; hint `<kbd>` desktop).
+> - **(B) «Copia link»** dell'URL della ricerca (feedback «Copiato»).
+> - **(C) «Visti di recente»** via `localStorage` (`recently-viewed.ts`, dedup/cap 8; registrato in `product-detail`;
+>   rail nell'empty-state).
+> - **(D) Pulsante listino su card/righe** (stretched-link; `listinoPage` già in `product.search`; sulla riga solo
+>   desktop). Gate verdi (**test 380**). Spec/piano: `…2026-07-24-archivio-ux-follow-up*`. **Nessuna azione ops.**
+>
 > **➡ PROSSIMI PASSI:** 1) **mergiare la PR** (chiedere ok utente). **NESSUNA azione ops** (no migrazione/dep/env)
 > → deploy Vercel standard. 2) Verifica UI reale in produzione (le thumbnail useranno le foto vere di `product_images`).
 > 3) Scelta fase successiva = decisione utente. Idee UX rimaste (non richieste): scorciatoia `/`, prodotti visti di
