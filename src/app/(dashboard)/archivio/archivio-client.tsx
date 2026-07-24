@@ -64,9 +64,24 @@ export function ArchivioClient() {
     if (search.isSuccess && hits.length === 0 && offset > 0) setPage(1);
   }, [search.isSuccess, hits.length, offset, setPage]);
 
-  // Ripristino scroll: una volta, dopo il passaggio nativo (doppio rAF).
+  // Prendiamo il controllo esclusivo dello scroll mentre l'Archivio è montato:
+  // niente ripristino nativo che compete col nostro (verdetto council).
+  useEffect(() => {
+    if (typeof window === "undefined" || !("scrollRestoration" in window.history)) return;
+    const prev = window.history.scrollRestoration;
+    window.history.scrollRestoration = "manual";
+    return () => {
+      window.history.scrollRestoration = prev;
+    };
+  }, []);
+
+  // Ripristino scroll: una volta, quando i dati in cache per la chiave corrente sono
+  // presenti (non placeholder) e la vista è nota. `restored` viene impostato SOLO dopo
+  // lo scrollTo effettivo (dentro il rAF), così se l'effetto ri-parte per un cambio di
+  // dipendenza il ripristino viene riprogrammato invece di perdersi.
   const restored = useRef(false);
   useEffect(() => {
+    if (restored.current) return;
     const savedY = loadScroll(scrollKey);
     const go = shouldRestoreScroll({
       hasData: Boolean(search.data),
@@ -77,14 +92,17 @@ export function ArchivioClient() {
       savedY,
     });
     if (!go || savedY === null) return;
-    restored.current = true;
-    const raf = requestAnimationFrame(() =>
-      requestAnimationFrame(() => {
-        window.scrollTo(0, savedY);
-        clearScroll(scrollKey);
-      }),
-    );
-    return () => cancelAnimationFrame(raf);
+    let cancelled = false;
+    const raf = requestAnimationFrame(() => {
+      if (cancelled) return;
+      restored.current = true;
+      window.scrollTo(0, savedY);
+      clearScroll(scrollKey);
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+    };
   }, [search.data, search.isPlaceholderData, viewLoaded, categoriesReady, scrollKey]);
 
   return (

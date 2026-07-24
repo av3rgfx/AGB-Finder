@@ -87,26 +87,20 @@ export function useArchivioSearch(pageSize: number) {
     }
   }, []);
 
-  // Salvataggio scroll: throttled + pagehide + cleanup all'unmount (Back verso il dettaglio).
+  // Salvataggio scroll. Si cattura la posizione al momento di lasciare la pagina, mai
+  // in continuo: un listener `scroll` salverebbe 0 quando Next scrolla in cima aprendo il
+  // dettaglio (evento scroll → salvataggio → sovrascrive la posizione buona). Bastano:
+  // - `pointerdown` in cattura: scatta PRIMA della navigazione via <Link> (posizione reale);
+  // - `pagehide`: refresh/chiusura/hide (la navigazione SPA non lo emette).
   const scrollKeyRef = useRef(scrollKey);
   scrollKeyRef.current = scrollKey;
   useEffect(() => {
     const save = () => saveScroll(scrollKeyRef.current, window.scrollY);
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    const onScroll = () => {
-      if (timer) return;
-      timer = setTimeout(() => {
-        save();
-        timer = null;
-      }, 150);
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("pointerdown", save, true);
     window.addEventListener("pagehide", save);
     return () => {
-      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("pointerdown", save, true);
       window.removeEventListener("pagehide", save);
-      if (timer) clearTimeout(timer);
-      save();
     };
   }, []);
 
