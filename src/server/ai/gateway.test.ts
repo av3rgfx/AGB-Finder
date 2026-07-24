@@ -135,13 +135,17 @@ describe("AIGateway.chatStream", () => {
     expect(gemini.chatStream).not.toHaveBeenCalled();
   });
 
-  it("inoltra i chunk e registra il successo sul breaker", async () => {
-    const chunks: ProviderChunk[] = [{ type: "text-delta", text: "hi" }];
+  it("inoltra i chunk nell'ordine esatto del provider e registra il successo sul breaker", async () => {
+    const chunks: ProviderChunk[] = [
+      { type: "text-delta", text: "ciao" },
+      { type: "text-delta", text: " mondo" },
+      { type: "usage", tokens: 42 },
+    ];
     const gemini = streamProvider("gemini", chunks);
     const breaker = new CircuitBreaker(redis);
     const recordSuccess = vi.spyOn(breaker, "recordSuccess");
     const out = await drain(gateway([gemini], { breaker }).chatStream([], [], { userId: "u1" }));
-    expect(out).toEqual(chunks);
+    expect(out).toEqual(chunks); // toEqual su array verifica anche l'ordine
     expect(recordSuccess).toHaveBeenCalledWith("gemini");
   });
 
@@ -161,6 +165,31 @@ describe("AIGateway.chatStream", () => {
       drain(gateway([gemini], { breaker }).chatStream([], [], { userId: "u1" })),
     ).rejects.toBe(error);
     expect(recordFailure).toHaveBeenCalledWith("gemini");
+  });
+
+  it("STOP dell'utente (signal del chiamante abortato) a metà stream → NON registra il fallimento sul breaker", async () => {
+    const controller = new AbortController();
+    const gemini: ChatProvider = {
+      name: "gemini",
+      chat: vi.fn(() => Promise.resolve(OK)),
+      chatStream: vi.fn(async function* () {
+        yield { type: "text-delta", text: "hi" } as ProviderChunk;
+        controller.abort(); // l'utente preme STOP a metà stream
+        throw new DOMException("Aborted", "AbortError");
+      }),
+    } as never;
+    const breaker = new CircuitBreaker(redis);
+    const recordFailure = vi.spyOn(breaker, "recordFailure");
+    await expect(
+      drain(
+        gateway([gemini], { breaker }).chatStream([], [], {
+          userId: "u1",
+          signal: controller.signal,
+        }),
+      ),
+    ).rejects.toMatchObject({ name: "AbortError" });
+    expect(recordFailure).not.toHaveBeenCalled();
+    expect(await redis.get("cb:gemini:fail")).toBeNull();
   });
 });
 

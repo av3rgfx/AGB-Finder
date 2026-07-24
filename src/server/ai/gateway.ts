@@ -134,7 +134,10 @@ export class AIGateway {
       for await (const chunk of provider.chatStream(messages, tools, signal)) yield chunk;
       await this.deps.breaker.recordSuccess(provider.name);
     } catch (error) {
-      await this.deps.breaker.recordFailure(provider.name);
+      // Uno STOP dell'utente (abort del signal del chiamante) non è un guasto del
+      // provider: non deve contribuire ad aprire il circuit breaker. Il timeout
+      // interno invece sì.
+      if (!opts.signal?.aborted) await this.deps.breaker.recordFailure(provider.name);
       throw error;
     }
   }
