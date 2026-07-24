@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/TextLayer.css";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
@@ -11,31 +11,55 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url,
 ).toString();
 
-// NON impostare `disableAutoFetch: true`: con quell'opzione PDF.js carica testo e
-// grafica vettoriale ma NON recupera gli XObject immagine della pagina (le foto
-// dei prodotti restavano bianche). Coi default (auto-fetch attivo) PDF.js recupera
-// anche le immagini; le range-request restano usate (fetch progressivo del file).
+// Opzione B: ogni pagina del listino è un file singolo su Vercel Blob, servito da
+// /api/listino?page=N e scaricato per intero (niente Range) → tutte le immagini
+// arrivano prima del disegno. `numPages` del documento è sempre 1: il totale
+// arriva come prop dal layout (env LISTINO_TOTAL_PAGES).
 const PDF_OPTIONS = {} as const;
+
+// Larghezza massima di rendering su desktop; su mobile ci si adatta al contenitore.
+const MAX_PAGE_WIDTH = 720;
 
 export function ListinoViewer({
   code,
   page,
+  totalPages,
   onClose,
 }: {
   code: string;
   page: number;
+  totalPages: number | null;
   onClose: () => void;
 }) {
-  const [numPages, setNumPages] = useState<number | null>(null);
   const [current, setCurrent] = useState(page);
+  const [width, setWidth] = useState<number>();
+  const scrollRef = useRef<HTMLDivElement>(null);
   const highlight = useMemo(() => makeHighlighter(code), [code]);
+  const file = useMemo(() => `/api/listino?page=${current}`, [current]);
 
   useEffect(() => setCurrent(page), [page]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  // Mobile-first: dimensiona il canvas della pagina sul contenitore misurato (un
+  // canvas non si ridimensiona via CSS senza sfocare) → niente overflow a ≤375px.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width;
+      if (w) setWidth(Math.min(MAX_PAGE_WIDTH, Math.floor(w)));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const canPrev = current > 1;
+  const canNext = totalPages != null && current < totalPages;
 
   return (
     <div
@@ -53,7 +77,7 @@ export function ListinoViewer({
           <span className="font-mono text-sm text-ink">{code}</span>
           <span className="text-xs text-ink-subtle">
             pag. {current}
-            {numPages ? ` / ${numPages}` : ""}
+            {totalPages != null ? ` / ${totalPages}` : ""}
           </span>
           <button
             type="button"
@@ -65,19 +89,18 @@ export function ListinoViewer({
           </button>
         </header>
 
-        <div className="flex-1 overflow-auto bg-surface-sunken p-2">
+        <div ref={scrollRef} className="flex-1 overflow-auto bg-surface-sunken p-2">
           <Document
-            file="/api/listino"
+            file={file}
             options={PDF_OPTIONS}
-            onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-            loading={<p className="p-6 text-center text-sm text-ink-subtle">Caricamento listino…</p>}
+            loading={<p className="p-6 text-center text-sm text-ink-subtle">Caricamento pagina…</p>}
             error={
               <p className="p-6 text-center text-sm text-danger">Impossibile aprire il listino.</p>
             }
           >
             <Page
-              pageNumber={current}
-              width={720}
+              pageNumber={1}
+              width={width}
               customTextRenderer={highlight}
               renderAnnotationLayer={false}
               className="mx-auto max-w-full"
@@ -88,7 +111,7 @@ export function ListinoViewer({
         <footer className="flex items-center justify-center gap-4 border-t border-line px-4 py-2">
           <button
             type="button"
-            disabled={current <= 1}
+            disabled={!canPrev}
             onClick={() => setCurrent((c) => Math.max(1, c - 1))}
             aria-label="Pagina precedente"
             className="rounded p-1 text-ink-subtle hover:bg-surface-sunken disabled:opacity-40"
@@ -97,7 +120,7 @@ export function ListinoViewer({
           </button>
           <button
             type="button"
-            disabled={numPages != null && current >= numPages}
+            disabled={!canNext}
             onClick={() => setCurrent((c) => c + 1)}
             aria-label="Pagina successiva"
             className="rounded p-1 text-ink-subtle hover:bg-surface-sunken disabled:opacity-40"

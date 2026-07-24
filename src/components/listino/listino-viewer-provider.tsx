@@ -11,13 +11,31 @@ const ListinoViewer = dynamic(
 type Target = { code: string; page: number };
 const Ctx = createContext<{ open: (t: Target) => void } | null>(null);
 
-export function ListinoViewerProvider({ children }: { children: ReactNode }) {
+/**
+ * Monta un solo viewer del listino a livello di layout. `totalPages` è una
+ * costante di deploy (env LISTINO_TOTAL_PAGES) letta dal layout server e passata
+ * come prop: serve al viewer per l'indicatore «pag. N / totale» e per disabilitare
+ * «successiva» all'ultima pagina (ogni file è a pagina singola, quindi il documento
+ * non conosce il totale).
+ */
+export function ListinoViewerProvider({
+  children,
+  totalPages,
+}: {
+  children: ReactNode;
+  totalPages: number | null;
+}) {
   const [target, setTarget] = useState<Target | null>(null);
   return (
     <Ctx.Provider value={{ open: setTarget }}>
       {children}
       {target && (
-        <ListinoViewer code={target.code} page={target.page} onClose={() => setTarget(null)} />
+        <ListinoViewer
+          code={target.code}
+          page={target.page}
+          totalPages={totalPages}
+          onClose={() => setTarget(null)}
+        />
       )}
     </Ctx.Provider>
   );

@@ -9,17 +9,56 @@
 
 | Campo | Valore |
 |-------|--------|
-| **Data** | 2026-07-23 (sessione conclusa) |
+| **Data** | 2026-07-23 (Opzione B — viewer a pagine singole) |
 | **Fase in corso** | Fase 1 — MVP Gestionale |
 | **Sotto-fase** | 1a ✅ · Better Auth ✅ · 1b ✅ · 1c Chat AI ✅ · **1d Kit engine ✅** · **1e Dashboard ✅ (#9)** · **API key admin ✅ (#10)** · **1f Deploy staging 🔄** · **1g Kit multi-materiale ✅ (#15)** · **1h Anta a battente ✅ (#16)** · **Gestione utenti + login username ✅ (#17)** · **UI mobile responsive ✅ (#18)** · **1i Vasistas ✅ (#20)** · **«Visualizza nel listino» ✅ (#21, ATTIVO)** · **ottimizz. ops backfill ✅ (#22)** · **fix immagini viewer ✅ (#23)** |
 | **Branch git** | **PR #20–#23 TUTTE MERGIATE** (`claude/handoff-md-review-erkjm0`, `claude/listino-viewer`, `claude/optimize-backfill`, `claude/fix-listino-images`). Precedenti #11–#18 mergiate. Nessun branch in sospeso. |
 | **Stato deploy** | **LIVE** su `catalogo-finder-kappa.vercel.app`. Neon allineato (**ops run 30024919979**: migrazione `add_listino_page` + import + seed vasistas + pagine popolate). Viewer listino **ATTIVATO** (Vercel Blob + `LISTINO_PDF_URL` impostati dall'utente). ⚠️ **1 problema aperto: immagini viewer parziali → Opzione B (vedi «RIPRENDI DA QUI»).** |
 | **Piani/spec** | `docs/superpowers/{specs,plans}/2026-07-23-fase1i-kit-vasistas-legno*` e `2026-07-23-listino-viewer*`. |
 
-> **▶ RIPRENDI DA QUI — sessione chiusa 2026-07-23: 4 PR mergiate e in produzione; 1 problema aperto sul viewer → Opzione B.**
+> **▶ RIPRENDI DA QUI — 2026-07-23 (Opzione B implementata): viewer listino a PAGINE SINGOLE, pronto per PR + ops.**
 >
-> Tutto ciò che è stato costruito in questa sessione è **mergiato, in produzione e (per il viewer) attivato**.
-> Resta **un solo problema** sul viewer listino → il prossimo lavoro è l'**Opzione B** (vedi in fondo).
+> **Opzione B FATTA** sul branch **`claude/listino-page-split-n8ofuk`** (fresco da `origin/main` dopo #20–#24).
+> Risolve il problema delle **immagini parziali** del viewer: il listino non è più un unico PDF da 41 MB servito
+> via Range, ma **~959 paginette** su Vercel Blob (ognuna un file minuscolo con TUTTE le sue immagini → scaricata
+> per intero → immagini complete, veloce, ottima su mobile, evidenziazione preservata).
+>
+> **Cosa è entrato (gate verdi: typecheck · lint · test 332 · build 14 route):**
+> - **env** (`src/env.ts`, `.env.example`): rimossa `LISTINO_PDF_URL`; aggiunte `LISTINO_PAGE_URL_TEMPLATE`
+>   (URL con placeholder `{page}`) e `LISTINO_TOTAL_PAGES` (`z.coerce.number`). Entrambe assenti = feature off.
+> - **route** `src/app/api/listino/route.ts` + `page-param.ts`: `GET /api/listino?page=N` (auth 401, 503 se env
+>   off, **param validato anti-SSRF** `^[1-9]\d*$` in `[1,total]` → 400, `fetch` del template, stream **200
+>   application/pdf**, upstream !ok → 502). **Niente Range.**
+> - **split** `scripts/split-listino.ts` + `src/server/catalog/listino-blob.ts`: `pdfseparate page-%d.pdf` →
+>   `@vercel/blob` `put("listino/page-N.pdf", …, {access:"public", addRandomSuffix:false, allowOverwrite:true})`
+>   con retry; stampa `LISTINO_TOTAL_PAGES` + `LISTINO_PAGE_URL_TEMPLATE` (da `page-1`) + deep-link vasistas.
+>   Spot-check soft: `page-418.pdf` contiene `A50111`. `@vercel/blob` in **devDependencies** (la route usa `fetch`).
+> - **ops** `.github/workflows/ops-split-listino.yml` (`workflow_dispatch`, secret **`BLOB_READ_WRITE_TOKEN`**).
+> - **viewer** `listino-viewer.tsx`: `<Document file="/api/listino?page=N">` + **`<Page pageNumber={1}>`**;
+>   rimossi `numPages`/`onLoadSuccess`; `totalPages` come **prop** (layout server → provider → viewer); footer
+>   `pag. N / totale`; prev/next per pagina. **Fix mobile-first** del `width` fisso 720px → **responsive** via
+>   `ResizeObserver` (`Math.min(720, larghezza-misurata)`) → niente overflow a ≤375px.
+> - **/llm-council** (design) + **review adversarial** (workflow) fatti; spec/piano in
+>   `docs/superpowers/{specs,plans}/2026-07-23-listino-page-split*`.
+>
+> **➡ AZIONI OPS (utente, dopo il merge della PR):**
+> 1. Aggiungere il **GitHub secret `BLOB_READ_WRITE_TOKEN`** (token Read/Write dello store Blob).
+> 2. Lanciare la GH Action **«Ops — Split listino»** → split+upload delle paginette. Dai log copiare
+>    **`LISTINO_TOTAL_PAGES`** e **`LISTINO_PAGE_URL_TEMPLATE`**.
+> 3. Su **Vercel (Production)**: impostare quelle 2 env, **rimuovere `LISTINO_PDF_URL`**, poi **redeploy**.
+> 4. (Opzionale) eliminare dal Blob il vecchio `listino.pdf` monolitico.
+> 5. **Verifica browser** (≤375px + desktop): un codice → pagina giusta, **immagini complete**, codice
+>    evidenziato, nessun overflow orizzontale.
+>
+> **Nota edizione:** lo split DEVE girare sulla **stessa edizione** del listino che ha popolato
+> `Product.listinoPage` (stesso link registrato). A ogni nuova edizione: re-run backfill (`ops-neon`) **e**
+> `ops-split-listino` insieme.
+>
+> ---
+>
+> **▶ STORICO — sessione chiusa 2026-07-23: 4 PR mergiate e in produzione; problema viewer poi risolto da Opzione B.**
+>
+> Tutto ciò che è stato costruito in quella sessione è **mergiato e in produzione**.
 >
 > **Cosa è entrato in produzione (gate verdi typecheck·lint·test·build su ogni PR):**
 > - **#20 — Fase 1i «Vasistas» ARTECH LEGNO** (`claude/handoff-md-review-erkjm0`). Terza tipologia del kit

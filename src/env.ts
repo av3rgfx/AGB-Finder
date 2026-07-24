@@ -30,8 +30,16 @@ const envSchema = z.object({
   IP_HASH_SECRET: z.string().min(1),
   SETTINGS_ENCRYPTION_KEY: z.string().optional(),
 
-  // PDF del listino su Vercel Blob (feature «visualizza nel listino»); assente = feature off.
-  LISTINO_PDF_URL: z.string().url().optional(),
+  // Listino su Vercel Blob, pre-splittato in pagine singole (feature «visualizza nel
+  // listino», Opzione B). Template dell'URL della paginetta con placeholder «{page}»
+  // (es. https://…/listino/page-{page}.pdf) + numero totale di pagine. Entrambe assenti
+  // = feature off. Server-only: il client passa sempre e solo da /api/listino.
+  LISTINO_PAGE_URL_TEMPLATE: z
+    .string()
+    .url()
+    .refine((v) => v.includes("{page}"), "manca il placeholder {page}")
+    .optional(),
+  LISTINO_TOTAL_PAGES: z.coerce.number().int().positive().optional(),
 
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 });
