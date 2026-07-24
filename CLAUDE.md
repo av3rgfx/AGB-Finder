@@ -184,7 +184,18 @@ workflow `ops-extract-images.yml` · route `/api/product-image?code=…` (auth, 
 (`<img onError hide>`) sulla scheda dettaglio. Gate verdi (test **341**). **PR #27 MERGIATA + ops run 30089631152
 (`✓ 7082 immagini salvate in product_images`)**; route verificata live (401 senza auth). Dettagli:
 `docs/superpowers/specs/2026-07-24-immagini-prodotto-design.md`.
-+ **PROSSIMA SESSIONE (decisa dall'utente) = UX Archivio**: persistenza dello stato ricerca (vista lista/griglia,
-query, filtri, pagina) su refresh **e** al ritorno dalla scheda dettaglio (oggi `archivio-client.tsx` tiene tutto
-in `useState` → si azzera) · **cronologia ricerche settimanale per utente** (riuso `ActivityLog.PRODUCT_SEARCHED`) ·
-+ studio di altri miglioramenti UX. Prompt e contesto in `handoff.md` §RIPRENDI DA QUI.
++ **UX Archivio ✅ su branch `claude/archivio-ux-persistence-aj3zvy` (PR da aprire)**: workflow completo
+(brainstorming → /llm-council → critica adversariale 3-lenti → /impeccable → piano → TDD). **(1) Persistenza**:
+query/filtri/pagina negli **URL searchParams** (`useSearchParams` sotto `<Suspense>` in `archivio/page.tsx`,
+scrittura `router.replace(…,{scroll:false})`), **vista** in `localStorage` (idratata post-mount, no flash).
+**(2) Ritorno-alla-lista con scroll** (priorità #1): snapshot `scrollY` per-chiave in `sessionStorage`
+(`archivio-scroll.ts`), `history.scrollRestoration='manual'`, ripristino in `rAF` una volta dopo i dati in cache;
+salvataggio su **`pointerdown` (cattura)** + `pagehide` (NON su scroll/unmount: Next scrolla in cima aprendo il
+dettaglio → salverebbe 0). **(3) Cronologia 7gg**: `product.recentSearches` read-side su `ActivityLog`
+(`recent-searches.ts`: scarta 0-risultati, dedup, collassa prefissi) → «Ricerche recenti» nell'empty-state.
+**Extra**: thumbnail card/righe (riservate; `ProductImage` esteso con `fallback`, `ProductThumb`) · chip filtri
+attivi + azzera · empty-state con suggerimenti. Moduli puri `archivio-search-params.ts`/`archivio-scroll.ts`/
+`recent-searches.ts` + hook `use-archivio-search.ts`. Gate verdi (typecheck·lint·**test 369/+28**·build). **Verifica
+browser reale (Chromium desktop + mobile 375px)** ha confermato il ripristino scroll (1073→1073 · 900→900) e
+**scovato 2 bug** poi corretti (salvataggio a 0; rAF annullato dalla cleanup). **Nessuna migrazione, nessuna dep,
+NESSUNA AZIONE OPS.** Spec/piano: `docs/superpowers/{specs,plans}/2026-07-24-archivio-ux*`.
