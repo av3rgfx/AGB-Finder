@@ -37,7 +37,7 @@ const GOLDEN_MANDATORY: [code: string, qty: number][] = [
   ["A50702.05.00", 1], // supporto-forbice legno aria 12 - interasse 9/13
   ["A50790.00.00", 1], // perno-supporto-forbice
   ["A50904.36.02", 1], // squadra-angolare — interasse 13 SX
-  ["A50801.01.02", 1], // supporto-cerniera SX (pin da estrazione, vedi ASSUNZIONE)
+  ["A50805.05.SX", 1], // supporto-cerniera SX — «Aria 12 - Interasse 9/13, battuta 20» p0451 (449)
   ["A51301.02.21", 1], // coperture-kit ARGENTO SX
   ["A51400.05.03", 1], // incontro-dss aria 12
   ["A51400.05.02", 5], // incontri-nottolino aria 12
@@ -108,11 +108,11 @@ describe("selezioni dipendenti dall'input", () => {
     const lines = artechAntaRibaltaLegno.generate({ ...golden, openingSide: "DESTRA" });
     const codes = lines.map((l) => l.code);
     expect(codes).not.toContain("A50904.36.02");
-    expect(codes).not.toContain("A50801.01.02");
+    expect(codes).not.toContain("A50805.05.SX");
     expect(codes).not.toContain("A51301.02.21");
     expect(codes).not.toContain("A51912.36.02");
     expect(codes).toContain("A50904.36.01");
-    expect(codes).toContain("A50801.01.01");
+    expect(codes).toContain("A50805.05.DX");
     expect(codes).toContain("A51301.01.21");
     expect(codes).toContain("A51911.36.02");
     expect(lines).toHaveLength(12);
@@ -154,5 +154,18 @@ describe("selezioni dipendenti dall'input", () => {
     // vecchio codice (chiusure sempre generate) sarebbe fallita qui; col
     // default OFF (Task 1) è raggiungibile senza errore.
     expect(qtyAt(2400)).toBe(6); // 2+floor(2400/600)+floor(550/600) = 2+4+0
+  });
+});
+
+describe("artechAntaRibaltaLegno — banda cremonese GR02", () => {
+  it("copre le altezze da 620 mm (hbb 610), come il listino p0424 (422)", () => {
+    const lines = artechAntaRibaltaLegno.generate({ ...golden, heightMm: 620 });
+    expect(lines.find((l) => l.position === "cremonese")?.code).toBe("A50122.15.02");
+  });
+
+  it("rifiuta sotto la banda del listino (hbb < 610)", () => {
+    expect(() => artechAntaRibaltaLegno.generate({ ...golden, heightMm: 615 })).toThrow(
+      KitGenerationError,
+    );
   });
 });

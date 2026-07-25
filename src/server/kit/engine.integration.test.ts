@@ -18,11 +18,17 @@ describe.runIf(Boolean(url))("KitEngine — integrazione su catalogo reale", () 
     await db.$disconnect();
   });
 
+  // È l'UNICO test che vede il catalogo vero: quello unitario mocka
+  // product.findMany, quindi un codice inesistente a DB gli sfugge. Qui
+  // `supplementaryClosures: true` è necessario per arrivare alle 16 righe della
+  // distinta storica (dalla Fase 1g il default è OFF = 12 righe: l'atteso 16 era
+  // rimasto indietro e il test sarebbe fallito al primo run con DB reale).
   it("la distinta golden risolve 16 codici reali senza warning", async () => {
     const output = await new KitEngine(db).generate({
       windowType: "ANTA_RIBALTA", widthMm: 550, heightMm: 1820, material: "LEGNO",
       airGapMm: 12, axisOffsetMm: 13, rebateMm: 20, seatMm: 18,
       openingSide: "SINISTRA", openingDir: "TIRARE", finish: "ARGENTO", series: "ARTECH",
+      supplementaryClosures: true,
     });
     expect(output.warnings).toEqual([]);
     expect(output.lines).toHaveLength(16);

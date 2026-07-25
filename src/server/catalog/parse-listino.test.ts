@@ -149,6 +149,57 @@ describe("parseListino — pagina fisica per riga", () => {
   });
 });
 
+// Fixture REALE — p0451 (449), ARTECH «Cerniere - Legno»: la tabella indicizza la
+// mano con un suffisso ALFABETICO (.DX/.SX), non numerico. Con il vecchio regex
+// tutto-numerico queste righe venivano scartate in silenzio: i codici non
+// entravano a catalogo e il kit ARTECH anta-ribalta, che chiede il supporto
+// battuta 20 (A50805.05.DX/.SX), produceva una riga senza prezzo.
+const FIXTURE_SUPPORTI_CERNIERA = [
+  "\f               ARTECH                                                                        LISTINO 2026",
+  "Cerniere - Legno",
+  "                        Supporto cerniera Aria 12 - Interasse 9/13 - Parte telaio",
+  "                         \t",
+  "                        BATTUTA                        MANO               CODICE                     € CS",
+  "                        18                             dx                 A50804.05.DX   50 50     4,44   F3",
+  "                                                       sx                 A50804.05.SX   50 50     4,44   F3",
+  "                        20                             dx                 A50805.05.DX   50 50     4,44   F3",
+  "                                                       sx                 A50805.05.SX   50 50     4,44   F3",
+].join("\n");
+
+describe("parseListino — codici con segmenti alfanumerici", () => {
+  it("estrae i suffissi mano .DX/.SX con prezzo e contesto (p0451 (449))", () => {
+    const { rows, stats } = parseListino(FIXTURE_SUPPORTI_CERNIERA);
+    expect(stats.parsed).toBe(4);
+    expect(rows.map((r) => r.agbCode)).toEqual([
+      "A50804.05.DX",
+      "A50804.05.SX",
+      "A50805.05.DX",
+      "A50805.05.SX",
+    ]);
+    // Battuta 20 = la variante che il kit ARTECH anta-ribalta legno mette in distinta.
+    expect(rows[2]).toMatchObject({
+      agbCode: "A50805.05.DX",
+      priceCents: 444,
+      hand: "DX",
+      category: "ARTECH",
+      subcategory: "Cerniere - Legno",
+      groupTitle: "Supporto cerniera Aria 12 - Interasse 9/13 - Parte telaio",
+    });
+    expect(rows[3]).toMatchObject({ agbCode: "A50805.05.SX", hand: "SX", priceCents: 444 });
+  });
+
+  it("estrae i suffissi finitura (.FM) e i prefissi alfanumerici dei cilindri", () => {
+    const block = [
+      "                            LUNGHEZZA B-8-C     PISTONCINI   X-Y       CODICE                     € CS",
+      "                            48                  13           24-24     CG0016.24.24   1 1    85,97   A7",
+      "                            Bianco opaco RAL 9016         B06132.50.FM   20 20    27,22   A8",
+    ].join("\n");
+    const { rows } = parseListino(block);
+    expect(rows.map((r) => r.agbCode)).toEqual(["CG0016.24.24", "B06132.50.FM"]);
+    expect(rows[0]).toMatchObject({ priceCents: 8597, discountClass: "A7" });
+  });
+});
+
 describe("parseListino — colonne e attributi", () => {
   it("estrae finitura e mano (normalizzata DX/SX) dalle colonne; le celle vuote ereditano", () => {
     const { rows } = parseListino(FIXTURE_CERNIERE);

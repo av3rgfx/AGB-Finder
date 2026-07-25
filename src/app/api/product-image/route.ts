@@ -4,8 +4,13 @@ import { db } from "@/server/db";
 
 export const runtime = "nodejs";
 
-/** Codice AGB completo, ancorato (validazione stretta del parametro). */
-const AGB_CODE = /^[A-Z]\d{5}\.\d{2}\.\d{2}$/;
+/**
+ * Codice AGB completo, ancorato (validazione stretta del parametro). I segmenti
+ * non sono solo numerici: il listino usa suffissi alfabetici per la mano
+ * (A50805.05.DX/.SX) e prefissi alfanumerici per i cilindri (CG0016.24.24) —
+ * stessa forma di CODE_TOKEN in src/server/catalog/parse-listino.ts.
+ */
+const AGB_CODE = /^[A-Z][A-Z0-9]{5}\.[A-Z0-9]{2}\.[A-Z0-9]{2}$/;
 
 /**
  * Serve la foto prodotto (estratta dal listino) dal DB, dietro auth. Le immagini

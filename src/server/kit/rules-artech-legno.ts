@@ -19,14 +19,17 @@ type Side = KitInput["openingSide"];
 // catalogo — la risoluzione dei bordi condivisi è nella funzione pick()).
 
 /**
- * Cremonese A/R per range altezza-maniglia (colonne.hbb di A50122.15.%).
- * Solo la progressione "per schema A" a maniglia 500/1050 coerente col
- * golden (gruppi 02-10); escluse .17 (gr "07bis", variante a maniglia 1050
- * che sovrappone ambiguamente .07) e .31/.41 (schema diverso, selezione per
- * larghezza "lbb" non per altezza "hbb").
+ * Cremonese A/R per range altezza-maniglia. VERIFICATA contro p0424 (422),
+ * tabella «Cremonesi · Anta ribalta - altezza maniglia fissa», entrata 15:
+ * le 9 bande coincidono con il listino (GR02 parte da 610, non da 650 —
+ * corretto il 2026-07-25: le altezze 620-659 venivano rifiutate a torto).
+ * Escluse .17 («07bis», HBB 1634-1810 ma altezza maniglia 1050 anziché 500, si
+ * sovrappone ambiguamente a .07) e .31/.41 (p0425, GR1: selezione per HBB E per
+ * LBB, schema diverso). L'esclusione delle .31/.41 lascia scoperto l'intervallo
+ * HBB 357-609: domanda 4 per l'esperto.
  */
 const CREMONESI = [
-  { minH: 650, maxH: 810, code: "A50122.15.02" },
+  { minH: 610, maxH: 810, code: "A50122.15.02" },
   { minH: 794, maxH: 1010, code: "A50122.15.03" },
   { minH: 994, maxH: 1210, code: "A50122.15.04" },
   { minH: 1194, maxH: 1410, code: "A50122.15.05" },
@@ -59,17 +62,9 @@ const BRACCI_GRUPPI = [
   { minL: 794, maxL: 1204, gruppo: "04" },
 ] as const;
 
-/**
- * ASSUNZIONE (gap di catalogo, riga "supporto-cerniera" dell'emendamento):
- * nel listino 2026 la famiglia "Supporto cerniera ... - Parte telaio"
- * (sottocategoria Artech · Cerniere - Legno) esiste SOLO in due varianti,
- * entrambe "Aria 4": A50801 (interasse 9, battuta 18) e A50803 (interasse
- * 8,5, battuta 15). Nessuna copre aria 12/interasse 13/battuta 20 (i
- * parametri del golden). Si pinna A50801 perché più vicino ai parametri
- * golden su entrambi gli assi di confronto (battuta 18 vs 15, interasse 9 vs
- * 8,5) rispetto ad A50803. Verificare col listino cartaceo/prossima distinta
- * reale: potrebbe mancare a catalogo un codice interasse13/battuta20 dedicato.
- */
+// Il supporto cerniera non è più un'ASSUNZIONE: la variante «Aria 12 -
+// Interasse 9/13 - Parte telaio» battuta 20 esiste a listino, p0451 (449), ed è
+// A50805.05.DX/.SX — vedi il commento di PER_MANO in artech-legno-shared.ts.
 
 /** Coperture kit per finitura + mano (golden: ARGENTO). */
 const COPERTURE_KIT: Record<string, Record<Side, string>> = {
@@ -93,13 +88,16 @@ const FISSI = [
   },
   { position: "incontro-dss", code: "A51400.05.03", quantity: 1, descr: "Incontro DSS aria 12" },
   // ASSUNZIONE (emendamento): l'incontro ribalta 2026 non ha più varianti
-  // DX/SX (unica riga in DB, "13x24 viti dritte"), a differenza del vecchio
-  // A514SX/DX.05.65 del 2021.
+  // DX/SX (unica riga in DB), a differenza del vecchio A514SX/DX.05.65 del 2021.
+  // A51400.05.70 = «Incontri Ribalta · Aria 12 · ZAMA · 9x18 viti dritte», p0471
+  // (469). La descrizione diceva «13x24»: era il formato di A51400.CR.70, stesso
+  // prezzo. Il kit è oggi tutto su asse 9 per gli incontri e interasse 13 per
+  // bracci/squadre/cerniere: domanda 3 per l'esperto.
   {
     position: "incontro-ribalta",
     code: "A51400.05.70",
     quantity: 1,
-    descr: "Incontro ribalta aria 12 (13x24 viti dritte, ambidestro)",
+    descr: "Incontro ribalta aria 12 (9x18 viti dritte, ambidestro)",
   },
 ] as const;
 
@@ -215,7 +213,7 @@ export const artechAntaRibaltaLegno: RuleModule = {
         code: mano.supportoCerniera,
         quantity: 1,
         ruleId: "artech.mano",
-        ruleDescription: `Supporto cerniera parte telaio ${input.openingSide} (ASSUNZIONE: nessuna variante aria 12/interasse 13/battuta 20 a listino 2026, pinnato il più vicino disponibile)`,
+        ruleDescription: `Supporto cerniera parte telaio aria ${input.airGapMm} interasse 9/13 battuta ${input.rebateMm} ${input.openingSide}`,
       },
       {
         position: "coperture-kit",

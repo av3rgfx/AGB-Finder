@@ -5,8 +5,8 @@ describe("artech-legno-shared", () => {
   it("PER_MANO ha varianti DX/SX per squadra angolare e supporto cerniera", () => {
     expect(PER_MANO.DESTRA.squadraAngolare).toBe("A50904.36.01");
     expect(PER_MANO.SINISTRA.squadraAngolare).toBe("A50904.36.02");
-    expect(PER_MANO.DESTRA.supportoCerniera).toBe("A50801.01.01");
-    expect(PER_MANO.SINISTRA.supportoCerniera).toBe("A50801.01.02");
+    expect(PER_MANO.DESTRA.supportoCerniera).toBe("A50805.05.DX");
+    expect(PER_MANO.SINISTRA.supportoCerniera).toBe("A50805.05.SX");
   });
 
   it("MOVIMENTO_ANGOLARE è il fisso 125x125 in quantità 2", () => {

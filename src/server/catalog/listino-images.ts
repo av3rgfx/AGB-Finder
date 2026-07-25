@@ -7,8 +7,8 @@
 // La mappatura sfrutta il layout tipico del listino: la foto e i codici che
 // illustra stanno sulla stessa BANDA verticale.
 
-/** Codice AGB: lettera + 5 cifre + .NN.NN. */
-const CODE_TOKEN = /[A-Z]\d{5}\.\d{2}\.\d{2}/;
+/** Codice AGB, segmenti alfanumerici inclusi — stessa forma di parse-listino.ts. */
+const CODE_TOKEN = /[A-Z][A-Z0-9]{5}\.[A-Z0-9]{2}\.[A-Z0-9]{2}/;
 
 export interface Box {
   top: number;
