@@ -9,14 +9,101 @@
 
 | Campo | Valore |
 |-------|--------|
-| **Data** | 2026-07-25 (CHAT ASSISTENTE riscritta — 12/12 task completi, gate verdi, verifica browser 13/13; **PR da aprire**) |
+| **Data** | 2026-07-25 (sessione CONCLUSA — CHAT ASSISTENTE riscritta; **PR #32 APERTA IN DRAFT**, non mergiata) |
 | **Fase in corso** | Fase 1 — MVP Gestionale |
-| **Sotto-fase** | …#30 · **CHAT ASSISTENTE PROFESSIONALE ✅**: streaming SSE + STOP · Gemini-only (Kimi rimosso) · conversazioni complete (rinomina/elimina/archivia/cerca) · markdown + card prodotto inline · mobile-first (drawer, composer, 375px) · `?c=` in URL. |
-| **Branch git** | `claude/assistant-chat-streaming-mobile-1apei1` (20 commit, da `origin/main` @ `5c143ee`). **PR NON ancora aperta** (in attesa ok utente). |
-| **Stato deploy** | **LIVE** su `catalogo-finder-kappa.vercel.app` (senza questa branch). Al merge: deploy Vercel standard. **NESSUNA migrazione, NESSUN seed.** Unica azione ops (non bloccante): rimuovere da Vercel le env `KIMI_API_KEY`/`KIMI_MODEL` se presenti. |
+| **Sotto-fase** | …#30 · **CHAT ASSISTENTE PROFESSIONALE ✅ (PR #32 draft)**: streaming SSE + STOP · Gemini-only (Kimi rimosso) · conversazioni complete · markdown + card prodotto inline · mobile-first · `?c=` in URL. **Prossima sessione: KIT (listino AGB)** — vedi §RIPRENDI. |
+| **Branch git** | `claude/assistant-chat-streaming-mobile-1apei1` (26 commit) → **PR #32 draft**, in attesa che l'utente provi l'anteprima Vercel e dia l'ok al merge. |
+| **Stato deploy** | **LIVE** su `catalogo-finder-kappa.vercel.app` (senza #32). Al merge: deploy standard. **NESSUNA migrazione, NESSUN seed.** Unica azione ops non bloccante: rimuovere da Vercel `KIMI_API_KEY`/`KIMI_MODEL` se presenti. |
 | **Piani/spec** | `docs/superpowers/{specs,plans}/2026-07-24-chat-streaming*`. |
 
-> **▶ RIPRENDI DA QUI — CHAT ASSISTENTE riscritta ✅. Branch pronto, PR DA APRIRE (serve ok utente).**
+> **▶ RIPRENDI DA QUI — PROSSIMA SESSIONE: sviluppo KIT (sempre sul listino AGB 2026).**
+>
+> Seguire il workflow: `/using-superpowers` → brainstorming → `/llm-council` (per dubbi/incongruenze sulle regole
+> di distinta) → `/impeccable` se si tocca UI (**mobile ≤375px + desktop**) → `/writing-plans` → esecuzione TDD;
+> `/ponytail` per il codice. **Branch fresco da `origin/main`.** Vincoli CLAUDE.md: TS strict, API via tRPC/Prisma,
+> UI italiano, codici in mono, mobile-first. **Regola inviolabile: il kit è un engine DETERMINISTICO TypeScript,
+> MAI un LLM.** A fine: gate verdi + verifica browser (se c'è UI) + PR (chiedere ok) + AZIONI OPS.
+>
+> **PROMPT DI APERTURA (l'utente lo incolla):**
+> > Nuova sessione. Riparti da un BRANCH FRESCO da origin/main. Segui il workflow: /using-superpowers →
+> > brainstorming → /llm-council (per dubbi, incongruenze o scelte sulle regole di distinta) → /impeccable se
+> > tocchiamo UI (SEMPRE mobile ≤375px + desktop) → /writing-plans → esecuzione TDD; /ponytail per il codice
+> > minimale. Vincoli CLAUDE.md: TS strict, tutte le API via tRPC/Prisma, UI in italiano, codici in mono,
+> > mobile-first, e soprattutto: il KIT È UN ENGINE DETERMINISTICO TypeScript, MAI un LLM. A fine lavoro: gate
+> > verdi (typecheck·lint·test·build) + verifica browser se c'è UI + PR (chiedi il mio ok prima di aprirla/
+> > mergiarla) + indica le eventuali AZIONI OPS.
+> >
+> > Prima di tutto: controlla se la PR #32 (chat streaming) è stata mergiata e dimmelo.
+> >
+> > OBIETTIVO — Continuare lo sviluppo dei KIT, sempre basandosi sul LISTINO AGB 2026. Oggi l'engine copre 3
+> > tipologie su 7 (anta-ribalta, battente, vasistas) e quasi solo in LEGNO; tre moduli sono PROVVISORI e
+> > l'ALLUMINIO è bloccato perché il listino 2026 non ne ha la composizione.
+> >
+> > Fai prima uno STUDIO dello stato dei kit (`src/server/kit/`, il registry, i template nel seed, e le domande
+> > già pronte in docs/superpowers/kit-assunzioni/), poi proponimi le direzioni possibili con pro e contro —
+> > per esempio: nuova tipologia SCORREVOLE (alzante/traslante), estendere i materiali (PVC) alle tipologie
+> > già fatte, oppure validare i moduli provvisori e sbloccare l'alluminio. Verifica SEMPRE sul listino che
+> > quello che stiamo per costruire esista davvero (come fu fatto per l'anta proiettante e per l'alluminio,
+> > che a listino non c'erano). Allineiamoci sullo scope prima di implementare.
+> >
+> > Se ti serve il PDF del listino e non è nell'ambiente, chiedimelo: non cercarlo sul web.
+>
+> **PRIMA COSA DA CONTROLLARE: la PR #32 (chat streaming) è stata mergiata?**
+> Se sì → ripartire da `origin/main` aggiornato. Se è ancora aperta in draft, chiedere all'utente come procedere
+> (mergiarla prima, o lavorare comunque da `main` senza di essa). **Ops #32**: nessuna migrazione; solo rimuovere
+> da Vercel `KIMI_API_KEY`/`KIMI_MODEL` se presenti.
+>
+> **⚠️ LISTINO AGB (PDF) — REGOLA UTENTE**: se il file non è nell'ambiente (container nuovo/scratchpad svuotata),
+> **NON cercarlo sul web**: chiedere il link direttamente all'utente. Ultimo link fornito (2026-07-01):
+> https://drive.google.com/file/d/1TugU94aM6OP557ELiLQpH0nUxhxrXMUz/view?usp=sharing
+> Serve `poppler-utils` (`pdftotext`) per l'estrazione. In produzione il listino è già su Vercel Blob
+> (paginette private, route `/api/listino?page=N`) e `Product.listinoPage` è popolata.
+>
+> **STATO ATTUALE DEI KIT (fonte di verità: `src/server/kit/`)**
+> Engine deterministico + registry: `KitTemplate.rules` a DB è **solo un puntatore versionato** `{engine, version}`
+> al modulo in codice (ADR 2026-07-04) — le regole stanno in git, **mai** nel DB.
+>
+> | Modulo regole | Tipologia / Materiale | Stato |
+> |---|---|---|
+> | `rules-artech-legno.ts` | ANTA_RIBALTA / LEGNO | ✅ **pilota validato** (golden 16 righe, verificato su catalogo reale + browser) |
+> | `rules-artech-pvc.ts` | ANTA_RIBALTA / PVC | ⚠️ **PROVVISORIO** (derivato da cert ift) — `isActive:true` |
+> | `rules-artech-alu.ts` | ANTA_RIBALTA / ALLUMINIO | 🚫 **GATED** `isActive:false` — il listino 2026 non ha composizione alluminio («PLANA» è cerniera complanare legno/PVC) |
+> | `rules-artech-battente-legno.ts` | ANTA_BATTENTE / LEGNO | ⚠️ **PROVVISORIO** (cremonese Mod. 502, distinta 5 righe) |
+> | `rules-artech-vasistas-legno.ts` | VASISTAS / LEGNO | ⚠️ **PROVVISORIO** (listino pag. 416, E.15, golden 10 righe/12 pezzi) |
+>
+> **Enum `WindowType` (schema)**: `ANTA_RIBALTA` · `ANTA_PROIETTANTE` · `ANTA_BATTENTE` · `SCORREVOLE_ALZANTE` ·
+> `SCORREVOLE_TRASLANTE` · `VASISTAS` · `FINESTRA_TETTO`. **Coperte oggi: 3 su 7** (ribalta, battente, vasistas) e
+> **solo in LEGNO** (tranne ribalta che ha anche PVC). *(Nota storica: ANTA_PROIETTANTE fu cercata nel listino 2026
+> con 0 riscontri → l'utente scelse il battente al suo posto.)*
+>
+> **DIREZIONI POSSIBILI (da far scegliere all'utente nel brainstorming, non decidere da soli):**
+> 1. **Nuova tipologia — SCORREVOLE** (`SCORREVOLE_ALZANTE` e/o `SCORREVOLE_TRASLANTE`): famiglie grosse a listino,
+>    è il buco più evidente. Da verificare prima l'effettiva presenza/composizione nel listino 2026 (come si fece
+>    per proiettante e alluminio, per non costruire su un vuoto).
+> 2. **Estendere i MATERIALI alle tipologie già fatte**: battente PVC, vasistas PVC (oggi solo LEGNO).
+> 3. **Validare e togliere il "PROVVISORIO"** ai 3 moduli + sbloccare ALLUMINIO: le domande per l'esperto sono
+>    **già scritte e pronte** in `docs/superpowers/kit-assunzioni/{alu,pvc,battente,vasistas}.md` (es. vasistas:
+>    offset HBB, DSS, quantità movimento angolare, terminale, incontri nottolino). Serve una risposta dell'esperto/
+>    agente: **chiederla all'utente**, non inventarla.
+> 4. **UX/funzionalità kit**: wizard, archivio richieste, export PDF/preventivo, duplica kit — da valutare.
+>
+> **COSE DA SAPERE PRIMA DI TOCCARE IL CODICE**
+> - `registry.ts` mappa `engineId → RuleModule`; aggiungere una tipologia = nuovo `rules-*.ts` + registrazione +
+>   template nel seed (`prisma/seed-kit.ts`, con `windowType`+`material`+`isActive`) + **`pnpm db:seed:kit` al deploy**.
+> - `material` nel template è esplicito per evitare che il legno faccia da catch-all (`OR: [{material:null},…]`).
+> - Meccanica condivisa già estratta: `kit-shared.ts` (cross-materiale) e `artech-legno-shared.ts` (legno).
+> - Test: `engine.test.ts`, `registry.test.ts`, un `rules-*.test.ts` per modulo, + `engine.integration.test.ts`
+>   **gated** su `INTEGRATION_DATABASE_URL` (verifica i codici a catalogo reale).
+> - Ogni nuova tipologia PROVVISORIA va accompagnata dal suo `docs/superpowers/kit-assunzioni/<tipologia>.md`
+>   con le domande aperte per l'esperto.
+>
+> ---
+>
+> **▶ STORICO — sessione 2026-07-25: CHAT ASSISTENTE riscritta ✅ → PR #32 APERTA IN DRAFT (non mergiata).**
+>
+> **Da fare quando l'utente ha provato l'anteprima Vercel di #32:** se ok → togliere il draft e mergiare; se no →
+> iterare sul branch (l'anteprima si aggiorna a ogni push). **Verifica post-deploy con Gemini VERO** (qui mancava
+> la key): token progressivi, stati tool, STOP che conserva il parziale, comportamento sotto **429**.
 >
 > **Branch:** `claude/assistant-chat-streaming-mobile-1apei1` — 20 commit da `origin/main` @ `5c143ee`.
 > **Gate:** `pnpm typecheck` · `pnpm lint` · `pnpm test` **518 passed / 9 skipped** — tutti verdi.

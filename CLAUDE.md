@@ -224,7 +224,7 @@ overlay + `ListinoButton` fratello z-index → apre il viewer senza navigare); s
 resta la scheda). Gate verdi (typecheck·lint·**test 380/+11**·build). **Verifica browser (Chromium desktop +
 mobile 375px): 12/12 check verdi.** Nessuna migrazione, nessuna dep, **NESSUNA AZIONE OPS**. Spec/piano:
 `docs/superpowers/{specs,plans}/2026-07-24-archivio-ux-follow-up*`.
-+ **CHAT ASSISTENTE professionale ✅ (branch `claude/assistant-chat-streaming-mobile-1apei1`, PR da aprire)**:
++ **CHAT ASSISTENTE professionale ✅ (branch `claude/assistant-chat-streaming-mobile-1apei1` → **PR #32 APERTA IN DRAFT**, da provare su anteprima Vercel prima del merge)**:
 riscrittura completa della chat Fase 1c (bozza grezza, mobile inusabile). Workflow: brainstorming → **2×
 `/llm-council`** (streaming + rimozione Kimi) → `/impeccable` (2 scelte UI approvate dall'utente su anteprima
 interattiva) → `/writing-plans` → **12 task SDD** (implementer + reviewer per task). **(1) Streaming SSE**
