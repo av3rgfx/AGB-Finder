@@ -1,11 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Archive, MessageSquarePlus } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Menu, PanelLeftClose, PanelLeftOpen, Plus, Sparkles, X } from "lucide-react";
 import { api } from "@/trpc/react";
-import { MessageBubble } from "@/components/chat/message-bubble";
-import { ProductPanel } from "@/components/chat/product-panel";
-import { ChatInput } from "@/components/chat/chat-input";
+import { useChatStream, type StartInput } from "@/hooks/use-chat-stream";
+import { Composer } from "@/components/chat/composer";
+import { ToolStatus } from "@/components/chat/tool-status";
+import { ErrorBanner } from "@/components/chat/error-banner";
+import { ScrollToBottom } from "@/components/chat/scroll-to-bottom";
+import { MessageTurn } from "@/components/chat/message-turn";
+import { ConversationsPanel } from "@/components/chat/conversations-panel";
+import { isNearBottom } from "@/lib/chat/scroll";
+import { cn } from "@/lib/utils";
 
 const EXAMPLE_PROMPTS = [
   "Cerniere per anta ribalta in acciaio",
@@ -13,170 +20,538 @@ const EXAMPLE_PROMPTS = [
   "Dammi la scheda del codice B00590.15.03",
 ];
 
+/** Numero massimo di ritentativi automatici su un errore recuperabile (rate limit) prima di
+ * lasciare solo il bottone «Riprova» manuale — vedi l'effetto `useEffect` di auto-retry sotto. */
+const MAX_AUTO_RETRIES = 2;
+const DEFAULT_RETRY_DELAY_S = 5;
+
+/** STOP: il server scrive la risposta parziale solo DOPO aver rilevato la disconnessione, quindi il
+ * refetch che segue l'abort può arrivare prima di quella scrittura. Si ri-invalida `chat.get` un
+ * numero limitato di volte in attesa della riga; poi si rinuncia (comparirà al prossimo
+ * caricamento) per non tenere il turno live montato all'infinito. */
+const STOP_PERSIST_ATTEMPTS = 3;
+const STOP_PERSIST_RETRY_MS = 500;
+
 export function AssistenteClient() {
-  const [conversationId, setConversationId] = useState<string | null>(null);
-  // Bolla ottimistica del messaggio utente per l'intero giro create+send.
-  const [pendingContent, setPendingContent] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const conversationId = searchParams.get("c");
+
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [railOpen, setRailOpen] = useState(true);
+  const [search, setSearch] = useState("");
+  const [pendingUserContent, setPendingUserContent] = useState<string | null>(null);
+  const [nearBottom, setNearBottom] = useState(true);
+
   const utils = api.useUtils();
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const { state, start, stop, reset, hasText } = useChatStream();
 
   const conversations = api.chat.list.useQuery();
   const thread = api.chat.get.useQuery(
     { conversationId: conversationId ?? "" },
     { enabled: conversationId !== null },
   );
-
-  const invalidate = () => {
-    void utils.chat.get.invalidate();
-    void utils.chat.list.invalidate();
-  };
   const create = api.chat.create.useMutation();
-  const send = api.chat.send.useMutation({ onSettled: invalidate });
-  const retry = api.chat.retry.useMutation({ onSettled: invalidate });
-  const archive = api.chat.archive.useMutation({
-    onSuccess: () => {
-      setConversationId(null);
+  const renameMut = api.chat.rename.useMutation({
+    onSuccess: (_data, variables) => {
       void utils.chat.list.invalidate();
+      void utils.chat.get.invalidate({ conversationId: variables.conversationId });
+    },
+  });
+  const deleteMut = api.chat.delete.useMutation({
+    onSuccess: (_data, variables) => {
+      void utils.chat.list.invalidate();
+      if (variables.conversationId === conversationId) router.replace(pathname, { scroll: false });
+    },
+  });
+  const archiveMut = api.chat.archive.useMutation({
+    onSuccess: (_data, variables) => {
+      void utils.chat.list.invalidate();
+      if (variables.conversationId === conversationId) router.replace(pathname, { scroll: false });
     },
   });
 
-  const messages = thread.data?.messages ?? [];
-  const products = thread.data?.products ?? [];
-  const busy = send.isPending || retry.isPending || create.isPending;
+  const persistedMessages = thread.data?.messages ?? [];
+  const persistedIds = new Set(persistedMessages.map((m) => m.id));
+  const lastPersistedAssistantId = (() => {
+    for (let i = persistedMessages.length - 1; i >= 0; i--) {
+      if (persistedMessages[i]!.role === "ASSISTANT") return persistedMessages[i]!.id;
+    }
+    return null;
+  })();
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length, busy]);
+  // STOP con del testo già ricevuto: fotografa l'ultima riga ASSISTANT presente al momento
+  // dell'abort. Finché in `chat.get` non ne compare una DIVERSA (= il parziale scritto dal server è
+  // atterrato nella cache), il turno live resta montato — altrimenti, tornando `status: "idle"` con
+  // `messageId === null`, il turno si smonterebbe e il testo parziale sparirebbe dallo schermo fino
+  // al refetch (che con quella scrittura è in corsa). Il testo non è mai perso nel DB, ma la
+  // promessa «lo STOP mantiene visibile la risposta parziale» va rispettata anche a schermo.
+  const [stopAwaitAfterId, setStopAwaitAfterId] = useState<{ id: string | null } | null>(null);
+  const awaitingStopPersist =
+    stopAwaitAfterId !== null && lastPersistedAssistantId === stopAwaitAfterId.id;
 
-  const handleSend = async (content: string) => {
-    setPendingContent(content);
-    try {
+  // Round corrente (send o regenerate) "in volo": dallo start esplicito fino a quando la riga
+  // persistita compare in `chat.get` (successo) oppure resta in errore (nessun'altra riga arriverà
+  // finché l'utente non ritenta). Guida sia la bolla utente ottimistica sia quella assistant live.
+  const modeRef = useRef<"send" | "regenerate" | null>(null);
+  // Id della risposta che il round in volo sta rifacendo (null se non ne sta rifacendo nessuna:
+  // invio normale, oppure ritentativo di un turno che una risposta non l'ha mai prodotta). È lo
+  // STESSO id dichiarato al server, quindi «nascondi la riga stale» e «cancella la riga» restano
+  // per costruzione la stessa riga.
+  const regenerateTargetRef = useRef<string | null>(null);
+  const liveMessageLanded = state.messageId !== null && persistedIds.has(state.messageId);
+  const turnInFlight =
+    state.status === "streaming" ||
+    state.status === "error" ||
+    (state.messageId !== null && !liveMessageLanded) ||
+    awaitingStopPersist;
+
+  // Rigenera ha appena chiesto al server di cancellare UNA riga ASSISTANT precisa (vedi
+  // ChatService): finché la cache locale non si aggiorna, nascondiamo otticamente QUELLA riga per
+  // non mostrarla insieme alla bolla live della nuova risposta in arrivo. Solo quella: un round che
+  // non sta rifacendo nessuna risposta (`regenerateTargetRef` null) non deve nascondere niente,
+  // altrimenti l'ultima risposta buona sparirebbe dallo schermo mentre a DB è ancora lì.
+  let displayedMessages = persistedMessages;
+  if (turnInFlight && regenerateTargetRef.current !== null) {
+    const last = displayedMessages[displayedMessages.length - 1];
+    if (last?.role === "ASSISTANT" && last.id === regenerateTargetRef.current) {
+      displayedMessages = displayedMessages.slice(0, -1);
+    }
+  }
+  const lastAssistantIndex = (() => {
+    for (let i = displayedMessages.length - 1; i >= 0; i--) {
+      if (displayedMessages[i]!.role === "ASSISTANT") return i;
+    }
+    return -1;
+  })();
+
+  // La bolla utente ottimistica serve solo finché la riga USER persistita non è comparsa in
+  // `chat.get`. Quando il turno resta "in volo" ANCHE dopo che il refetch è atterrato — turno finito
+  // in errore (il banner resta montato) o STOP in attesa della scrittura del parziale — la riga
+  // persistita e la bolla ottimistica mostrerebbero due volte lo stesso messaggio.
+  const lastDisplayed = displayedMessages[displayedMessages.length - 1];
+  const pendingUserBubble =
+    turnInFlight &&
+    pendingUserContent !== null &&
+    modeRef.current === "send" &&
+    !(lastDisplayed?.role === "USER" && lastDisplayed.content === pendingUserContent)
+      ? pendingUserContent
+      : null;
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const nearBottomRef = useRef(true);
+  const retryCountRef = useRef(0);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Guardia contro una corsa specifica: creare una conversazione e inviarci subito il primo
+  // messaggio scrive `?c=<nuovo-id>` nell'URL MENTRE lo stream è già partito. Senza questa guardia,
+  // l'effetto "cambio conversazione" sotto (che interrompe uno stream in corso quando si cambia
+  // conversazione) scambierebbe quella transizione null→id per un cambio-conversazione e
+  // interromperebbe lo stream appena avviato. Impostata subito prima di scrivere l'URL in
+  // `handleSend` ALL'ID SPECIFICO appena creato (non un booleano): `router.replace` non è sincrono,
+  // quindi se prima che quella transizione atterri arriva un'altra `router.replace` (es. l'utente
+  // seleziona un'altra conversazione), `conversationId` può saltare direttamente null→altroId
+  // scavalcando l'id creato — una guardia booleana "cieca" lascerebbe quel salto senza reset,
+  // orfanando lo stream appena partito. Legandola all'id, l'effetto sotto protegge SOLO l'esatta
+  // transizione null→id-creato; qualunque altro salto (incluso lo scavalcamento) fa il reset normale.
+  const skipResetForIdRef = useRef<string | null>(null);
+  // `conversationId` "dal vivo": sincronizzato a ogni render (non in un effetto) così il cleanup
+  // dell'effetto sotto — che appartiene all'istanza PRECEDENTE e quindi non vede per chiusura il
+  // nuovo valore verso cui si sta transitando — può leggerlo quando scatta, per confrontarlo con
+  // `skipResetForIdRef`.
+  const latestConversationIdRef = useRef(conversationId);
+  latestConversationIdRef.current = conversationId;
+
+  const performTurn = useCallback(
+    async (input: StartInput) => {
+      modeRef.current = input.mode;
+      regenerateTargetRef.current = input.regenerateMessageId ?? null;
+      setStopAwaitAfterId(null); // nuovo turno: l'attesa del parziale di uno STOP precedente decade
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = null;
+      }
+      await start(input);
+      await Promise.all([
+        utils.chat.get.invalidate({ conversationId: input.conversationId }),
+        utils.chat.list.invalidate(),
+      ]);
+    },
+    [start, utils],
+  );
+
+  const handleSend = useCallback(
+    async (content: string) => {
       let id = conversationId;
       if (!id) {
-        id = (await create.mutateAsync()).id;
-        setConversationId(id);
+        const created = await create.mutateAsync();
+        id = created.id;
+        skipResetForIdRef.current = id;
+        router.replace(`${pathname}?c=${id}`, { scroll: false });
       }
-      await send.mutateAsync({ conversationId: id, content });
-    } catch {
-      // Errore già rappresentato da send.isError (banner con «Riprova»).
-    } finally {
-      setPendingContent(null);
-    }
-  };
+      retryCountRef.current = 0;
+      setPendingUserContent(content);
+      await performTurn({ conversationId: id, content, mode: "send" });
+    },
+    [conversationId, create, pathname, router, performTurn],
+  );
 
-  const showEmptyState = messages.length === 0 && !busy && !thread.isLoading;
+  // «Rigenera» su una risposta esistente: si dichiara al server QUALE risposta si intende rifare.
+  // Il server la cancella solo se è ancora l'ultima riga della conversazione (vedi
+  // ChatService.deleteLastAssistant) — così una rigenerazione partita da uno stato di schermo
+  // ormai superato non può mai cancellare la risposta sbagliata.
+  const handleRegenerate = useCallback(
+    async (assistantMessageId: string) => {
+      if (!conversationId) return;
+      retryCountRef.current = 0;
+      await performTurn({
+        conversationId,
+        mode: "regenerate",
+        regenerateMessageId: assistantMessageId,
+      });
+    },
+    [conversationId, performTurn],
+  );
+
+  // Auto-retry su errore recuperabile (rate limit): al massimo MAX_AUTO_RETRIES tentativi
+  // automatici rispettando `retryAfter`, poi resta solo il bottone manuale del banner.
+  useEffect(() => {
+    if (state.status !== "error" || !state.error?.recoverable || !conversationId) return;
+    if (retryCountRef.current >= MAX_AUTO_RETRIES) return;
+    retryCountRef.current += 1;
+    const delayMs = (state.error.retryAfter ?? DEFAULT_RETRY_DELAY_S) * 1000;
+    const id = conversationId;
+    const timer = setTimeout(() => {
+      void performTurn({ conversationId: id, mode: "regenerate" });
+    }, delayMs);
+    retryTimerRef.current = timer;
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- performTurn dipende solo da start/utils, stabili
+  }, [state.status, state.error, conversationId]);
+
+  // STOP dell'utente: oltre ad abortire lo stream, se c'è già del testo parziale si arma l'attesa
+  // della riga che il server sta per scrivere (vedi `awaitingStopPersist`). Senza testo il server
+  // non persiste nulla (vedi ChatService), quindi non c'è niente da attendere.
+  // `hasText()` e non `state.text`: i delta sostano nel buffer dell'hook fino al frame successivo,
+  // quindi uno STOP premuto entro ~16 ms dal primo token vedrebbe `state.text` ancora vuoto e
+  // rinuncerebbe ad attendere una riga che il server sta invece per scrivere.
+  const handleStop = useCallback(() => {
+    stop();
+    if (hasText()) setStopAwaitAfterId({ id: lastPersistedAssistantId });
+  }, [stop, hasText, lastPersistedAssistantId]);
+
+  // Attesa attiva della riga scritta dopo lo STOP: si ri-invalida `chat.get` a intervalli, fino a
+  // STOP_PERSIST_ATTEMPTS, poi si rinuncia (il turno live si smonta e resta la cache com'è).
+  useEffect(() => {
+    if (!awaitingStopPersist || !conversationId) return;
+    let attempts = 0;
+    const id = setInterval(() => {
+      attempts += 1;
+      if (attempts > STOP_PERSIST_ATTEMPTS) {
+        clearInterval(id);
+        setStopAwaitAfterId(null);
+        return;
+      }
+      void utils.chat.get.invalidate({ conversationId });
+    }, STOP_PERSIST_RETRY_MS);
+    return () => clearInterval(id);
+  }, [awaitingStopPersist, conversationId, utils]);
+
+  // «Riprova» del banner: ritenta il turno FALLITO, non rifà una risposta esistente. Quale delle
+  // due riprese serve lo decide un fatto osservabile — non un'euristica sul tipo di errore:
+  // - il messaggio dell'utente non risulta ancora persistito (`pendingUserBubble` non-null ⇒ la
+  //   coda della conversazione non è la sua domanda): la richiesta non ha mai raggiunto il server
+  //   (tipico dell'agente che perde campo a metà domanda), quindi la ripresa onesta è
+  //   RI-INVIARLA. Un `regenerate` qui rigenererebbe il turno PRECEDENTE, con la domanda persa;
+  // - altrimenti la domanda è già a DB e manca solo la risposta: si rigenera il turno, SENZA id
+  //   atteso — non c'è nessuna risposta da sostituire, quindi il server non cancella niente.
+  // Rischio accettato: se anche il refetch è fallito (offline) la cache resta indietro e un
+  // messaggio già arrivato al server può essere re-inviato in doppio — visibile e correggibile,
+  // a differenza di una risposta cancellata, che è perdita di dati irreversibile.
+  const handleManualRetry = useCallback(() => {
+    if (!conversationId) return;
+    retryCountRef.current = 0;
+    if (pendingUserBubble !== null) {
+      void performTurn({ conversationId, content: pendingUserBubble, mode: "send" });
+      return;
+    }
+    // Si ripete la STESSA richiesta del round fallito, id compreso: era un «Rigenera» mai arrivato
+    // al server? allora quella risposta è ancora in coda e va sostituita davvero. Era un invio, o
+    // il server aveva già cancellato la riga? nessun id / id che non coincide più ⇒ nessun delete.
+    void performTurn({
+      conversationId,
+      mode: "regenerate",
+      regenerateMessageId: regenerateTargetRef.current ?? undefined,
+    });
+  }, [conversationId, pendingUserBubble, performTurn]);
+
+  const handleNewConversation = useCallback(() => {
+    router.replace(pathname, { scroll: false });
+    setDrawerOpen(false);
+  }, [router, pathname]);
+
+  const handleSelect = useCallback(
+    (id: string) => {
+      router.replace(`${pathname}?c=${id}`, { scroll: false });
+      setDrawerOpen(false);
+    },
+    [router, pathname],
+  );
+
+  // Cambio conversazione (incluso il "torna vuoto" di delete/archive sull'attiva): interrompe uno
+  // stream in corso e azzera lo stato transitorio, così nessun evento residuo del vecchio round
+  // finisce mischiato nella nuova conversazione. ECCEZIONE: l'esatta transizione null→id appena
+  // creato da `handleSend` (vedi `skipResetForIdRef`) — lì lo stream è appena partito e va lasciato
+  // proseguire, non interrotto. La guardia è scoped all'id: il body (che riceve `conversationId`,
+  // cioè il valore IN ARRIVO, per chiusura) decide se questa run è la transizione protetta; il
+  // cleanup, che appartiene invece all'istanza PRECEDENTE, non vede quel valore per chiusura e lo
+  // legge "dal vivo" da `latestConversationIdRef` (sincronizzato a ogni render, quindi già
+  // aggiornato quando il cleanup scatta) per confrontarlo con `skipResetForIdRef`. In ogni caso che
+  // non sia esattamente quella transizione — inclusa una corsa che scavalca l'id protetto saltando
+  // direttamente verso un'altra conversazione — si esegue il reset normale, e la guardia viene
+  // comunque azzerata (consumata o invalidata) così non può più sopravvivere a proteggere una
+  // transizione futura.
+  useEffect(() => {
+    const isProtectedTransition =
+      conversationId !== null && conversationId === skipResetForIdRef.current;
+    skipResetForIdRef.current = null;
+    if (!isProtectedTransition) {
+      nearBottomRef.current = true;
+      setNearBottom(true);
+      setPendingUserContent(null);
+      setDrawerOpen(false);
+      setStopAwaitAfterId(null);
+      modeRef.current = null;
+      regenerateTargetRef.current = null;
+      retryCountRef.current = 0;
+    }
+    return () => {
+      const stillProtected =
+        latestConversationIdRef.current !== null &&
+        latestConversationIdRef.current === skipResetForIdRef.current;
+      if (!stillProtected) reset();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al cambio di conversationId
+  }, [conversationId]);
+
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setDrawerOpen(false);
+    document.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [drawerOpen]);
+
+  const handleScroll = () => {
+    if (!scrollRef.current) return;
+    const v = isNearBottom(scrollRef.current);
+    nearBottomRef.current = v;
+    setNearBottom(v);
+  };
+  const scrollToBottom = () => {
+    bottomRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+    nearBottomRef.current = true;
+    setNearBottom(true);
+  };
+  useEffect(() => {
+    if (nearBottomRef.current) bottomRef.current?.scrollIntoView({ block: "end" });
+  }, [displayedMessages.length, pendingUserContent, state.text, state.tool]);
+
+  const activeTitle =
+    thread.data?.conversation.title ??
+    conversations.data?.find((c) => c.id === conversationId)?.title;
+  const showEmptyState = displayedMessages.length === 0 && !turnInFlight && !thread.isLoading;
+
+  const conversationsPanel = (
+    <ConversationsPanel
+      items={conversations.data ?? []}
+      activeId={conversationId}
+      search={search}
+      onSearch={setSearch}
+      onSelect={handleSelect}
+      onNew={handleNewConversation}
+      onRename={(id, title) => renameMut.mutate({ conversationId: id, title })}
+      onDelete={(id) => deleteMut.mutate({ conversationId: id })}
+      onArchive={(id) => archiveMut.mutate({ conversationId: id })}
+    />
+  );
 
   return (
-    <div className="mx-auto flex h-[calc(100dvh-8.5rem)] max-w-7xl flex-col gap-4">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold text-ink">Assistente</h1>
-        <div className="flex items-center gap-2">
-          <label className="sr-only" htmlFor="conversazioni">
-            Conversazioni recenti
-          </label>
-          <select
-            id="conversazioni"
-            value={conversationId ?? ""}
-            onChange={(event) => setConversationId(event.target.value || null)}
-            className="max-w-64 rounded border border-line-strong bg-surface px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
-          >
-            <option value="">Conversazioni recenti…</option>
-            {(conversations.data ?? []).map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.title}
-              </option>
-            ))}
-          </select>
-          {conversationId && (
-            <button
-              type="button"
-              onClick={() => archive.mutate({ conversationId })}
-              disabled={archive.isPending}
-              className="inline-flex items-center gap-1.5 rounded border border-line-strong px-3 py-2 text-sm text-ink-muted transition-colors duration-150 ease-out-quart hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 disabled:opacity-50"
-            >
-              <Archive className="size-4" aria-hidden />
-              Archivia
-            </button>
-          )}
+    <div className="flex h-[calc(100dvh-6rem)] overflow-hidden rounded-md border border-line bg-surface shadow-card sm:h-[calc(100dvh-7rem)]">
+      {/* Rail desktop, collassabile. */}
+      <aside
+        className={cn(
+          "hidden shrink-0 flex-col overflow-hidden border-r border-line bg-surface-page transition-[width] duration-200 ease-out-quart lg:flex",
+          railOpen ? "lg:w-[280px]" : "lg:w-0 lg:border-r-0",
+        )}
+      >
+        <div className="w-[280px] flex-1 p-3">{conversationsPanel}</div>
+      </aside>
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="flex h-14 shrink-0 items-center gap-1 border-b border-line px-2 sm:px-3">
           <button
             type="button"
-            onClick={() => setConversationId(null)}
-            className="inline-flex items-center gap-1.5 rounded bg-brand px-3 py-2 text-sm font-medium text-white transition-colors duration-150 ease-out-quart hover:bg-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+            onClick={() => setDrawerOpen(true)}
+            aria-label="Apri elenco conversazioni"
+            className="grid size-10 shrink-0 place-items-center rounded text-ink-muted transition-colors duration-150 ease-out-quart hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 lg:hidden"
           >
-            <MessageSquarePlus className="size-4" aria-hidden />
-            Nuova conversazione
+            <Menu className="size-5" aria-hidden />
           </button>
-        </div>
-      </header>
-
-      <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden rounded-md border border-line bg-surface shadow-card lg:grid-cols-[3fr_2fr]">
-        {/* Colonna chat (60%) */}
-        <div className="flex min-h-0 flex-col">
-          <div className="flex-1 space-y-3 overflow-y-auto p-4" aria-live="polite">
-            {showEmptyState ? (
-              <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
-                <p className="max-w-sm text-sm text-ink-muted">
-                  Chiedi all&apos;assistente informazioni su prodotti, codici e specifiche del
-                  catalogo AGB.
-                </p>
-                <div className="flex flex-col gap-2">
-                  {EXAMPLE_PROMPTS.map((prompt) => (
-                    <button
-                      key={prompt}
-                      type="button"
-                      onClick={() => void handleSend(prompt)}
-                      className="rounded border border-line-strong px-4 py-2 text-sm text-ink transition-colors duration-150 ease-out-quart hover:border-brand hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
-                    >
-                      {prompt}
-                    </button>
-                  ))}
-                </div>
-              </div>
+          <button
+            type="button"
+            onClick={() => setRailOpen((v) => !v)}
+            aria-label={railOpen ? "Comprimi elenco conversazioni" : "Espandi elenco conversazioni"}
+            aria-expanded={railOpen}
+            className="hidden size-10 shrink-0 place-items-center rounded text-ink-muted transition-colors duration-150 ease-out-quart hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 lg:grid"
+          >
+            {railOpen ? (
+              <PanelLeftClose className="size-5" aria-hidden />
             ) : (
-              <>
-                {messages.map((message) => (
-                  <MessageBubble
+              <PanelLeftOpen className="size-5" aria-hidden />
+            )}
+          </button>
+          <h1 className="min-w-0 flex-1 truncate px-1 text-sm font-medium text-ink sm:text-base">
+            {activeTitle ?? "Assistente"}
+          </h1>
+          <button
+            type="button"
+            onClick={handleNewConversation}
+            aria-label="Nuova conversazione"
+            className="grid size-10 shrink-0 place-items-center rounded text-ink-muted transition-colors duration-150 ease-out-quart hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+          >
+            <Plus className="size-5" aria-hidden />
+          </button>
+        </header>
+
+        {/* `relative` è l'ancora di ScrollToBottom (`absolute bottom-20`): essendo un fratello
+            flex-1 della Composer, quando quest'ultima cresce (textarea fino a 6 righe + safe-area)
+            questo contenitore si restringe di conseguenza — bottom-20 resta sempre "80px sopra la
+            Composer", mai sovrapposto, senza bisogno di misurarne l'altezza via JS. Verificato anche
+            visivamente a 375px con textarea al massimo. */}
+        <div className="relative min-h-0 flex-1">
+          <div
+            ref={scrollRef}
+            onScroll={handleScroll}
+            aria-live="polite"
+            aria-busy={state.status === "streaming"}
+            className="h-full overflow-y-auto px-3 py-4 sm:px-4"
+          >
+            {showEmptyState ? (
+              <EmptyState onPick={(p) => void handleSend(p)} />
+            ) : thread.isLoading ? (
+              <p className="py-8 text-center text-sm text-ink-subtle">Caricamento…</p>
+            ) : (
+              <div className="mx-auto flex max-w-[760px] flex-col gap-4">
+                {displayedMessages.map((message, i) => (
+                  <MessageTurn
                     key={message.id}
                     role={message.role === "USER" ? "USER" : "ASSISTANT"}
                     content={message.content}
                     status={message.status}
                     errorMessage={message.errorMessage}
-                    onRetry={
-                      conversationId ? () => retry.mutate({ conversationId }) : undefined
+                    products={message.products}
+                    onRegenerate={
+                      !turnInFlight && i === lastAssistantIndex
+                        ? () => void handleRegenerate(message.id)
+                        : undefined
                     }
-                    retrying={retry.isPending}
                   />
                 ))}
-                {pendingContent && <MessageBubble role="USER" content={pendingContent} />}
-                {busy && (
-                  <p className="animate-pulse text-sm text-ink-muted" role="status">
-                    Sta scrivendo…
-                  </p>
+                {pendingUserBubble !== null && (
+                  <MessageTurn role="USER" content={pendingUserBubble} />
                 )}
-                {send.isError && conversationId && (
-                  <MessageBubble
-                    role="ASSISTANT"
-                    content=""
-                    status="ERROR"
-                    errorMessage={send.error.message}
-                    onRetry={() => retry.mutate({ conversationId })}
-                    retrying={retry.isPending}
-                  />
+                {turnInFlight && state.status !== "error" && (
+                  <div className="flex flex-col gap-2">
+                    {state.tool && <ToolStatus label={state.tool} />}
+                    <MessageTurn
+                      role="ASSISTANT"
+                      content={state.text}
+                      streaming={state.status === "streaming"}
+                      products={state.products}
+                    />
+                  </div>
+                )}
+                {turnInFlight && state.status === "error" && state.error && (
+                  <ErrorBanner error={state.error} onRetry={handleManualRetry} />
                 )}
                 <div ref={bottomRef} />
-              </>
+              </div>
             )}
           </div>
-          <ChatInput onSend={(content) => void handleSend(content)} disabled={busy} />
+          <ScrollToBottom onClick={scrollToBottom} visible={!nearBottom && !showEmptyState} />
         </div>
 
-        {/* Pannello prodotti (40%) */}
-        <aside
-          aria-label="Prodotti citati"
-          className="hidden min-h-0 border-l border-line bg-surface-page lg:block"
+        <div className="mx-auto w-full max-w-[760px] shrink-0">
+          <Composer
+            onSend={(content) => void handleSend(content)}
+            streaming={state.status === "streaming"}
+            onStop={handleStop}
+            disabled={create.isPending}
+          />
+        </div>
+      </div>
+
+      {/* Drawer conversazioni mobile — stesso pattern di TopBar (backdrop + animate-drawer-in +
+          Esc + body-scroll-lock). */}
+      {drawerOpen && (
+        <div
+          className="fixed inset-0 z-40 lg:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Conversazioni"
         >
-          <ProductPanel products={products} />
-        </aside>
+          <button
+            type="button"
+            aria-label="Chiudi elenco conversazioni"
+            onClick={() => setDrawerOpen(false)}
+            className="animate-fade-in absolute inset-0 bg-ink/40"
+          />
+          <div className="animate-drawer-in absolute inset-y-0 left-0 flex w-[85%] max-w-[320px] flex-col bg-surface p-3 pt-[max(0.75rem,env(safe-area-inset-top))] shadow-modal">
+            <div className="mb-2 flex shrink-0 justify-end">
+              <button
+                type="button"
+                onClick={() => setDrawerOpen(false)}
+                aria-label="Chiudi elenco conversazioni"
+                className="grid size-10 place-items-center rounded text-ink-muted transition-colors duration-150 ease-out-quart hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+              >
+                <X className="size-5" aria-hidden />
+              </button>
+            </div>
+            <div className="min-h-0 flex-1">{conversationsPanel}</div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EmptyState({ onPick }: { onPick: (prompt: string) => void }) {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-4 px-4 text-center">
+      <Sparkles className="size-8 text-brand" aria-hidden />
+      <div className="max-w-sm space-y-1">
+        <p className="text-sm font-medium text-ink">Chiedi all&apos;assistente</p>
+        <p className="text-sm text-ink-subtle">
+          Informazioni su prodotti, codici e specifiche del catalogo AGB.
+        </p>
+      </div>
+      <div className="flex w-full max-w-sm flex-col gap-2">
+        {EXAMPLE_PROMPTS.map((prompt) => (
+          <button
+            key={prompt}
+            type="button"
+            onClick={() => onPick(prompt)}
+            className="rounded-lg border border-line-strong px-4 py-2.5 text-left text-sm text-ink transition-colors duration-150 ease-out-quart hover:border-brand hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+          >
+            {prompt}
+          </button>
+        ))}
       </div>
     </div>
   );

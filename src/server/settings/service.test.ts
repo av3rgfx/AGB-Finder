@@ -7,7 +7,6 @@ const { mockEnv } = vi.hoisted(() => ({
   mockEnv: {
     SETTINGS_ENCRYPTION_KEY: "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=" as string | undefined,
     GEMINI_API_KEY: "env-gemini-9999" as string | undefined,
-    KIMI_API_KEY: undefined as string | undefined,
   },
 }));
 vi.mock("@/env", () => ({ env: mockEnv }));
@@ -32,7 +31,6 @@ function makeRedis() {
 beforeEach(() => {
   mockEnv.SETTINGS_ENCRYPTION_KEY = VALID_KEY;
   mockEnv.GEMINI_API_KEY = "env-gemini-9999";
-  mockEnv.KIMI_API_KEY = undefined;
 });
 
 describe("resolveApiKey", () => {
@@ -50,9 +48,10 @@ describe("resolveApiKey", () => {
   });
 
   it("ritorna undefined se non c'è né DB né env", async () => {
+    mockEnv.GEMINI_API_KEY = undefined;
     const db = makeDb();
     db.settings.findUnique.mockResolvedValue(null);
-    expect(await resolveApiKey(db as never, "kimi")).toBeUndefined();
+    expect(await resolveApiKey(db as never, "gemini")).toBeUndefined();
   });
 
   it("salta il DB quando la cifratura non è configurata", async () => {
@@ -113,9 +112,10 @@ describe("getStatus", () => {
   });
 
   it("riporta source=none quando non c'è nessuna key", async () => {
+    mockEnv.GEMINI_API_KEY = undefined;
     const db = makeDb();
     db.settings.findUnique.mockResolvedValue(null);
-    expect(await getStatus(db as never, "kimi")).toMatchObject({ configured: false, source: "none" });
+    expect(await getStatus(db as never, "gemini")).toMatchObject({ configured: false, source: "none" });
   });
 });
 

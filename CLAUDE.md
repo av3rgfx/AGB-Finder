@@ -16,15 +16,30 @@ Tailwind CSS 3 · Vitest · pnpm. Deploy target: Vercel + Neon + Upstash.
   → *Verdetto LLM Council: Auth.js v5 è in sola manutenzione; Better Auth è il
   successore attivo.*
 - **Kit generation = engine deterministico TypeScript. MAI LLM.** (Fase 1d)
-- **Single-agent AI con tool-use** (NON multi-agent). Provider: Gemini (primario)
-  + Moonshot Kimi (kit gen + fallback).
+- **Single-agent AI con tool-use** (NON multi-agent). **Provider LLM: Gemini UNICO**
+  (chat streaming + embedding). **Kimi/Moonshot rimosso 2026-07-24** (verdetto
+  `/llm-council`, supera la decisione precedente "Gemini + Kimi"): kit engine
+  deterministico → il ruolo "kit gen" non esiste più; fallback dormiente in prod
+  (nessuna key) → nessun consumatore residuo. Resilienza = circuit breaker
+  per-Gemini + rate limit + backoff visibile + degrado graceful, **NON** un secondo
+  vendor. ⚠️ *Concentrazione vendor app-wide*: un outage/429-storm Gemini degrada
+  **chat E ricerca semantica** (embedding query live); ricerca testuale e kit
+  restano attivi. Fix strutturale dei 429 ricorrenti = piano Gemini a pagamento.
+- **Chat = streaming SSE** (`POST /api/chat/stream`, route handler autenticato
+  Better Auth) → `ChatService.generateStream` → `AIGateway.chatStream`. **UNICA
+  deroga** alla regola "mai `fetch` diretto dal client": l'hook
+  `src/hooks/use-chat-stream.ts` (SSE non esprimibile su `httpBatchLink`). Tutto
+  il resto resta tRPC. Cancellazione **solo via `AbortSignal`** (mai
+  `.return()`/`.throw()` sul generatore: salterebbe la persistenza del parziale).
 - **Embedding = `vector(768)`** (`gemini-embedding-001`, normalizzato). Costante
   unica `src/server/constants/embedding.ts` (`EMBEDDING_DIM = 768`).
 - **Struttura T3**: server-only sotto `src/server/` (guardato con `server-only`);
   client tRPC sotto `src/trpc/`; `src/env.ts` (zod).
 - **Ogni chiamata AI passa dall'unico modulo `AIGateway`**
   (`src/server/ai/gateway.ts`): rate limit + circuit breaker con stato su Redis
-  + fallback Gemini→Kimi. Nessuna chiamata provider fuori da `src/server/ai/`.
+  + timeout. **Nessun fallback di provider** (Gemini unico dal 2026-07-24; in
+  streaming un retry a metà risposta duplicherebbe i token già emessi).
+  Nessuna chiamata provider fuori da `src/server/ai/`.
   Batch = script tsx idempotenti (`pnpm embed:products`). NIENTE BullMQ (verdetto
   LLM Council 2026-07-02: worker persistente impossibile su Vercel, anti-pattern
   su Upstash); per job asincroni durevoli futuri: Upstash QStash.
@@ -209,9 +224,23 @@ overlay + `ListinoButton` fratello z-index → apre il viewer senza navigare); s
 resta la scheda). Gate verdi (typecheck·lint·**test 380/+11**·build). **Verifica browser (Chromium desktop +
 mobile 375px): 12/12 check verdi.** Nessuna migrazione, nessuna dep, **NESSUNA AZIONE OPS**. Spec/piano:
 `docs/superpowers/{specs,plans}/2026-07-24-archivio-ux-follow-up*`.
-+ **PROSSIMA SESSIONE (decisa dall'utente) = CHAT ASSISTENTE professionale (tipo Gemini)**: la chat Fase 1c è una
-bozza grezza e su mobile è scomoda. Rifarne UI/UX: **streaming** risposte + STOP (decisione architetturale #1 →
-`/llm-council`), **mobile-first** (il pannello prodotti è `hidden lg` → renderlo accessibile; drawer conversazioni;
-composer con tastiera), **gestione conversazioni** completa (lista/ricerca/rinomina/elimina; estendere `chat.ts`),
-**azioni messaggio** (copia/rigenera/modifica-reinvia/feedback), **rendering ricco** (markdown+copia code-block),
-**persistenza** conversazione (URL). File e pain points in `handoff.md` §RIPRENDI DA QUI.
++ **CHAT ASSISTENTE professionale ✅ (branch `claude/assistant-chat-streaming-mobile-1apei1`, PR da aprire)**:
+riscrittura completa della chat Fase 1c (bozza grezza, mobile inusabile). Workflow: brainstorming → **2×
+`/llm-council`** (streaming + rimozione Kimi) → `/impeccable` (2 scelte UI approvate dall'utente su anteprima
+interattiva) → `/writing-plans` → **12 task SDD** (implementer + reviewer per task). **(1) Streaming SSE**
+end-to-end: `GeminiChatProvider.chatStream` (`:streamGenerateContent?alt=sse` + `eventsource-parser`) →
+`AIGateway.chatStream` (guardie, **niente fallback/retry**) → `ChatService.generateStream` (tool-loop **cap 3
+round**, eventi `tool|delta|done|error`, persistenza **una sola volta**) → route `POST /api/chat/stream` (auth,
+ownership, header anti-buffering, `maxDuration=60`) → hook `useChatStream` (batch `rAF`, **STOP**, deroga fetch
+confinata). **(2) Gemini-only** (Kimi rimosso ovunque). **(3) Conversazioni**: `rename`/`delete` soft/`archive`/
+`list({search})` + **prodotti citati per-messaggio** in `get`. **(4) UI A1+B1** (scelte utente): risposte AI a
+**tutta larghezza** (niente bolla/bordo sinistro — DESIGN.md aggiornato) e **card prodotto inline** sotto la
+risposta (niente pannello/sheet); markdown `react-markdown`+`remark-gfm` (plugin `remark-agb-code` per i codici
+mono, code-block con copia, **href allowlist** anti-XSS); composer auto-grow **Invia↔STOP**; drawer conversazioni
+mobile; `?c=` in URL; scroll intelligente; banner errore con countdown `Retry-After` (auto-retry max 2).
+**Bug reali intercettati dalle review** (sarebbero finiti in produzione): lo **STOP apriva il circuit breaker**
+(5 stop = chat offline per tutti), errori JSON silenziati nel parser SSE, invio silenziosamente rotto nello
+stopgap, e una **race che riversava lo stream in un'altra conversazione**. Gate verdi (typecheck·lint·**test 518**)
++ **verifica browser 13/13** (Chromium desktop + **375px** + viewport corto, 17 screenshot). **ZERO migrazioni,
+ZERO azioni ops DB** (solo: rimuovere da Vercel le env `KIMI_API_KEY`/`KIMI_MODEL` se presenti).
+Spec/piano: `docs/superpowers/{specs,plans}/2026-07-24-chat-streaming*`.

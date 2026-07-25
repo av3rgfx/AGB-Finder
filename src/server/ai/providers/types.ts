@@ -26,8 +26,14 @@ export interface ChatResult {
   tokensUsed: number | null;
 }
 
+export type ProviderChunk =
+  | { type: "text-delta"; text: string }
+  | { type: "tool-call"; call: ToolCall }
+  | { type: "usage"; tokens: number };
+
 /** Solo costruzione richiesta + parsing risposta: la resilienza sta nel gateway. */
 export interface ChatProvider {
   readonly name: string;
   chat(messages: ChatMessage[], tools: ToolDeclaration[], signal: AbortSignal): Promise<ChatResult>;
+  chatStream(messages: ChatMessage[], tools: ToolDeclaration[], signal: AbortSignal): AsyncGenerator<ProviderChunk>;
 }

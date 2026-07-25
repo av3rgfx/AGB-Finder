@@ -20,7 +20,6 @@ export default defineConfig({
       // reali il gateway risulterebbe configurato e i test farebbero chiamate
       // di rete vere. Le key DEVONO essere vuote nei test.
       GEMINI_API_KEY: "",
-      KIMI_API_KEY: "",
       // Idem per la master key: se valorizzata, resolveApiKey interroga il DB
       // (Settings) invece di ricadere su env → i test router colpirebbero un
       // Postgres inesistente. Vuota = ramo env, ermetico.

@@ -4,7 +4,7 @@ import { useId, useState } from "react";
 import { CheckCircle2, KeyRound, XCircle } from "lucide-react";
 import { api } from "@/trpc/react";
 
-type Provider = "gemini" | "kimi";
+type Provider = "gemini";
 
 interface KeyStatus {
   provider: Provider;
@@ -15,10 +15,7 @@ interface KeyStatus {
   updatedBy: string | null;
 }
 
-const PROVIDERS: { id: Provider; label: string }[] = [
-  { id: "gemini", label: "Gemini (Google)" },
-  { id: "kimi", label: "Kimi (Moonshot)" },
-];
+const PROVIDERS: { id: Provider; label: string }[] = [{ id: "gemini", label: "Gemini (Google)" }];
 
 export function ImpostazioniClient() {
   const status = api.settings.aiKeys.status.useQuery();
@@ -170,7 +167,7 @@ function ProviderCard({
 function SkeletonCards() {
   return (
     <div className="flex flex-col gap-4" aria-hidden>
-      {Array.from({ length: 2 }, (_, i) => (
+      {Array.from({ length: PROVIDERS.length }, (_, i) => (
         <div key={i} className="rounded-lg border border-line bg-surface p-4 shadow-card">
           <div className="mb-3 flex items-center justify-between">
             <span className="h-4 w-32 animate-pulse rounded bg-surface-sunken" />

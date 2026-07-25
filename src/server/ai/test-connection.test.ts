@@ -5,10 +5,7 @@ const { chatMock } = vi.hoisted(() => ({ chatMock: vi.fn() }));
 vi.mock("./providers/gemini", () => ({
   GeminiChatProvider: vi.fn(() => ({ name: "gemini", chat: chatMock })),
 }));
-vi.mock("./providers/kimi", () => ({
-  KimiChatProvider: vi.fn(() => ({ name: "kimi", chat: chatMock })),
-}));
-vi.mock("@/env", () => ({ env: { GEMINI_MODEL: "m", KIMI_MODEL: "m" } }));
+vi.mock("@/env", () => ({ env: { GEMINI_MODEL: "m" } }));
 
 import { testProviderKey } from "./test-connection";
 
@@ -30,7 +27,7 @@ describe("testProviderKey", () => {
     // unhandledRejection reale). "Once" è comunque semanticamente corretto: ogni test invoca
     // il mock una sola volta.
     chatMock.mockRejectedValueOnce(new Error("401 Unauthorized"));
-    const result = await testProviderKey("kimi", "sk-bad");
+    const result = await testProviderKey("gemini", "sk-bad");
     expect(result.ok).toBe(false);
     expect(result.error).toContain("401");
   });

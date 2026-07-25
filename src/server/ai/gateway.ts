@@ -13,8 +13,13 @@ import {
   RateLimitedError,
 } from "./errors";
 import { GeminiChatProvider } from "./providers/gemini";
-import { KimiChatProvider } from "./providers/kimi";
-import type { ChatMessage, ChatProvider, ChatResult, ToolDeclaration } from "./providers/types";
+import type {
+  ChatMessage,
+  ChatProvider,
+  ChatResult,
+  ProviderChunk,
+  ToolDeclaration,
+} from "./providers/types";
 
 export interface GatewayDeps {
   providers: ChatProvider[];
@@ -48,8 +53,11 @@ class QueryEmbeddings implements EmbeddingService {
 /**
  * UNICO punto di uscita verso i provider AI (regola di progetto, come il
  * RAGEngine per il raw SQL): rate limit per utente e per provider, circuit
- * breaker distribuito, timeout 30s, 1 retry con jitter su 429/5xx, fallback
- * Gemini→Kimi. Qualunque errore di un provider fa scattare il fallback.
+ * breaker distribuito, timeout 30s, 1 retry con jitter su 429/5xx. Gemini-only
+ * (il provider secondario dormiente è stato rimosso 2026-07-24: kit gen ora
+ * deterministico, nessun consumatore residuo — verdetto LLM Council). L'array
+ * `providers` resta generico (0 o 1 elemento oggi) per non chiudere la porta
+ * a un provider futuro.
  */
 export class AIGateway {
   private readonly timeoutMs: number;
@@ -97,6 +105,43 @@ export class AIGateway {
     throw new AIUnavailableError();
   }
 
+  /**
+   * Percorso streaming (per lo STOP lato client): stesse guardie di `chat()`
+   * (rate limit utente → breaker → rate limit provider → timeout) ma **nessun
+   * fallback e nessun retry server-side** — con un solo provider, ritentare a
+   * metà stream duplicherebbe token già inoltrati al client (verdetto LLM
+   * Council). Il timeout interno è combinato con l'eventuale AbortSignal del
+   * chiamante: chi arriva prima interrompe il fetch al provider.
+   */
+  async *chatStream(
+    messages: ChatMessage[],
+    tools: ToolDeclaration[],
+    opts: { userId: string; signal?: AbortSignal },
+  ): AsyncGenerator<ProviderChunk> {
+    const [provider] = this.deps.providers;
+    if (!provider) throw new AINotConfiguredError();
+    if (!(await this.deps.limiter.consume(`user:${opts.userId}`, USER_RPM, WINDOW_SEC)))
+      throw new RateLimitedError();
+    if (await this.deps.breaker.isOpen(provider.name)) throw new AIUnavailableError();
+    if (
+      !(await this.deps.limiter.consume(`provider:${provider.name}`, PROVIDER_RPM, WINDOW_SEC))
+    )
+      throw new RateLimitedError();
+
+    const timeout = AbortSignal.timeout(this.timeoutMs);
+    const signal = opts.signal ? AbortSignal.any([opts.signal, timeout]) : timeout;
+    try {
+      for await (const chunk of provider.chatStream(messages, tools, signal)) yield chunk;
+      await this.deps.breaker.recordSuccess(provider.name);
+    } catch (error) {
+      // Uno STOP dell'utente (abort del signal del chiamante) non è un guasto del
+      // provider: non deve contribuire ad aprire il circuit breaker. Il timeout
+      // interno invece sì.
+      if (!opts.signal?.aborted) await this.deps.breaker.recordFailure(provider.name);
+      throw error;
+    }
+  }
+
   /** Embedding della query di ricerca: null su qualunque errore → degrado al ramo testuale. */
   async embedQuery(text: string): Promise<number[] | null> {
     if (!this.deps.queryEmbeddings) return null;
@@ -111,6 +156,11 @@ export class AIGateway {
   /** EmbeddingService per il RAGEngine, o undefined se Gemini non è configurato. */
   queryEmbeddings(): EmbeddingService | undefined {
     return this.deps.queryEmbeddings ? new QueryEmbeddings(this) : undefined;
+  }
+
+  /** Nomi dei provider configurati, nell'ordine di priorità. Solo per test. */
+  providerNames(): string[] {
+    return this.deps.providers.map((p) => p.name);
   }
 
   private async callWithRetry(
@@ -135,10 +185,8 @@ const VERSION_TTL_MS = 30_000;
 
 async function buildGateway(redis: RedisLike): Promise<AIGateway> {
   const geminiKey = await resolveApiKey(db, "gemini");
-  const kimiKey = await resolveApiKey(db, "kimi");
   const providers: ChatProvider[] = [];
   if (geminiKey) providers.push(new GeminiChatProvider(geminiKey, env.GEMINI_MODEL));
-  if (kimiKey) providers.push(new KimiChatProvider(kimiKey, env.KIMI_MODEL));
   const queryEmbeddings = geminiKey
     ? new GeminiEmbeddingService(geminiKey, "RETRIEVAL_QUERY", (input, init) =>
         fetch(input, { ...init, signal: AbortSignal.timeout(3000) }),

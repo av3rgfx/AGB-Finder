@@ -8,9 +8,7 @@ const conversationCreate = vi.fn();
 const conversationFindFirst = vi.fn();
 const conversationFindMany = vi.fn();
 const conversationUpdate = vi.fn();
-const messageCreate = vi.fn();
 const messageFindMany = vi.fn();
-const messageDeleteMany = vi.fn();
 const productFindMany = vi.fn();
 const activityCreate = vi.fn();
 
@@ -23,11 +21,9 @@ const makeCtx = (session: unknown): TRPCContext =>
         findMany: conversationFindMany,
         update: conversationUpdate,
       },
-      message: { create: messageCreate, findMany: messageFindMany, deleteMany: messageDeleteMany },
-      product: { findMany: productFindMany, findUnique: vi.fn() },
+      message: { findMany: messageFindMany },
+      product: { findMany: productFindMany },
       activityLog: { create: activityCreate },
-      $queryRaw: vi.fn(),
-      $executeRaw: vi.fn(),
     },
     session,
     headers: new Headers(),
@@ -47,25 +43,20 @@ beforeEach(() => {
   conversationFindMany.mockReset();
   conversationUpdate.mockReset();
   conversationUpdate.mockResolvedValue({});
-  messageCreate.mockReset();
-  messageCreate.mockImplementation(({ data }: { data: { role: string } }) =>
-    Promise.resolve({ id: "m1", ...data }),
-  );
   messageFindMany.mockReset();
   messageFindMany.mockResolvedValue([]);
-  messageDeleteMany.mockReset();
-  messageDeleteMany.mockResolvedValue({ count: 0 });
   productFindMany.mockReset();
+  productFindMany.mockResolvedValue([]);
   activityCreate.mockReset();
   activityCreate.mockResolvedValue({});
 });
 
 describe("RBAC e ownership", () => {
-  it("send senza sessione → UNAUTHORIZED", async () => {
+  it("get senza sessione → UNAUTHORIZED", async () => {
     const caller = createCallerFactory(appRouter)(makeCtx(null));
-    await expect(caller.chat.send({ conversationId: "c1", content: "ciao" })).rejects.toMatchObject(
-      { code: "UNAUTHORIZED" },
-    );
+    await expect(caller.chat.get({ conversationId: "c1" })).rejects.toMatchObject({
+      code: "UNAUTHORIZED",
+    });
   });
 
   it("conversazione di un altro agente → NOT_FOUND", async () => {
@@ -92,41 +83,36 @@ describe("chat.create", () => {
   });
 });
 
-describe("chat.send", () => {
-  it("titola la conversazione col primo messaggio e logga CONVERSATION_MESSAGE", async () => {
-    conversationFindFirst.mockResolvedValue(ownConversation);
+describe("chat.list", () => {
+  it("filtra per titolo quando è passato search", async () => {
+    conversationFindMany.mockResolvedValue([]);
     const caller = createCallerFactory(appRouter)(makeCtx(agent));
-    const result = await caller.chat.send({ conversationId: "c1", content: "Cerco cerniere" });
-    expect(result.assistantMessageId).toBe("m1");
-    expect(conversationUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ data: { title: "Cerco cerniere" } }),
+    await caller.chat.list({ search: "cerniere" });
+    expect(conversationFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          title: { contains: "cerniere", mode: "insensitive" },
+        }),
+      }),
     );
-    expect(activityCreate).toHaveBeenCalledWith({
-      data: expect.objectContaining({ type: "CONVERSATION_MESSAGE" }),
-    });
-    // senza key configurate il gateway non è configurato → ASSISTANT ERROR persistito
-    const assistant = messageCreate.mock.calls.at(-1)![0].data;
-    expect(assistant).toMatchObject({
-      role: "ASSISTANT",
-      status: "ERROR",
-      errorMessage: "Assistente non configurato.",
-    });
   });
 
-  it("valida il contenuto (vuoto → BAD_REQUEST)", async () => {
+  it("senza search non filtra per titolo", async () => {
+    conversationFindMany.mockResolvedValue([]);
     const caller = createCallerFactory(appRouter)(makeCtx(agent));
-    await expect(caller.chat.send({ conversationId: "c1", content: "  " })).rejects.toMatchObject({
-      code: "BAD_REQUEST",
-    });
+    await caller.chat.list();
+    const where = conversationFindMany.mock.calls.at(-1)![0].where;
+    expect(where).not.toHaveProperty("title");
   });
 });
 
 describe("chat.get", () => {
-  it("ritorna messaggi USER/ASSISTANT e le schede dei prodotti citati", async () => {
+  it("ritorna i prodotti citati PER MESSAGGIO, non un elenco unico appiattito", async () => {
     conversationFindFirst.mockResolvedValue(ownConversation);
     messageFindMany.mockResolvedValue([
       { id: "m1", role: "USER", content: "ciao", referencedProductIds: [] },
       { id: "m2", role: "ASSISTANT", content: "ecco", referencedProductIds: ["p1"] },
+      { id: "m3", role: "ASSISTANT", content: "altro", referencedProductIds: ["p1", "p2"] },
     ]);
     productFindMany.mockResolvedValue([
       {
@@ -138,15 +124,86 @@ describe("chat.get", () => {
         priceUnit: "EUR",
         isAvailable: true,
         stockQuantity: 0,
+        listinoPage: 12,
+      },
+      {
+        id: "p2",
+        agbCode: "B2",
+        name: "Y",
+        shortDescription: null,
+        basePrice: { toString: () => "9" },
+        priceUnit: "EUR",
+        isAvailable: true,
+        stockQuantity: 1,
+        listinoPage: null,
       },
     ]);
     const caller = createCallerFactory(appRouter)(makeCtx(agent));
     const thread = await caller.chat.get({ conversationId: "c1" });
-    expect(thread.messages).toHaveLength(2);
-    expect(thread.products[0]).toMatchObject({ id: "p1", basePrice: 2.5 });
+
+    // Una sola query per risolvere l'unione degli id citati (dedup su tutti i messaggi).
+    expect(productFindMany).toHaveBeenCalledTimes(1);
     expect(productFindMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: { in: ["p1"] } } }),
+      expect.objectContaining({ where: { id: { in: ["p1", "p2"] } } }),
     );
+
+    expect(thread.messages).toHaveLength(3);
+    expect(thread.messages[0]?.products).toEqual([]);
+    expect(thread.messages[1]?.products).toEqual([expect.objectContaining({ id: "p1", basePrice: 2.5 })]);
+    expect(thread.messages[2]?.products?.map((p) => p.id)).toEqual(["p1", "p2"]);
+    // niente elenco appiattito conversation-wide
+    expect(thread).not.toHaveProperty("products");
+  });
+});
+
+describe("chat.rename", () => {
+  it("aggiorna il titolo della propria conversazione", async () => {
+    conversationFindFirst.mockResolvedValue(ownConversation);
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    const result = await caller.chat.rename({ conversationId: "c1", title: "Cerniere ARTECH" });
+    expect(result).toEqual({ ok: true });
+    expect(conversationUpdate).toHaveBeenCalledWith({
+      where: { id: "c1" },
+      data: { title: "Cerniere ARTECH" },
+    });
+  });
+
+  it("titolo vuoto → BAD_REQUEST", async () => {
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await expect(caller.chat.rename({ conversationId: "c1", title: "   " })).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+    });
+  });
+
+  it("conversazione altrui → NOT_FOUND", async () => {
+    conversationFindFirst.mockResolvedValue(null);
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await expect(
+      caller.chat.rename({ conversationId: "altrui", title: "X" }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+});
+
+describe("chat.delete", () => {
+  it("imposta status DELETED sulla propria conversazione", async () => {
+    conversationFindFirst.mockResolvedValue(ownConversation);
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    const result = await caller.chat.delete({ conversationId: "c1" });
+    expect(result).toEqual({ ok: true });
+    expect(conversationUpdate).toHaveBeenCalledWith({
+      where: { id: "c1" },
+      data: { status: "DELETED" },
+    });
+  });
+
+  it("una conversazione DELETED sparisce da ownConversation (get → NOT_FOUND)", async () => {
+    // ownConversation esclude status DELETED nel where; il mock findFirst simula il DB
+    // che applica quel filtro restituendo null per una conversazione già cancellata.
+    conversationFindFirst.mockResolvedValue(null);
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await expect(caller.chat.get({ conversationId: "c1" })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
   });
 });
 

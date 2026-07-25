@@ -43,6 +43,6 @@ describe("CircuitBreaker", () => {
 
   it("i provider hanno stato indipendente", async () => {
     for (let i = 0; i < 5; i++) await breaker.recordFailure("gemini");
-    expect(await breaker.isOpen("kimi")).toBe(false);
+    expect(await breaker.isOpen("altro-provider")).toBe(false);
   });
 });
