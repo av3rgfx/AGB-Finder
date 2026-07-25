@@ -39,14 +39,24 @@ export class ChatService {
     await this.db.message.create({ data: { conversationId, role: "USER", content } });
   }
 
-  /** «Rigenera»: elimina l'ultimo blocco ASSISTANT (l'ultimo per createdAt) prima di ristreammare. */
+  /**
+   * «Rigenera»: elimina la risposta da rifare, ma SOLO se ce n'è davvero una da rifare — cioè se
+   * l'ultima riga USER|ASSISTANT della conversazione è un ASSISTANT.
+   *
+   * Se l'ultima riga è invece un USER, quel turno non ha mai prodotto una risposta (es. rate limit
+   * pre-primo-token: `generateStream` esce senza persistere nulla e il client ri-tenta da solo in
+   * `mode:"regenerate"`). Cancellare «l'ultimo ASSISTANT della conversazione» in quel caso
+   * distruggerebbe irreversibilmente la risposta BUONA di un turno PRECEDENTE — che sparirebbe
+   * anche dal transcript inviato al modello. Da qui la guardia: niente risposta in coda, niente
+   * delete.
+   */
   async deleteLastAssistant(conversationId: string): Promise<void> {
     const last = await this.db.message.findFirst({
-      where: { conversationId, role: "ASSISTANT" },
+      where: { conversationId, role: { in: ["USER", "ASSISTANT"] } },
       orderBy: { createdAt: "desc" },
-      select: { id: true },
+      select: { id: true, role: true },
     });
-    if (last) await this.db.message.delete({ where: { id: last.id } });
+    if (last?.role === "ASSISTANT") await this.db.message.delete({ where: { id: last.id } });
   }
 
   async *generateStream(

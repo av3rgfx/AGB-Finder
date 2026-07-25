@@ -150,9 +150,11 @@ export function AssistenteClient() {
   );
 
   // «Rigenera»/«Riprova» sono sempre lo stesso flusso `mode: "regenerate"`, sia per rifare l'ultima
-  // risposta completata sia per ritentare un round fallito: `deleteLastAssistant` lato server è un
-  // no-op quando non c'è nulla da cancellare (es. un send fallito prima del primo token), quindi
-  // "rigenera" è anche il retry corretto per un send appena tentato.
+  // risposta completata sia per ritentare un round fallito. Il retry di un send appena tentato è
+  // sicuro perché `deleteLastAssistant` lato server cancella SOLO se l'ultima riga della
+  // conversazione è davvero una risposta appena prodotta: se il turno è morto prima di produrne una
+  // (l'ultima riga è il messaggio USER), non tocca nulla — in particolare non la risposta del turno
+  // PRECEDENTE. Vedi ChatService.deleteLastAssistant.
   const handleRegenerate = useCallback(async () => {
     if (!conversationId) return;
     retryCountRef.current = 0;

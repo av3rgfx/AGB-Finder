@@ -61,6 +61,22 @@ function assistantData() {
   return messageCreate.mock.calls.find((c) => c[0].data.role === "ASSISTANT")?.[0].data;
 }
 
+/**
+ * Emula `message.findFirst({ where: { role: { in: [...] } }, orderBy: { createdAt: "desc" } })`
+ * su un insieme di righe in ordine di creazione, invece di restituire un valore pre-cotto: così i
+ * test di `deleteLastAssistant` esercitano davvero la query (compreso QUALI ruoli chiede) e non
+ * restano verdi per costruzione se la query cambia.
+ */
+function seedRows(rows: { id: string; role: string }[]) {
+  messageFindFirst.mockImplementation(
+    ({ where }: { where: { role: { in: string[] } | string } }) => {
+      const roles = typeof where.role === "string" ? [where.role] : where.role.in;
+      const match = [...rows].reverse().find((r) => roles.includes(r.role));
+      return Promise.resolve(match ? { id: match.id, role: match.role } : null);
+    },
+  );
+}
+
 beforeEach(() => {
   createCounter = 0;
   messageCreate.mockReset();
@@ -293,23 +309,85 @@ describe("ChatService.persistUserMessage", () => {
 });
 
 describe("ChatService.deleteLastAssistant", () => {
-  it("elimina l'ultimo messaggio ASSISTANT per createdAt", async () => {
-    messageFindFirst.mockResolvedValueOnce({ id: "m9" });
+  it("l'ultima riga della conversazione è la risposta appena prodotta → la elimina", async () => {
+    seedRows([
+      { id: "u1", role: "USER" },
+      { id: "a1", role: "ASSISTANT" },
+    ]);
     const svc = new ChatService(db, {} as unknown as AIGateway);
     await svc.deleteLastAssistant("conv1");
     expect(messageFindFirst).toHaveBeenCalledWith({
-      where: { conversationId: "conv1", role: "ASSISTANT" },
+      where: { conversationId: "conv1", role: { in: ["USER", "ASSISTANT"] } },
       orderBy: { createdAt: "desc" },
-      select: { id: true },
+      select: { id: true, role: true },
     });
-    expect(messageDelete).toHaveBeenCalledWith({ where: { id: "m9" } });
+    expect(messageDelete).toHaveBeenCalledWith({ where: { id: "a1" } });
   });
 
-  it("nessun ASSISTANT presente → non chiama delete", async () => {
-    messageFindFirst.mockResolvedValueOnce(null);
+  it("conversazione vuota → non chiama delete", async () => {
+    seedRows([]);
     const svc = new ChatService(db, {} as unknown as AIGateway);
     await svc.deleteLastAssistant("conv1");
     expect(messageDelete).not.toHaveBeenCalled();
+  });
+
+  it("REGRESSIONE: l'ultima riga è un USER (turno fallito) → NON tocca la risposta precedente", async () => {
+    // Il turno corrente è fallito prima di produrre qualunque risposta (nessuna riga ASSISTANT in
+    // coda): non c'è NIENTE da rigenerare. La risposta ASSISTANT più recente appartiene al turno
+    // PRECEDENTE ed è un dato buono dell'utente — cancellarla sarebbe perdita di dati.
+    seedRows([
+      { id: "u1", role: "USER" },
+      { id: "a1", role: "ASSISTANT" },
+      { id: "u2", role: "USER" },
+    ]);
+    const svc = new ChatService(db, {} as unknown as AIGateway);
+    await svc.deleteLastAssistant("conv1");
+    expect(messageDelete).not.toHaveBeenCalled();
+  });
+
+  it("le righe TOOL intermedie non contano come 'ultima riga'", async () => {
+    // Un round tool scrive righe TOOL dopo l'ASSISTANT del turno precedente: devono restare
+    // trasparenti sia in un senso sia nell'altro (qui la coda è un USER → nessun delete).
+    seedRows([
+      { id: "a1", role: "ASSISTANT" },
+      { id: "u2", role: "USER" },
+      { id: "t1", role: "TOOL" },
+    ]);
+    const svc = new ChatService(db, {} as unknown as AIGateway);
+    await svc.deleteLastAssistant("conv1");
+    expect(messageDelete).not.toHaveBeenCalled();
+  });
+});
+
+describe("REGRESSIONE — rate limit + auto-retry del client non distrugge il turno precedente", () => {
+  it("il round fallisce per rate limit e il «regenerate» automatico lascia intatta la risposta buona", async () => {
+    // Sequenza reale: la conversazione ha già una risposta buona (a1); l'utente invia un nuovo
+    // messaggio (u2); il round va in rate limit PRIMA del primo token, quindi generateStream non
+    // persiste nulla; il client ritenta automaticamente in `mode: "regenerate"`, che sulla route
+    // chiama `deleteLastAssistant`. Quella delete non deve toccare a1.
+    const rows = [
+      { id: "u1", role: "USER" },
+      { id: "a1", role: "ASSISTANT" },
+      { id: "u2", role: "USER" },
+    ];
+    seedRows(rows);
+    const { gateway, chatStream } = streamGateway();
+    chatStream.mockImplementationOnce(async function* () {
+      throw new RateLimitedError();
+    });
+    const svc = new ChatService(db, gateway);
+
+    const out = await drain(svc);
+    expect(out).toEqual([
+      { type: "error", recoverable: true, retryAfter: 20, message: "Assistente momentaneamente occupato" },
+    ]);
+    expect(messageCreate).not.toHaveBeenCalled(); // il turno fallito non lascia righe
+
+    // …e ora l'auto-retry del client (assistente-client.tsx, effetto di auto-retry).
+    await svc.deleteLastAssistant("conv1");
+
+    expect(messageDelete).not.toHaveBeenCalled();
+    expect(rows.map((r) => r.id)).toContain("a1");
   });
 });
 
