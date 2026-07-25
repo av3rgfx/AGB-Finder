@@ -5,6 +5,40 @@
 entrata E.15, variante base. NON validata da un esperto. Golden =
 snapshot auto-coerente (`rules-artech-vasistas-legno.test.ts`).
 
+## Aggiornamento 2026-07-25 (bonifica) — cerniere voci 10-11-12
+
+La tabella qui sotto è quella della Fase 1i e **non** è più la distinta generata
+(via DSS + incontro DSS, forbici per banda LBB, due terminali, cerniere): la
+riscrittura è nel modulo e la scheda va rifatta a fine bonifica.
+
+**Le voci 10-11-12 SONO nella distinta dell'anta singola** — la Fase 1i le
+escludeva («Cerniere per seconda anta, solo anta doppia/semifissa»), lettura
+**superata** dopo l'esame del PDF:
+
+- la legenda di p0418 (416) le cita davvero come «Cerniere per seconda anta » …»,
+  ma quello è il **titolo della sezione di listino** da cui provengono (p0453
+  (451)-p0455 (453)); la legenda nomina sempre «sezione » articolo», come la voce
+  1 «Cremonesi » Anta ribalta/Vasistas»;
+- il **disegno** dello schema è l'esploso di **una sola anta** (un traverso con i
+  terminali ③/④ alle estremità e la cremonese ① al centro, due montanti) e ai due
+  **angoli inferiori**, speculari, disegna ⑩+⑪+⑫ con ⑧ supporto forbice e ⑨ perno;
+- l'NB ▲ «Con ante di peso compreso tra i 70 e gli 80 Kg (max) aggiungere la
+  cerniera al centro ⑩» aggiunge una ⑩ al centro del lato inferiore **di questa
+  anta**, in funzione del peso **di questa anta**.
+
+Senza queste tre voci l'anta non è appesa: la distinta Fase 1i non era ordinabile.
+
+**Mano.** Solo la voce 11 ha varianti di mano a listino (dx `A51001.36.01` / sx
+`A51001.36.02`); gli angoli sono speculari → **1 DX + 1 SX**. La distinta **non
+dipende da `openingSide`**: una ribalta pura è incernierata in basso e non ha una
+mano (prima si emettevano 2 pezzi della stessa mano scelti su quel campo).
+
+**Resta da validare (domanda 5):** per ciascuna delle tre voci lo schema non
+discrimina fra variante base e alternativa — ⑩ `A51101.36.01` vs `A51102.36.02`
+(con compensatore 16/12), ⑪ `A51001.36.NN` vs `A51002.36.NN` (con canale 16/12),
+⑫ `A51050.16.12` vs `A51051.16.12` (solo lato traverso superiore). Si è scelta la
+base. Da confermare anche la ⑩ centrale sopra i 70 kg (peso non chiesto dal form).
+
 ## Distinta pilota (anta singola, E.15, LEGNO)
 
 | Posizione | Codice | Q.tà | Fonte |

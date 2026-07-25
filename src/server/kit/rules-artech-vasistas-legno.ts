@@ -1,9 +1,24 @@
-// Regole kit ARTECH «vasistas» LEGNO — Fase 1i.
-// PROVVISORIO (da validare con l'agente): distinta derivata dallo schema di
-// montaggio del listino 2026 (pag.416, «Finestra rettangolare legno - apertura
-// vasistas»), anta singola, entrata E.15, variante base. Le voci non derivabili
-// con certezza sono marcate ASSUNZIONE. Vedi
+// Regole kit ARTECH «vasistas» LEGNO.
+// PROVVISORIO (da validare con l'esperto AGB): la distinta è la TRASCRIZIONE
+// delle 13 voci dello schema di montaggio p0418 (416) «Finestra rettangolare
+// legno - apertura vasistas», anta singola, entrata E.15, variante base, per la
+// geometria del pilota (aria 12 / interasse 13 / battuta 20 / sede 18).
+//
+// ⚠️ Numerazione: nel listino la pagina FISICA del PDF è la stampata + 2, e qui
+// si cita sempre «fisica (stampata)». Il commento precedente diceva «pag.416»
+// intendendo la stampata, cioè la fisica p0418: ma la fisica 416 è lo schema del
+// BATTENTE, un'altra tipologia due pagine prima. La fonte del vasistas è p0418.
+//
+// Riscritto il 2026-07-25: prima la distinta conteneva DSS A50190.00.00 e
+// incontro DSS A51400.05.03, che lo schema vasistas NON prevede (venivano da una
+// NB della tabella cremonesi scritta per l'uso ANTA-RIBALTA della famiglia
+// condivisa), e non conteneva NESSUNA cerniera (voci 10-11-12): l'anta non era
+// appesa. Le voci non derivabili con certezza restano marcate ASSUNZIONE. Vedi
 // docs/superpowers/kit-assunzioni/vasistas.md.
+//
+// La distinta NON dipende da `openingSide`: una ribalta pura è incernierata in
+// basso e non ha una mano. Le uniche varianti di mano sono le due articolazioni
+// superiori dei due angoli inferiori, speculari → 1 DX + 1 SX (vedi sotto).
 import { pick } from "./kit-shared";
 import { MOVIMENTO_ANGOLARE, assertPilotGeometry } from "./artech-legno-shared";
 import { KitGenerationError, type KitInput, type KitLine, type RuleModule } from "./types";
@@ -45,6 +60,65 @@ const VASISTAS_FORBICI = [
   { minL: 1201, maxL: 2510, forbici: 4, posizione: "2 sul traverso + 2 sui montanti" },
 ] as const;
 
+/**
+ * Cerniere dello schema p0418 (416), voci 10-11-12: sono ciò che APPENDE l'anta
+ * vasistas, per la geometria del pilota (interasse 13 / battuta 20 → suffisso
+ * .36). Quantità 2 per famiglia: il disegno è l'esploso di UNA anta singola
+ * (traverso superiore con i terminali ③ e ④ alle due estremità e la cremonese ①
+ * al centro, due montanti, lato inferiore) e ai DUE ANGOLI INFERIORI, speculari,
+ * compaiono ⑩+⑪+⑫ ciascuno col suo ⑧ supporto forbice e ⑨ perno.
+ *
+ * ⚠️ Lettura OPPOSTA della Fase 1i, superata qui con l'evidenza dello schema.
+ * `docs/superpowers/specs/2026-07-23-fase1i-kit-vasistas-legno-design.md` le
+ * escludeva: «Cerniere per seconda anta (pos. 10-12, solo anta doppia/semifissa)».
+ * La legenda di p0418 (416) le prefissa davvero così — verificato sul PDF:
+ *   «10 Cerniere per seconda anta » Centrale registrabile portante»
+ *   «11 Cerniere per seconda anta » Articolazione superiore anta semifissa»
+ *   «12 Cerniere per seconda anta » Corpo articolazione superiore»
+ * ma «Cerniere per seconda anta - Legno» è il TITOLO DELLA SEZIONE di listino da
+ * cui le voci sono citate (p0453 (451)-p0455 (453)), non la loro destinazione: la
+ * legenda nomina sempre «sezione » articolo», come per «Cremonesi » Anta
+ * ribalta/Vasistas» alla voce 1. Nel disegno stanno sull'unica anta presente.
+ * Conferma indipendente: l'NB ▲ «Con ante di peso compreso tra i 70 e gli 80 Kg
+ * (max) aggiungere la cerniera al centro ⑩», con la ⑩ in più disegnata al centro
+ * del lato inferiore di QUESTA anta — la cerniera di un'altra anta non si
+ * aggiunge al centro di questa in funzione del peso di questa.
+ *
+ * ASSUNZIONE residua su tutte e tre — la VARIANTE, non la famiglia: il listino
+ * offre per ciascuna una «base» e un'alternativa che lo schema non discrimina —
+ *   · voce 10: A51101.36.01 «regolabile in 2 dimensioni» (scelta) vs A51102.36.02
+ *     «con compensatore 16/12, regolabile in 3 dimensioni», p0455 (453);
+ *   · voce 11: A51001.36.NN (scelta) vs A51002.36.NN «con canale 16/12»,
+ *     p0454 (452)-p0455 (453);
+ *   · voce 12: A51050.16.12 (scelta) vs A51051.16.12 «solo lato traverso superiore».
+ * Domanda 5 per l'esperto in docs/superpowers/kit-assunzioni/vasistas.md.
+ *
+ * NB: la voce 10 è l'unica famiglia che il listino chiama esplicitamente «e PER
+ * VASISTAS» — conferma che la scelta di famiglia è corretta.
+ */
+const CERNIERA_PORTANTE = "A51101.36.01"; // ambidestra: il listino non dà varianti di mano
+const CORPO_ARTICOLAZIONE = "A51050.16.12"; // senza mano a listino (p0454 (452))
+
+/**
+ * Voce 11, p0455 (453): è l'UNICA delle tre che il listino dà per mano (colonna
+ * MANO: dx `A51001.36.01`, sx `A51001.36.02`). I due angoli inferiori del disegno
+ * sono speculari → serve una articolazione per mano, 1 pezzo ciascuna.
+ *
+ * NON dipende da `openingSide`: il vasistas è incernierato in basso e non ha una
+ * mano (il campo resta nel form perché è generico del kit engine). Prima di
+ * questa correzione il modulo emetteva 2 pezzi della STESSA mano scelti su
+ * `openingSide` — un dato privo di significato per la tipologia che cambiava in
+ * silenzio la ferramenta consegnata, e per giunta lasciava un angolo senza la sua
+ * articolazione.
+ */
+const ARTICOLAZIONE_SUPERIORE = [
+  { position: "articolazione-superiore-dx", code: "A51001.36.01", montante: "destro" },
+  { position: "articolazione-superiore-sx", code: "A51001.36.02", montante: "sinistro" },
+] as const;
+
+/** Cerniere portanti dello schema: 2, una per angolo inferiore. */
+const N_CERNIERE_PORTANTI = 2;
+
 /** Movimenti angolari per il vasistas base (ASSUNZIONE: 2, come i moduli gemelli). */
 const N_MOVIMENTI = 2;
 
@@ -61,7 +135,7 @@ export const artechVasistasLegno: RuleModule = {
     // pilota (aria 12 / interasse 13 / battuta 20 / sede 18).
     assertPilotGeometry(input);
 
-    // Guardia superficie ≤ 2 m² (limite stampato sullo schema pag.416).
+    // Guardia superficie ≤ 2 m² (limite stampato sullo schema p0418 (416)).
     const areaM2 = (input.widthMm * input.heightMm) / 1_000_000;
     if (areaM2 > 2)
       throw new KitGenerationError(
@@ -95,26 +169,7 @@ export const artechVasistasLegno: RuleModule = {
       ruleDescription: `Cremonese vasistas maniglia variabile GR0${gr.gr} per altezza ${input.heightMm} mm`,
     });
 
-    // 2-3) Catena DSS (ASSUNZIONE): A50111 richiede il DSS ordinato a parte + il suo incontro.
-    lines.push(
-      {
-        position: "dss",
-        code: "A50190.00.00",
-        quantity: 1,
-        ruleId: "artech.dss",
-        ruleDescription:
-          "DSS ambidestro (ASSUNZIONE: A50111 richiede il DSS ordinato a parte, NB listino 19565)",
-      },
-      {
-        position: "incontro-dss",
-        code: "A51400.05.03",
-        quantity: 1,
-        ruleId: "artech.dss",
-        ruleDescription: "Incontro DSS aria 12 (ASSUNZIONE: come anta-ribalta)",
-      },
-    );
-
-    // 4) Forbici per vasistas — tabella «Posizionamento forbici» per LBB.
+    // 2) Forbici per vasistas — tabella «Posizionamento forbici» per LBB.
     lines.push({
       position: "forbici-vasistas",
       code: "A50545.00.00",
@@ -123,35 +178,70 @@ export const artechVasistasLegno: RuleModule = {
       ruleDescription: `Forbici per vasistas — LBB ${banda.minL}-${banda.maxL}: ${banda.posizione}`,
     });
 
-    // 5-6) Supporto forbice + perno (codici legno condivisi) — uno per forbice.
+    // 3-4) I due terminali per vasistas alle estremità opposte del traverso.
+    lines.push(
+      {
+        position: "terminale-vasistas-18",
+        code: "A50193.00.03",
+        quantity: 1,
+        ruleId: "artech.terminale",
+        ruleDescription: "Terminale per vasistas con nottolino corsa 18",
+      },
+      {
+        position: "terminale-vasistas-18-18",
+        code: "A50193.00.02",
+        quantity: 1,
+        ruleId: "artech.terminale",
+        ruleDescription: "Terminale per vasistas con nottolino corsa 18+18",
+      },
+    );
+
+    // 8-9) Supporto forbice + perno: nel disegno stanno sotto le CERNIERE
+    // portanti, non sotto le forbici (prima erano legati a n. forbici).
     lines.push(
       {
         position: "supporto-forbice",
         code: "A50702.05.00",
-        quantity: nForbici,
-        ruleId: "artech.forbici",
-        ruleDescription: "Supporto forbice legno battuta 20 = n. forbici (ASSUNZIONE battuta)",
+        quantity: N_CERNIERE_PORTANTI,
+        ruleId: "artech.cerniere",
+        ruleDescription: `Supporto forbice legno battuta ${input.rebateMm} = n. cerniere portanti`,
       },
       {
         position: "perno-supporto-forbice",
         code: "A50790.00.00",
-        quantity: nForbici,
-        ruleId: "artech.forbici",
-        ruleDescription: "Perno per supporto forbice = n. forbici",
+        quantity: N_CERNIERE_PORTANTI,
+        ruleId: "artech.cerniere",
+        ruleDescription: "Perno per supporto forbice = n. cerniere portanti",
       },
     );
 
-    // 7) Terminale per vasistas (ASSUNZIONE: 1 × corsa 18).
-    lines.push({
-      position: "terminale-vasistas",
-      code: "A50193.00.03",
-      quantity: 1,
-      ruleId: "artech.terminale",
-      ruleDescription: "Terminale per vasistas corsa 18 (ASSUNZIONE quantità/corsa)",
-    });
+    // 10-11-12) Cerniere dello schema: portante + articolazione superiore + corpo.
+    lines.push(
+      {
+        position: "cerniera-portante",
+        code: CERNIERA_PORTANTE,
+        quantity: N_CERNIERE_PORTANTI,
+        ruleId: "artech.cerniere",
+        ruleDescription: "Cerniera centrale registrabile portante e per vasistas (ambidestra)",
+      },
+      ...ARTICOLAZIONE_SUPERIORE.map(({ position, code, montante }) => ({
+        position,
+        code,
+        quantity: 1,
+        ruleId: "artech.cerniere",
+        ruleDescription: `Articolazione superiore anta semifissa, montante ${montante} (1 per mano: i due angoli inferiori sono speculari)`,
+      })),
+      {
+        position: "corpo-articolazione",
+        code: CORPO_ARTICOLAZIONE,
+        quantity: N_CERNIERE_PORTANTI,
+        ruleId: "artech.cerniere",
+        ruleDescription: "Corpo articolazione superiore",
+      },
+    );
 
-    // 8) Movimento angolare (codice condiviso A50302.01.02, quantità propria) +
-    // 9) limitatore di corsa 18 mm (= n. movimenti angolari).
+    // 5) Movimento angolare (codice condiviso A50302.01.02, quantità propria) +
+    // 6) limitatore di corsa 18 mm (= n. movimenti angolari).
     lines.push(
       {
         position: MOVIMENTO_ANGOLARE.position,
@@ -169,7 +259,7 @@ export const artechVasistasLegno: RuleModule = {
       },
     );
 
-    // 10) Incontri nottolino — quantità = colonna NOT.(GR) del cremonese (ASSUNZIONE).
+    // 13) Incontri nottolino — quantità = colonna NOT.(GR) del cremonese (ASSUNZIONE).
     if (gr.nottolini > 0)
       lines.push({
         position: "incontri-nottolino",

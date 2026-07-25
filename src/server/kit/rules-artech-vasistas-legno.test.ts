@@ -4,8 +4,8 @@ import { KitGenerationError } from "./types";
 import { artechVasistasLegno } from "./rules-artech-vasistas-legno";
 
 /**
- * Golden PROVVISORIO (Fase 1i): distinta vasistas ARTECH legno anta singola,
- * base pag.416, derivata dal listino 2026. NON validata da un esperto — vedi
+ * Golden PROVVISORIO: distinta vasistas ARTECH legno anta singola, trascritta
+ * dallo schema di montaggio p0418 (416). NON validata da un esperto — vedi
  * docs/superpowers/kit-assunzioni/vasistas.md. Config GR03 (H1000, non ambigua).
  */
 const golden: KitInput = {
@@ -23,50 +23,71 @@ const golden: KitInput = {
   series: "ARTECH",
 };
 
-// 10 righe / 12 pezzi. Cremonese vasistas + catena DSS + forbici (1) + supporto/
-// perno (1) + terminale + movimento angolare (2) + limitatore (2) + incontri (1).
+/**
+ * Golden vasistas — TRASCRIZIONE delle 13 voci dello schema di montaggio p0418
+ * (416) «Finestra rettangolare legno - apertura vasistas», per la geometria del
+ * pilota (aria 12 / interasse 13 / battuta 20 / sede 18) e H 1000 / L 600.
+ * 13 righe / 19 pezzi (1+1+1+1 + 2+2 + 2+2 + 2+1+1+2 + 1).
+ *
+ * Voci dello schema e loro resa:
+ *  1 cremonese A50111.15.NN per GR ....................... cremonese
+ *  2 forbici per vasistas (tabella LBB) .................. forbici-vasistas
+ *  3 terminale con nottolino corsa 18 .................... terminale-vasistas-18
+ *  4 terminale con nottolino corsa 18+18 ................. terminale-vasistas-18-18
+ *  5 movimenti angolari per ante rettangolari ............ movimento-angolare
+ *  6 limitatore di corsa 18 mm ........................... limitatore-corsa
+ *  7 chiusure supplementari › terminale .................. dietro supplementaryClosures (task 7)
+ *  8 supporti forbice .................................... supporto-forbice
+ *  9 perno per supporto forbice .......................... perno-supporto-forbice
+ * 10 centrale registrabile portante e per vasistas ....... cerniera-portante
+ * 11 articolazione superiore anta semifissa .............. articolazione-superiore-dx/-sx
+ * 12 corpo articolazione superiore ....................... corpo-articolazione
+ * 13 incontri nottolino .................................. incontri-nottolino
+ *
+ * Le voci 10-11-12 sono quelle che APPENDONO l'anta: nel disegno stanno ai due
+ * angoli inferiori, speculari (più la ⑩ centrale opzionale per ante 70-80 kg).
+ * La legenda le cita come «Cerniere per seconda anta » …» perché quello è il
+ * titolo della sezione di listino p0453 (451)-p0455 (453) da cui provengono, non
+ * la loro destinazione — vedi il commento del modulo.
+ * Essendo i due angoli speculari, la voce 11 (l'unica data per mano dal listino)
+ * vale 1 pezzo DX + 1 pezzo SX, indipendentemente da `openingSide`.
+ *
+ * NON compaiono nello schema, quindi NON sono nella distinta: DSS A50190.00.00 e
+ * incontro DSS A51400.05.03. Erano stati presi da una NB della tabella cremonesi
+ * p0424 (422)/p0426 (424) scritta per l'uso ANTA-RIBALTA della famiglia condivisa
+ * «Anta ribalta/vasistas» — l'NB di p0424 (422) dice infatti «DSS sempre presente
+ * su tutti i GR» a proposito dell'anta ribalta.
+ */
 const GOLDEN: [code: string, qty: number][] = [
-  ["A50111.15.13", 1], // cremonese vasistas GR03 (altezza 1000)
-  ["A50190.00.00", 1], // DSS ambidestro (ASSUNZIONE: A50111 lo richiede a parte)
-  ["A51400.05.03", 1], // incontro DSS
-  ["A50545.00.00", 1], // forbici per vasistas (LBB 541-860 → 1 sul traverso)
-  ["A50702.05.00", 1], // supporto forbice battuta 20 (= n. forbici)
-  ["A50790.00.00", 1], // perno supporto forbice (= n. forbici)
-  ["A50193.00.03", 1], // terminale per vasistas corsa 18 (ASSUNZIONE)
-  ["A50302.01.02", 2], // movimento angolare 125x125 (codice condiviso, qty 2)
-  ["A50196.00.18", 2], // limitatore di corsa 18 (= n. movimenti angolari)
-  ["A51400.05.02", 1], // incontri nottolino — NOT.(GR03) = 1
+  ["A50111.15.13", 1], // 1 cremonese vasistas GR03 (H 1000), p0426 (424)
+  ["A50545.00.00", 1], // 2 forbici — LBB 541-860 → 1 sul traverso, p0442 (440)
+  ["A50193.00.03", 1], // 3 terminale corsa 18, p0431 (429)
+  ["A50193.00.02", 1], // 4 terminale corsa 18+18, p0431 (429)
+  ["A50302.01.02", 2], // 5 movimento angolare 125x125, p0435 (433)
+  ["A50196.00.18", 2], // 6 limitatore di corsa 18 = n. movimenti angolari
+  ["A50702.05.00", 2], // 8 supporto forbice = n. cerniere portanti, p0449 (447)
+  ["A50790.00.00", 2], // 9 perno = n. cerniere portanti, p0449 (447)
+  ["A51101.36.01", 2], // 10 centrale registrabile portante e per vasistas, p0455 (453)
+  ["A51001.36.01", 1], // 11 articolazione superiore anta semifissa DX, p0455 (453)
+  ["A51001.36.02", 1], // 11 articolazione superiore anta semifissa SX (angolo speculare)
+  ["A51050.16.12", 2], // 12 corpo articolazione superiore, p0454 (452)
+  ["A51400.05.02", 1], // 13 incontri nottolino — NOT.(GR03) = 1, p0469 (467)
 ];
 
 describe("artechVasistasLegno — golden provvisorio (da validare con agente)", () => {
-  it("genera la distinta vasistas: 10 righe / 12 pezzi (GR03)", () => {
+  it("genera la distinta vasistas: 13 righe / 19 pezzi (GR03)", () => {
     const lines = artechVasistasLegno.generate(golden);
     const byCode = new Map(lines.map((l) => [l.code, l.quantity]));
     expect([...byCode.keys()].sort()).toEqual(GOLDEN.map(([c]) => c).sort());
     for (const [code, qty] of GOLDEN) expect(byCode.get(code), code).toBe(qty);
-    expect(lines).toHaveLength(10);
-    expect(lines.reduce((s, l) => s + l.quantity, 0)).toBe(12);
+    expect(lines).toHaveLength(13);
+    expect(lines.reduce((s, l) => s + l.quantity, 0)).toBe(19);
   });
 
-  it("include la catena DSS (A50190.00.00 + incontro A51400.05.03) — a differenza del battente", () => {
+  it("NON usa il meccanismo forbice/cerniere dell'anta-ribalta (A50510, A50904, A50805)", () => {
     const codes = artechVasistasLegno.generate(golden).map((l) => l.code);
-    expect(codes).toContain("A50190.00.00");
-    expect(codes).toContain("A51400.05.03");
-  });
-
-  it("NON usa il meccanismo forbice/cerniere dell'anta-ribalta (A50510, A50904, A50801)", () => {
-    const codes = artechVasistasLegno.generate(golden).map((l) => l.code);
-    for (const c of ["A50510.00.03", "A50904.36.01", "A50801.01.01"])
+    for (const c of ["A50510.00.03", "A50904.36.01", "A50805.05.DX"])
       expect(codes).not.toContain(c);
-  });
-
-  it("supporto/perno seguono il numero di forbici, che ora dipende dalla larghezza", () => {
-    const qty = (input: KitInput, code: string) =>
-      artechVasistasLegno.generate(input).find((l) => l.code === code)?.quantity ?? 0;
-    for (const code of ["A50545.00.00", "A50702.05.00", "A50790.00.00"]) {
-      expect(qty(golden, code)).toBe(1); // LBB 600 → banda 541-860 → 1 sul traverso
-      expect(qty({ ...golden, widthMm: 900 }, code)).toBe(3); // LBB 861-1200 → 3
-    }
   });
 
   it("incontri nottolino = colonna NOT.(GR): GR03→1, GR05→2, GR06→4, GR01→assente", () => {
@@ -157,5 +178,51 @@ describe("artechVasistasLegno — forbici dalla tabella «Posizionamento forbici
       .generate({ ...golden, widthMm: 900 })
       .find((l) => l.position === "forbici-vasistas");
     expect(riga?.ruleDescription).toMatch(/861/);
+  });
+});
+
+describe("artechVasistasLegno — aderenza allo schema p0418 (416)", () => {
+  const lines = artechVasistasLegno.generate(golden);
+
+  it("non genera il DSS: lo schema vasistas non lo prevede", () => {
+    expect(lines.map((l) => l.code)).not.toContain("A50190.00.00");
+  });
+
+  it("non genera l'incontro DSS", () => {
+    expect(lines.map((l) => l.code)).not.toContain("A51400.05.03");
+  });
+
+  it("genera le tre famiglie di cerniere (voci 10, 11, 12), 2 pezzi ciascuna", () => {
+    // Un angolo inferiore per parte: 2 pezzi per famiglia. La voce 11 è l'unica
+    // che il listino dà per mano → i 2 pezzi sono 2 righe da 1 (DX + SX).
+    for (const position of ["cerniera-portante", "corpo-articolazione"])
+      expect(lines.find((l) => l.position === position)?.quantity).toBe(2);
+    const articolazioni = lines.filter((l) => l.position.startsWith("articolazione-superiore"));
+    expect(articolazioni.map((l) => [l.position, l.code, l.quantity])).toEqual([
+      ["articolazione-superiore-dx", "A51001.36.01", 1],
+      ["articolazione-superiore-sx", "A51001.36.02", 1],
+    ]);
+  });
+
+  it("la distinta NON dipende da openingSide: il vasistas è incernierato in basso", () => {
+    // I due angoli inferiori sono speculari: servono entrambe le mani della voce
+    // 11, e nessun'altra voce ha varianti di mano. Prima il modulo sceglieva
+    // 2 pezzi della stessa mano in base a `openingSide`, dato privo di
+    // significato per una ribalta pura.
+    const sx = artechVasistasLegno.generate({ ...golden, openingSide: "SINISTRA" });
+    expect(sx).toEqual(lines);
+  });
+
+  it("supporto forbice e perno seguono le cerniere portanti, non le forbici", () => {
+    // LBB 900 → 3 forbici, ma le cerniere portanti restano 2
+    const largo = artechVasistasLegno.generate({ ...golden, widthMm: 900 });
+    expect(largo.find((l) => l.position === "forbici-vasistas")?.quantity).toBe(3);
+    expect(largo.find((l) => l.position === "supporto-forbice")?.quantity).toBe(2);
+    expect(largo.find((l) => l.position === "perno-supporto-forbice")?.quantity).toBe(2);
+  });
+
+  it("genera entrambi i terminali (voci 3 e 4)", () => {
+    expect(lines.find((l) => l.position === "terminale-vasistas-18")?.code).toBe("A50193.00.03");
+    expect(lines.find((l) => l.position === "terminale-vasistas-18-18")?.code).toBe("A50193.00.02");
   });
 });
