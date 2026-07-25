@@ -103,8 +103,19 @@ export function AssistenteClient() {
   // l'effetto "cambio conversazione" sotto (che interrompe uno stream in corso quando si cambia
   // conversazione) scambierebbe quella transizione null→id per un cambio-conversazione e
   // interromperebbe lo stream appena avviato. Impostata subito prima di scrivere l'URL in
-  // `handleSend`, consumata (letta e azzerata) dal cleanup dell'effetto sotto.
-  const skipResetRef = useRef(false);
+  // `handleSend` ALL'ID SPECIFICO appena creato (non un booleano): `router.replace` non è sincrono,
+  // quindi se prima che quella transizione atterri arriva un'altra `router.replace` (es. l'utente
+  // seleziona un'altra conversazione), `conversationId` può saltare direttamente null→altroId
+  // scavalcando l'id creato — una guardia booleana "cieca" lascerebbe quel salto senza reset,
+  // orfanando lo stream appena partito. Legandola all'id, l'effetto sotto protegge SOLO l'esatta
+  // transizione null→id-creato; qualunque altro salto (incluso lo scavalcamento) fa il reset normale.
+  const skipResetForIdRef = useRef<string | null>(null);
+  // `conversationId` "dal vivo": sincronizzato a ogni render (non in un effetto) così il cleanup
+  // dell'effetto sotto — che appartiene all'istanza PRECEDENTE e quindi non vede per chiusura il
+  // nuovo valore verso cui si sta transitando — può leggerlo quando scatta, per confrontarlo con
+  // `skipResetForIdRef`.
+  const latestConversationIdRef = useRef(conversationId);
+  latestConversationIdRef.current = conversationId;
 
   const performTurn = useCallback(
     async (input: StartInput) => {
@@ -128,7 +139,7 @@ export function AssistenteClient() {
       if (!id) {
         const created = await create.mutateAsync();
         id = created.id;
-        skipResetRef.current = true;
+        skipResetForIdRef.current = id;
         router.replace(`${pathname}?c=${id}`, { scroll: false });
       }
       retryCountRef.current = 0;
@@ -185,16 +196,22 @@ export function AssistenteClient() {
 
   // Cambio conversazione (incluso il "torna vuoto" di delete/archive sull'attiva): interrompe uno
   // stream in corso e azzera lo stato transitorio, così nessun evento residuo del vecchio round
-  // finisce mischiato nella nuova conversazione. ECCEZIONE: la transizione null→id appena creato
-  // da `handleSend` (vedi `skipResetRef`) — lì lo stream è appena partito e va lasciato proseguire,
-  // non interrotto. Il cleanup legge `skipResetRef.current` "dal vivo" (non catturato in chiusura)
-  // perché viene impostato DOPO che questo effetto è stato registrato ma PRIMA che il suo cleanup
-  // scatti; il consumo (azzeramento) del flag avviene invece nel body della run successiva, che è
-  // quella che deve anche decidere se ripulire lo stato transitorio.
+  // finisce mischiato nella nuova conversazione. ECCEZIONE: l'esatta transizione null→id appena
+  // creato da `handleSend` (vedi `skipResetForIdRef`) — lì lo stream è appena partito e va lasciato
+  // proseguire, non interrotto. La guardia è scoped all'id: il body (che riceve `conversationId`,
+  // cioè il valore IN ARRIVO, per chiusura) decide se questa run è la transizione protetta; il
+  // cleanup, che appartiene invece all'istanza PRECEDENTE, non vede quel valore per chiusura e lo
+  // legge "dal vivo" da `latestConversationIdRef` (sincronizzato a ogni render, quindi già
+  // aggiornato quando il cleanup scatta) per confrontarlo con `skipResetForIdRef`. In ogni caso che
+  // non sia esattamente quella transizione — inclusa una corsa che scavalca l'id protetto saltando
+  // direttamente verso un'altra conversazione — si esegue il reset normale, e la guardia viene
+  // comunque azzerata (consumata o invalidata) così non può più sopravvivere a proteggere una
+  // transizione futura.
   useEffect(() => {
-    if (skipResetRef.current) {
-      skipResetRef.current = false;
-    } else {
+    const isProtectedTransition =
+      conversationId !== null && conversationId === skipResetForIdRef.current;
+    skipResetForIdRef.current = null;
+    if (!isProtectedTransition) {
       nearBottomRef.current = true;
       setNearBottom(true);
       setPendingUserContent(null);
@@ -203,7 +220,10 @@ export function AssistenteClient() {
       retryCountRef.current = 0;
     }
     return () => {
-      if (!skipResetRef.current) reset();
+      const stillProtected =
+        latestConversationIdRef.current !== null &&
+        latestConversationIdRef.current === skipResetForIdRef.current;
+      if (!stillProtected) reset();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al cambio di conversationId
   }, [conversationId]);

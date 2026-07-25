@@ -291,6 +291,66 @@ describe("AssistenteClient — handover bolla live → riga persistita", () => {
     expect(screen.getByText("Prima domanda")).toBeTruthy();
     expect(screen.getByText("Rispondo")).toBeTruthy();
   });
+
+  it("selezionare un'altra conversazione PRIMA che atterri la transizione dell'id appena creato interrompe lo stream orfano", async () => {
+    // Corsa "scavalcamento" (vedi `skipResetForIdRef` in assistente-client.tsx): `handleSend` senza
+    // conversazione aperta fa create() → imposta la guardia sull'id appena creato → scrive
+    // `?c=new-conv` con `router.replace` (non sincrono). Se PRIMA che quella transizione atterri —
+    // nessun render l'ha ancora "vista" — l'utente seleziona un'ALTRA conversazione, la SUA
+    // `router.replace` vince e `conversationId` salta direttamente null→conv2, scavalcando
+    // `new-conv`. Una guardia booleana "cieca" (il bug corretto in questa sessione) lascerebbe
+    // questo salto senza reset: lo stream appena avviato per `new-conv` resterebbe orfano e il suo
+    // contenuto live continuerebbe a comparire — ma sotto conv2. Controlliamo il momento esatto in
+    // cui `create.mutateAsync()` si risolve per poter far scattare la seconda `router.replace`
+    // (il click su "Seconda chat") PRIMA che React osservi mai `?c=new-conv` in un render.
+    let resolveCreate!: (v: { id: string; title: string }) => void;
+    store.createMutateAsync.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveCreate = resolve;
+        }),
+    );
+    // Simula quello che fa il vero `useChatStream.reset()`: interrompe lo stream e torna a idle —
+    // necessario per verificare anche la conseguenza sul rendering, non solo che `reset` sia stato
+    // chiamato (il mock di `reset`, di suo, non tocca lo stato).
+    store.resetMock.mockImplementation(() =>
+      setStream({ status: "idle", text: "", messageId: null }),
+    );
+
+    sp = new URLSearchParams("");
+    setThread({ conversation: { id: "conv2", title: "Seconda chat" }, messages: [] });
+    store.conversationsList = [{ id: "conv2", title: "Seconda chat", updatedAt: new Date() }];
+    render(<AssistenteClient />);
+
+    fireEvent.change(screen.getByLabelText("Messaggio per l'assistente"), {
+      target: { value: "Prima domanda" },
+    });
+    fireEvent.keyDown(screen.getByLabelText("Messaggio per l'assistente"), { key: "Enter" });
+
+    await act(async () => {
+      resolveCreate({ id: "new-conv", title: "Nuova conversazione" });
+      // Un solo giro di microtask basta perché la continuazione di `handleSend` (che attende
+      // direttamente questa promise) arrivi fino a `router.replace('...?c=new-conv')` incluso —
+      // resta comunque tutto dentro questo stesso `act()`, quindi nessun render intermedio scatta.
+      await Promise.resolve();
+      // Lo stream appena avviato produce già testo live...
+      setStream({ status: "streaming", text: "Testo orfano" });
+      // ...e PRIMA che la transizione ?c=new-conv atterri, l'utente seleziona un'altra
+      // conversazione: la sua `replace` vince.
+      fireEvent.click(screen.getByText("Seconda chat"));
+    });
+    await flush();
+
+    // Conferma che la corsa si è verificata come previsto: la prima `replace` (verso l'id appena
+    // creato) è stata scavalcata dalla seconda (verso conv2) prima che un render la osservasse.
+    expect(replace).toHaveBeenNthCalledWith(1, "/assistente?c=new-conv", { scroll: false });
+    expect(replace).toHaveBeenNthCalledWith(2, "/assistente?c=conv2", { scroll: false });
+
+    // Lo stream orfano è stato interrotto — non lasciato a mutare lo stato sotto la conversazione
+    // appena selezionata.
+    expect(store.resetMock).toHaveBeenCalled();
+    expect(screen.queryByText("Testo orfano")).toBeNull();
+  });
 });
 
 describe("AssistenteClient — elimina/archivia la conversazione attiva", () => {
