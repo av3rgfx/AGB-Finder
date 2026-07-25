@@ -64,6 +64,7 @@ export const kitRouter = createTRPCRouter({
           finish: request.finish,
           series: request.series,
           supplementaryClosures: request.supplementaryClosures,
+          sashWeightKg: request.sashWeightKg ?? undefined,
           notes: request.notes ?? undefined,
         })
         .catch(toTRPC);

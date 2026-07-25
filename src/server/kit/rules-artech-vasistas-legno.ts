@@ -16,6 +16,10 @@
 // appesa. Le voci non derivabili con certezza restano marcate ASSUNZIONE. Vedi
 // docs/superpowers/kit-assunzioni/vasistas.md.
 //
+// ⚠️ COPERTURA: 12 delle 13 voci dello schema. La voce 7 («Chiusure
+// supplementari › terminale», i due terminali sui montanti) è OMESSA DI
+// PROPOSITO — vedi il blocco «Voce 7» più sotto.
+//
 // La distinta NON dipende da `openingSide`: una ribalta pura è incernierata in
 // basso e non ha una mano. Le uniche varianti di mano sono le due articolazioni
 // superiori dei due angoli inferiori, speculari → 1 DX + 1 SX (vedi sotto).
@@ -119,6 +123,25 @@ const ARTICOLAZIONE_SUPERIORE = [
 /** Cerniere portanti dello schema: 2, una per angolo inferiore. */
 const N_CERNIERE_PORTANTI = 2;
 
+/**
+ * Le due NB dello schema p0418 (416) che dipendono dal PESO dell'anta:
+ *  · «▲ Con ante di peso compreso tra i 70 e gli 80 Kg (max) aggiungere la
+ *    cerniera al centro ⑩» → una terza cerniera portante, col suo supporto
+ *    forbice ⑧ e il suo perno ⑨; oltre gli 80 kg si è fuori campo. Le voci 11 e
+ *    12 NON seguono: restano ai due angoli inferiori (l'NB aggiunge la sola ⑩).
+ *  · «La portata massima per le forbici di sicurezza è di 40 Kg cadauna» → il
+ *    peso non può superare 40 kg × n. forbici, e le forbici dipendono dalla
+ *    LARGHEZZA (VASISTAS_FORBICI): a L 600 c'è una sola forbice, cioè 40 kg.
+ * Entrambe sono verificabili solo se l'agente ha indicato il peso: `sashWeightKg`
+ * è opzionale e quando manca il modulo dichiara nella riga di distinta il limite
+ * di peso di QUELLA distinta anziché tacere. Il limite è il MINORE fra le due NB
+ * — `min(70, 40 × n. forbici)` — perché entrambe mordono: a L 600 la distinta ha
+ * una sola forbice, quindi vale fino a 40 kg, non a 70.
+ */
+const PORTATA_FORBICE_KG = 40;
+const PESO_TERZA_CERNIERA_KG = 70;
+const PESO_MAX_KG = 80;
+
 /** Movimenti angolari per il vasistas base (ASSUNZIONE: 2, come i moduli gemelli). */
 const N_MOVIMENTI = 2;
 
@@ -158,6 +181,29 @@ export const artechVasistasLegno: RuleModule = {
       "posizionamento forbici vasistas",
     );
     const nForbici = banda.forbici;
+
+    // NB dello schema: «la portata massima per le forbici di sicurezza è di 40 kg
+    // cadauna». Verificabile solo se l'agente ha indicato il peso.
+    const portataKg = nForbici * PORTATA_FORBICE_KG;
+    if (input.sashWeightKg !== undefined && input.sashWeightKg > portataKg)
+      throw new KitGenerationError(
+        `Anta da ${input.sashWeightKg} kg oltre la portata delle forbici: ${nForbici} × ${PORTATA_FORBICE_KG} kg = ` +
+          `${portataKg} kg massimi per una larghezza di ${input.widthMm} mm.`,
+        "artech.forbici",
+      );
+
+    // NB dello schema: «con ante di peso compreso tra i 70 e gli 80 kg (max)
+    // aggiungere la cerniera al centro ⑩». Oltre gli 80 kg si è fuori campo.
+    if (input.sashWeightKg !== undefined && input.sashWeightKg > PESO_MAX_KG)
+      throw new KitGenerationError(
+        `Anta da ${input.sashWeightKg} kg oltre il massimo di ${PESO_MAX_KG} kg previsto dallo schema vasistas.`,
+        "artech.peso",
+      );
+    const nCerniere =
+      input.sashWeightKg !== undefined && input.sashWeightKg >= PESO_TERZA_CERNIERA_KG
+        ? N_CERNIERE_PORTANTI + 1
+        : N_CERNIERE_PORTANTI;
+
     const lines: KitLine[] = [];
 
     // 1) Cremonese vasistas (maniglia variabile) — per GR/altezza.
@@ -196,22 +242,41 @@ export const artechVasistasLegno: RuleModule = {
       },
     );
 
+    // 7) «Chiusure supplementari › terminale» (i due terminali sui montanti):
+    // VOCE OMESSA DI PROPOSITO, non dimenticata. Lo schema la disegna ma non
+    // pubblica NÉ il codice NÉ la lunghezza, e la lunghezza è l'intero problema:
+    // il terminale si compone con l'altezza del montante (angolare + prolunghe +
+    // terminale), e a listino esistono terminali/prolunghe da 200/400/600/800.
+    // L'unica regola di composizione che conosciamo — CHIUSURE_VERTICALI in
+    // rules-artech-legno.ts — copre una sola banda (H 1520-2120) ed è nota
+    // perché ricavata da una distinta ANTA-RIBALTA reale del 2021: per il
+    // vasistas quella distinta non esiste. Emettere qui un codice scelto per
+    // analogia significherebbe stampare una lunghezza inventata su una distinta
+    // d'ordine — esattamente la classe di errore che questa bonifica elimina.
+    // Meglio una distinta incompleta e dichiarata che una completa e sbagliata.
+    // Sbloccata dalla domanda «terminale sui montanti» in
+    // docs/superpowers/kit-assunzioni/vasistas.md.
+    //
+    // Di conseguenza il modulo IGNORA `input.supplementaryClosures`: il flag non
+    // ha righe da accendere per questa tipologia (coerente col wizard, che per
+    // VASISTAS non mostra la casella e forza il campo a false).
+
     // 8-9) Supporto forbice + perno: nel disegno stanno sotto le CERNIERE
     // portanti, non sotto le forbici (prima erano legati a n. forbici).
     lines.push(
       {
         position: "supporto-forbice",
         code: "A50702.05.00",
-        quantity: N_CERNIERE_PORTANTI,
+        quantity: nCerniere,
         ruleId: "artech.cerniere",
-        ruleDescription: `Supporto forbice legno battuta ${input.rebateMm} = n. cerniere portanti`,
+        ruleDescription: `Supporto forbice legno battuta ${input.rebateMm} = n. cerniere portanti (${nCerniere})`,
       },
       {
         position: "perno-supporto-forbice",
         code: "A50790.00.00",
-        quantity: N_CERNIERE_PORTANTI,
+        quantity: nCerniere,
         ruleId: "artech.cerniere",
-        ruleDescription: "Perno per supporto forbice = n. cerniere portanti",
+        ruleDescription: `Perno per supporto forbice = n. cerniere portanti (${nCerniere})`,
       },
     );
 
@@ -220,9 +285,20 @@ export const artechVasistasLegno: RuleModule = {
       {
         position: "cerniera-portante",
         code: CERNIERA_PORTANTE,
-        quantity: N_CERNIERE_PORTANTI,
+        quantity: nCerniere,
         ruleId: "artech.cerniere",
-        ruleDescription: "Cerniera centrale registrabile portante e per vasistas (ambidestra)",
+        ruleDescription:
+          input.sashWeightKg === undefined
+            ? // Il limite dichiarato è il MINORE fra le due NB, non solo la
+              // soglia della terza cerniera: su questa larghezza le forbici
+              // portano `portataKg` e il modulo stesso rifiuta oltre. Prima qui
+              // era scritto «fino a 70 kg» fisso, cioè una portata fino a quasi
+              // il doppio di quella che il generatore considera montabile
+              // (L 600 → 1 forbice → 40 kg): un dato plausibile e sbagliato
+              // stampato in distinta.
+              `Cerniera centrale registrabile portante e per vasistas (ambidestra) — ${nCerniere} pezzi, ` +
+              `valido per ante fino a ${Math.min(PESO_TERZA_CERNIERA_KG, portataKg)} kg`
+            : `Cerniera centrale registrabile portante e per vasistas (ambidestra) — ${nCerniere} pezzi per un'anta da ${input.sashWeightKg} kg`,
       },
       ...ARTICOLAZIONE_SUPERIORE.map(({ position, code, montante }) => ({
         position,
@@ -234,9 +310,12 @@ export const artechVasistasLegno: RuleModule = {
       {
         position: "corpo-articolazione",
         code: CORPO_ARTICOLAZIONE,
-        quantity: N_CERNIERE_PORTANTI,
+        // La voce 12 accompagna la 11, non la 10: una per angolo inferiore. La
+        // terza cerniera dell'NB sul peso si aggiunge al CENTRO del lato
+        // inferiore, dove non c'è articolazione superiore → questa resta a 2.
+        quantity: ARTICOLAZIONE_SUPERIORE.length,
         ruleId: "artech.cerniere",
-        ruleDescription: "Corpo articolazione superiore",
+        ruleDescription: "Corpo articolazione superiore (1 per angolo inferiore)",
       },
     );
 

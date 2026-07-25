@@ -39,6 +39,43 @@ discrimina fra variante base e alternativa — ⑩ `A51101.36.01` vs `A51102.36.
 ⑫ `A51050.16.12` vs `A51051.16.12` (solo lato traverso superiore). Si è scelta la
 base. Da confermare anche la ⑩ centrale sopra i 70 kg (peso non chiesto dal form).
 
+## Aggiornamento 2026-07-25 (bonifica) — voce 7 OMESSA di proposito
+
+La distinta generata copre **12 delle 13 voci** dello schema p0418 (416). Manca
+la **voce 7, «Chiusure supplementari › terminale»** (i due terminali sui
+montanti), ed è una **scelta esplicita**, non una dimenticanza.
+
+Motivo: lo schema disegna la voce ma non pubblica né il codice né la lunghezza,
+e la lunghezza è tutto il problema — il terminale si compone con l'altezza del
+montante (angolare + prolunghe + terminale) e a listino esistono
+terminali/prolunghe da 200/400/600/800. L'unica regola di composizione che
+conosciamo (`CHIUSURE_VERTICALI` in `rules-artech-legno.ts`) copre una sola banda
+(H 1520-2120) e la conosciamo perché ricavata da una **distinta ANTA-RIBALTA
+reale del 2021**: per il vasistas quella distinta non esiste. Scegliere un codice
+per analogia stamperebbe una misura inventata su una distinta d'ordine — la
+stessa classe di errore per cui questa bonifica esiste. Meglio una distinta
+incompleta e dichiarata che una completa e sbagliata.
+
+Conseguenza: il modulo **ignora `supplementaryClosures`** per la vasistas (non ha
+righe da accendere), coerentemente col wizard, che per VASISTAS non mostra la
+casella e forza il campo a `false`. La domanda 11 qui sotto sblocca la voce.
+
+**Nota sul confronto col battente:** il battente è stato *disattivato* per
+un'incompletezza analoga, la vasistas no. La differenza è quale voce manca: al
+battente mancava la **sospensione superiore**, cioè ciò che appende l'anta (una
+distinta non montabile); alla vasistas manca una chiusura **supplementare** —
+l'anta è appesa, apre e chiude. La distinta è ordinabile, e incompleta in modo
+dichiarato.
+
+## Aggiornamento 2026-07-25 (bonifica) — limite di peso dichiarato in distinta
+
+Quando l'agente non indica `sashWeightKg`, la riga della cerniera portante
+dichiara il limite di peso di **quella** distinta. Il limite è il **minore** fra
+le due NB dello schema — `min(70, 40 × n. forbici)` — perché mordono entrambe:
+a L 600 la banda LBB 541-860 dà **una sola forbice**, quindi 40 kg, non 70.
+Prima era la costante 70 fissa: il motore stampava «valido per ante fino a 70 kg»
+su una distinta che lui stesso rifiuta già a 41 kg.
+
 ## Distinta pilota (anta singola, E.15, LEGNO)
 
 | Posizione | Codice | Q.tà | Fonte |
@@ -77,3 +114,7 @@ GR01=0, GR02=1, GR03=1, GR04=2, GR05=2, GR06=4.
    limitatore?
 10. **GR00** (HBB 274–662, escluso dal pilota): quante forbici? Sblocca le finestre
     piccole.
+11. **Voce 7 — terminali chiusure supplementari sui montanti** (oggi omessa, vedi
+    sopra): quale codice, e come si sceglie la **lunghezza** in funzione
+    dell'altezza del montante? Servono su ogni vasistas o solo sopra una certa
+    altezza/superficie? È l'unica voce dello schema che il generatore non emette.

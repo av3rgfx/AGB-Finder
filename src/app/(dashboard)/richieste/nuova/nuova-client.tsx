@@ -85,6 +85,7 @@ const STEP2_SCHEMA = kitInputSchema.pick({
   axisOffsetMm: true,
   rebateMm: true,
   seatMm: true,
+  sashWeightKg: true,
 });
 const STEP3_SCHEMA = kitInputSchema.pick({ openingSide: true, openingDir: true, finish: true });
 
@@ -308,6 +309,9 @@ function Step1Tipologia({ form, update }: StepProps) {
       .map((m) => m.value);
     if (!allowed.includes(form.material)) update("material", "LEGNO");
     if (wt !== "ANTA_RIBALTA") update("supplementaryClosures", false);
+    // Il peso serve solo alle due NB dello schema vasistas: cambiando tipologia
+    // non deve restare un valore che nessun altro modulo legge.
+    if (wt !== "VASISTAS") update("sashWeightKg", undefined);
   }
 
   return (
@@ -412,6 +416,39 @@ function NumberField({
   );
 }
 
+/**
+ * Peso dell'anta: campo FACOLTATIVO, mostrato solo per la vasistas — è l'unica
+ * tipologia le cui regole lo leggono (schema p0418 (416): terza cerniera fra 70 e
+ * 80 kg, portata 40 kg per forbice). Non riusa `NumberField` perché lì il campo è
+ * obbligatorio (vuoto → NaN → errore di step) e l'unità è sempre «mm»: qui il
+ * vuoto deve valere `undefined`, che lo schema accetta. Sta nella stessa griglia
+ * responsive degli altri campi, quindi a ≤375px occupa la sua riga intera.
+ */
+function SashWeightField({ form, update }: StepProps) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label htmlFor="sashWeightKg" className="text-sm font-medium text-ink">
+        Peso anta <span className="font-normal text-ink-subtle">(1–200 kg)</span>
+      </label>
+      <Input
+        id="sashWeightKg"
+        type="number"
+        min={1}
+        max={200}
+        value={form.sashWeightKg ?? ""}
+        aria-describedby="sashWeightKg-hint"
+        onChange={(e) =>
+          update("sashWeightKg", e.target.value === "" ? undefined : Number(e.target.value))
+        }
+      />
+      <p id="sashWeightKg-hint" className="text-xs text-ink-subtle">
+        Facoltativo — serve a verificare la portata delle forbici e a stabilire se occorre la terza
+        cerniera.
+      </p>
+    </div>
+  );
+}
+
 function Step2Dimensioni({ form, update }: StepProps) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -426,6 +463,7 @@ function Step2Dimensioni({ form, update }: StepProps) {
           onChange={(v) => update(field.key, v)}
         />
       ))}
+      {form.windowType === "VASISTAS" && <SashWeightField form={form} update={update} />}
     </div>
   );
 }
@@ -533,6 +571,12 @@ function Step4Riepilogo({ form }: { form: KitInput }) {
       <SummaryItem label="Finitura" value={form.finish} />
       {form.windowType === "ANTA_RIBALTA" && (
         <SummaryItem label="Chiusure suppl." value={form.supplementaryClosures ? "Sì" : "No"} />
+      )}
+      {form.windowType === "VASISTAS" && (
+        <SummaryItem
+          label="Peso anta"
+          value={form.sashWeightKg === undefined ? "Non indicato" : `${form.sashWeightKg} kg`}
+        />
       )}
     </dl>
   );

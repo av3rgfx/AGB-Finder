@@ -24,10 +24,11 @@ const golden: KitInput = {
 };
 
 /**
- * Golden vasistas — TRASCRIZIONE delle 13 voci dello schema di montaggio p0418
- * (416) «Finestra rettangolare legno - apertura vasistas», per la geometria del
- * pilota (aria 12 / interasse 13 / battuta 20 / sede 18) e H 1000 / L 600.
- * 13 righe / 19 pezzi (1+1+1+1 + 2+2 + 2+2 + 2+1+1+2 + 1).
+ * Golden vasistas — TRASCRIZIONE di 12 delle 13 voci dello schema di montaggio
+ * p0418 (416) «Finestra rettangolare legno - apertura vasistas», per la
+ * geometria del pilota (aria 12 / interasse 13 / battuta 20 / sede 18) e
+ * H 1000 / L 600. 13 righe / 19 pezzi (1+1+1+1 + 2+2 + 2+2 + 2+1+1+2 + 1) — le
+ * righe sono 13 perché la voce 11 vale 1 DX + 1 SX, non perché le voci siano 13.
  *
  * Voci dello schema e loro resa:
  *  1 cremonese A50111.15.NN per GR ....................... cremonese
@@ -36,13 +37,23 @@ const golden: KitInput = {
  *  4 terminale con nottolino corsa 18+18 ................. terminale-vasistas-18-18
  *  5 movimenti angolari per ante rettangolari ............ movimento-angolare
  *  6 limitatore di corsa 18 mm ........................... limitatore-corsa
- *  7 chiusure supplementari › terminale .................. dietro supplementaryClosures (task 7)
+ *  7 chiusure supplementari › terminale .................. OMESSA DI PROPOSITO (vedi sotto)
  *  8 supporti forbice .................................... supporto-forbice
  *  9 perno per supporto forbice .......................... perno-supporto-forbice
  * 10 centrale registrabile portante e per vasistas ....... cerniera-portante
  * 11 articolazione superiore anta semifissa .............. articolazione-superiore-dx/-sx
  * 12 corpo articolazione superiore ....................... corpo-articolazione
  * 13 incontri nottolino .................................. incontri-nottolino
+ *
+ * VOCE 7 — «Chiusure supplementari › terminale», i due terminali sui montanti:
+ * il golden NON la contiene perché il modulo la omette DI PROPOSITO. Lo schema
+ * la disegna ma non dà né codice né lunghezza, e la lunghezza dipende
+ * dall'altezza del montante con una regola di composizione che per il vasistas
+ * non conosciamo (per l'anta-ribalta la conosciamo solo sulla banda H 1520-2120,
+ * da una distinta reale del 2021). Sceglierne una per analogia stamperebbe una
+ * misura inventata su una distinta d'ordine. La distinta copre quindi 12 delle
+ * 13 voci, e lo dichiara: vedi il blocco «Voce 7» nel modulo e la scheda
+ * docs/superpowers/kit-assunzioni/vasistas.md.
  *
  * Le voci 10-11-12 sono quelle che APPENDONO l'anta: nel disegno stanno ai due
  * angoli inferiori, speculari (più la ⑩ centrale opzionale per ante 70-80 kg).
@@ -88,6 +99,17 @@ describe("artechVasistasLegno — golden provvisorio (da validare con agente)", 
     const codes = artechVasistasLegno.generate(golden).map((l) => l.code);
     for (const c of ["A50510.00.03", "A50904.36.01", "A50805.05.DX"])
       expect(codes).not.toContain(c);
+  });
+
+  it("voce 7 omessa di proposito: `supplementaryClosures` non aggiunge nulla al vasistas", () => {
+    // Scelta esplicita, non una dimenticanza (vedi il blocco «Voce 7» nel
+    // modulo): lunghezza dei terminali sui montanti non derivabile. Il flag non
+    // ha righe da accendere qui, e nessun codice di chiusura verticale
+    // dell'anta-ribalta deve entrare per analogia.
+    const off = artechVasistasLegno.generate(golden);
+    expect(artechVasistasLegno.generate({ ...golden, supplementaryClosures: true })).toEqual(off);
+    for (const c of ["A50330.00.00", "A51801.00.01", "A51803.00.03", "A50401.00.03"])
+      expect(off.map((l) => l.code)).not.toContain(c);
   });
 
   it("incontri nottolino = colonna NOT.(GR): GR03→1, GR05→2, GR06→4, GR01→assente", () => {
@@ -224,5 +246,86 @@ describe("artechVasistasLegno — aderenza allo schema p0418 (416)", () => {
   it("genera entrambi i terminali (voci 3 e 4)", () => {
     expect(lines.find((l) => l.position === "terminale-vasistas-18")?.code).toBe("A50193.00.03");
     expect(lines.find((l) => l.position === "terminale-vasistas-18-18")?.code).toBe("A50193.00.02");
+  });
+});
+
+describe("artechVasistasLegno — peso dell'anta (NB dello schema p0418 (416))", () => {
+  /**
+   * Le due NB sul peso si incrociano: la portata è di 40 kg PER FORBICE, e il
+   * numero di forbici dipende dalla LARGHEZZA. Il golden (L 600 → banda 541-860 →
+   * 1 sola forbice) regge quindi al massimo 40 kg: i casi da 50 kg in su vanno
+   * provati su L 900 (banda 861-1200 → 3 forbici → 120 kg), l'unica larghezza su
+   * cui la regola delle cerniere è isolabile da quella delle forbici.
+   */
+  const largo = { ...golden, widthMm: 900 };
+
+  it("senza peso: 2 cerniere portanti e nessun rifiuto", () => {
+    const lines = artechVasistasLegno.generate(golden);
+    expect(lines.find((l) => l.position === "cerniera-portante")?.quantity).toBe(2);
+  });
+
+  /**
+   * Senza peso la riga dichiara un limite: dev'essere il limite VERO di QUELLA
+   * distinta, cioè il minore fra le due NB — `min(70, 40 × n. forbici)`. Prima
+   * era la costante 70, e sul golden il motore stampava «fino a 70 kg» mentre
+   * lui stesso rifiuta a 41 kg (1 forbice = 40 kg): quasi il doppio della
+   * portata reale, scritto sulla distinta che l'agente consegna.
+   */
+  const limiteDichiarato = (input: KitInput) =>
+    artechVasistasLegno.generate(input).find((l) => l.position === "cerniera-portante")
+      ?.ruleDescription;
+
+  it("senza peso la riga dichiara la portata delle forbici quando è lei a mordere", () => {
+    // L 600 → 1 forbice → 40 kg, non i 70 della soglia terza cerniera.
+    expect(limiteDichiarato(golden)).toMatch(/fino a 40 kg/);
+    expect(() => artechVasistasLegno.generate({ ...golden, sashWeightKg: 41 })).toThrow(
+      KitGenerationError,
+    );
+  });
+
+  it("senza peso la riga dichiara i 70 kg quando le forbici portano di più", () => {
+    // L 400 → 2 forbici → 80 kg, ma a 70 servirebbe la terza cerniera: min = 70.
+    expect(limiteDichiarato({ ...golden, widthMm: 400 })).toMatch(/fino a 70 kg/);
+  });
+
+  it("fra 70 e 80 kg: terza cerniera al centro, con supporto e perno", () => {
+    const lines = artechVasistasLegno.generate({ ...largo, sashWeightKg: 75 });
+    expect(lines.find((l) => l.position === "cerniera-portante")?.quantity).toBe(3);
+    expect(lines.find((l) => l.position === "supporto-forbice")?.quantity).toBe(3);
+    expect(lines.find((l) => l.position === "perno-supporto-forbice")?.quantity).toBe(3);
+  });
+
+  it("la terza cerniera non moltiplica il corpo articolazione (voce 12: 1 per angolo)", () => {
+    // L'NB aggiunge la sola ⑩ al centro: le voci 11 e 12 restano ai due angoli.
+    const lines = artechVasistasLegno.generate({ ...largo, sashWeightKg: 75 });
+    expect(lines.find((l) => l.position === "corpo-articolazione")?.quantity).toBe(2);
+    expect(lines.filter((l) => l.position.startsWith("articolazione-superiore"))).toHaveLength(2);
+  });
+
+  it("sotto i 70 kg: restano 2 cerniere", () => {
+    const lines = artechVasistasLegno.generate({ ...largo, sashWeightKg: 60 });
+    expect(lines.find((l) => l.position === "cerniera-portante")?.quantity).toBe(2);
+  });
+
+  it("oltre 80 kg: rifiuta (fuori campo di applicazione)", () => {
+    try {
+      artechVasistasLegno.generate({ ...largo, sashWeightKg: 85 });
+      expect.unreachable("atteso peso fuori campo");
+    } catch (err) {
+      expect(err).toBeInstanceOf(KitGenerationError);
+      expect((err as KitGenerationError).ruleId).toBe("artech.peso");
+    }
+  });
+
+  it("rifiuta se il peso supera la portata delle forbici (40 kg cadauna)", () => {
+    // L 600 → 1 forbice → portata 40 kg; 50 kg non è sostenibile
+    expect(() => artechVasistasLegno.generate({ ...golden, sashWeightKg: 50 })).toThrow(/40 kg/);
+  });
+
+  it("con più forbici la stessa anta è ammessa", () => {
+    // L 900 → 3 forbici → portata 120 kg
+    expect(() =>
+      artechVasistasLegno.generate({ ...golden, widthMm: 900, sashWeightKg: 50 }),
+    ).not.toThrow();
   });
 });

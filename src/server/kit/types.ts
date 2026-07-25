@@ -29,6 +29,13 @@ export const kitInputSchema = z.object({
   // "OFF", quindi l'assenza di un default a runtime non cambia il
   // comportamento (default = false è già garantito).
   supplementaryClosures: z.boolean().optional(),
+  // Peso dell'anta in kg. OPZIONALE come supplementaryClosures (e per lo stesso
+  // motivo: con .default() zod renderebbe il campo obbligatorio nel tipo di
+  // output e romperebbe ogni KitInput letterale esistente). Serve alle due NB
+  // dello schema vasistas p0418 (416): terza cerniera fra 70 e 80 kg, portata
+  // massima 40 kg per forbice. Quando è assente il modulo assume «sotto i 70 kg»
+  // e lo dichiara nella riga di distinta.
+  sashWeightKg: z.number().int().min(1).max(200).optional(),
 });
 
 export type KitInput = z.infer<typeof kitInputSchema>;
