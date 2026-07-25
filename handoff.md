@@ -9,84 +9,68 @@
 
 | Campo | Valore |
 |-------|--------|
-| **Data** | 2026-07-24 (sessione CONCLUSA — UX Archivio + follow-up MERGIATI e in `main`) |
+| **Data** | 2026-07-25 (CHAT ASSISTENTE riscritta — 12/12 task completi, gate verdi, verifica browser 13/13; **PR da aprire**) |
 | **Fase in corso** | Fase 1 — MVP Gestionale |
-| **Sotto-fase** | …#27 · **UX ARCHIVIO ✅ (PR #29 + #30 MERGIATE)**: persistenza ricerca (URL+localStorage) · ritorno-alla-lista con scroll (verificato browser) · cronologia 7gg · thumbnail · chip filtri · empty-state · scorciatoia `/` · copia-link · visti-di-recente · listino sulle card. |
-| **Branch git** | **PR #25–#30 MERGIATE.** Nessun branch in sospeso. Prossima sessione: **branch fresco da `origin/main`**. |
-| **Stato deploy** | **LIVE** su `catalogo-finder-kappa.vercel.app`. UX Archivio in `main` (merge #29+#30) → deploy Vercel standard, **NESSUNA azione ops** (no migrazione/dep/env). |
-| **Piani/spec** | `docs/superpowers/{specs,plans}/2026-07-24-archivio-ux*` (+ `…-follow-up*`). **Prossimo: chat Assistente** (vedi §RIPRENDI). |
+| **Sotto-fase** | …#30 · **CHAT ASSISTENTE PROFESSIONALE ✅**: streaming SSE + STOP · Gemini-only (Kimi rimosso) · conversazioni complete (rinomina/elimina/archivia/cerca) · markdown + card prodotto inline · mobile-first (drawer, composer, 375px) · `?c=` in URL. |
+| **Branch git** | `claude/assistant-chat-streaming-mobile-1apei1` (20 commit, da `origin/main` @ `5c143ee`). **PR NON ancora aperta** (in attesa ok utente). |
+| **Stato deploy** | **LIVE** su `catalogo-finder-kappa.vercel.app` (senza questa branch). Al merge: deploy Vercel standard. **NESSUNA migrazione, NESSUN seed.** Unica azione ops (non bloccante): rimuovere da Vercel le env `KIMI_MODEL`/`MOONSHOT_API_KEY` se presenti. |
+| **Piani/spec** | `docs/superpowers/{specs,plans}/2026-07-24-chat-streaming*`. |
 
-> **▶ RIPRENDI DA QUI — PROSSIMA SESSIONE: rifare la UI/UX della CHAT ASSISTENTE (professionale, tipo Gemini).**
+> **▶ RIPRENDI DA QUI — CHAT ASSISTENTE riscritta ✅. Branch pronto, PR DA APRIRE (serve ok utente).**
 >
-> Seguire il workflow: `/using-superpowers` → brainstorming → `/llm-council` (soprattutto per la **scelta STREAMING**)
-> → `/impeccable` (UI, **mobile-first ≤375px** + desktop) → `/writing-plans` → esecuzione TDD; `/ponytail` per il
-> codice. Partire da un **branch fresco da `origin/main`**. Vincoli CLAUDE.md: TS strict, API via tRPC/Prisma, UI
-> italiano, codici in mono, mobile-first. A fine: gate verdi + **verifica browser (desktop + mobile ≤375px)** + PR
-> (chiedere ok prima di aprire/mergiare) + AZIONI OPS.
+> **Branch:** `claude/assistant-chat-streaming-mobile-1apei1` — 20 commit da `origin/main` @ `5c143ee`.
+> **Gate:** `pnpm typecheck` · `pnpm lint` · `pnpm test` **518 passed / 9 skipped** — tutti verdi.
+> **Verifica browser:** **13/13 PASS** (Chromium desktop 1440×900 + **mobile 375×667** + viewport corto ~375×420
+> per la tastiera). 17 screenshot. Streaming verificato **intercettando la rotta SSE** con un flusso preconfezionato
+> (nessuna `GEMINI_API_KEY` in questo ambiente); conversazioni CRUD verificate contro il **DB reale**.
 >
-> **PROMPT DI APERTURA (l'utente lo incolla):**
-> > Nuova sessione. Riparti da un BRANCH FRESCO da origin/main. Segui il workflow: /using-superpowers → brainstorming
-> > → /llm-council (soprattutto per la scelta STREAMING) → /impeccable per la UI (SEMPRE mobile ≤375px + desktop) →
-> > /writing-plans → esecuzione TDD; /ponytail per il codice minimale. Vincoli CLAUDE.md: TS strict, tutte le API via
-> > tRPC/Prisma, UI in italiano, codici in mono, mobile-first. A fine lavoro: gate verdi (typecheck·lint·test·build)
-> > + verifica browser (desktop + mobile ≤375px) + PR (chiedi il mio ok prima di aprirla/mergiarla) + indica le
-> > eventuali AZIONI OPS.
-> >
-> > OBIETTIVO — Rifare la CHAT DELL'ASSISTENTE. Oggi è una bozza grezza (Fase 1c) e su mobile la UI/UX è scomoda.
-> > Voglio trasformarla in una chat AI completa e professionale, vicina a un prodotto come Gemini: streaming delle
-> > risposte, gestione conversazioni completa, ottima esperienza mobile, azioni sui messaggi, rendering ricco.
-> > Requisiti che ho in mente (da studiare e proporre insieme, poi allinearci sullo scope):
-> > 1. STREAMING delle risposte token-by-token con pulsante STOP, e stati chiari durante i tool («Sto cercando nel
-> >    catalogo…») dato che l'assistente fa ricerca prodotti prima di rispondere.
-> > 2. MOBILE-FIRST: il pannello «prodotti citati» oggi è nascosto su mobile (hidden lg) → renderlo accessibile
-> >    (bottom-sheet/tab); drawer per le conversazioni; composer che gestisce bene la tastiera.
-> > 3. GESTIONE CONVERSAZIONI completa: lista/drawer con ricerca, rinomina, elimina, raggruppo per data (oggi solo
-> >    un menu a tendina + archivia).
-> > 4. AZIONI MESSAGGIO: copia risposta, rigenera, modifica-e-reinvia, feedback 👍/👎.
-> > 5. RENDERING RICCO: markdown + copia dei blocchi di codice, card prodotto inline, codici in mono.
-> > 6. PERSISTENZA della conversazione aperta (sopravvive a refresh, es. in URL).
-> > Fai prima uno STUDIO della chat attuale (file in handoff.md §RIPRENDI DA QUI), proponi idee e tradeoff
-> > (soprattutto sull'architettura dello streaming su Vercel col nostro AIGateway + tool-use), e allineati con me su
-> > cosa fare prima di implementare.
+> **COSA È STATO FATTO (12 task SDD: implementer + reviewer per ciascuno)**
+> - **Streaming SSE end-to-end**: `GeminiChatProvider.chatStream` (`:streamGenerateContent?alt=sse`, parser
+>   frame-safe con `eventsource-parser`) → `AIGateway.chatStream` (rate-limit + breaker, **niente fallback né
+>   retry**: con un solo provider un retry a metà stream duplicherebbe i token) → `ChatService.generateStream`
+>   (tool-loop **cap 3 round** per il limite 60s di Vercel; eventi `tool|delta|done|error`; persistenza **una sola
+>   volta**) → route `POST /api/chat/stream` (Better Auth, ownership, header anti-buffering, `maxDuration=60`) →
+>   hook `useChatStream` (batch `rAF`, **STOP**, unica deroga «no fetch» confinata lì).
+> - **Gemini-only**: provider Kimi/Moonshot rimosso ovunque (codice, env, pannello key, test).
+> - **Conversazioni**: `rename` · `delete` (soft → `DELETED`) · `archive` · `list({search})` · `get` con
+>   **prodotti citati per-messaggio** (una sola query, no N+1). `send`/`retry` rimossi (il turno passa dalla route).
+> - **UI (scelte utente su anteprima interattiva): A1 + B1** → risposte AI a **tutta larghezza** (niente bolla né
+>   bordo sinistro colorato; `DESIGN.md` §Chat Message aggiornato) e **card prodotto inline** sotto la risposta
+>   (niente pannello laterale né bottom-sheet). Markdown `react-markdown`+`remark-gfm` con plugin
+>   `remark-agb-code` (codici AGB in mono anche dentro la prosa), code-block con copia, **href allowlist**
+>   anti-XSS. Composer auto-grow **Invia↔STOP** + contatore + `safe-area`. Drawer conversazioni su mobile,
+>   rail collassabile su desktop. `?c=<id>` in URL. Scroll intelligente + «scorri in fondo». Banner errore
+>   con countdown `Retry-After` e auto-retry max 2.
 >
-> **STATO ATTUALE (grezzo) — file chiave:**
-> - `src/app/(dashboard)/assistente/assistente-client.tsx` — layout 60/40, conversazioni via `<select>`, stato in `useState`.
-> - `src/components/chat/{message-bubble,chat-input,product-panel}.tsx`.
-> - Router `src/server/api/routers/chat.ts` (**create/list/get/send/retry/archive** — manca rename/delete) · service
->   `src/server/chat/service.ts` (loop tool-use `search_products`) · `src/server/ai/gateway.ts` (**NON-streaming**).
+> **BUG REALI INTERCETTATI DALLE REVIEW** (sarebbero arrivati in produzione):
+> 1. lo **STOP dell'utente veniva contato come guasto del provider** → 5 stop in 60s aprivano il circuit breaker e
+>    mettevano la chat offline **per tutti**; 2. errori `JSON.parse` **silenziati** nel parser SSE (un payload
+>    troncato spariva senza traccia); 3. lo stopgap sulla vecchia UI **rompeva l'invio in silenzio**;
+> 4. una **race** faceva riversare lo stream di una conversazione appena creata **dentro un'altra conversazione**.
 >
-> **PAIN POINTS RICOGNITI (2026-07-24):**
-> - **Mobile inusabile**: pannello prodotti `hidden lg:block` → su mobile NON si vedono i prodotti citati; header va a
->   capo; `<select>` conversazioni scomodo; altezza fissa `calc(100dvh-8.5rem)` gestisce male tastiera/chrome mobile.
-> - **Nessuno streaming**: la risposta appare tutta insieme dopo il giro `send`+invalidate (2s–2min sotto rate limit);
->   «Sta scrivendo…» è un pulse statico, non token-by-token.
-> - **Gestione conversazioni povera**: solo `<select>` + archivia. Niente lista/drawer, rename, elimina, ricerca,
->   raggruppo per data, pin (il router non ha rename/delete).
-> - **Nessuna persistenza**: `conversationId` in `useState` → si perde al refresh (come il bug archivio già risolto;
->   candidato: `?c=<id>` in URL).
-> - **Rendering basico**: solo codici AGB→mono (regex); niente markdown/liste/tabelle, niente copia code-block.
-> - **Nessuna azione messaggio**: solo retry-su-errore. Manca copia risposta, rigenera, modifica-e-reinvia, feedback.
-> - **Composer basico**: textarea 2 righe fissa (no auto-grow), niente pulsante STOP, niente hint/allegati.
-> - **Scroll**: sempre a fondo, niente pulsante «scorri in fondo».
+> **DA FARE ALLA RIPRESA**
+> 1. **Aprire la PR** (l'utente deve dare l'ok) → poi merge.
+> 2. **AZIONI OPS: nessuna migrazione, nessun seed.** Unica cosa (non bloccante): rimuovere da Vercel le env
+>    `KIMI_MODEL` / `MOONSHOT_API_KEY` se presenti. La key Gemini resta.
+> 3. **Verifica post-deploy con Gemini VERO**: in questo ambiente non c'era la key, quindi lo streaming è stato
+>    verificato con SSE simulato. In produzione controllare: token progressivi reali, stati «Sto cercando nel
+>    catalogo…», STOP che conserva il parziale, e il comportamento sotto **429** (banner + countdown).
+> 4. **Follow-up minori** (non bloccanti, raccolti nel ledger `.superpowers/sdd/progress.md`): `ListinoButton` ha
+>    touch target ~24px (<40px richiesti) — pre-esistente ma ora anche dentro le card inline; `aria-label`
+>    «Copia codice» non univoco con più blocchi nello stesso messaggio; unmount dell'hook non annulla `abortRef`
+>    (asimmetrico rispetto a `reset()`, benigno in React 19); mancano test per schema maiuscolo/`data:`/
+>    protocol-relative su `sanitizeHref`.
+> 5. **v2 rimandata esplicitamente**: feedback 👍/👎 e pin conversazioni (**richiedono migrazione**),
+>    modifica-e-reinvia, resume/reconnect dello stream, riga `STREAMING` + sweeper, alert sul tasso di 429.
 >
-> **IDEE (da vagliare in brainstorming, allinearsi su scope):**
-> - **Streaming token-by-token + STOP** — DECISIONE ARCHITETTURALE #1 (`/llm-council`): SSE via route handler vs tRPC
->   `httpBatchStreamLink`/subscription vs restare non-streaming migliorando la percezione. Cap Vercel 60s. Il gateway
->   è non-streaming e il service fa **tool-use loop** → mostrare stati «Sto cercando…» durante i tool, poi streammare
->   la risposta finale.
-> - **Layout mobile-first**: chat a tutta altezza; **drawer conversazioni** (hamburger, come la sidebar già fatta);
->   **prodotti citati come bottom-sheet/tab** accessibile su mobile; composer sticky (dvh + safe-area).
-> - **Conversazioni**: lista/drawer con titolo+data, raggruppo per data, **ricerca**, **rinomina**, **elimina**, pin
->   (estendere `chat.ts`).
-> - **Rendering ricco**: markdown + **copia code-block** + card prodotto inline; codici sempre in mono.
-> - **Azioni messaggio**: copia, **rigenera**, modifica-e-reinvia, feedback 👍/👎 (log su `ActivityLog`?).
-> - **Composer**: textarea auto-grow, Enter invia / Shift+Enter a capo (già), **STOP**, contatore, follow-up suggeriti.
-> - **Persistenza conversazione** in URL (`?c=<id>`) → refresh/back tornano alla stessa chat.
-> - **Empty-state/onboarding** accogliente; **scroll intelligente** (autoscroll solo se vicino al fondo + «scorri in fondo»).
+> **⚠️ VINCOLO ARCHITETTURALE DA NON VIOLARE**: `generateStream` **non ha `finally`** — persiste il messaggio sui
+> propri percorsi normale/errore. La cancellazione deve avvenire **solo abortendo l'`AbortSignal`**: chiamare
+> `.return()`/`.throw()` sul generatore (o cablare `ReadableStream.cancel()` a farlo) **salterebbe la scrittura in
+> DB** e perderebbe la risposta parziale dell'utente.
 >
-> **NOTA API/ambiente**: la chat gira su **Gemini** (Kimi fallback non attivo); a quota libera le risposte possono
-> impiegare 1–2 min sotto 429 (retry+backoff del gateway) → lo streaming/feedback di stato conta doppio. Per la
-> verifica browser locale serve una `GEMINI_API_KEY` reale (o si testa la UI con provider mockato/stub).
+> **⚠️ CONCENTRAZIONE VENDOR**: senza Kimi, un outage/429-storm Gemini degrada **chat E ricerca semantica**
+> (l'embedding della query è live sulla stessa key/quota). Ricerca testuale e kit deterministico restano attivi.
+> Il fix strutturale dei 429 ricorrenti è il **piano Gemini a pagamento**, non un secondo vendor.
 >
 > ---
 >
