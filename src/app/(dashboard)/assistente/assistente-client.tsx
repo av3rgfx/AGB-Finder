@@ -25,6 +25,13 @@ const EXAMPLE_PROMPTS = [
 const MAX_AUTO_RETRIES = 2;
 const DEFAULT_RETRY_DELAY_S = 5;
 
+/** STOP: il server scrive la risposta parziale solo DOPO aver rilevato la disconnessione, quindi il
+ * refetch che segue l'abort può arrivare prima di quella scrittura. Si ri-invalida `chat.get` un
+ * numero limitato di volte in attesa della riga; poi si rinuncia (comparirà al prossimo
+ * caricamento) per non tenere il turno live montato all'infinito. */
+const STOP_PERSIST_ATTEMPTS = 3;
+const STOP_PERSIST_RETRY_MS = 500;
+
 export function AssistenteClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -67,6 +74,22 @@ export function AssistenteClient() {
 
   const persistedMessages = thread.data?.messages ?? [];
   const persistedIds = new Set(persistedMessages.map((m) => m.id));
+  const lastPersistedAssistantId = (() => {
+    for (let i = persistedMessages.length - 1; i >= 0; i--) {
+      if (persistedMessages[i]!.role === "ASSISTANT") return persistedMessages[i]!.id;
+    }
+    return null;
+  })();
+
+  // STOP con del testo già ricevuto: fotografa l'ultima riga ASSISTANT presente al momento
+  // dell'abort. Finché in `chat.get` non ne compare una DIVERSA (= il parziale scritto dal server è
+  // atterrato nella cache), il turno live resta montato — altrimenti, tornando `status: "idle"` con
+  // `messageId === null`, il turno si smonterebbe e il testo parziale sparirebbe dallo schermo fino
+  // al refetch (che con quella scrittura è in corsa). Il testo non è mai perso nel DB, ma la
+  // promessa «lo STOP mantiene visibile la risposta parziale» va rispettata anche a schermo.
+  const [stopAwaitAfterId, setStopAwaitAfterId] = useState<{ id: string | null } | null>(null);
+  const awaitingStopPersist =
+    stopAwaitAfterId !== null && lastPersistedAssistantId === stopAwaitAfterId.id;
 
   // Round corrente (send o regenerate) "in volo": dallo start esplicito fino a quando la riga
   // persistita compare in `chat.get` (successo) oppure resta in errore (nessun'altra riga arriverà
@@ -76,7 +99,8 @@ export function AssistenteClient() {
   const turnInFlight =
     state.status === "streaming" ||
     state.status === "error" ||
-    (state.messageId !== null && !liveMessageLanded);
+    (state.messageId !== null && !liveMessageLanded) ||
+    awaitingStopPersist;
 
   // Rigenera ha appena cancellato l'ultima riga ASSISTANT lato server (vedi ChatService): finché la
   // cache locale non si aggiorna, nascondiamo otticamente quella riga stale per non mostrarla insieme
@@ -92,6 +116,19 @@ export function AssistenteClient() {
     }
     return -1;
   })();
+
+  // La bolla utente ottimistica serve solo finché la riga USER persistita non è comparsa in
+  // `chat.get`. Quando il turno resta "in volo" ANCHE dopo che il refetch è atterrato — turno finito
+  // in errore (il banner resta montato) o STOP in attesa della scrittura del parziale — la riga
+  // persistita e la bolla ottimistica mostrerebbero due volte lo stesso messaggio.
+  const lastDisplayed = displayedMessages[displayedMessages.length - 1];
+  const pendingUserBubble =
+    turnInFlight &&
+    pendingUserContent !== null &&
+    modeRef.current === "send" &&
+    !(lastDisplayed?.role === "USER" && lastDisplayed.content === pendingUserContent)
+      ? pendingUserContent
+      : null;
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -120,6 +157,7 @@ export function AssistenteClient() {
   const performTurn = useCallback(
     async (input: StartInput) => {
       modeRef.current = input.mode;
+      setStopAwaitAfterId(null); // nuovo turno: l'attesa del parziale di uno STOP precedente decade
       if (retryTimerRef.current) {
         clearTimeout(retryTimerRef.current);
         retryTimerRef.current = null;
@@ -177,6 +215,31 @@ export function AssistenteClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- performTurn dipende solo da start/utils, stabili
   }, [state.status, state.error, conversationId]);
 
+  // STOP dell'utente: oltre ad abortire lo stream, se c'è già del testo parziale si arma l'attesa
+  // della riga che il server sta per scrivere (vedi `awaitingStopPersist`). Senza testo il server
+  // non persiste nulla (vedi ChatService), quindi non c'è niente da attendere.
+  const handleStop = useCallback(() => {
+    stop();
+    if (state.text.length > 0) setStopAwaitAfterId({ id: lastPersistedAssistantId });
+  }, [stop, state.text, lastPersistedAssistantId]);
+
+  // Attesa attiva della riga scritta dopo lo STOP: si ri-invalida `chat.get` a intervalli, fino a
+  // STOP_PERSIST_ATTEMPTS, poi si rinuncia (il turno live si smonta e resta la cache com'è).
+  useEffect(() => {
+    if (!awaitingStopPersist || !conversationId) return;
+    let attempts = 0;
+    const id = setInterval(() => {
+      attempts += 1;
+      if (attempts > STOP_PERSIST_ATTEMPTS) {
+        clearInterval(id);
+        setStopAwaitAfterId(null);
+        return;
+      }
+      void utils.chat.get.invalidate({ conversationId });
+    }, STOP_PERSIST_RETRY_MS);
+    return () => clearInterval(id);
+  }, [awaitingStopPersist, conversationId, utils]);
+
   const handleManualRetry = useCallback(() => {
     retryCountRef.current = 0;
     if (!conversationId) return;
@@ -218,6 +281,7 @@ export function AssistenteClient() {
       setNearBottom(true);
       setPendingUserContent(null);
       setDrawerOpen(false);
+      setStopAwaitAfterId(null);
       modeRef.current = null;
       retryCountRef.current = 0;
     }
@@ -356,8 +420,8 @@ export function AssistenteClient() {
                     }
                   />
                 ))}
-                {turnInFlight && pendingUserContent !== null && modeRef.current === "send" && (
-                  <MessageTurn role="USER" content={pendingUserContent} />
+                {pendingUserBubble !== null && (
+                  <MessageTurn role="USER" content={pendingUserBubble} />
                 )}
                 {turnInFlight && state.status !== "error" && (
                   <div className="flex flex-col gap-2">
@@ -384,7 +448,7 @@ export function AssistenteClient() {
           <Composer
             onSend={(content) => void handleSend(content)}
             streaming={state.status === "streaming"}
-            onStop={stop}
+            onStop={handleStop}
             disabled={create.isPending}
           />
         </div>

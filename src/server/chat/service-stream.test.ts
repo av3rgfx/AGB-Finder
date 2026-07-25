@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { RateLimitedError } from "@/server/ai/errors";
+import { ProviderHttpError, RateLimitedError } from "@/server/ai/errors";
 import type { AIGateway } from "@/server/ai/gateway";
 import type { ProviderChunk } from "@/server/ai/providers/types";
 import type { ChatEvent } from "./events";
@@ -193,11 +193,15 @@ describe("generateStream — un round tool poi risposta finale", () => {
 describe("generateStream — STOP", () => {
   it("abort dopo del testo → persiste il parziale come SENT ed emette 'done', nessun secondo round", async () => {
     const { gateway, chatStream } = streamGateway();
+    const controller = new AbortController();
     chatStream.mockImplementationOnce(async function* () {
       yield { type: "text-delta", text: "Ciao" } as ProviderChunk;
+      // STOP dell'utente: prima il signal viene abortito, POI l'abort risale dal fetch come
+      // eccezione. L'ordine conta — è da `signal.aborted` che il service distingue uno stop
+      // voluto da un guasto del provider.
+      controller.abort();
       throw new DOMException("Aborted", "AbortError");
     });
-    const controller = new AbortController();
     const svc = new ChatService(db, gateway);
 
     const out = await drain(svc, controller.signal);
@@ -209,6 +213,25 @@ describe("generateStream — STOP", () => {
     expect(done.type).toBe("done");
     expect(assistantData()).toMatchObject({ content: "Ciao", status: "SENT" });
     expect(chatStream).toHaveBeenCalledTimes(1);
+  });
+
+  it("abort PRIMA del primo token → nessuna riga ASSISTANT fantasma in stato ERROR", async () => {
+    // L'abort NON esce sempre in modo pulito tra un round e l'altro: se l'utente preme STOP mentre
+    // il fetch al provider è aperto, risale come eccezione (AbortError) dentro il catch. Va trattato
+    // come lo stop pulito — altrimenti resta nel thread, per sempre, una risposta vuota in errore.
+    const { gateway, chatStream } = streamGateway();
+    const controller = new AbortController();
+    chatStream.mockImplementationOnce(async function* () {
+      controller.abort();
+      throw new DOMException("This operation was aborted.", "AbortError");
+    });
+    const svc = new ChatService(db, gateway);
+
+    const out = await drain(svc, controller.signal);
+
+    expect(out).toEqual([]);
+    expect(messageCreate).not.toHaveBeenCalled();
+    expect(conversationUpdate).not.toHaveBeenCalled();
   });
 
   it("abort tra due round tool (nessun testo ancora) → si ferma, nessuna riga ASSISTANT né evento terminale", async () => {
@@ -250,21 +273,28 @@ describe("generateStream — rate limit pre-primo-token", () => {
 });
 
 describe("generateStream — errore non recuperabile senza testo", () => {
-  it("persiste ASSISTANT status ERROR ed emette un evento error non recuperabile", async () => {
+  it("persiste ASSISTANT status ERROR con copia UTENTE in italiano, senza il messaggio grezzo del provider", async () => {
     const { gateway, chatStream } = streamGateway();
+    // Errore realistico del provider: messaggio in inglese con dettagli interni. Non deve mai
+    // arrivare alla UI (italiana) né finire in colonna `errorMessage`, ma resta nei log.
+    const raw = new ProviderHttpError("gemini", 429);
     chatStream.mockImplementationOnce(async function* () {
-      throw new Error("Provider giù");
+      throw raw;
     });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const svc = new ChatService(db, gateway);
 
     const out = await drain(svc);
 
-    expect(out).toEqual([{ type: "error", recoverable: false, message: "Provider giù" }]);
+    expect(out).toEqual([{ type: "error", recoverable: false, message: "Errore imprevisto" }]);
     expect(assistantData()).toMatchObject({
       status: "ERROR",
-      errorMessage: "Provider giù",
+      errorMessage: "Errore imprevisto",
       content: "",
     });
+    expect(JSON.stringify(out)).not.toContain("gemini: HTTP 429");
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("turno fallito"), raw);
+    warn.mockRestore();
   });
 });
 

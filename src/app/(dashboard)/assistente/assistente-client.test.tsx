@@ -353,6 +353,124 @@ describe("AssistenteClient — handover bolla live → riga persistita", () => {
   });
 });
 
+describe("AssistenteClient — STOP mantiene visibile la risposta parziale", () => {
+  /** Invia un messaggio e porta lo stream a "streaming" con del testo già ricevuto. */
+  async function sendAndStream(text: string) {
+    fireEvent.change(screen.getByLabelText("Messaggio per l'assistente"), {
+      target: { value: "Cerca cerniere" },
+    });
+    fireEvent.keyDown(screen.getByLabelText("Messaggio per l'assistente"), { key: "Enter" });
+    act(() => setStream({ status: "streaming", text: "" }));
+    await flush();
+    act(() => setStream({ status: "streaming", text }));
+  }
+
+  it("dopo lo STOP il parziale resta a schermo finché la riga persistita non arriva", async () => {
+    sp = new URLSearchParams("c=conv1");
+    setThread({ conversation: { id: "conv1", title: "Chat" }, messages: [] });
+    render(<AssistenteClient />);
+    await sendAndStream("Ecco le cerniere par");
+
+    // STOP: il vero hook torna a `idle` mantenendo il testo accumulato, MA senza `messageId`
+    // (nessun evento `done` è arrivato: la fetch è stata abortita).
+    fireEvent.click(screen.getByRole("button", { name: "Interrompi" }));
+    act(() => setStream({ status: "idle", text: "Ecco le cerniere par", messageId: null }));
+    expect(store.stopMock).toHaveBeenCalled();
+
+    // Il refetch atterra PRIMA che il server abbia scritto il parziale: c'è solo la riga USER.
+    // È esattamente la corsa che faceva sparire il testo dallo schermo.
+    act(() =>
+      setThread({
+        conversation: { id: "conv1", title: "Chat" },
+        messages: [
+          { id: "u1", role: "USER", content: "Cerca cerniere", status: "SENT", errorMessage: null, products: [] },
+        ],
+      }),
+    );
+    expect(screen.getByText("Ecco le cerniere par")).toBeTruthy();
+    // …e senza doppiare il messaggio utente (bolla ottimistica + riga persistita).
+    expect(screen.getAllByText("Cerca cerniere")).toHaveLength(1);
+
+    // Arriva la scrittura del server: la riga persistita prende il posto della bolla live.
+    act(() =>
+      setThread({
+        conversation: { id: "conv1", title: "Chat" },
+        messages: [
+          { id: "u1", role: "USER", content: "Cerca cerniere", status: "SENT", errorMessage: null, products: [] },
+          {
+            id: "a1",
+            role: "ASSISTANT",
+            content: "Ecco le cerniere par",
+            status: "SENT",
+            errorMessage: null,
+            products: [],
+          },
+        ],
+      }),
+    );
+    expect(screen.getAllByText("Ecco le cerniere par")).toHaveLength(1);
+    expect(screen.getAllByText("Cerca cerniere")).toHaveLength(1);
+  });
+
+  it("STOP prima del primo token non lascia montato un turno vuoto", async () => {
+    // Senza testo il server non persiste nulla: non c'è nessuna riga da attendere, quindi il turno
+    // live deve smontarsi subito (altrimenti resterebbe una bolla assistant vuota per sempre).
+    sp = new URLSearchParams("c=conv1");
+    setThread({ conversation: { id: "conv1", title: "Chat" }, messages: [] });
+    render(<AssistenteClient />);
+    await sendAndStream("");
+
+    fireEvent.click(screen.getByRole("button", { name: "Interrompi" }));
+    act(() => setStream({ status: "idle", text: "", messageId: null }));
+    act(() =>
+      setThread({
+        conversation: { id: "conv1", title: "Chat" },
+        messages: [
+          { id: "u1", role: "USER", content: "Cerca cerniere", status: "SENT", errorMessage: null, products: [] },
+        ],
+      }),
+    );
+
+    expect(screen.getAllByText("Cerca cerniere")).toHaveLength(1);
+    expect(document.querySelectorAll('[data-role="ASSISTANT"]')).toHaveLength(0);
+  });
+});
+
+describe("AssistenteClient — banner d'errore", () => {
+  it("non mostra due volte il messaggio utente quando la riga persistita è già in cache", async () => {
+    sp = new URLSearchParams("c=conv1");
+    setThread({ conversation: { id: "conv1", title: "Chat" }, messages: [] });
+    render(<AssistenteClient />);
+
+    fireEvent.change(screen.getByLabelText("Messaggio per l'assistente"), {
+      target: { value: "Cerca cerniere" },
+    });
+    fireEvent.keyDown(screen.getByLabelText("Messaggio per l'assistente"), { key: "Enter" });
+    act(() => setStream({ status: "streaming", text: "" }));
+    await flush();
+
+    // Il turno fallisce (errore NON recuperabile: nessun auto-retry) e il refetch porta la riga
+    // USER che la route aveva già persistito prima di iniziare lo stream.
+    act(() =>
+      setStream({
+        status: "error",
+        error: { recoverable: false, message: "Errore imprevisto" },
+      }),
+    );
+    act(() =>
+      setThread({
+        conversation: { id: "conv1", title: "Chat" },
+        messages: [
+          { id: "u1", role: "USER", content: "Cerca cerniere", status: "SENT", errorMessage: null, products: [] },
+        ],
+      }),
+    );
+
+    expect(screen.getByRole("alert").textContent).toContain("Errore imprevisto");
+    expect(screen.getAllByText("Cerca cerniere")).toHaveLength(1);
+  });
+});
+
 describe("AssistenteClient — elimina/archivia la conversazione attiva", () => {
   it("eliminare la conversazione attiva azzera ?c=", () => {
     sp = new URLSearchParams("c=conv1");

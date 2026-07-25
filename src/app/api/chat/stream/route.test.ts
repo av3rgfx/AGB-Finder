@@ -88,7 +88,7 @@ describe("POST /api/chat/stream", () => {
   });
 
   it("body non-JSON → 400", async () => {
-    getSession.mockResolvedValue({ user: { id: "u1" } });
+    getSession.mockResolvedValue({ user: { id: "u1", role: "AGENT" } });
     const res = await POST(
       new Request("http://x/api/chat/stream", { method: "POST", body: "non-json" }),
     );
@@ -96,21 +96,21 @@ describe("POST /api/chat/stream", () => {
   });
 
   it("body che fallisce lo zod schema → 400", async () => {
-    getSession.mockResolvedValue({ user: { id: "u1" } });
+    getSession.mockResolvedValue({ user: { id: "u1", role: "AGENT" } });
     const res = await POST(req({ conversationId: "c1", mode: "boh" }));
     expect(res.status).toBe(400);
     expect(conversationFindFirst).not.toHaveBeenCalled();
   });
 
   it("mode 'send' senza content → 400 (non tocca il DB)", async () => {
-    getSession.mockResolvedValue({ user: { id: "u1" } });
+    getSession.mockResolvedValue({ user: { id: "u1", role: "AGENT" } });
     const res = await POST(req({ conversationId: "c1", mode: "send" }));
     expect(res.status).toBe(400);
     expect(conversationFindFirst).not.toHaveBeenCalled();
   });
 
   it("conversazione non trovata o non di proprietà → 404", async () => {
-    getSession.mockResolvedValue({ user: { id: "u1" } });
+    getSession.mockResolvedValue({ user: { id: "u1", role: "AGENT" } });
     conversationFindFirst.mockResolvedValue(null);
     const res = await POST(req({ conversationId: "c1", content: "ciao", mode: "send" }));
     expect(res.status).toBe(404);
@@ -121,7 +121,7 @@ describe("POST /api/chat/stream", () => {
   });
 
   it("send valido → 200 SSE, persiste il messaggio utente e rititola la conversazione di default", async () => {
-    getSession.mockResolvedValue({ user: { id: "u1" } });
+    getSession.mockResolvedValue({ user: { id: "u1", role: "AGENT" } });
     conversationFindFirst.mockResolvedValue({ id: "c1", title: "Nuova Conversazione" });
     generateStreamImpl = () =>
       gen([
@@ -151,7 +151,7 @@ describe("POST /api/chat/stream", () => {
   });
 
   it("send su conversazione già titolata → non ritocca il titolo", async () => {
-    getSession.mockResolvedValue({ user: { id: "u1" } });
+    getSession.mockResolvedValue({ user: { id: "u1", role: "AGENT" } });
     conversationFindFirst.mockResolvedValue({ id: "c1", title: "Anta ribalta ARTECH" });
 
     const res = await POST(req({ conversationId: "c1", content: "ciao", mode: "send" }));
@@ -161,7 +161,7 @@ describe("POST /api/chat/stream", () => {
   });
 
   it("mode 'regenerate' → elimina l'ultimo ASSISTANT, non persiste un messaggio utente", async () => {
-    getSession.mockResolvedValue({ user: { id: "u1" } });
+    getSession.mockResolvedValue({ user: { id: "u1", role: "AGENT" } });
     conversationFindFirst.mockResolvedValue({ id: "c1", title: "Anta ribalta ARTECH" });
 
     const res = await POST(req({ conversationId: "c1", mode: "regenerate" }));
@@ -173,9 +173,10 @@ describe("POST /api/chat/stream", () => {
   });
 
   it("RateLimitedError durante lo streaming → evento error recuperabile", async () => {
-    getSession.mockResolvedValue({ user: { id: "u1" } });
+    getSession.mockResolvedValue({ user: { id: "u1", role: "AGENT" } });
     conversationFindFirst.mockResolvedValue({ id: "c1", title: "Anta ribalta ARTECH" });
     generateStreamImpl = () => throwingGen(new RateLimitedError());
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     const res = await POST(req({ conversationId: "c1", mode: "regenerate" }));
     const events = await readEvents(res);
@@ -183,21 +184,26 @@ describe("POST /api/chat/stream", () => {
     expect(events).toEqual([
       { type: "error", recoverable: true, message: "Assistente momentaneamente occupato" },
     ]);
+    warn.mockRestore();
   });
 
-  it("errore generico durante lo streaming → evento error non-recuperabile", async () => {
-    getSession.mockResolvedValue({ user: { id: "u1" } });
+  it("errore generico durante lo streaming → evento error non-recuperabile, messaggio grezzo solo nei log", async () => {
+    getSession.mockResolvedValue({ user: { id: "u1", role: "AGENT" } });
     conversationFindFirst.mockResolvedValue({ id: "c1", title: "Anta ribalta ARTECH" });
-    generateStreamImpl = () => throwingGen(new Error("boom"));
+    const raw = new Error("This operation was aborted.");
+    generateStreamImpl = () => throwingGen(raw);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     const res = await POST(req({ conversationId: "c1", mode: "regenerate" }));
     const events = await readEvents(res);
 
     expect(events).toEqual([{ type: "error", recoverable: false, message: "Errore imprevisto" }]);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("fuori dal generatore"), raw);
+    warn.mockRestore();
   });
 
   it("passa conversationId, agentId e req.signal a generateStream", async () => {
-    getSession.mockResolvedValue({ user: { id: "u1" } });
+    getSession.mockResolvedValue({ user: { id: "u1", role: "AGENT" } });
     conversationFindFirst.mockResolvedValue({ id: "c1", title: "Anta ribalta ARTECH" });
     const spy = vi.fn(() => gen([]));
     generateStreamImpl = spy;

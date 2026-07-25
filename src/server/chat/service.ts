@@ -5,6 +5,7 @@ import { RateLimitedError } from "@/server/ai/errors";
 import type { ChatMessage, ToolCall } from "@/server/ai/providers/types";
 import type { ChatEvent } from "./events";
 import { toolLabel } from "./events";
+import { CHAT_ERROR_BUSY, chatUserFacingError } from "./error-message";
 import { resolveChatProducts } from "./products";
 import { TOOL_DECLARATIONS, executeTool, type ToolDb } from "./tools";
 
@@ -135,10 +136,19 @@ export class ChatService {
     } catch (error) {
       if (error instanceof RateLimitedError && finalText.length === 0) {
         // Pre-primo-token: nessuna riga ASSISTANT, il client ritenta con lo stesso invio.
-        yield { type: "error", recoverable: true, retryAfter: 20, message: "Assistente momentaneamente occupato" };
+        yield { type: "error", recoverable: true, retryAfter: 20, message: CHAT_ERROR_BUSY };
         return;
       }
-      errored = { message: error instanceof Error ? error.message : "Errore sconosciuto" };
+      // STOP dell'utente: l'abort risale dal fetch al provider come eccezione, ma NON è un guasto —
+      // stesso esito del break tra un round e l'altro (sopra). Senza questa guardia uno STOP premuto
+      // prima del primo token lascerebbe nel thread una riga ASSISTANT `status: "ERROR"` fantasma,
+      // permanente e vuota; col parziale già ricevuto si persiste invece normalmente come SENT.
+      if (!signal.aborted) {
+        // Il messaggio grezzo del provider (inglese, dettagli interni) resta solo nei log:
+        // all'utente va la copia italiana di `chatUserFacingError`.
+        console.warn("ChatService.generateStream: turno fallito", error);
+        errored = { message: chatUserFacingError(error).message };
+      }
     }
 
     // Persistenza unica a fine turno (niente riga PENDING/STREAMING intermedia, niente sweeper —

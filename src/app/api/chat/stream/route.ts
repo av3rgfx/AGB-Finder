@@ -4,7 +4,7 @@ import { getAIGateway } from "@/server/ai/gateway";
 import { ChatService } from "@/server/chat/service";
 import { encodeSSE } from "@/server/chat/stream-encode";
 import { streamBodySchema, DEFAULT_CONVERSATION_TITLE } from "@/server/chat/stream-body";
-import { RateLimitedError } from "@/server/ai/errors";
+import { chatUserFacingError } from "@/server/chat/error-message";
 import type { ChatEvent } from "@/server/chat/events";
 
 // Unica eccezione al vincolo "tutte le API via tRPC" (vedi CLAUDE.md): lo streaming SSE non è
@@ -75,12 +75,10 @@ export async function POST(req: Request): Promise<Response> {
           send(event);
         }
       } catch (error) {
-        const recoverable = error instanceof RateLimitedError;
-        send({
-          type: "error",
-          recoverable,
-          message: recoverable ? "Assistente momentaneamente occupato" : "Errore imprevisto",
-        });
+        // Errore uscito DAL generatore (il ChatService gestisce e logga i propri): niente
+        // dettagli grezzi al client, solo la copia italiana condivisa con il service.
+        console.warn("chat/stream: errore fuori dal generatore", error);
+        send({ type: "error", ...chatUserFacingError(error) });
       } finally {
         if (!closed) {
           try {
