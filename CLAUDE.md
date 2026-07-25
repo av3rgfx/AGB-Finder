@@ -243,4 +243,37 @@ mobile; `?c=` in URL; scroll intelligente; banner errore con countdown `Retry-Af
 stopgap, e una **race che riversava lo stream in un'altra conversazione**. Gate verdi (typecheck·lint·**test 518**)
 + **verifica browser 13/13** (Chromium desktop + **375px** + viewport corto, 17 screenshot). **ZERO migrazioni,
 ZERO azioni ops DB** (solo: rimuovere da Vercel le env `KIMI_API_KEY`/`KIMI_MODEL` se presenti).
-Spec/piano: `docs/superpowers/{specs,plans}/2026-07-24-chat-streaming*`.
+Spec/piano: `docs/superpowers/{specs,plans}/2026-07-24-chat-streaming*`. — **PR #32 MERGIATA** in `main`.
++ **BONIFICA KIT ARTECH LEGNO ✅ (branch `claude/kit-engine-study-wfo2hq`, PR da aprire)**: tutti i moduli kit
+riverificati riga per riga contro il **listino AGB 2026** (959 pagine, schemi di montaggio inclusi). Esito: dei
+**4 template attivi, 3 producevano distinte non ordinabili**. 8 task TDD, un commit per task.
+**(1) PVC → `isActive:false` + modulo che rifiuta**: i 4 codici material-specific (`A51921.36.04`,
+`A50712.00.00`, `A50922.07.00`, `A50812.07.00`) compaiono **solo** nelle pagine-certificato ift p0013 (11) e
+p0395 (393), **senza prezzo**; altri 7 (`A51921.36.01/.02/.03`, famiglia sx `A51922.36.0N`) non esistono nemmeno
+lì — dedotti per simmetria. Ogni distinta PVC usciva con **4 righe su 12 senza prezzo**. Il PVC vero è nel
+«listino PVC e ALLUMINIO» (p0849 (847)). **(2) BATTENTE → `isActive:false` + rifiuto**: lo schema p0416 (414) ha
+**21 voci**, il modulo ne generava **5** — mancava l'intero appoggio della cerniera superiore, **l'anta non era
+appesa**; schema **composito** (tre alternative di cerniera) → non decidibile dal listino. `BATTENTE_CREMONESI`
+conservata, verificata contro p0429 (427). **(3) Pilota anta-ribalta**: supporto cerniera `A50801.01.0N` →
+**`A50805.05.DX/.SX`** (il primo è «Aria 4 - Interasse 9» battuta 18 su un serramento aria 12/interasse
+13/battuta 20; p0451 (449) + certificato ift; stesso prezzo) · banda cremonese GR02 `650→610` (p0424 (422)) ·
+descrizione incontro ribalta 9x18. Squadra angolare e formula incontri **non** toccate (fonte autorevole a
+favore) → domande esperto. **(4) `PILOT_GEOMETRY` + `assertPilotGeometry`**: aria/interasse/battuta/sede erano
+raccolti, validati e **ignorati** (aria 4 riceveva in silenzio i codici dell'aria 12) → ora i moduli rifiutano.
+**(5-7) VASISTAS riscritto** come trascrizione dello schema p0418 (416): forbici dalla tabella per **LBB** (prima
+per altezza), via **DSS + incontro DSS** (non sono fra le 13 voci), dentro le **cerniere** voci 10-11-12 e il 2°
+terminale, supporto/perno legati alle cerniere portanti, **`sashWeightKg` opzionale** (3ª cerniera 70-80 kg,
+portata 40 kg/forbice) → golden **13 righe / 19 pezzi**. **(8) Docs**: schede `kit-assunzioni/` riscritte come
+**esito** + nuova `legno.md` con l'**indice globale delle 10 domande** per l'esperto (i commenti nel codice ci
+rimandano per numero). **Collaterale: parser catalogo allargato** ai codici con segmenti alfanumerici
+(`.DX/.SX/.CR/.FM`, cilindri `CG…`) → **+1.297 codici a prezzo, 6.191 → 7.488**.
+**TIPOLOGIE ATTIVE: anta-ribalta LEGNO** (golden 16 righe/21 pezzi/90,20 € con chiusure supplementari) **e
+vasistas LEGNO** (13/19, PROVVISORIO); **battente e PVC disattivati** in attesa di dati; **ALLUMINIO** resta
+gated. Gate verdi (typecheck·lint·**test 589/11 skip**) + verifica browser wizard desktop e **375px**
+(8 screenshot; corretta la griglia materiali `grid-cols-3` → `grid-cols-1 sm:grid-cols-3`).
+**🔴 AZIONI OPS AL MERGE (obbligatorie)**: un run completo di **«Ops — Neon»** = migrazione
+**`20260725213059_kit_sash_weight`** + **RE-IMPORT del catalogo** (senza, `A50805.05.DX/.SX` non è a DB → riga
+senza prezzo e golden **90,20 → 85,76 €**) + **`db:seed:kit`** (è ciò che disattiva davvero PVC e battente) +
+`embed:products`; poi **audit di `kit_requests`** (se sono uscite distinte PVC/battente a clienti reali, avvisare
+gli agenti). Difetto collaterale segnalato e **non** corretto: `dedupeRows` last-wins in `map-product.ts`.
+Spec/piano: `docs/superpowers/{specs,plans}/2026-07-25-kit-bonifica-artech-legno*`.

@@ -29,9 +29,9 @@ type Side = KitInput["openingSide"];
  * le 9 bande coincidono con il listino (GR02 parte da 610, non da 650 —
  * corretto il 2026-07-25: le altezze 620-659 venivano rifiutate a torto).
  * Escluse .17 («07bis», HBB 1634-1810 ma altezza maniglia 1050 anziché 500, si
- * sovrappone ambiguamente a .07) e .31/.41 (p0425, GR1: selezione per HBB E per
+ * sovrappone ambiguamente a .07) e .31/.41 (p0425 (423), GR1: selezione per HBB E per
  * LBB, schema diverso). L'esclusione delle .31/.41 lascia scoperto l'intervallo
- * HBB 357-609: domanda 4 per l'esperto.
+ * HBB 357-609: domanda 7 per l'esperto in docs/superpowers/kit-assunzioni/legno.md.
  */
 const CREMONESI = [
   { minH: 610, maxH: 810, code: "A50122.15.02" },
@@ -97,7 +97,8 @@ const FISSI = [
   // A51400.05.70 = «Incontri Ribalta · Aria 12 · ZAMA · 9x18 viti dritte», p0471
   // (469). La descrizione diceva «13x24»: era il formato di A51400.CR.70, stesso
   // prezzo. Il kit è oggi tutto su asse 9 per gli incontri e interasse 13 per
-  // bracci/squadre/cerniere: domanda 3 per l'esperto.
+  // bracci/squadre/cerniere: domanda 3 (punto b) per l'esperto in
+  // docs/superpowers/kit-assunzioni/legno.md.
   {
     position: "incontro-ribalta",
     code: "A51400.05.70",

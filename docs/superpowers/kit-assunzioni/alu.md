@@ -5,6 +5,12 @@
 > Si attiva quando l'esperto fornisce i dati (risposte sotto) → popolare il modulo,
 > `isActive:true`, bump `version`.
 
+⚠️ **Numerazione.** Le domande 1-13 di questa scheda sono la lista della Fase 1g ed è una
+numerazione **locale a questo file**. La numerazione **globale** delle domande per
+l'esperto — quella citata per numero dai commenti nel codice — è indicizzata in
+`legno.md`; in quella lista l'alluminio sta tutto dentro la **domanda 6** («il listino PVC
+e ALLUMINIO citato a p0849 (847)»), che sblocca insieme alluminio e PVC.
+
 ## Perché è gated (finding dall'estrazione del listino 2026)
 
 Il listino AGB 2026 disponibile **non contiene una composizione ALLUMINIO** per

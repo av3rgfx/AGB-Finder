@@ -9,14 +9,107 @@
 
 | Campo | Valore |
 |-------|--------|
-| **Data** | 2026-07-25 (CHAT ASSISTENTE riscritta — 12/12 task completi, gate verdi, verifica browser 13/13; **PR da aprire**) |
+| **Data** | 2026-07-25 (pomeriggio) — **BONIFICA KIT ARTECH LEGNO**: 8 task TDD completi, gate verdi; **PR da aprire** |
 | **Fase in corso** | Fase 1 — MVP Gestionale |
-| **Sotto-fase** | …#30 · **CHAT ASSISTENTE PROFESSIONALE ✅**: streaming SSE + STOP · Gemini-only (Kimi rimosso) · conversazioni complete (rinomina/elimina/archivia/cerca) · markdown + card prodotto inline · mobile-first (drawer, composer, 375px) · `?c=` in URL. |
-| **Branch git** | `claude/assistant-chat-streaming-mobile-1apei1` (20 commit, da `origin/main` @ `5c143ee`). **PR NON ancora aperta** (in attesa ok utente). |
-| **Stato deploy** | **LIVE** su `catalogo-finder-kappa.vercel.app` (senza questa branch). Al merge: deploy Vercel standard. **NESSUNA migrazione, NESSUN seed.** Unica azione ops (non bloccante): rimuovere da Vercel le env `KIMI_API_KEY`/`KIMI_MODEL` se presenti. |
-| **Piani/spec** | `docs/superpowers/{specs,plans}/2026-07-24-chat-streaming*`. |
+| **Sotto-fase** | …#32 (chat) · **BONIFICA KIT ✅**: i moduli kit riverificati riga per riga contro il **listino AGB 2026**. PVC e battente **spenti** (distinte non ordinabili), vasistas **riscritto** dallo schema p0418 (416), pilota anta-ribalta corretto, guardia sulle geometrie non coperte. |
+| **Branch git** | `claude/kit-engine-study-wfo2hq` (9 commit, da `origin/main` @ `2216b3c`). **PR NON ancora aperta.** |
+| **Stato deploy** | **LIVE** su `catalogo-finder-kappa.vercel.app` (senza questa branch). Al merge servono **AZIONI OPS OBBLIGATORIE** — 1 migrazione + **re-import catalogo** + seed kit: senza, i template restano attivi e il golden perde 4,44 €. Vedi il riquadro qui sotto. |
+| **Piani/spec** | `docs/superpowers/{specs,plans}/2026-07-25-kit-bonifica-artech-legno*`. |
 
-> **▶ RIPRENDI DA QUI — CHAT ASSISTENTE riscritta ✅. Branch pronto, PR DA APRIRE (serve ok utente).**
+> **▶ RIPRENDI DA QUI — BONIFICA KIT ARTECH LEGNO ✅ (8/8 task). Branch pronto, PR DA APRIRE.**
+>
+> **Branch:** `claude/kit-engine-study-wfo2hq` — 9 commit da `origin/main` @ `2216b3c` (merge PR #32, chat).
+> **Gate (eseguiti a fine sessione):** `pnpm typecheck` ✅ · `pnpm lint` ✅ («No ESLint warnings or errors») ·
+> `pnpm test` ✅ **589 passed / 11 skipped** su 93 file (2 file skipped = integration gated su
+> `INTEGRATION_DATABASE_URL`). Erano **518** prima della bonifica: **+71 test**.
+>
+> **PERCHÉ.** Studio di **tutti** i moduli kit contro il **listino AGB 2026** (959 pagine, riletto pagina per
+> pagina, schemi di montaggio inclusi). Esito: dei **4 template attivi in produzione, 3 producevano distinte che
+> il cliente non può ordinare**. Non è stile: una distinta incompleta fa perdere l'ordine; una completa ma
+> sbagliata fa montare la ferramenta sbagliata.
+>
+> **COSA È CAMBIATO (un commit per task)**
+> 1. **PVC → SPENTO** (`isActive:false` + modulo che rifiuta). I 4 codici material-specific (`A51921.36.04`,
+>    `A50712.00.00`, `A50922.07.00`, `A50812.07.00`) esistono **solo** nelle pagine-certificato ift p0013 (11) e
+>    p0395 (393), **senza prezzo**; altri 7 (`A51921.36.01/.02/.03` e l'intera famiglia sx `A51922.36.0N`) non
+>    esistono nemmeno lì — erano dedotti per simmetria. Ogni distinta PVC usciva con **4 righe su 12 senza
+>    prezzo** e totale sottostimato. Il PVC vero sta nel «listino PVC e ALLUMINIO» (rimando a p0849 (847)).
+> 2. **BATTENTE → SPENTO.** Lo schema p0416 (414) ha **21 voci**, il modulo ne generava **5**: mancava l'intero
+>    appoggio della cerniera superiore → **l'anta non aveva punto di sospensione in alto**. Non correggibile dal
+>    solo listino (schema **composito**, tre alternative di cerniera). `BATTENTE_CREMONESI` resta nel file,
+>    **verificata** contro p0429 (427).
+> 3. **Pilota anta-ribalta — 3 correzioni provate.** Supporto cerniera `A50801.01.0N` → **`A50805.05.DX/.SX`**
+>    (il primo è «Aria 4 - Interasse 9» battuta 18, montato su un serramento aria 12 / interasse 13 / battuta 20;
+>    doppia conferma p0451 (449) + certificato ift «ARTech Legno»; **stesso prezzo**) · banda cremonese GR02
+>    `minH 650 → 610` (p0424 (422): le altezze 620-659 erano rifiutate a torto) · descrizione dell'incontro
+>    ribalta allineata al codice (9x18, non 13x24). **Non** toccate squadra angolare e formula incontri: hanno una
+>    fonte autorevole a favore dello stato attuale → domande 2 e 3 per l'esperto.
+> 4. **Guardia geometria.** `airGapMm`/`axisOffsetMm`/`rebateMm`/`seatMm` erano raccolti, validati e **ignorati**:
+>    un agente poteva chiedere aria 4 e ricevere in silenzio i codici dell'aria 12. Ora `PILOT_GEOMETRY` +
+>    `assertPilotGeometry()` in `artech-legno-shared.ts`, chiamata dai due moduli attivi.
+> 5. **VASISTAS riscritto** (task 5-7) come **trascrizione** dello schema p0418 (416): forbici dalla tabella
+>    «Posizionamento forbici» per **LBB** (prima si sceglievano per altezza) · via **DSS + incontro DSS** (non
+>    sono fra le 13 voci: venivano da una NB scritta per l'anta-ribalta) · dentro le **cerniere** voci 10-11-12
+>    (senza, l'anta non era appesa) e il **secondo terminale** · supporto forbice/perno legati alle **cerniere
+>    portanti** · `sashWeightKg` **opzionale** per le due NB sul peso (terza cerniera 70-80 kg; portata 40 kg per
+>    forbice). Golden nuovo: **13 righe / 19 pezzi**.
+> 6. **Documentazione** (task 8): schede `kit-assunzioni/` riscritte come **esito** della verifica (non più liste di
+>    domande che presupponevano l'esistenza dei codici) + nuova `legno.md` per il pilota, che indicizza le
+>    **10 domande per l'esperto** con numerazione **globale** (i commenti nel codice ci rimandano per numero).
+>
+> **TIPOLOGIE ATTIVE DOPO QUESTA SESSIONE:** **anta-ribalta LEGNO** (golden 16 righe / 21 pezzi / 90,20 € con
+> chiusure supplementari; 12/17 senza) e **vasistas LEGNO** (13/19, PROVVISORIO). **Battente e PVC disattivati**
+> in attesa di dati; **alluminio** resta gated dalla Fase 1g. Il wizard mostra solo le due attive, con hint che
+> spiegano **perché** le altre no.
+>
+> **🔴 AZIONI OPS AL MERGE — OBBLIGATORIE (senza, la produzione resta rotta)**
+> 1. **Lanciare «Ops — Neon» (run completo).** Fa, nell'ordine, tutto ciò che serve:
+>    - **`migrate deploy`** → nuova migrazione **`20260725213059_kit_sash_weight`** (`kit_requests.sash_weight_kg`,
+>      nullable). È l'unica migrazione di questa sessione.
+>    - **`import:agb` = RE-IMPORT DEL CATALOGO.** Il **parser è stato allargato** ai codici con segmenti
+>      alfanumerici (`.DX/.SX/.FM/.CR/.DC`, cilindri `CG0016.24.24`): **+1.297 codici a prezzo, 6.191 → 7.488**.
+>      Fra i codici recuperati c'è **`A50805.05.DX/.SX`, il supporto cerniera del kit**. ⚠️ **Senza il re-import
+>      quel codice non è a catalogo**: la riga esce **senza prezzo** (con warning) e il **totale del golden scende
+>      da 90,20 € a 85,76 €** (−4,44 €).
+>    - **`db:seed:kit`** → è ciò che **disattiva davvero** i template PVC e battente su Neon (e aggiorna le
+>      descrizioni). Il codice da solo non basta.
+>    - **`embed:products`** → gira comunque in coda al workflow e copre i ~1.297 codici nuovi (idempotente).
+> 2. **Audit delle distinte già emesse** (serve accesso al DB):
+>    ```sql
+>    SELECT window_type, material, COUNT(*), MIN(created_at), MAX(created_at)
+>    FROM kit_requests GROUP BY 1,2 ORDER BY 3 DESC;
+>    ```
+>    Se sono uscite distinte **PVC** o **battente** verso clienti reali, la priorità diventa **avvisare gli
+>    agenti**, non il codice.
+> 3. **Verifica post-deploy**: generare il kit anta-ribalta del golden (550×1820, SX, ARGENTO, chiusure ON) →
+>    **16 righe / 21 pezzi / 90,20 €, zero warning**; generare una vasistas (600×1000) → **13 righe / 19 pezzi**;
+>    provare PVC/battente dal wizard → devono essere **non selezionabili**.
+>
+> **VERIFICA BROWSER (fatta al Task 7):** wizard su Chromium **desktop + 375px**, 8 screenshot (tipologia,
+> dimensioni con il nuovo campo «Peso anta», riepilogo, errore). Rilievo mobile-first emerso e corretto: la
+> griglia dei materiali era `grid-cols-3` senza breakpoint → a 375px gli hint dei materiali gated sfondavano il
+> bordo; ora `grid-cols-1 sm:grid-cols-3`.
+>
+> **DIFETTO COLLATERALE, SEGNALATO E NON CORRETTO (fuori scope):** `dedupeRows` in
+> `src/server/catalog/map-product.ts` tiene l'**ultima** occorrenza di ogni codice. 921 codici compaiono su più
+> pagine e 609 cambiano categoria: la cremonese del golden `A50122.08.02` è a DB come *galileo-pro-alluminio,
+> pag. 868* invece che *ARTECH, pag. 424* → «Visualizza nel listino» apre la pagina sbagliata per 113 codici
+> ARTECH e il filtro categoria in Archivio li classifica male. Fix piccolo (preferire la **prima** occorrenza, o
+> quella con categoria coerente col prefisso del codice), ma è un cambio al catalogo, non al kit.
+>
+> **DOMANDE PER L'ESPERTO AGB — 10, numerazione globale, indice in `docs/superpowers/kit-assunzioni/legno.md`.**
+> Le bloccanti: **1** (battente: quale terna di cerniere → riattiva la tipologia) e **6** (il «listino PVC e
+> ALLUMINIO» → sblocca PVC **e** alluminio). Le altre riguardano codice già scritto: **2** squadra angolare
+> (quattro varianti a listino, dalla base `A50902.36` a 5,77 € alla `A50904.36` in uso a 9,83 €), **3** incontri
+> (quantità e asse 9 vs 13), **4** sede 30 vs 18, **5** varianti delle cerniere vasistas, **7** intervallo
+> HBB 357-609 scoperto, **8** voce 7 del vasistas, **9** GR00, **10** offset altezza→HBB.
+>
+> **NON fatto di proposito (fuori scope):** anta doppia (schema p0407 (405) «sede 30 mm», 31 voci, catenaccio
+> passante) · ricostruzione del PVC (serve il listino separato) · sede 30 · fix `dedupeRows`.
+>
+> ---
+>
+> **▶ STORICO — sessione 2026-07-25 (mattina): CHAT ASSISTENTE riscritta ✅ — PR #32 MERGIATA in `main`.**
 >
 > **Branch:** `claude/assistant-chat-streaming-mobile-1apei1` — 20 commit da `origin/main` @ `5c143ee`.
 > **Gate:** `pnpm typecheck` · `pnpm lint` · `pnpm test` **518 passed / 9 skipped** — tutti verdi.
@@ -49,7 +142,7 @@
 > 4. una **race** faceva riversare lo stream di una conversazione appena creata **dentro un'altra conversazione**.
 >
 > **DA FARE ALLA RIPRESA**
-> 1. **Aprire la PR** (l'utente deve dare l'ok) → poi merge.
+> 1. ~~Aprire la PR~~ → **fatta: PR #32 MERGIATA** in `main` @ `2216b3c` (è la base della sessione kit).
 > 2. **AZIONI OPS: nessuna migrazione, nessun seed.** Unica cosa (non bloccante): rimuovere da Vercel le env
 >    `KIMI_API_KEY` / `KIMI_MODEL` se presenti. La key Gemini resta.
 > 3. **Verifica post-deploy con Gemini VERO**: in questo ambiente non c'era la key, quindi lo streaming è stato
@@ -317,9 +410,10 @@
 >    la generazione dà «Nessun template attivo».
 > 3. **Integration gated**: girare `engine.integration.test.ts` con `INTEGRATION_DATABASE_URL` per
 >    verificare che i codici battente (`A50200.15.NN` ecc.) siano a catalogo Neon (warning attesi = 0).
-> 4. **Con l'esperto**: domande in `docs/superpowers/kit-assunzioni/{alu,pvc,battente}.md`
->    (validazione battente provvisorio + sblocco alluminio + conferma PVC); poi bump `version`.
-> ⚠️ battente è **PROVVISORIO** (dati derivati dal listino, non validati); golden = snapshot auto-coerente.
+> 4. **Con l'esperto**: domande in `docs/superpowers/kit-assunzioni/` (indice in `legno.md`); poi bump `version`.
+> ⚠️ **SUPERATO dalla bonifica del 2026-07-25**: il battente è stato **DISATTIVATO** (la distinta era priva del
+> gruppo di sospensione superiore) — i punti 2 e 3 qui sopra non valgono più, il template va seedato
+> `isActive:false`. Vedi §RIPRENDI DA QUI.
 > ⚠️ Minor rimandati (follow-up, in `progress.md`): commento `ASSUNZIONE` orfano in `rules-artech-legno.ts`;
 > boilerplate display-string battente/legno; asserzioni del test integration battente (solo count).
 > ⚠️ Fase 1f: e2e fatto via **API backend** (non browser UI, limite sandbox↔Vercel); dati di test in staging.
@@ -441,13 +535,12 @@ browser end-to-end.
   serie si rivaluta, alla 3ª si estrae il vocabolario comune in
   `KitTemplate.rules`. `KitTemplate` resta comunque vivo come
   registro/dispatcher (puntatore versionato `{engine, version}` validato zod).
-- **Gap di catalogo — supporto-cerniera (`A50801.01.xx`)**: il listino 2026
-  non ha una variante "Supporto cerniera — Parte telaio" per aria 12/interasse
-  13/battuta 20 (i parametri del golden); esistono solo due varianti "Aria 4"
-  (`A50801` int.9/battuta18, `A50803` int.8,5/battuta15). Pinnato `A50801`
-  (più vicino su entrambi gli assi di confronto) — **da verificare con AGB**
-  prima di fidarsi in produzione: potrebbe mancare a catalogo un codice
-  interasse13/battuta20 dedicato.
+- ~~**Gap di catalogo — supporto-cerniera (`A50801.01.xx`)**~~ → **SMENTITO il
+  2026-07-25**: il gap non esisteva, era un **buco del parser**. La variante
+  aria 12 / interasse 9/13 / battuta 20 è a listino (p0451 (449)) e si chiama
+  `A50805.05.DX/.SX`: il parser scartava i codici con **segmenti alfanumerici**,
+  quindi non arrivava a DB e sembrava assente. Il pinning su `A50801.01.xx`
+  («Aria 4 - Interasse 9», battuta 18) è stato **corretto** in `PER_MANO`.
 - **Formula quantità incontri-nottolino, non dati `colonne.'not.'`**: verificata
   l'ipotesi data-driven (somma dei `colonne.'not.'` dei componenti mobili
   selezionati) sui dati reali → non regge (il fusto forbice ha `not."="-"`,
@@ -576,10 +669,13 @@ Actions** (rete aperta → Neon:5432 ok).
 - [X] Merge 1c su `main` (2026-07-04, merge locale + push; suite verde sul risultato)
 
 ### Da Fase 1d
-- [ ] **Verificare con AGB il supporto-cerniera** `A50801.01.xx` pinnato per
-  aria 12/interasse 13/battuta 20 (gap di catalogo — vedi Decisioni 1d): non
-  esiste una variante dedicata nel listino 2026, va confermato col tecnico o
-  con una prossima distinta reale.
+- [X] ~~**Verificare con AGB il supporto-cerniera** `A50801.01.xx` pinnato per
+  aria 12/interasse 13/battuta 20~~ → **RISOLTO dal listino il 2026-07-25**: la
+  variante dedicata **esiste**, è `A50805.05.DX/.SX` («Supporto cerniera Aria 12 -
+  Interasse 9/13 - Parte telaio», battuta 20, p0451 (449), 4,44 €) — non era stata
+  trovata perché il **parser scartava i codici con segmenti alfanumerici**. Corretto
+  in `PER_MANO`; il vecchio `A50801.01.xx` è «Aria 4 - Interasse 9» battuta 18.
+  ⚠️ Richiede il **re-import del catalogo** su Neon (vedi §RIPRENDI DA QUI).
 - [ ] **Altre finiture coperture** (`COPERTURE_KIT` in `rules-artech.ts` copre
   solo ARGENTO): estendere tabella + `FINISH_OPTIONS` nel wizard quando si hanno
   i codici delle altre finiture a listino.
@@ -627,7 +723,7 @@ Actions** (rete aperta → Neon:5432 ok).
 | Dashboard (1e) | [X] `/dashboard` dati reali via `dashboard.overview` (KPI + ultime richieste + scorciatoie, toggle team per ADMIN) |
 | Gestione API key | [X] `/impostazioni` admin: override cifrato AES-256-GCM su `Settings` con fallback env; richiede `SETTINGS_ENCRYPTION_KEY` in env per attivarsi |
 | **Deploy (1f)** | [🔄→✅ funzionale] App **live** su Vercel Hobby (`catalogo-finder-kappa.vercel.app`), Neon + Upstash, workflow ops/CI su `main`, Next 15.5.20. **DB Neon POPOLATO** + **e2e VERIFICATO** (Task 8, 2026-07-11, via API: auth ADMIN, ricerca ibrida A50107\*, chat tool-use, kit golden 16/21/90,20€, Gemini da env). Resta solo Task 9 (docs + scelta fase successiva). Caveat: e2e via API non browser (challenge Vercel↔proxy sandbox); creati dati test (1 conv + KIT-2026-0001) |
-| Kit engine (1d) | [X] Pilota ARTECH anta-ribalta LEGNO completo; golden 16 righe verificato su catalogo reale + browser (vedi «Fase 1d») |
+| Kit engine | [X] **2 tipologie attive** dopo la bonifica 2026-07-25: **anta-ribalta LEGNO** (pilota, golden 16 righe/21 pezzi/90,20 € con chiusure) e **vasistas LEGNO** (13 righe/19 pezzi, PROVVISORIO). **PVC e battente DISATTIVATI** (`isActive:false` + moduli che rifiutano): distinte non ordinabili — vedi §RIPRENDI DA QUI. **ALLUMINIO** gated dalla 1g. Geometria coperta: **solo** aria 12 / interasse 13 / battuta 20 / sede 18 (`assertPilotGeometry`) |
 | Git | [X] `origin/main` @ `051d3ee` (PR #13 merge); branch `claude/handoff-review-irs3gv` ripartito da main |
 
 ### Regola utente — file esterni (2026-07-01)
@@ -680,3 +776,4 @@ Actions** (rete aperta → Neon:5432 ok).
 | 2026-07-11 | **Fase 1f — Task 7 (pipeline ops) ESEGUITO**: lanciata la GH Action _Ops — Neon_ (run #1 `29132026156`) → **verde in ~35 min**: `migrate deploy` (schema + pgvector/pg_trgm) · `import:agb` **6.191** · `db:seed` admin + `db:seed:kit` · `embed:products` **6.191/6.191** (`Completato: 6191 embedding generati.`). **Neon ora popolato**; smoke test non autenticato OK (`/login` 200, «Accedi — UFPtrade»). **Resta**: Task 8 (verifica e2e autenticata — serve la password admin dall'utente) + Task 9 (chiusura docs). | `claude/handoff-review-irs3gv` |
 | 2026-07-11 | **Fase 1f — Task 8 (e2e) VERIFICATO**: login admin reale fornito dall'utente → verifica end-to-end via **API backend** (browser bloccato da challenge Vercel↔proxy sandbox: scoperto e diagnosticato). Passano TUTTI i flussi contro Neon popolato: auth Better Auth (role ADMIN, createdAt=seed) · `dashboard.overview` · `product.search` **testuale+ibrida** (semantica «maniglia con chiave…» → A50107\* per solo vettore vec≈0.72) · **chat tool-use** (Gemini cita 5 codici reali) · **kit ARTECH golden** `KIT-2026-0001` **16 righe/21 pezzi/90,20€** zero warning · `settings.aiKeys.status` (Gemini da env). Creati dati test in staging (1 conv + KIT-2026-0001). **Resta solo Task 9** (docs + scelta fase successiva). | `claude/handoff-review-irs3gv` |
 | 2026-07-12 | **Fase 1g — kit multi-materiale (SDD subagent-driven)**: spec+piano approvati + **LLM Council** (4/4 → Opzione C: `kit-shared` meccanica condivisa, moduli per-materiale isolati). 5 task TDD (7 commit `b51aa11→544d94c`, **PR #15**, gate verdi): (1) fix LEGNO chiusure supplementari opzionali (default off); (2) estrazione `kit-shared.ts` (refactor puro); (3) modulo **PVC provvisorio** (cert ift, `//ASSUNZIONE`) + scheda esperto; (4) **ALLUMINIO gated** — scoperto che il listino 2026 NON ha composizione alluminio («PLANA»=cerniera complanare legno/PVC, non alu, assunzione piano falsificata) → modulo rifiuta + `isActive:false` + domande esperto; (5) colonna `KitRequest.supplementary_closures` + migrazione + wiring `kit.generate` + wizard (PVC on/provvisorio, ALLUMINIO off, toggle). Task 1-3 review individuali *Approved*; Task 4-5 fatti inline (session limit) + review finale inline. **Resta**: merge PR #15 · `migrate deploy`+`db:seed:kit` su Neon al deploy · validazione esperto (`docs/superpowers/kit-assunzioni/`). | `claude/handoff-review-irs3gv` (PR #15) |
+| 2026-07-25 | **BONIFICA KIT ARTECH LEGNO** (8 task TDD, un commit per task, dopo il merge #32): studio di tutti i moduli kit contro il **listino AGB 2026** → dei 4 template attivi, **3 producevano distinte non ordinabili**. **PVC spento** (i 4 codici material-specific esistono solo nelle pagine-certificato ift p0013 (11)/p0395 (393), senza prezzo; altri 7 dedotti per simmetria non esistono affatto) · **battente spento** (schema p0416 (414) = 21 voci, il modulo ne generava 5: mancava la **sospensione superiore**; schema composito → terna cerniere non decidibile) · **pilota corretto** (supporto cerniera `A50801.01.0N`→**`A50805.05.DX/.SX`**, banda cremonese GR02 610, descrizione incontro ribalta 9x18) · **guardia `assertPilotGeometry`** (aria/interasse/battuta/sede erano raccolti e ignorati) · **vasistas riscritto** dallo schema p0418 (416): forbici per **LBB**, via DSS+incontro DSS, dentro le **cerniere** (voci 10-11-12) e il 2° terminale, `sashWeightKg` opzionale per le NB sul peso → golden **13 righe/19 pezzi** · **parser catalogo allargato** ai segmenti alfanumerici (**+1.297 codici a prezzo, 6.191→7.488**) · schede `kit-assunzioni/` riscritte come esito + nuova `legno.md` con l'indice **globale** delle 10 domande per l'esperto. Attive: **anta-ribalta LEGNO + vasistas LEGNO**. Gate: typecheck·lint·**test 589/11 skip**. Verifica browser wizard desktop+375px (8 screenshot). **AZIONI OPS AL MERGE**: «Ops — Neon» completo (migrazione `kit_sash_weight` + **RE-IMPORT catalogo** + `db:seed:kit` + embed) e audit `kit_requests`. | `claude/kit-engine-study-wfo2hq` (PR da aprire) |

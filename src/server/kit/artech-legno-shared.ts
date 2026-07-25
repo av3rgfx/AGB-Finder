@@ -13,13 +13,16 @@ type Side = KitInput["openingSide"];
  * la squadra usa .01=DX / .02=SX, il supporto cerniera usa .DX / .SX.
  *
  * squadraAngolare A50904.36.NN = «Squadra angolare per traverso in alluminio con
- * compensatore 16/12», p0452 (450), 9,83 €. Il listino offre anche A50901.36.NN
- * («con compensatore», 8,05 €) e A50903.36.NN («per traverso in alluminio»,
- * 7,54 €), e le legende degli schemi chiedono genericamente «Squadra angolare con
- * compensatore» → suggerirebbero A50901. Si CONSERVA A50904 perché è quella
- * prescritta dal certificato ift riga «ARTech Legno» (p0395/p0013), che elenca la
- * quaterna A51911.36.04 · A50702.05.00 · A50904.36.01 · A50805.05 DX. Domanda 2
- * per l'esperto in docs/superpowers/kit-assunzioni/legno.md.
+ * compensatore 16/12», p0452 (450), 9,83 €. Per la geometria del pilota il listino
+ * offre altre TRE varianti, tutte con la stessa coppia di mano: A50902.36.NN (base,
+ * «Squadra angolare - Interasse 13», 5,77 €, p0451 (449)), A50903.36.NN («per
+ * traverso in alluminio», 7,54 €) e A50901.36.NN («con compensatore», 8,05 €),
+ * queste due a p0452 (450); e le legende degli schemi chiedono genericamente
+ * «Squadra angolare con compensatore» → suggerirebbero A50901. Si CONSERVA A50904
+ * perché è quella prescritta dal certificato ift riga «ARTech Legno» (p0395 (393)
+ * / p0013 (11)), che elenca la quaterna A51911.36.04 · A50702.05.00 ·
+ * A50904.36.01 · A50805.05 DX. Domanda 2 per l'esperto in
+ * docs/superpowers/kit-assunzioni/legno.md.
  *
  * supportoCerniera A50805.05.DX/.SX = «Supporto cerniera Aria 12 - Interasse 9/13
  * - Parte telaio», battuta 20, p0451 (449), 4,44 €. CORRETTO il 2026-07-25: prima
@@ -61,7 +64,8 @@ export function incontriNottolino(widthMm: number, heightMm: number): number {
  *
  * NB: gli schemi di montaggio base del listino 2026 sono invece intitolati «sede
  * 30 mm» e chiedono incontri «Sede 30» / «Battuta 30»; per la sede 18 del golden
- * non esiste uno schema stampato. Domanda 4 per l'esperto.
+ * non esiste uno schema stampato. Domanda 4 per l'esperto in
+ * docs/superpowers/kit-assunzioni/legno.md.
  */
 export const PILOT_GEOMETRY = {
   airGapMm: 12,
