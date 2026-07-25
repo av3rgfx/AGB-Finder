@@ -47,7 +47,7 @@ const FUTURE_WINDOW_TYPES = [
 /**
  * Materiali disponibili per tipologia. Il listino 2026 copre solo il LEGNO per
  * ARTECH: PVC e ALLUMINIO rimandano a un volume separato («listino PVC e
- * ALLUMINIO», p0849) non ancora disponibile → entrambi gated.
+ * ALLUMINIO», p0849 (847)) non ancora disponibile → entrambi gated.
  */
 type MaterialChoice = { value: "LEGNO" | "PVC" | "ALLUMINIO"; enabled: boolean; hint?: string };
 const MATERIAL_AVAILABILITY: Record<KitInput["windowType"], MaterialChoice[]> = {
@@ -56,10 +56,16 @@ const MATERIAL_AVAILABILITY: Record<KitInput["windowType"], MaterialChoice[]> = 
     { value: "PVC", enabled: false, hint: "Non a listino 2026 — serve il listino PVC e alluminio" },
     { value: "ALLUMINIO", enabled: false, hint: "Non ancora disponibile" },
   ],
+  // ANTA_BATTENTE è gated in FUTURE_WINDOW_TYPES (distinta senza gruppo di
+  // sospensione superiore, schema p0416 (414)): questa voce non viene MAI
+  // renderizzata, resta solo perché il Record è tipizzato su tutte le
+  // windowType. Valori e hint dicono il vero — con la tipologia spenta nessun
+  // materiale è ordinabile — così se un domani il battente torna selezionabile
+  // la UI non promette un LEGNO che il generatore rifiuta.
   ANTA_BATTENTE: [
-    { value: "LEGNO", enabled: true, hint: "Provvisorio — in validazione" },
-    { value: "PVC", enabled: false, hint: "Non disponibile per l'anta battente" },
-    { value: "ALLUMINIO", enabled: false, hint: "Non disponibile per l'anta battente" },
+    { value: "LEGNO", enabled: false, hint: "Tipologia non disponibile — distinta incompleta" },
+    { value: "PVC", enabled: false, hint: "Tipologia non disponibile — distinta incompleta" },
+    { value: "ALLUMINIO", enabled: false, hint: "Tipologia non disponibile — distinta incompleta" },
   ],
   VASISTAS: [
     { value: "LEGNO", enabled: true, hint: "Provvisorio — in validazione" },
@@ -67,6 +73,24 @@ const MATERIAL_AVAILABILITY: Record<KitInput["windowType"], MaterialChoice[]> = 
     { value: "ALLUMINIO", enabled: false, hint: "Non disponibile per la vasistas" },
   ],
 };
+
+/**
+ * Materiale da tenere passando alla tipologia `wt`: quello corrente se la
+ * tipologia lo ammette, altrimenti LEGNO. Esportata (e provata a parte) perché
+ * oggi il ramo di reset NON è raggiungibile via UI — ogni tipologia
+ * selezionabile ammette il solo LEGNO, quindi cliccando non si può arrivare a un
+ * materiale «non ammesso». La regola però resta necessaria: appena un materiale
+ * torna abilitato su una sola tipologia, il ramo si riaccende. Provarla sulla
+ * funzione invece che sui click è l'unico modo onesto di coprirla.
+ */
+export function materialForWindowType(
+  wt: KitInput["windowType"],
+  current: KitInput["material"],
+): KitInput["material"] {
+  return MATERIAL_AVAILABILITY[wt].some((m) => m.enabled && m.value === current)
+    ? current
+    : "LEGNO";
+}
 
 /**
  * Finiture coperte dal generatore ARTECH legno: chiavi della tabella
@@ -304,10 +328,7 @@ function Step1Tipologia({ form, update }: StepProps) {
 
   function selectWindowType(wt: KitInput["windowType"]) {
     update("windowType", wt);
-    const allowed = MATERIAL_AVAILABILITY[wt]
-      .filter((m) => m.enabled)
-      .map((m) => m.value);
-    if (!allowed.includes(form.material)) update("material", "LEGNO");
+    update("material", materialForWindowType(wt, form.material));
     if (wt !== "ANTA_RIBALTA") update("supplementaryClosures", false);
     // Il peso serve solo alle due NB dello schema vasistas: cambiando tipologia
     // non deve restare un valore che nessun altro modulo legge.
@@ -351,7 +372,13 @@ function Step1Tipologia({ form, update }: StepProps) {
 
       <fieldset>
         <legend className="mb-2 text-sm font-semibold text-ink">Materiale</legend>
-        <div className="grid grid-cols-3 gap-2">
+        {/* Mobile-first: una colonna sotto sm. A tre colonne fisse ogni cella
+            valeva ~90px a 375px e gli hint («Non a listino 2026 — serve il
+            listino PVC e alluminio») andavano a capo su 5-6 righe, con le
+            parole lunghe fuori dal bordo. Le tipologie qui sopra usano già
+            grid-cols-2 sm:grid-cols-3: i materiali hanno hint più lunghi e
+            stanno meglio a piena larghezza. */}
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           {materials.map((m) => (
             <RadioOption
               key={m.value}

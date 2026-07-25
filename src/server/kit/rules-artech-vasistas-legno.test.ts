@@ -249,6 +249,26 @@ describe("artechVasistasLegno — aderenza allo schema p0418 (416)", () => {
   });
 });
 
+/**
+ * La guardia di geometria è provata in isolamento in artech-legno-shared.test.ts;
+ * qui si prova che il MODULO la chiami. Senza questo caso, togliendo
+ * `assertPilotGeometry(input)` da rules-artech-vasistas-legno.ts la suite
+ * resterebbe verde e la vasistas tornerebbe a servire in silenzio i codici della
+ * geometria del pilota a chi ha chiesto un'altra aria.
+ */
+describe("artechVasistasLegno — guardia di geometria cablata nel modulo", () => {
+  it("aria 4 (fuori pilota) → KitGenerationError «Configurazione non coperta»", () => {
+    try {
+      artechVasistasLegno.generate({ ...golden, airGapMm: 4 });
+      expect.unreachable("attesa geometria fuori campo");
+    } catch (err) {
+      expect(err).toBeInstanceOf(KitGenerationError);
+      expect((err as KitGenerationError).ruleId).toBe("artech.geometria");
+      expect((err as Error).message).toMatch(/Configurazione non coperta \(aria 4\)/);
+    }
+  });
+});
+
 describe("artechVasistasLegno — peso dell'anta (NB dello schema p0418 (416))", () => {
   /**
    * Le due NB sul peso si incrociano: la portata è di 40 kg PER FORBICE, e il

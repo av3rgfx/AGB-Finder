@@ -10,7 +10,7 @@
 // cioè l'intero appoggio della cerniera SUPERIORE: l'anta non aveva alcun punto
 // di sospensione in alto. Distinta non montabile né ordinabile.
 //
-// Non è correggibile dal solo listino: lo schema p0416 è COMPOSITO. Nello stesso
+// Non è correggibile dal solo listino: lo schema p0416 (414) è COMPOSITO. Nello stesso
 // disegno convivono la cremonese a battente (voce 1, mod. 502), voci
 // dell'anta-ribalta (voce 2 cremonese A/R, voce 3 DSS, voce 13 incontro ribalta)
 // e TRE alternative di cerniera — «per seconda anta» (5-6), «centrali a
@@ -49,7 +49,7 @@ export const artechAntaBattenteLegno: RuleModule = {
     throw new KitGenerationError(
       "Kit anta a battente non disponibile: la distinta sarebbe priva del gruppo di sospensione superiore " +
         "(corpo articolazione, articolazione superiore anta semifissa, supporti forbice). " +
-        "Lo schema di listino p0416 mostra tre alternative di cerniere e non indica quale valga per l'anta singola a battente: " +
+        "Lo schema di listino p0416 (414) mostra tre alternative di cerniere e non indica quale valga per l'anta singola a battente: " +
         "in attesa di conferma da AGB.",
       "artech.tipologia",
     );

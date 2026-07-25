@@ -13,8 +13,8 @@
 //     famiglia braccio SX A51922.36.0N) non esistono NEMMENO nel certificato:
 //     erano dedotti per simmetria dal legno;
 //   · i capitoli merceologici sono intestati al materiale — «Supporti Forbice -
-//     Legno» (p0449), «Cerniere - Legno» (p0451), «Coperture - Legno» (p0488) —
-//     e non esiste il gemello PVC di nessuno di essi.
+//     Legno» p0449 (447), «Cerniere - Legno» p0451 (449), «Coperture - Legno»
+//     p0488 (486) — e non esiste il gemello PVC di nessuno di essi.
 //
 // Il listino dice dove sta davvero il PVC: p0849 (847) rimanda tre volte al
 // «listino PVC e ALLUMINIO», sezione FERRAMENTA PER FINESTRE ARTECH. Finché quel

@@ -164,8 +164,36 @@ describe("artechAntaRibaltaLegno — banda cremonese GR02", () => {
   });
 
   it("rifiuta sotto la banda del listino (hbb < 610)", () => {
-    expect(() => artechAntaRibaltaLegno.generate({ ...golden, heightMm: 615 })).toThrow(
-      KitGenerationError,
-    );
+    // Ancorato al messaggio e al ruleId: con il solo `toThrow(KitGenerationError)`
+    // il test restava verde per QUALUNQUE altro rifiuto del modulo (materiale,
+    // geometria, finitura…), cioè non provava che a mancare fosse la cremonese.
+    try {
+      artechAntaRibaltaLegno.generate({ ...golden, heightMm: 615 });
+      expect.unreachable("attesa cremonese fuori campo");
+    } catch (err) {
+      expect(err).toBeInstanceOf(KitGenerationError);
+      expect((err as KitGenerationError).ruleId).toBe("artech.cremonese");
+      expect((err as Error).message).toMatch(/Nessuna variante cremonese per altezza 605 mm/);
+    }
+  });
+});
+
+/**
+ * La guardia di geometria è provata in isolamento in artech-legno-shared.test.ts;
+ * qui si prova che il MODULO la chiami. Senza questo caso, togliendo
+ * `assertPilotGeometry(input)` da rules-artech-legno.ts la suite resterebbe
+ * verde e il generatore tornerebbe a servire in silenzio i codici dell'aria 12
+ * a chi ha chiesto l'aria 4.
+ */
+describe("artechAntaRibaltaLegno — guardia di geometria cablata nel modulo", () => {
+  it("aria 4 (fuori pilota) → KitGenerationError «Configurazione non coperta»", () => {
+    try {
+      artechAntaRibaltaLegno.generate({ ...golden, airGapMm: 4 });
+      expect.unreachable("attesa geometria fuori campo");
+    } catch (err) {
+      expect(err).toBeInstanceOf(KitGenerationError);
+      expect((err as KitGenerationError).ruleId).toBe("artech.geometria");
+      expect((err as Error).message).toMatch(/Configurazione non coperta \(aria 4\)/);
+    }
   });
 });

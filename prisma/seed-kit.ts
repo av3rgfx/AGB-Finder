@@ -33,7 +33,7 @@ const TEMPLATES: KitTemplateSeed[] = [
     // rules-artech-pvc.ts e docs/superpowers/kit-assunzioni/pvc.md.
     name: "ARTECH anta-ribalta PVC",
     description:
-      "NON DISPONIBILE — la composizione PVC non è nel listino 2026: serve il «listino PVC e ALLUMINIO» (rimando a p0849).",
+      "NON DISPONIBILE — la composizione PVC non è nel listino 2026: serve il «listino PVC e ALLUMINIO», rimando a p0849 (847).",
     windowType: "ANTA_RIBALTA",
     material: "PVC",
     rules: { engine: "artech-ar-pvc", version: 1 },
@@ -56,12 +56,12 @@ const TEMPLATES: KitTemplateSeed[] = [
   },
   {
     // DISATTIVATO 2026-07-25: la distinta era priva del gruppo di sospensione
-    // superiore (schema p0416 ha 21 voci, il modulo ne generava 5) e lo schema è
+    // superiore (schema p0416 (414) ha 21 voci, il modulo ne generava 5) e lo schema è
     // composito → terna cerniere non decidibile. Vedi
     // rules-artech-battente-legno.ts e docs/superpowers/kit-assunzioni/battente.md.
     name: "ARTECH anta a battente legno",
     description:
-      "NON DISPONIBILE — distinta incompleta (manca il gruppo di sospensione superiore): in attesa della conferma AGB sulla terna di cerniere dello schema p0416.",
+      "NON DISPONIBILE — distinta incompleta (manca il gruppo di sospensione superiore): in attesa della conferma AGB sulla terna di cerniere dello schema p0416 (414).",
     windowType: "ANTA_BATTENTE",
     material: "LEGNO",
     rules: { engine: "artech-batt-legno", version: 1 },
@@ -71,7 +71,11 @@ const TEMPLATES: KitTemplateSeed[] = [
   {
     name: "ARTECH vasistas legno",
     description:
-      "Fase 1i — finestra vasistas (apertura a ribalta pura) anta singola legno (PROVVISORIO, da validare con l'agente): cremonese A50111.15 per GR + catena DSS A50190/A51400.05.03 + forbici A50545 + incontri via colonna NOT.(GR), variante base pag.416.",
+      // Riscritta 2026-07-25: la vecchia descrizione prometteva la catena DSS
+      // A50190/A51400.05.03, che il modulo NON emette più (lo schema vasistas
+      // non la prevede), e citava «pag.416» — la stampata, cioè la fisica
+      // p0418: la fisica 416 è lo schema del BATTENTE.
+      "Fase 1i — finestra vasistas (apertura a ribalta pura) anta singola legno (PROVVISORIO, da validare con l'agente): trascrizione dello schema di montaggio p0418 (416) — cremonese A50111.15 per GR + forbici A50545 per larghezza + cerniere portanti/articolazioni + incontri via colonna NOT.(GR).",
     windowType: "VASISTAS",
     material: "LEGNO",
     rules: { engine: "artech-vasistas-legno", version: 1 },
