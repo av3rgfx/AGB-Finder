@@ -109,49 +109,41 @@ describe("NuovaRichiestaClient", () => {
     expect(generateMutate).toHaveBeenCalledWith({ kitRequestId: "k9" });
   });
 
-  it("tipologia: ANTA_RIBALTA e ANTA_BATTENTE selezionabili, altre disabilitate", () => {
+  // ANTA_BATTENTE DISATTIVATO 2026-07-25: la distinta sarebbe priva del gruppo
+  // di sospensione superiore (schema p0416) → tipologia gated come le future.
+  // Le vecchie prove «ANTA_BATTENTE: materiali / chiusure» sono cadute qui: non
+  // essendo più selezionabile, verificavano l'anta-ribalta sotto un altro nome.
+  // L'equivalente su una tipologia non-ribalta è coperto dalle prove VASISTAS in
+  // fondo al file.
+  it("tipologia: ANTA_RIBALTA e VASISTAS selezionabili, battente e altre disabilitate", () => {
     render(<NuovaRichiestaClient />);
     const tipo = screen.getByRole("group", { name: /tipologia/i });
     const ribalta = within(tipo).getByRole("radio", { name: /anta.?ribalta/i }) as HTMLInputElement;
+    const vasistas = within(tipo).getByRole("radio", {
+      name: new RegExp(windowTypeLabel("VASISTAS"), "i"),
+    }) as HTMLInputElement;
     const battente = within(tipo).getByRole("radio", { name: /anta battente/i }) as HTMLInputElement;
     const proiettante = within(tipo).getByRole("radio", {
       name: new RegExp(windowTypeLabel("ANTA_PROIETTANTE"), "i"),
     }) as HTMLInputElement;
     expect(ribalta.checked).toBe(true);
-    expect(battente.disabled).toBe(false);
+    expect(vasistas.disabled).toBe(false);
+    expect(battente.disabled).toBe(true); // gated: distinta senza sospensione superiore
     expect(proiettante.disabled).toBe(true); // FUTURE_WINDOW_TYPES: non ancora coperta dal generatore
   });
 
-  it("ANTA_BATTENTE: solo LEGNO abilitato, PVC/ALLUMINIO gated", () => {
+  it("il battente è gated: cliccarlo non cambia la tipologia", () => {
     render(<NuovaRichiestaClient />);
     const tipo = screen.getByRole("group", { name: /tipologia/i });
-    fireEvent.click(within(tipo).getByRole("radio", { name: /anta battente/i }));
-    const mat = screen.getByRole("group", { name: /materiale/i });
-    expect((within(mat).getByRole("radio", { name: /legno/i }) as HTMLInputElement).disabled).toBe(false);
-    expect((within(mat).getByRole("radio", { name: /pvc/i }) as HTMLInputElement).disabled).toBe(true);
-    expect((within(mat).getByRole("radio", { name: /alluminio/i }) as HTMLInputElement).disabled).toBe(true);
+    const battente = within(tipo).getByRole("radio", { name: /anta battente/i }) as HTMLInputElement;
+    fireEvent.click(battente);
+    expect(battente.checked).toBe(false);
+    expect(
+      (within(tipo).getByRole("radio", { name: /anta.?ribalta/i }) as HTMLInputElement).checked,
+    ).toBe(true);
   });
 
-  it("passando a ANTA_BATTENTE con PVC selezionato → materiale resettato a LEGNO", () => {
-    render(<NuovaRichiestaClient />);
-    const mat = screen.getByRole("group", { name: /materiale/i });
-    fireEvent.click(within(mat).getByRole("radio", { name: /pvc/i })); // ANTA_RIBALTA consente PVC
-    const tipo = screen.getByRole("group", { name: /tipologia/i });
-    fireEvent.click(within(tipo).getByRole("radio", { name: /anta battente/i }));
-    const mat2 = screen.getByRole("group", { name: /materiale/i });
-    expect((within(mat2).getByRole("radio", { name: /legno/i }) as HTMLInputElement).checked).toBe(true);
-  });
-
-  it("ANTA_BATTENTE: niente toggle chiusure supplementari (ribalta-only)", () => {
-    render(<NuovaRichiestaClient />);
-    const tipo = screen.getByRole("group", { name: /tipologia/i });
-    fireEvent.click(within(tipo).getByRole("radio", { name: /anta battente/i }));
-    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // step 2
-    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // step 3
-    expect(screen.queryByLabelText(/chiusure supplementari/i)).toBeNull();
-  });
-
-  it("attiva chiusure supplementari su ANTA_RIBALTA poi passa a ANTA_BATTENTE: resettate a false alla generazione", async () => {
+  it("attiva chiusure supplementari su ANTA_RIBALTA poi passa a VASISTAS: resettate a false alla generazione", async () => {
     createMutate.mockResolvedValue({ id: "k10", requestNumber: "KIT-2026-0002" });
     generateMutate.mockResolvedValue({ totalComponents: 16 });
     render(<NuovaRichiestaClient />);
@@ -166,7 +158,9 @@ describe("NuovaRichiestaClient", () => {
     fireEvent.click(screen.getByRole("button", { name: /indietro/i })); // torna a step 1
 
     const tipo = screen.getByRole("group", { name: /tipologia/i });
-    fireEvent.click(within(tipo).getByRole("radio", { name: /anta battente/i }));
+    fireEvent.click(
+      within(tipo).getByRole("radio", { name: new RegExp(windowTypeLabel("VASISTAS"), "i") }),
+    );
 
     fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // step 2
     fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // step 3
@@ -195,7 +189,7 @@ describe("NuovaRichiestaClient", () => {
     expect((within(mat).getByRole("radio", { name: /alluminio/i }) as HTMLInputElement).disabled).toBe(true);
   });
 
-  it("VASISTAS: niente toggle chiusure supplementari (come il battente)", () => {
+  it("VASISTAS: niente toggle chiusure supplementari (ribalta-only)", () => {
     render(<NuovaRichiestaClient />);
     const tipo = screen.getByRole("group", { name: /tipologia/i });
     fireEvent.click(

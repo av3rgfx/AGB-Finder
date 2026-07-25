@@ -53,18 +53,25 @@ describe.runIf(Boolean(url))("KitEngine — integrazione su catalogo reale", () 
     );
   });
 
-  it("la distinta battente provvisoria si genera e segnala i codici non a listino", async () => {
-    const output = await new KitEngine(db).generate({
-      windowType: "ANTA_BATTENTE", widthMm: 600, heightMm: 1300, material: "LEGNO",
-      airGapMm: 12, axisOffsetMm: 13, rebateMm: 20, seatMm: 18,
-      openingSide: "DESTRA", openingDir: "TIRARE", finish: "ARGENTO", series: "ARTECH",
-    });
-    expect(output.lines).toHaveLength(5);
-    const unpriced = output.lines.filter((line) => line.unitPrice === null);
-    expect(output.warnings).toHaveLength(unpriced.length);
-    console.log(
-      `Battente provvisorio: ${output.lines.length - unpriced.length}/${output.lines.length} codici a listino` +
-        (unpriced.length ? `; da validare: ${unpriced.map((l) => l.code).join(", ")}` : ""),
+  // BATTENTE DISATTIVATO 2026-07-25: lo schema di montaggio p0416 (414) elenca
+  // 21 voci, il modulo ne generava 5 — mancava l'intero appoggio della cerniera
+  // superiore (corpo articolazione, articolazione superiore anta semifissa,
+  // supporti forbice), quindi l'anta non aveva punto di sospensione in alto.
+  // Template isActive:false nel seed + modulo che rifiuta. Come per il PVC, con
+  // il DB reale scatta per prima la barriera del template spento.
+  const battenteInput = {
+    windowType: "ANTA_BATTENTE", widthMm: 600, heightMm: 1300, material: "LEGNO",
+    airGapMm: 12, axisOffsetMm: 13, rebateMm: 20, seatMm: 18,
+    openingSide: "DESTRA", openingDir: "TIRARE", finish: "ARGENTO", series: "ARTECH",
+  };
+
+  it("il battente è disattivato: la generazione viene rifiutata", async () => {
+    await expect(new KitEngine(db).generate(battenteInput)).rejects.toThrow(KitGenerationError);
+  });
+
+  it("il rifiuto battente arriva dal template spento, non da una distinta parziale", async () => {
+    await expect(new KitEngine(db).generate(battenteInput)).rejects.toThrow(
+      /Nessun template kit attivo/,
     );
   });
 });

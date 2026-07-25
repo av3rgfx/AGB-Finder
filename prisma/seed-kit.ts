@@ -55,14 +55,18 @@ const TEMPLATES: KitTemplateSeed[] = [
     isActive: false,
   },
   {
+    // DISATTIVATO 2026-07-25: la distinta era priva del gruppo di sospensione
+    // superiore (schema p0416 ha 21 voci, il modulo ne generava 5) e lo schema è
+    // composito → terna cerniere non decidibile. Vedi
+    // rules-artech-battente-legno.ts e docs/superpowers/kit-assunzioni/battente.md.
     name: "ARTECH anta a battente legno",
     description:
-      "Fase 1h — finestra a battente anta singola Mod. 502 (PROVVISORIO, da validare con l'agente): cremonese A50200.15.NN + cerniere/movimento/incontri condivisi col legno anta-ribalta, meno il meccanismo di ribalta.",
+      "NON DISPONIBILE — distinta incompleta (manca il gruppo di sospensione superiore): in attesa della conferma AGB sulla terna di cerniere dello schema p0416.",
     windowType: "ANTA_BATTENTE",
     material: "LEGNO",
     rules: { engine: "artech-batt-legno", version: 1 },
     priority: 10,
-    isActive: true,
+    isActive: false,
   },
   {
     name: "ARTECH vasistas legno",

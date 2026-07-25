@@ -33,10 +33,11 @@ const DEFAULT_FORM: KitInput = {
 };
 
 /** Tipologie coperte dal generatore: radio selezionabili. */
-const ACTIVE_WINDOW_TYPES = ["ANTA_RIBALTA", "ANTA_BATTENTE", "VASISTAS"] as const;
+const ACTIVE_WINDOW_TYPES = ["ANTA_RIBALTA", "VASISTAS"] as const;
 
 /** Tipologie non ancora coperte: radio disabilitate. */
 const FUTURE_WINDOW_TYPES = [
+  "ANTA_BATTENTE",
   "ANTA_PROIETTANTE",
   "SCORREVOLE_ALZANTE",
   "SCORREVOLE_TRASLANTE",
