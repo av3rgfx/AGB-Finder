@@ -37,7 +37,9 @@ Tailwind CSS 3 · Vitest · pnpm. Deploy target: Vercel + Neon + Upstash.
   client tRPC sotto `src/trpc/`; `src/env.ts` (zod).
 - **Ogni chiamata AI passa dall'unico modulo `AIGateway`**
   (`src/server/ai/gateway.ts`): rate limit + circuit breaker con stato su Redis
-  + fallback Gemini→Kimi. Nessuna chiamata provider fuori da `src/server/ai/`.
+  + timeout. **Nessun fallback di provider** (Gemini unico dal 2026-07-24; in
+  streaming un retry a metà risposta duplicherebbe i token già emessi).
+  Nessuna chiamata provider fuori da `src/server/ai/`.
   Batch = script tsx idempotenti (`pnpm embed:products`). NIENTE BullMQ (verdetto
   LLM Council 2026-07-02: worker persistente impossibile su Vercel, anti-pattern
   su Upstash); per job asincroni durevoli futuri: Upstash QStash.
@@ -240,5 +242,5 @@ mobile; `?c=` in URL; scroll intelligente; banner errore con countdown `Retry-Af
 (5 stop = chat offline per tutti), errori JSON silenziati nel parser SSE, invio silenziosamente rotto nello
 stopgap, e una **race che riversava lo stream in un'altra conversazione**. Gate verdi (typecheck·lint·**test 518**)
 + **verifica browser 13/13** (Chromium desktop + **375px** + viewport corto, 17 screenshot). **ZERO migrazioni,
-ZERO azioni ops DB** (solo: rimuovere da Vercel le env `KIMI_MODEL`/`MOONSHOT_API_KEY` se presenti).
+ZERO azioni ops DB** (solo: rimuovere da Vercel le env `KIMI_API_KEY`/`KIMI_MODEL` se presenti).
 Spec/piano: `docs/superpowers/{specs,plans}/2026-07-24-chat-streaming*`.

@@ -13,7 +13,7 @@
 | **Fase in corso** | Fase 1 — MVP Gestionale |
 | **Sotto-fase** | …#30 · **CHAT ASSISTENTE PROFESSIONALE ✅**: streaming SSE + STOP · Gemini-only (Kimi rimosso) · conversazioni complete (rinomina/elimina/archivia/cerca) · markdown + card prodotto inline · mobile-first (drawer, composer, 375px) · `?c=` in URL. |
 | **Branch git** | `claude/assistant-chat-streaming-mobile-1apei1` (20 commit, da `origin/main` @ `5c143ee`). **PR NON ancora aperta** (in attesa ok utente). |
-| **Stato deploy** | **LIVE** su `catalogo-finder-kappa.vercel.app` (senza questa branch). Al merge: deploy Vercel standard. **NESSUNA migrazione, NESSUN seed.** Unica azione ops (non bloccante): rimuovere da Vercel le env `KIMI_MODEL`/`MOONSHOT_API_KEY` se presenti. |
+| **Stato deploy** | **LIVE** su `catalogo-finder-kappa.vercel.app` (senza questa branch). Al merge: deploy Vercel standard. **NESSUNA migrazione, NESSUN seed.** Unica azione ops (non bloccante): rimuovere da Vercel le env `KIMI_API_KEY`/`KIMI_MODEL` se presenti. |
 | **Piani/spec** | `docs/superpowers/{specs,plans}/2026-07-24-chat-streaming*`. |
 
 > **▶ RIPRENDI DA QUI — CHAT ASSISTENTE riscritta ✅. Branch pronto, PR DA APRIRE (serve ok utente).**
@@ -51,7 +51,7 @@
 > **DA FARE ALLA RIPRESA**
 > 1. **Aprire la PR** (l'utente deve dare l'ok) → poi merge.
 > 2. **AZIONI OPS: nessuna migrazione, nessun seed.** Unica cosa (non bloccante): rimuovere da Vercel le env
->    `KIMI_MODEL` / `MOONSHOT_API_KEY` se presenti. La key Gemini resta.
+>    `KIMI_API_KEY` / `KIMI_MODEL` se presenti. La key Gemini resta.
 > 3. **Verifica post-deploy con Gemini VERO**: in questo ambiente non c'era la key, quindi lo streaming è stato
 >    verificato con SSE simulato. In produzione controllare: token progressivi reali, stati «Sto cercando nel
 >    catalogo…», STOP che conserva il parziale, e il comportamento sotto **429** (banner + countdown).
@@ -376,8 +376,8 @@
 | RateLimiter | `src/server/ai/ratelimit.ts` | finestra fissa; 20 msg/min/utente + cap 60 RPM/provider |
 | RedisLike + client | `src/server/ai/redis.ts` | ioredis lazy; interfaccia minima iniettabile; `src/test/fake-redis.ts` per i test |
 | Errori tipizzati | `src/server/ai/errors.ts` | messaggi italiani; `ProviderHttpError.status` guida retry/fallback |
-| ChatProvider | `src/server/ai/providers/{types,gemini,kimi}.ts` | solo fetch (NO SDK); Gemini `generateContent` v1beta, Kimi OpenAI-compatible |
-| **AIGateway** | `src/server/ai/gateway.ts` | UNICO punto uscita AI: rate limit → breaker → timeout 30s + 1 retry jitter su 429/5xx → fallback Gemini→Kimi; `embedQuery` (3s, null su errore); `getAIGateway()` singleton da env |
+| ChatProvider | `src/server/ai/providers/{types,gemini,sse}.ts` | solo fetch (NO SDK); Gemini `generateContent` v1beta + **`streamGenerateContent?alt=sse`** (parser frame-safe `sse.ts`). *(`kimi.ts` rimosso 2026-07-24)* |
+| **AIGateway** | `src/server/ai/gateway.ts` | UNICO punto uscita AI: rate limit → breaker → timeout 30s. `chat()` (non-stream) ha 1 retry jitter su 429/5xx; **`chatStream()` non ha né retry né fallback** (duplicherebbe token già emessi) e uno **STOP utente non conta come guasto** del provider. `embedQuery` (3s, null su errore); `getAIGateway()` singleton da env |
 | RAGEngine esteso | `src/server/ai/rag.ts` | + `listUnembedded`/`storeEmbeddings` (resta l'unico modulo raw SQL); degrado try/catch su embedding; **niente più `server-only`** (riuso da tsx) |
 | Embedding batch | `src/server/ai/embedding.ts` + `product-text.ts` + `scripts/embed-products.ts` | `generateBatch` ≤100, `HttpStatusError`, backoff exp; `pnpm embed:products` idempotente (pagina su `embedding IS NULL`) |
 | Tool chat | `src/server/chat/tools.ts` | `search_products` (limit ≤10, filtri) + `get_product_by_code`; errori come output al modello |
@@ -572,7 +572,7 @@ Actions** (rete aperta → Neon:5432 ok).
   `Completato: 6191 embedding generati.`). Il blocco 5432 della dev-container web
   resta valido (le operazioni DB girano da GitHub Actions, non dal container);
   billing Gemini attivo. Vedi sezione «Fase 1f».
-- [ ] **Key Moonshot API platform** per il fallback Kimi (quella "Kimi Code" dà 401)
+- [x] ~~Key Moonshot API platform per il fallback Kimi~~ → **obsoleto: Kimi rimosso 2026-07-24** (Gemini unico)
 - [X] Merge 1c su `main` (2026-07-04, merge locale + push; suite verde sul risultato)
 
 ### Da Fase 1d
@@ -614,7 +614,7 @@ Actions** (rete aperta → Neon:5432 ok).
 ### Sessioni future
 - [ ] **Produzione vera** dopo lo staging: Vercel **Pro** (termini commerciali +
   `maxDuration` 300 + deployment protection) + dominio custom.
-- [ ] Fallback Kimi (key Moonshot platform) · finiture coperture · regole PVC/ALLUMINIO.
+- [ ] ~~Fallback Kimi~~ (**obsoleto: Kimi rimosso**) · finiture coperture · regole PVC/ALLUMINIO.
 
 ## Contesto tecnico
 
