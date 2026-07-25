@@ -9,7 +9,12 @@
 // distinta e si correggono alla prossima distinta reale o al listino cartaceo.
 import { pick, linesFromParts, requireKey } from "./kit-shared";
 import { KitGenerationError, PILOT, type KitInput, type KitLine, type RuleModule } from "./types";
-import { PER_MANO, MOVIMENTO_ANGOLARE, incontriNottolino } from "./artech-legno-shared";
+import {
+  PER_MANO,
+  MOVIMENTO_ANGOLARE,
+  incontriNottolino,
+  assertPilotGeometry,
+} from "./artech-legno-shared";
 
 type Side = KitInput["openingSide"];
 
@@ -154,6 +159,11 @@ export const artechAntaRibaltaLegno: RuleModule = {
         `Materiale "${input.material}" non ancora coperto: il generatore supporta LEGNO.`,
         "artech.materiale",
       );
+
+    // Guardia geometria: le tabelle sotto sono cablate su aria 12 / interasse 13
+    // / battuta 20 / sede 18. Senza questa riga un'altra combinazione riceveva
+    // in silenzio i codici del pilota.
+    assertPilotGeometry(input);
 
     const lines: KitLine[] = [];
     const finish = input.finish.toUpperCase();

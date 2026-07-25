@@ -5,7 +5,7 @@
 // con certezza sono marcate ASSUNZIONE. Vedi
 // docs/superpowers/kit-assunzioni/vasistas.md.
 import { pick } from "./kit-shared";
-import { MOVIMENTO_ANGOLARE } from "./artech-legno-shared";
+import { MOVIMENTO_ANGOLARE, assertPilotGeometry } from "./artech-legno-shared";
 import { KitGenerationError, type KitInput, type KitLine, type RuleModule } from "./types";
 
 /**
@@ -37,6 +37,10 @@ export const artechVasistasLegno: RuleModule = {
         `Materiale "${input.material}" non ancora coperto per la vasistas: il generatore supporta LEGNO.`,
         "artech.materiale",
       );
+
+    // Guardia geometria: anche qui le tabelle valgono solo per la geometria del
+    // pilota (aria 12 / interasse 13 / battuta 20 / sede 18).
+    assertPilotGeometry(input);
 
     // Guardia superficie ≤ 2 m² (limite stampato sullo schema pag.416).
     const areaM2 = (input.widthMm * input.heightMm) / 1_000_000;
