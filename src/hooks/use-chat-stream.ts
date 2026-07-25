@@ -75,6 +75,8 @@ function httpErrorMessage(status: number): { recoverable: boolean; message: stri
   if (status === 401)
     return { recoverable: false, message: "Sessione scaduta: effettua di nuovo l'accesso." };
   if (status === 400) return { recoverable: false, message: "Richiesta non valida." };
+  if (status === 403)
+    return { recoverable: false, message: "Non hai i permessi per usare l'assistente." };
   if (status === 404) return { recoverable: false, message: "Conversazione non trovata." };
   if (status === 429) return { recoverable: true, message: "Troppe richieste: riprova tra poco." };
   return { recoverable: false, message: "Errore di rete." };

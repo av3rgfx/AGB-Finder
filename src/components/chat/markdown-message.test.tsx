@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
-import { MarkdownMessage } from "./markdown-message";
+import { MarkdownMessage, sanitizeHref } from "./markdown-message";
 
 afterEach(cleanup);
 
@@ -93,5 +93,42 @@ describe("MarkdownMessage", () => {
     render(<MarkdownMessage content={"[sito AGB](https://example.com/listino)"} />);
     const link = screen.getByRole("link", { name: "sito AGB" });
     expect(link.getAttribute("href")).toBe("https://example.com/listino");
+  });
+});
+
+/**
+ * Controllo di sicurezza pinnato direttamente sulla funzione: il modello può emettere QUALUNQUE
+ * href, e i bypass classici non passano dal rendering markdown (che scarta già newline e simili
+ * nelle destinazioni). Qui si fissa il comportamento voluto schema per schema, così non può
+ * cambiare in silenzio con un refactor.
+ */
+describe("sanitizeHref", () => {
+  it.each([
+    ["https://example.com/x", "https:"],
+    ["http://example.com/x", "http:"],
+    ["mailto:info@ufptrade.it", "mailto:"],
+    ["/archivio?q=A50122", "relativo → eredita https dalla base"],
+    ["//evil.com/x", "protocol-relative → risolve in https, ammesso per scelta"],
+  ])("ammette %s (%s)", (href) => {
+    expect(sanitizeHref(href)).toBe(href);
+  });
+
+  it.each([
+    ["javascript:alert(1)", "schema pericoloso"],
+    ["JavaScript:alert(1)", "maiuscole: lo schema va confrontato normalizzato"],
+    ["JAVASCRIPT:alert(1)", "tutto maiuscolo"],
+    ["\tjava\nscript:alert(1)", "tab/newline iniettati dentro lo schema"],
+    ["\u0000javascript:alert(1)", "carattere di controllo (NUL) iniziale"],
+    ["  javascript:alert(1)", "spazi iniziali"],
+    ["data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==", "data: URL"],
+    ["vbscript:msgbox(1)", "altro schema eseguibile"],
+    ["file:///etc/passwd", "schema locale"],
+  ])("rifiuta %s (%s)", (href) => {
+    expect(sanitizeHref(href)).toBeUndefined();
+  });
+
+  it("href assente o vuoto → undefined (nessun <a> senza destinazione)", () => {
+    expect(sanitizeHref(undefined)).toBeUndefined();
+    expect(sanitizeHref("")).toBeUndefined();
   });
 });

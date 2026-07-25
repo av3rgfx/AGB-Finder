@@ -29,8 +29,14 @@ const SAFE_LINK_PROTOCOLS = new Set(["http:", "https:", "mailto:"]);
  * lo schema http/https della base) e si permette solo lo schema esplicitamente in
  * whitelist. `new URL(...)` lancia su input non parsabile: qualunque eccezione è
  * trattata come URL non sicuro, mai propagata (il rendering non deve mai esplodere).
+ *
+ * La normalizzazione è quella dello standard URL, quindi copre da sola i trucchi
+ * classici di offuscamento dello schema (maiuscole, tab/newline/controlli iniettati
+ * dentro `javascript:`): esportata apposta per poterla pinnare con test diretti —
+ * vedi markdown-message.test.tsx, dove è fissato anche il comportamento voluto sugli
+ * URL protocol-relative (`//host` → eredita https dalla base, quindi ammesso).
  */
-function sanitizeHref(href: string | undefined): string | undefined {
+export function sanitizeHref(href: string | undefined): string | undefined {
   if (!href) return undefined;
   try {
     const url = new URL(href, "https://placeholder.invalid");

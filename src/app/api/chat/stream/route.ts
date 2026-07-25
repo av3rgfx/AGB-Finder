@@ -5,6 +5,7 @@ import { ChatService } from "@/server/chat/service";
 import { encodeSSE } from "@/server/chat/stream-encode";
 import { streamBodySchema, DEFAULT_CONVERSATION_TITLE } from "@/server/chat/stream-body";
 import { chatUserFacingError } from "@/server/chat/error-message";
+import { AGENT_ROLES, type UserRole } from "@/lib/authz";
 import type { ChatEvent } from "@/server/chat/events";
 
 // Unica eccezione al vincolo "tutte le API via tRPC" (vedi CLAUDE.md): lo streaming SSE non è
@@ -17,6 +18,12 @@ export const maxDuration = 60;
 export async function POST(req: Request): Promise<Response> {
   const session = await auth.api.getSession({ headers: req.headers });
   if (!session) return new Response("Unauthorized", { status: 401 });
+  // Stesso RBAC di `agentProcedure` su tRPC (difesa in profondità: l'ownership della conversazione
+  // già limita il raggio d'azione, ma questa route non deve essere l'unica porta senza controllo
+  // di ruolo). Ruolo assente = rifiuto, come fa `enforceRole` in `src/server/api/trpc.ts`.
+  if (!AGENT_ROLES.includes(session.user.role as UserRole)) {
+    return new Response("Forbidden", { status: 403 });
+  }
 
   let json: unknown;
   try {

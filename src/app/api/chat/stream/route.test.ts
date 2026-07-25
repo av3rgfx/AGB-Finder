@@ -87,6 +87,30 @@ describe("POST /api/chat/stream", () => {
     expect(conversationFindFirst).not.toHaveBeenCalled();
   });
 
+  it("sessione senza ruolo AGENT/ADMIN → 403 (non tocca il DB)", async () => {
+    // Difesa in profondità: stesso RBAC di `agentProcedure` su tRPC. Un ruolo assente o non
+    // riconosciuto non deve poter aprire uno stream, nemmeno con una sessione valida.
+    getSession.mockResolvedValue({ user: { id: "u1", role: "OSPITE" } });
+    const res = await POST(req({ conversationId: "c1", content: "ciao", mode: "send" }));
+    expect(res.status).toBe(403);
+    expect(conversationFindFirst).not.toHaveBeenCalled();
+  });
+
+  it("sessione senza campo role → 403", async () => {
+    getSession.mockResolvedValue({ user: { id: "u1" } });
+    const res = await POST(req({ conversationId: "c1", content: "ciao", mode: "send" }));
+    expect(res.status).toBe(403);
+    expect(conversationFindFirst).not.toHaveBeenCalled();
+  });
+
+  it("ruolo ADMIN → ammesso", async () => {
+    getSession.mockResolvedValue({ user: { id: "u1", role: "ADMIN" } });
+    conversationFindFirst.mockResolvedValue({ id: "c1", title: "Anta ribalta ARTECH" });
+    const res = await POST(req({ conversationId: "c1", mode: "regenerate" }));
+    expect(res.status).toBe(200);
+    await res.text();
+  });
+
   it("body non-JSON → 400", async () => {
     getSession.mockResolvedValue({ user: { id: "u1", role: "AGENT" } });
     const res = await POST(
