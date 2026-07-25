@@ -11,19 +11,38 @@ import { KitGenerationError, type KitInput, type KitLine, type RuleModule } from
 /**
  * Cremonese vasistas «maniglia variabile/centrale» A50111.15.NN (E.15) per GR,
  * GR scelto per altezza (HBB). Colonne dalla tabella listino (righe 19552-19558):
- * codice + nForbici (NB 19566-19567: GR1-3→1, GR4-6→2) + nNottolini (colonna
- * NOT.). Campo pilota GR01-GR06 (HBB 540-2510); GR00 escluso (n° forbici non
- * definito a listino). ASSUNZIONE: HBB = heightMm (offset 0, come il battente;
- * l'anta-ribalta usa -10). I bordi sovrapposti si risolvono con lo span più
- * stretto in pick() (= GR più basso).
+ * codice + nNottolini (colonna NOT.). Campo pilota GR01-GR06 (HBB 540-2510);
+ * GR00 resta fuori dal campo pilota (banda HBB e colonna NOT. non trascritte).
+ * ASSUNZIONE: HBB = heightMm (offset 0, come il battente; l'anta-ribalta usa
+ * -10). I bordi sovrapposti si risolvono con lo span più stretto in pick()
+ * (= GR più basso).
  */
 const VASISTAS_CREMONESI = [
-  { minH: 540, maxH: 712, gr: 1, code: "A50111.15.11", forbici: 1, nottolini: 0 },
-  { minH: 660, maxH: 860, gr: 2, code: "A50111.15.12", forbici: 1, nottolini: 1 },
-  { minH: 820, maxH: 1220, gr: 3, code: "A50111.15.13", forbici: 1, nottolini: 1 },
-  { minH: 1190, maxH: 1610, gr: 4, code: "A50111.15.14", forbici: 2, nottolini: 2 },
-  { minH: 1590, maxH: 2010, gr: 5, code: "A50111.15.15", forbici: 2, nottolini: 2 },
-  { minH: 1890, maxH: 2510, gr: 6, code: "A50111.15.16", forbici: 2, nottolini: 4 },
+  { minH: 540, maxH: 712, gr: 1, code: "A50111.15.11", nottolini: 0 },
+  { minH: 660, maxH: 860, gr: 2, code: "A50111.15.12", nottolini: 1 },
+  { minH: 820, maxH: 1220, gr: 3, code: "A50111.15.13", nottolini: 1 },
+  { minH: 1190, maxH: 1610, gr: 4, code: "A50111.15.14", nottolini: 2 },
+  { minH: 1590, maxH: 2010, gr: 5, code: "A50111.15.15", nottolini: 2 },
+  { minH: 1890, maxH: 2510, gr: 6, code: "A50111.15.16", nottolini: 4 },
+] as const;
+
+/**
+ * Numero di forbici per banda di LARGHEZZA (LBB), dalla tabella grafica
+ * «Posizionamento forbici» stampata sullo schema p0418 (416). Prima il modulo lo
+ * derivava dal GR del cremonese, cioè dall'ALTEZZA: sbagliato su ogni larghezza
+ * diversa da quella del golden.
+ * NB dello schema: «per ragioni di sicurezza le forbici sui montanti sono
+ * obbligatorie per LBB compresi tra 861 e 2510 (per HBB > 500 mm)» — è la ragione
+ * per cui il conteggio sale a 3 e 4.
+ * Articolo unico A50545.00.00 (p0442 (440), «Per Vasistas › per cremonese
+ * maniglia variabile»): il listino non distingue le forbici del traverso da
+ * quelle dei montanti, cambia solo la posizione di montaggio.
+ */
+const VASISTAS_FORBICI = [
+  { minL: 274, maxL: 540, forbici: 2, posizione: "2 sui montanti" },
+  { minL: 541, maxL: 860, forbici: 1, posizione: "1 sul traverso" },
+  { minL: 861, maxL: 1200, forbici: 3, posizione: "1 sul traverso + 2 sui montanti" },
+  { minL: 1201, maxL: 2510, forbici: 4, posizione: "2 sul traverso + 2 sui montanti" },
 ] as const;
 
 /** Movimenti angolari per il vasistas base (ASSUNZIONE: 2, come i moduli gemelli). */
@@ -50,8 +69,21 @@ export const artechVasistasLegno: RuleModule = {
         "artech.superficie",
       );
 
-    const gr = pick(VASISTAS_CREMONESI, input.heightMm, "H", "artech.cremonese", "cremonese vasistas");
-    const nForbici = gr.forbici;
+    const gr = pick(
+      VASISTAS_CREMONESI,
+      input.heightMm,
+      "H",
+      "artech.cremonese",
+      "cremonese vasistas",
+    );
+    const banda = pick(
+      VASISTAS_FORBICI,
+      input.widthMm,
+      "L",
+      "artech.forbici",
+      "posizionamento forbici vasistas",
+    );
+    const nForbici = banda.forbici;
     const lines: KitLine[] = [];
 
     // 1) Cremonese vasistas (maniglia variabile) — per GR/altezza.
@@ -82,13 +114,13 @@ export const artechVasistasLegno: RuleModule = {
       },
     );
 
-    // 4) Forbici per vasistas (E.15: GR1-3→1, GR4-6→2).
+    // 4) Forbici per vasistas — tabella «Posizionamento forbici» per LBB.
     lines.push({
       position: "forbici-vasistas",
       code: "A50545.00.00",
       quantity: nForbici,
       ruleId: "artech.forbici",
-      ruleDescription: `Forbici per vasistas (GR0${gr.gr} → ${nForbici})`,
+      ruleDescription: `Forbici per vasistas — LBB ${banda.minL}-${banda.maxL}: ${banda.posizione}`,
     });
 
     // 5-6) Supporto forbice + perno (codici legno condivisi) — uno per forbice.

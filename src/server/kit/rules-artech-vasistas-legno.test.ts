@@ -11,7 +11,7 @@ import { artechVasistasLegno } from "./rules-artech-vasistas-legno";
 const golden: KitInput = {
   windowType: "VASISTAS",
   widthMm: 600,
-  heightMm: 1000, // → GR03 (820-1220): 1 forbice, 1 nottolino
+  heightMm: 1000, // → GR03 (820-1220): 1 nottolino
   material: "LEGNO",
   airGapMm: 12,
   axisOffsetMm: 13,
@@ -29,7 +29,7 @@ const GOLDEN: [code: string, qty: number][] = [
   ["A50111.15.13", 1], // cremonese vasistas GR03 (altezza 1000)
   ["A50190.00.00", 1], // DSS ambidestro (ASSUNZIONE: A50111 lo richiede a parte)
   ["A51400.05.03", 1], // incontro DSS
-  ["A50545.00.00", 1], // forbici per vasistas (GR03 → 1)
+  ["A50545.00.00", 1], // forbici per vasistas (LBB 541-860 → 1 sul traverso)
   ["A50702.05.00", 1], // supporto forbice battuta 20 (= n. forbici)
   ["A50790.00.00", 1], // perno supporto forbice (= n. forbici)
   ["A50193.00.03", 1], // terminale per vasistas corsa 18 (ASSUNZIONE)
@@ -60,12 +60,12 @@ describe("artechVasistasLegno — golden provvisorio (da validare con agente)", 
       expect(codes).not.toContain(c);
   });
 
-  it("forbici/supporto/perno scalano col GR: GR03 → 1, GR05 (H1800) → 2", () => {
+  it("supporto/perno seguono il numero di forbici, che ora dipende dalla larghezza", () => {
     const qty = (input: KitInput, code: string) =>
       artechVasistasLegno.generate(input).find((l) => l.code === code)?.quantity ?? 0;
     for (const code of ["A50545.00.00", "A50702.05.00", "A50790.00.00"]) {
-      expect(qty(golden, code)).toBe(1);
-      expect(qty({ ...golden, heightMm: 1800 }, code)).toBe(2); // H1800 → GR05
+      expect(qty(golden, code)).toBe(1); // LBB 600 → banda 541-860 → 1 sul traverso
+      expect(qty({ ...golden, widthMm: 900 }, code)).toBe(3); // LBB 861-1200 → 3
     }
   });
 
@@ -115,5 +115,47 @@ describe("artechVasistasLegno — golden provvisorio (da validare con agente)", 
         expect((err as KitGenerationError).ruleId).toBe("artech.cremonese");
       }
     }
+  });
+});
+
+describe("artechVasistasLegno — forbici dalla tabella «Posizionamento forbici» p0418 (416)", () => {
+  const forbiciAt = (widthMm: number) =>
+    artechVasistasLegno
+      .generate({ ...golden, widthMm })
+      .find((l) => l.position === "forbici-vasistas")?.quantity;
+
+  it("LBB 274-540 → 2 (sui montanti)", () => {
+    expect(forbiciAt(300)).toBe(2);
+    expect(forbiciAt(540)).toBe(2);
+  });
+
+  it("LBB 541-860 → 1 (sul traverso)", () => {
+    expect(forbiciAt(541)).toBe(1);
+    expect(forbiciAt(600)).toBe(1); // golden
+    expect(forbiciAt(860)).toBe(1);
+  });
+
+  it("LBB 861-1200 → 3 (1 traverso + 2 montanti)", () => {
+    expect(forbiciAt(861)).toBe(3);
+    expect(forbiciAt(1200)).toBe(3);
+  });
+
+  it("LBB 1201-2510 → 4 (2 traverso + 2 montanti)", () => {
+    expect(forbiciAt(1201)).toBe(4);
+  });
+
+  it("non dipende più dall'altezza: stessa larghezza, GR diversi, stesse forbici", () => {
+    expect(forbiciAt(600)).toBe(
+      artechVasistasLegno
+        .generate({ ...golden, widthMm: 600, heightMm: 1300 })
+        .find((l) => l.position === "forbici-vasistas")?.quantity,
+    );
+  });
+
+  it("la descrizione cita la banda LBB, non il GR", () => {
+    const riga = artechVasistasLegno
+      .generate({ ...golden, widthMm: 900 })
+      .find((l) => l.position === "forbici-vasistas");
+    expect(riga?.ruleDescription).toMatch(/861/);
   });
 });
