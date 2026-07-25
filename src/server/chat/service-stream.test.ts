@@ -75,6 +75,14 @@ function seedRows(rows: { id: string; role: string }[]) {
       return Promise.resolve(match ? { id: match.id, role: match.role } : null);
     },
   );
+  // `delete` rimuove davvero la riga da `rows`: i test di regressione possono così asserire che
+  // la risposta buona è ANCORA lì, non solo che `delete` non è stato chiamato.
+  messageDelete.mockImplementation(({ where }: { where: { id: string } }) => {
+    const i = rows.findIndex((r) => r.id === where.id);
+    if (i >= 0) rows.splice(i, 1);
+    return Promise.resolve({});
+  });
+  return rows;
 }
 
 beforeEach(() => {
@@ -339,13 +347,13 @@ describe("ChatService.persistUserMessage", () => {
 });
 
 describe("ChatService.deleteLastAssistant", () => {
-  it("l'ultima riga della conversazione è la risposta appena prodotta → la elimina", async () => {
+  it("l'id atteso è l'ultima riga della conversazione → la elimina", async () => {
     seedRows([
       { id: "u1", role: "USER" },
       { id: "a1", role: "ASSISTANT" },
     ]);
     const svc = new ChatService(db, {} as unknown as AIGateway);
-    await svc.deleteLastAssistant("conv1");
+    await svc.deleteLastAssistant("conv1", "a1");
     expect(messageFindFirst).toHaveBeenCalledWith({
       where: { conversationId: "conv1", role: { in: ["USER", "ASSISTANT"] } },
       orderBy: { createdAt: "desc" },
@@ -357,22 +365,50 @@ describe("ChatService.deleteLastAssistant", () => {
   it("conversazione vuota → non chiama delete", async () => {
     seedRows([]);
     const svc = new ChatService(db, {} as unknown as AIGateway);
-    await svc.deleteLastAssistant("conv1");
+    await svc.deleteLastAssistant("conv1", "a1");
     expect(messageDelete).not.toHaveBeenCalled();
+  });
+
+  it("REGRESSIONE: senza id atteso non cancella NULLA, nemmeno se in coda c'è una risposta", async () => {
+    // Forma «offline»: la richiesta non ha mai raggiunto il server, quindi in coda c'è ancora la
+    // risposta BUONA del turno precedente. Un retry che non dichiara quale risposta intende
+    // rigenerare non deve poter distruggere quella riga: senza id non si cancella, mai a indovinare.
+    const rows = seedRows([
+      { id: "u1", role: "USER" },
+      { id: "a1", role: "ASSISTANT" },
+    ]);
+    const svc = new ChatService(db, {} as unknown as AIGateway);
+    await svc.deleteLastAssistant("conv1", undefined);
+    expect(messageDelete).not.toHaveBeenCalled();
+    expect(rows.map((r) => r.id)).toContain("a1");
+  });
+
+  it("REGRESSIONE: id che NON coincide con la coda → non cancella nulla", async () => {
+    // Il client crede di rigenerare `a0` (una risposta più vecchia, o già sostituita da un altro
+    // dispositivo): la coda è un'ALTRA risposta. Mai «cancello comunque l'ultima»: nessun delete.
+    const rows = seedRows([
+      { id: "u1", role: "USER" },
+      { id: "a1", role: "ASSISTANT" },
+    ]);
+    const svc = new ChatService(db, {} as unknown as AIGateway);
+    await svc.deleteLastAssistant("conv1", "a0");
+    expect(messageDelete).not.toHaveBeenCalled();
+    expect(rows.map((r) => r.id)).toContain("a1");
   });
 
   it("REGRESSIONE: l'ultima riga è un USER (turno fallito) → NON tocca la risposta precedente", async () => {
     // Il turno corrente è fallito prima di produrre qualunque risposta (nessuna riga ASSISTANT in
     // coda): non c'è NIENTE da rigenerare. La risposta ASSISTANT più recente appartiene al turno
     // PRECEDENTE ed è un dato buono dell'utente — cancellarla sarebbe perdita di dati.
-    seedRows([
+    const rows = seedRows([
       { id: "u1", role: "USER" },
       { id: "a1", role: "ASSISTANT" },
       { id: "u2", role: "USER" },
     ]);
     const svc = new ChatService(db, {} as unknown as AIGateway);
-    await svc.deleteLastAssistant("conv1");
+    await svc.deleteLastAssistant("conv1", "a1");
     expect(messageDelete).not.toHaveBeenCalled();
+    expect(rows.map((r) => r.id)).toContain("a1");
   });
 
   it("le righe TOOL intermedie non contano come 'ultima riga'", async () => {
@@ -384,7 +420,7 @@ describe("ChatService.deleteLastAssistant", () => {
       { id: "t1", role: "TOOL" },
     ]);
     const svc = new ChatService(db, {} as unknown as AIGateway);
-    await svc.deleteLastAssistant("conv1");
+    await svc.deleteLastAssistant("conv1", "a1");
     expect(messageDelete).not.toHaveBeenCalled();
   });
 });
@@ -413,8 +449,9 @@ describe("REGRESSIONE — rate limit + auto-retry del client non distrugge il tu
     ]);
     expect(messageCreate).not.toHaveBeenCalled(); // il turno fallito non lascia righe
 
-    // …e ora l'auto-retry del client (assistente-client.tsx, effetto di auto-retry).
-    await svc.deleteLastAssistant("conv1");
+    // …e ora l'auto-retry del client (assistente-client.tsx, effetto di auto-retry): rigenera
+    // «il turno fallito», che non ha prodotto nessuna risposta — quindi senza id atteso.
+    await svc.deleteLastAssistant("conv1", undefined);
 
     expect(messageDelete).not.toHaveBeenCalled();
     expect(rows.map((r) => r.id)).toContain("a1");

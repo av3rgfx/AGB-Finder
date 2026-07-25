@@ -65,11 +65,14 @@ describe("ErrorBanner", () => {
     expect(onRetry).toHaveBeenCalled();
   });
 
-  it("errore non recuperabile: toni danger, bottone «Rigenera», nessun countdown", () => {
+  it("errore non recuperabile: toni danger, nessun countdown, il bottone resta «Riprova»", () => {
+    // Mai «Rigenera» sul banner: l'azione ritenta il turno fallito (ri-invio o nuova generazione),
+    // non sostituisce una risposta esistente — vedi `handleManualRetry` in assistente-client.tsx.
     const onRetry = vi.fn();
     render(<ErrorBanner error={{ recoverable: false, message: "Errore fatale." }} onRetry={onRetry} />);
     expect(screen.getByRole("alert").textContent).toContain("Errore fatale.");
-    const btn = screen.getByRole("button", { name: "Rigenera" });
+    expect(screen.queryByRole("button", { name: "Rigenera" })).toBeNull();
+    const btn = screen.getByRole("button", { name: "Riprova" });
     expect(screen.queryByText(/Riprovo tra/)).toBeNull();
     fireEvent.click(btn);
     expect(onRetry).toHaveBeenCalled();

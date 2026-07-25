@@ -233,6 +233,48 @@ describe("useChatStream", () => {
     expect(result.current.state.messageId).toBe("m1");
   });
 
+  it("hasText(): vero appena arriva il primo delta, anche prima del frame che lo riversa nello stato", async () => {
+    // rAF congelato: il buffer non viene mai riversato da solo, così il test riproduce in modo
+    // deterministico l'istante (~16 ms) in cui `state.text` è ancora vuoto ma del testo dal server
+    // è già arrivato. Uno STOP premuto lì deve comunque sapere che c'è un parziale da attendere.
+    vi.stubGlobal("requestAnimationFrame", () => 1);
+    vi.stubGlobal("cancelAnimationFrame", () => {});
+
+    let ctl!: ReturnType<typeof controllableStream>;
+    fetchMock.mockImplementation((_url: string, init: RequestInit) => {
+      ctl = controllableStream(init.signal as AbortSignal);
+      return Promise.resolve({ ok: true, status: 200, body: ctl.stream } as Response);
+    });
+
+    const { result } = renderHook(() => useChatStream());
+    expect(result.current.hasText()).toBe(false);
+
+    let startPromise!: Promise<void>;
+    act(() => {
+      startPromise = result.current.start({ conversationId: "c1", content: "hi", mode: "send" });
+    });
+    await waitFor(() => expect(ctl).toBeDefined());
+
+    act(() => {
+      ctl.push({ type: "delta", text: "Ecco le" });
+    });
+    await waitFor(() => expect(result.current.hasText()).toBe(true));
+    expect(result.current.state.text).toBe(""); // ancora solo nel buffer
+
+    act(() => {
+      ctl.push({ type: "done", messageId: "m1", products: [], tokens: 1 });
+      ctl.close();
+    });
+    await act(async () => {
+      await startPromise;
+    });
+    // Il flush esplicito prima dell'evento terminale riversa comunque il buffer.
+    expect(result.current.state.text).toBe("Ecco le");
+
+    act(() => result.current.reset());
+    expect(result.current.hasText()).toBe(false);
+  });
+
   it("stop() aborta la richiesta e mantiene il testo parziale senza impostare un errore", async () => {
     let ctl!: ReturnType<typeof controllableStream>;
     fetchMock.mockImplementation((_url: string, init: RequestInit) => {

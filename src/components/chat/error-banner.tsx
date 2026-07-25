@@ -21,7 +21,11 @@ export interface ErrorBannerProps {
  * Banner d'errore per lo streaming chat. Recuperabile (rate limit, errore transitorio):
  * toni warning + countdown "Riprovo tra Ns…" a partire da `retryAfter` (puramente
  * informativo — il retry resta manuale, il countdown non richiama `onRetry` da solo).
- * Non recuperabile: toni danger, nessun countdown, bottone "Rigenera".
+ * Non recuperabile: toni danger, nessun countdown.
+ *
+ * Il bottone dice sempre «Riprova», mai «Rigenera»: qui si ritenta il turno FALLITO (ri-invio del
+ * messaggio o nuova generazione), non si sostituisce mai una risposta già esistente — quella è
+ * l'azione «Rigenera» di `MessageTurn`, che è legata all'id di una risposta precisa.
  */
 export function ErrorBanner({ error, onRetry }: ErrorBannerProps) {
   const [remaining, setRemaining] = useState(error.retryAfter ?? 0);
@@ -72,7 +76,7 @@ export function ErrorBanner({ error, onRetry }: ErrorBannerProps) {
         className="inline-flex min-h-10 shrink-0 items-center justify-center gap-1.5 self-start rounded border border-line-strong px-3 text-xs font-medium text-ink transition-colors duration-150 ease-out-quart hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 sm:self-auto"
       >
         <RotateCcw className="size-3.5" aria-hidden />
-        {error.recoverable ? "Riprova" : "Rigenera"}
+        Riprova
       </button>
     </div>
   );

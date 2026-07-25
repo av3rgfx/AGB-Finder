@@ -41,23 +41,34 @@ export class ChatService {
   }
 
   /**
-   * «Rigenera»: elimina la risposta da rifare, ma SOLO se ce n'è davvero una da rifare — cioè se
-   * l'ultima riga USER|ASSISTANT della conversazione è un ASSISTANT.
+   * «Rigenera»: elimina la risposta da rifare, ma SOLO se il client ha dichiarato QUALE risposta
+   * intende rifare (`expectedAssistantId`) e quella risposta è ancora l'ultima riga
+   * USER|ASSISTANT della conversazione. Nessun id o id che non coincide ⇒ non si cancella niente.
+   * Mai cancellare «l'ultimo ASSISTANT» a indovinare: è un'operazione irreversibile.
    *
-   * Se l'ultima riga è invece un USER, quel turno non ha mai prodotto una risposta (es. rate limit
-   * pre-primo-token: `generateStream` esce senza persistere nulla e il client ri-tenta da solo in
-   * `mode:"regenerate"`). Cancellare «l'ultimo ASSISTANT della conversazione» in quel caso
-   * distruggerebbe irreversibilmente la risposta BUONA di un turno PRECEDENTE — che sparirebbe
-   * anche dal transcript inviato al modello. Da qui la guardia: niente risposta in coda, niente
-   * delete.
+   * Le due forme che senza questa guardia distruggerebbero dati:
+   * - **coda USER** — il turno è morto prima di produrre una risposta (es. rate limit
+   *   pre-primo-token: `generateStream` esce senza persistere nulla), quindi la risposta ASSISTANT
+   *   più recente è quella BUONA del turno PRECEDENTE;
+   * - **coda ASSISTANT ma non quella dichiarata** — la richiesta non ha MAI raggiunto il server
+   *   (agente offline): nemmeno la riga USER è stata scritta, e la coda è ancora la risposta buona
+   *   del turno precedente. È lo scenario reale «l'agente perde campo a metà domanda».
+   *
+   * Una risposta cancellata qui sparirebbe anche dal transcript inviato al modello.
    */
-  async deleteLastAssistant(conversationId: string): Promise<void> {
+  async deleteLastAssistant(
+    conversationId: string,
+    expectedAssistantId: string | undefined,
+  ): Promise<void> {
+    if (!expectedAssistantId) return;
     const last = await this.db.message.findFirst({
       where: { conversationId, role: { in: ["USER", "ASSISTANT"] } },
       orderBy: { createdAt: "desc" },
       select: { id: true, role: true },
     });
-    if (last?.role === "ASSISTANT") await this.db.message.delete({ where: { id: last.id } });
+    if (last?.role === "ASSISTANT" && last.id === expectedAssistantId) {
+      await this.db.message.delete({ where: { id: last.id } });
+    }
   }
 
   async *generateStream(

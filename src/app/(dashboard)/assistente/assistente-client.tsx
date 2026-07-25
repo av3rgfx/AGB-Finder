@@ -45,7 +45,7 @@ export function AssistenteClient() {
   const [nearBottom, setNearBottom] = useState(true);
 
   const utils = api.useUtils();
-  const { state, start, stop, reset } = useChatStream();
+  const { state, start, stop, reset, hasText } = useChatStream();
 
   const conversations = api.chat.list.useQuery();
   const thread = api.chat.get.useQuery(
@@ -95,6 +95,11 @@ export function AssistenteClient() {
   // persistita compare in `chat.get` (successo) oppure resta in errore (nessun'altra riga arriverà
   // finché l'utente non ritenta). Guida sia la bolla utente ottimistica sia quella assistant live.
   const modeRef = useRef<"send" | "regenerate" | null>(null);
+  // Id della risposta che il round in volo sta rifacendo (null se non ne sta rifacendo nessuna:
+  // invio normale, oppure ritentativo di un turno che una risposta non l'ha mai prodotta). È lo
+  // STESSO id dichiarato al server, quindi «nascondi la riga stale» e «cancella la riga» restano
+  // per costruzione la stessa riga.
+  const regenerateTargetRef = useRef<string | null>(null);
   const liveMessageLanded = state.messageId !== null && persistedIds.has(state.messageId);
   const turnInFlight =
     state.status === "streaming" ||
@@ -102,13 +107,17 @@ export function AssistenteClient() {
     (state.messageId !== null && !liveMessageLanded) ||
     awaitingStopPersist;
 
-  // Rigenera ha appena cancellato l'ultima riga ASSISTANT lato server (vedi ChatService): finché la
-  // cache locale non si aggiorna, nascondiamo otticamente quella riga stale per non mostrarla insieme
-  // alla bolla live della nuova risposta in arrivo.
+  // Rigenera ha appena chiesto al server di cancellare UNA riga ASSISTANT precisa (vedi
+  // ChatService): finché la cache locale non si aggiorna, nascondiamo otticamente QUELLA riga per
+  // non mostrarla insieme alla bolla live della nuova risposta in arrivo. Solo quella: un round che
+  // non sta rifacendo nessuna risposta (`regenerateTargetRef` null) non deve nascondere niente,
+  // altrimenti l'ultima risposta buona sparirebbe dallo schermo mentre a DB è ancora lì.
   let displayedMessages = persistedMessages;
-  if (turnInFlight && modeRef.current === "regenerate") {
+  if (turnInFlight && regenerateTargetRef.current !== null) {
     const last = displayedMessages[displayedMessages.length - 1];
-    if (last?.role === "ASSISTANT") displayedMessages = displayedMessages.slice(0, -1);
+    if (last?.role === "ASSISTANT" && last.id === regenerateTargetRef.current) {
+      displayedMessages = displayedMessages.slice(0, -1);
+    }
   }
   const lastAssistantIndex = (() => {
     for (let i = displayedMessages.length - 1; i >= 0; i--) {
@@ -157,6 +166,7 @@ export function AssistenteClient() {
   const performTurn = useCallback(
     async (input: StartInput) => {
       modeRef.current = input.mode;
+      regenerateTargetRef.current = input.regenerateMessageId ?? null;
       setStopAwaitAfterId(null); // nuovo turno: l'attesa del parziale di uno STOP precedente decade
       if (retryTimerRef.current) {
         clearTimeout(retryTimerRef.current);
@@ -187,17 +197,22 @@ export function AssistenteClient() {
     [conversationId, create, pathname, router, performTurn],
   );
 
-  // «Rigenera»/«Riprova» sono sempre lo stesso flusso `mode: "regenerate"`, sia per rifare l'ultima
-  // risposta completata sia per ritentare un round fallito. Il retry di un send appena tentato è
-  // sicuro perché `deleteLastAssistant` lato server cancella SOLO se l'ultima riga della
-  // conversazione è davvero una risposta appena prodotta: se il turno è morto prima di produrne una
-  // (l'ultima riga è il messaggio USER), non tocca nulla — in particolare non la risposta del turno
-  // PRECEDENTE. Vedi ChatService.deleteLastAssistant.
-  const handleRegenerate = useCallback(async () => {
-    if (!conversationId) return;
-    retryCountRef.current = 0;
-    await performTurn({ conversationId, mode: "regenerate" });
-  }, [conversationId, performTurn]);
+  // «Rigenera» su una risposta esistente: si dichiara al server QUALE risposta si intende rifare.
+  // Il server la cancella solo se è ancora l'ultima riga della conversazione (vedi
+  // ChatService.deleteLastAssistant) — così una rigenerazione partita da uno stato di schermo
+  // ormai superato non può mai cancellare la risposta sbagliata.
+  const handleRegenerate = useCallback(
+    async (assistantMessageId: string) => {
+      if (!conversationId) return;
+      retryCountRef.current = 0;
+      await performTurn({
+        conversationId,
+        mode: "regenerate",
+        regenerateMessageId: assistantMessageId,
+      });
+    },
+    [conversationId, performTurn],
+  );
 
   // Auto-retry su errore recuperabile (rate limit): al massimo MAX_AUTO_RETRIES tentativi
   // automatici rispettando `retryAfter`, poi resta solo il bottone manuale del banner.
@@ -218,10 +233,13 @@ export function AssistenteClient() {
   // STOP dell'utente: oltre ad abortire lo stream, se c'è già del testo parziale si arma l'attesa
   // della riga che il server sta per scrivere (vedi `awaitingStopPersist`). Senza testo il server
   // non persiste nulla (vedi ChatService), quindi non c'è niente da attendere.
+  // `hasText()` e non `state.text`: i delta sostano nel buffer dell'hook fino al frame successivo,
+  // quindi uno STOP premuto entro ~16 ms dal primo token vedrebbe `state.text` ancora vuoto e
+  // rinuncerebbe ad attendere una riga che il server sta invece per scrivere.
   const handleStop = useCallback(() => {
     stop();
-    if (state.text.length > 0) setStopAwaitAfterId({ id: lastPersistedAssistantId });
-  }, [stop, state.text, lastPersistedAssistantId]);
+    if (hasText()) setStopAwaitAfterId({ id: lastPersistedAssistantId });
+  }, [stop, hasText, lastPersistedAssistantId]);
 
   // Attesa attiva della riga scritta dopo lo STOP: si ri-invalida `chat.get` a intervalli, fino a
   // STOP_PERSIST_ATTEMPTS, poi si rinuncia (il turno live si smonta e resta la cache com'è).
@@ -240,11 +258,33 @@ export function AssistenteClient() {
     return () => clearInterval(id);
   }, [awaitingStopPersist, conversationId, utils]);
 
+  // «Riprova» del banner: ritenta il turno FALLITO, non rifà una risposta esistente. Quale delle
+  // due riprese serve lo decide un fatto osservabile — non un'euristica sul tipo di errore:
+  // - il messaggio dell'utente non risulta ancora persistito (`pendingUserBubble` non-null ⇒ la
+  //   coda della conversazione non è la sua domanda): la richiesta non ha mai raggiunto il server
+  //   (tipico dell'agente che perde campo a metà domanda), quindi la ripresa onesta è
+  //   RI-INVIARLA. Un `regenerate` qui rigenererebbe il turno PRECEDENTE, con la domanda persa;
+  // - altrimenti la domanda è già a DB e manca solo la risposta: si rigenera il turno, SENZA id
+  //   atteso — non c'è nessuna risposta da sostituire, quindi il server non cancella niente.
+  // Rischio accettato: se anche il refetch è fallito (offline) la cache resta indietro e un
+  // messaggio già arrivato al server può essere re-inviato in doppio — visibile e correggibile,
+  // a differenza di una risposta cancellata, che è perdita di dati irreversibile.
   const handleManualRetry = useCallback(() => {
-    retryCountRef.current = 0;
     if (!conversationId) return;
-    void performTurn({ conversationId, mode: "regenerate" });
-  }, [conversationId, performTurn]);
+    retryCountRef.current = 0;
+    if (pendingUserBubble !== null) {
+      void performTurn({ conversationId, content: pendingUserBubble, mode: "send" });
+      return;
+    }
+    // Si ripete la STESSA richiesta del round fallito, id compreso: era un «Rigenera» mai arrivato
+    // al server? allora quella risposta è ancora in coda e va sostituita davvero. Era un invio, o
+    // il server aveva già cancellato la riga? nessun id / id che non coincide più ⇒ nessun delete.
+    void performTurn({
+      conversationId,
+      mode: "regenerate",
+      regenerateMessageId: regenerateTargetRef.current ?? undefined,
+    });
+  }, [conversationId, pendingUserBubble, performTurn]);
 
   const handleNewConversation = useCallback(() => {
     router.replace(pathname, { scroll: false });
@@ -283,6 +323,7 @@ export function AssistenteClient() {
       setDrawerOpen(false);
       setStopAwaitAfterId(null);
       modeRef.current = null;
+      regenerateTargetRef.current = null;
       retryCountRef.current = 0;
     }
     return () => {
@@ -416,7 +457,9 @@ export function AssistenteClient() {
                     errorMessage={message.errorMessage}
                     products={message.products}
                     onRegenerate={
-                      !turnInFlight && i === lastAssistantIndex ? handleRegenerate : undefined
+                      !turnInFlight && i === lastAssistantIndex
+                        ? () => void handleRegenerate(message.id)
+                        : undefined
                     }
                   />
                 ))}

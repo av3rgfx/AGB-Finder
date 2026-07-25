@@ -43,6 +43,10 @@ const store = vi.hoisted(() => {
       messageId: null as string | null,
     },
     startMock: vi.fn(async () => {}),
+    // Nel vero hook `hasText()` legge un ref alzato al PRIMO delta, quindi può essere vero mentre
+    // `state.text` è ancora vuoto (i delta sostano nel buffer fino al frame successivo). Qui di
+    // default segue il testo dello store; un test può sovrascriverlo per riprodurre quell'istante.
+    hasTextImpl: null as null | (() => boolean),
     stopMock: vi.fn(),
     resetMock: vi.fn(),
     createMutateAsync: vi.fn(async () => ({ id: "new-conv", title: "Nuova conversazione" })),
@@ -66,7 +70,13 @@ function setStream(next: Partial<typeof store.stream>) {
 vi.mock("@/hooks/use-chat-stream", () => ({
   useChatStream: () => {
     const state = useSyncExternalStore(store.subscribe, () => store.stream);
-    return { state, start: store.startMock, stop: store.stopMock, reset: store.resetMock };
+    return {
+      state,
+      start: store.startMock,
+      stop: store.stopMock,
+      reset: store.resetMock,
+      hasText: () => store.hasTextImpl?.() ?? store.stream.text.length > 0,
+    };
   },
 }));
 
@@ -152,6 +162,7 @@ afterEach(() => {
   sp = new URLSearchParams("");
   store.thread = { data: undefined, isLoading: false };
   store.conversationsList = [];
+  store.hasTextImpl = null;
   store.stream = {
     status: "idle",
     text: "",
@@ -412,6 +423,43 @@ describe("AssistenteClient — STOP mantiene visibile la risposta parziale", () 
     expect(screen.getAllByText("Cerca cerniere")).toHaveLength(1);
   });
 
+  it("STOP entro il primo frame: il parziale è già arrivato all'hook, il turno resta in attesa", async () => {
+    // Il primo delta è arrivato ma sosta ancora nel buffer dell'hook (`state.text` vuoto fino al
+    // frame successivo): il server ha del parziale da scrivere. Guardare `state.text` invece di
+    // `hasText()` farebbe smontare il turno e sparire quel parziale dallo schermo.
+    sp = new URLSearchParams("c=conv1");
+    setThread({ conversation: { id: "conv1", title: "Chat" }, messages: [] });
+    render(<AssistenteClient />);
+    await sendAndStream("");
+    store.hasTextImpl = () => true;
+
+    fireEvent.click(screen.getByRole("button", { name: "Interrompi" }));
+    act(() => setStream({ status: "idle", text: "", messageId: null }));
+    act(() =>
+      setThread({
+        conversation: { id: "conv1", title: "Chat" },
+        messages: [
+          { id: "u1", role: "USER", content: "Cerca cerniere", status: "SENT", errorMessage: null, products: [] },
+        ],
+      }),
+    );
+
+    // Turno ancora montato: si attende la riga che il server sta scrivendo…
+    expect(document.querySelectorAll('[data-role="ASSISTANT"]')).toHaveLength(1);
+
+    // …e quando arriva prende il posto della bolla live, senza doppioni.
+    act(() =>
+      setThread({
+        conversation: { id: "conv1", title: "Chat" },
+        messages: [
+          { id: "u1", role: "USER", content: "Cerca cerniere", status: "SENT", errorMessage: null, products: [] },
+          { id: "a1", role: "ASSISTANT", content: "Ecco le", status: "SENT", errorMessage: null, products: [] },
+        ],
+      }),
+    );
+    expect(screen.getAllByText("Ecco le")).toHaveLength(1);
+  });
+
   it("STOP prima del primo token non lascia montato un turno vuoto", async () => {
     // Senza testo il server non persiste nulla: non c'è nessuna riga da attendere, quindi il turno
     // live deve smontarsi subito (altrimenti resterebbe una bolla assistant vuota per sempre).
@@ -468,6 +516,158 @@ describe("AssistenteClient — banner d'errore", () => {
 
     expect(screen.getByRole("alert").textContent).toContain("Errore imprevisto");
     expect(screen.getAllByText("Cerca cerniere")).toHaveLength(1);
+  });
+});
+
+describe("AssistenteClient — «Rigenera» legato all'id, retry senza cancellazioni a indovinare", () => {
+  const row = (id: string, role: "USER" | "ASSISTANT", content: string) => ({
+    id,
+    role,
+    content,
+    status: "SENT",
+    errorMessage: null,
+    products: [],
+  });
+  /** Conversazione con un turno già completato: domanda + risposta BUONA in coda. */
+  const withGoodAnswer = () => ({
+    conversation: { id: "conv1", title: "Chat" },
+    messages: [row("u1", "USER", "Prima domanda"), row("a1", "ASSISTANT", "Risposta buona")],
+  });
+
+  async function typeAndSend(text: string) {
+    fireEvent.change(screen.getByLabelText("Messaggio per l'assistente"), {
+      target: { value: text },
+    });
+    fireEvent.keyDown(screen.getByLabelText("Messaggio per l'assistente"), { key: "Enter" });
+    act(() => setStream({ status: "streaming", text: "" }));
+    await flush();
+  }
+
+  it("REGRESSIONE offline: l'invio non raggiunge il server e «Riprova» NON rigenera la risposta precedente", async () => {
+    // Lo scenario reale: l'agente perde campo a metà domanda. La `fetch` rigetta prima ancora di
+    // raggiungere il server, quindi NEMMENO la riga USER viene scritta: in coda alla conversazione
+    // resta la risposta BUONA del turno precedente (a1). Un «Rigenera» qui la cancellerebbe —
+    // perdita di dati irreversibile. La ripresa onesta è RI-INVIARE il messaggio perduto.
+    sp = new URLSearchParams("c=conv1");
+    setThread(withGoodAnswer());
+    render(<AssistenteClient />);
+
+    await typeAndSend("Seconda domanda");
+    act(() =>
+      setStream({ status: "error", error: { recoverable: false, message: "Errore di connessione." } }),
+    );
+    // Il refetch atterra: il DB è invariato (la richiesta non è mai arrivata), la coda è ancora a1.
+    act(() => setThread(withGoodAnswer()));
+
+    // La risposta precedente resta a schermo: nessuna riga viene nascosta otticamente.
+    expect(screen.getByText("Risposta buona")).toBeTruthy();
+    expect(screen.getByRole("alert").textContent).toContain("Errore di connessione.");
+
+    fireEvent.click(screen.getByRole("button", { name: "Riprova" }));
+    await flush();
+
+    // Il client RI-INVIA il messaggio perduto: mai un `regenerate`, quindi il server non ha
+    // nemmeno l'occasione di cancellare a1 (che infatti è ancora a schermo).
+    expect(store.startMock).toHaveBeenLastCalledWith({
+      conversationId: "conv1",
+      content: "Seconda domanda",
+      mode: "send",
+    });
+    const modes = (store.startMock.mock.calls as unknown as [{ mode: string }][]).map(
+      (call) => call[0].mode,
+    );
+    expect(modes).not.toContain("regenerate");
+    expect(screen.getByText("Risposta buona")).toBeTruthy();
+  });
+
+  it("il messaggio utente È stato persistito (guasto dopo il server) → «Riprova» rigenera senza id", async () => {
+    // Qui la richiesta il server l'ha raggiunto (la riga USER c'è) ed è mancata solo la risposta:
+    // ri-inviare duplicherebbe la domanda. Si rigenera il turno fallito — ma senza id atteso,
+    // perché non c'è nessuna risposta da sostituire: il server non cancellerà niente.
+    sp = new URLSearchParams("c=conv1");
+    setThread({ conversation: { id: "conv1", title: "Chat" }, messages: [] });
+    render(<AssistenteClient />);
+
+    await typeAndSend("Domanda");
+    act(() =>
+      setStream({ status: "error", error: { recoverable: false, message: "Errore imprevisto" } }),
+    );
+    act(() =>
+      setThread({
+        conversation: { id: "conv1", title: "Chat" },
+        messages: [row("u1", "USER", "Domanda")],
+      }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Riprova" }));
+    await flush();
+
+    expect(store.startMock).toHaveBeenLastCalledWith({
+      conversationId: "conv1",
+      mode: "regenerate",
+    });
+  });
+
+  it("«Rigenera» su una risposta completata dichiara l'id di QUELLA risposta", async () => {
+    sp = new URLSearchParams("c=conv1");
+    setThread(withGoodAnswer());
+    render(<AssistenteClient />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Rigenera" }));
+    await flush();
+
+    expect(store.startMock).toHaveBeenCalledWith({
+      conversationId: "conv1",
+      mode: "regenerate",
+      regenerateMessageId: "a1",
+    });
+
+    // Mentre la nuova risposta arriva, la riga che il server sta cancellando è nascosta (una sola
+    // volta a schermo il testo live, nessun doppione con la vecchia).
+    act(() => setStream({ status: "streaming", text: "Nuova risposta" }));
+    expect(screen.queryByText("Risposta buona")).toBeNull();
+    expect(screen.getAllByText("Nuova risposta")).toHaveLength(1);
+  });
+
+  it("«Rigenera» fallito → «Riprova» ripete la stessa richiesta, id compreso", async () => {
+    // Il «Rigenera» non è mai arrivato al server (offline): a1 è ancora in coda ed è ancora lei la
+    // risposta da sostituire. Ritentare senza id lascerebbe due risposte alla stessa domanda.
+    sp = new URLSearchParams("c=conv1");
+    setThread(withGoodAnswer());
+    render(<AssistenteClient />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Rigenera" }));
+    act(() => setStream({ status: "streaming", text: "" }));
+    await flush();
+    act(() =>
+      setStream({ status: "error", error: { recoverable: false, message: "Errore di connessione." } }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Riprova" }));
+    await flush();
+
+    expect(store.startMock).toHaveBeenLastCalledWith({
+      conversationId: "conv1",
+      mode: "regenerate",
+      regenerateMessageId: "a1",
+    });
+  });
+
+  it("un round che non rigenera nulla non nasconde la risposta in coda", async () => {
+    // Auto-retry/ritentativo senza id: non c'è nessuna riga da cancellare, quindi nessuna riga va
+    // nascosta — altrimenti la risposta buona sparirebbe dallo schermo pur restando a DB.
+    sp = new URLSearchParams("c=conv1");
+    setThread(withGoodAnswer());
+    render(<AssistenteClient />);
+
+    act(() =>
+      setStream({
+        status: "error",
+        error: { recoverable: true, retryAfter: 1, message: "Troppe richieste." },
+      }),
+    );
+
+    expect(screen.getByText("Risposta buona")).toBeTruthy();
   });
 });
 

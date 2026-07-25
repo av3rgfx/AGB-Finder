@@ -33,7 +33,7 @@ export async function POST(req: Request): Promise<Response> {
   }
   const parsed = streamBodySchema.safeParse(json);
   if (!parsed.success) return new Response("Bad Request", { status: 400 });
-  const { conversationId, content, mode } = parsed.data;
+  const { conversationId, content, mode, regenerateMessageId } = parsed.data;
   if (mode === "send" && !content) return new Response("Bad Request", { status: 400 });
 
   const owned = await db.conversation.findFirst({
@@ -55,7 +55,9 @@ export async function POST(req: Request): Promise<Response> {
       });
     }
   } else {
-    await service.deleteLastAssistant(conversationId);
+    // `regenerateMessageId` assente = il client non sta rifacendo nessuna risposta esistente
+    // (ritenta un turno fallito): `deleteLastAssistant` non cancellerà niente.
+    await service.deleteLastAssistant(conversationId, regenerateMessageId);
   }
 
   const encoder = new TextEncoder();

@@ -14,6 +14,27 @@ describe("streamBodySchema", () => {
   it("accetta una rigenerazione senza content", () => {
     const parsed = streamBodySchema.safeParse({ conversationId: "c1", mode: "regenerate" });
     expect(parsed.success).toBe(true);
+    // Assente = nessuna risposta da sostituire: il service non cancellerà niente.
+    expect(parsed.success && parsed.data.regenerateMessageId).toBeUndefined();
+  });
+
+  it("accetta una rigenerazione con l'id della risposta da rifare", () => {
+    const parsed = streamBodySchema.safeParse({
+      conversationId: "c1",
+      mode: "regenerate",
+      regenerateMessageId: "a1",
+    });
+    expect(parsed.success && parsed.data.regenerateMessageId).toBe("a1");
+  });
+
+  it("rifiuta un regenerateMessageId vuoto (mai un id fasullo verso la delete)", () => {
+    expect(
+      streamBodySchema.safeParse({
+        conversationId: "c1",
+        mode: "regenerate",
+        regenerateMessageId: "",
+      }).success,
+    ).toBe(false);
   });
 
   it("rifiuta conversationId mancante o vuoto", () => {

@@ -23,6 +23,10 @@ export interface StartInput {
   conversationId: string;
   content?: string;
   mode: "send" | "regenerate";
+  /** Solo con `mode: "regenerate"`: id della risposta che si sta rifacendo. Il server cancella
+   * quella riga SOLO se è ancora l'ultima della conversazione; senza id non cancella niente
+   * (vedi `ChatService.deleteLastAssistant`). */
+  regenerateMessageId?: string;
 }
 
 const initialState: StreamState = {
@@ -96,11 +100,17 @@ export function useChatStream(): {
   start(input: StartInput): Promise<void>;
   stop(): void;
   reset(): void;
+  hasText(): boolean;
 } {
   const [state, setState] = useState<StreamState>(initialState);
   const abortRef = useRef<AbortController | null>(null);
   const rafRef = useRef<number | null>(null);
   const bufferRef = useRef("");
+  // Vero appena arriva il PRIMO delta di testo del round corrente. `state.text` non basta a chi
+  // deve decidere "è arrivato del testo?" nell'istante di uno STOP: i delta sostano in `bufferRef`
+  // fino al prossimo frame di rAF, quindi uno STOP entro ~16 ms dal primo token vedrebbe ancora
+  // `text: ""` pur avendo il server già del parziale da persistere.
+  const textArrivedRef = useRef(false);
 
   // Annulla il frame in sospeso senza toccare lo stato React (usato da start/reset/unmount).
   const cancelPendingFrame = useCallback(() => {
@@ -130,6 +140,7 @@ export function useChatStream(): {
       abortRef.current?.abort();
       cancelPendingFrame();
       bufferRef.current = "";
+      textArrivedRef.current = false;
 
       const ac = new AbortController();
       abortRef.current = ac;
@@ -160,6 +171,7 @@ export function useChatStream(): {
         const handleEvent = (ev: ChatEvent) => {
           if (!isCurrent()) return;
           if (ev.type === "delta") {
+            if (ev.text.length > 0) textArrivedRef.current = true;
             bufferRef.current += ev.text;
             if (rafRef.current == null) rafRef.current = requestAnimationFrame(flush);
             return;
@@ -229,8 +241,13 @@ export function useChatStream(): {
     abortRef.current = null;
     cancelPendingFrame();
     bufferRef.current = "";
+    textArrivedRef.current = false;
     setState(initialState);
   }, [cancelPendingFrame]);
+
+  /** «È già arrivato almeno un delta di testo in questo round?» — affidabile anche nell'istante
+   * subito successivo al primo token, quando `state.text` è ancora vuoto (vedi `textArrivedRef`). */
+  const hasText = useCallback(() => textArrivedRef.current, []);
 
   // Pulizia allo smontaggio: nessun frame in sospeso, nessuna richiesta orfana in corso.
   useEffect(() => {
@@ -240,5 +257,5 @@ export function useChatStream(): {
     };
   }, []);
 
-  return { state, start, stop, reset };
+  return { state, start, stop, reset, hasText };
 }

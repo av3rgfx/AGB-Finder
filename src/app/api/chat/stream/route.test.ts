@@ -184,16 +184,43 @@ describe("POST /api/chat/stream", () => {
     expect(conversationUpdate).not.toHaveBeenCalled();
   });
 
-  it("mode 'regenerate' → elimina l'ultimo ASSISTANT, non persiste un messaggio utente", async () => {
+  it("mode 'regenerate' con id → inoltra l'id della risposta da rifare, non persiste un messaggio utente", async () => {
+    getSession.mockResolvedValue({ user: { id: "u1", role: "AGENT" } });
+    conversationFindFirst.mockResolvedValue({ id: "c1", title: "Anta ribalta ARTECH" });
+
+    const res = await POST(
+      req({ conversationId: "c1", mode: "regenerate", regenerateMessageId: "a1" }),
+    );
+    await res.text();
+
+    expect(deleteLastAssistant).toHaveBeenCalledWith("c1", "a1");
+    expect(persistUserMessage).not.toHaveBeenCalled();
+    expect(conversationUpdate).not.toHaveBeenCalled();
+  });
+
+  it("mode 'regenerate' senza id → nessun id atteso (il service non cancellerà nulla)", async () => {
+    // Ritentativo di un turno fallito: non c'è nessuna risposta da sostituire. La route non deve
+    // "indovinare" un id — inoltra `undefined` e `deleteLastAssistant` esce senza cancellare.
     getSession.mockResolvedValue({ user: { id: "u1", role: "AGENT" } });
     conversationFindFirst.mockResolvedValue({ id: "c1", title: "Anta ribalta ARTECH" });
 
     const res = await POST(req({ conversationId: "c1", mode: "regenerate" }));
     await res.text();
 
-    expect(deleteLastAssistant).toHaveBeenCalledWith("c1");
-    expect(persistUserMessage).not.toHaveBeenCalled();
-    expect(conversationUpdate).not.toHaveBeenCalled();
+    expect(deleteLastAssistant).toHaveBeenCalledWith("c1", undefined);
+  });
+
+  it("mode 'send' non cancella mai una risposta, nemmeno se il body porta un regenerateMessageId", async () => {
+    getSession.mockResolvedValue({ user: { id: "u1", role: "AGENT" } });
+    conversationFindFirst.mockResolvedValue({ id: "c1", title: "Anta ribalta ARTECH" });
+
+    const res = await POST(
+      req({ conversationId: "c1", content: "ciao", mode: "send", regenerateMessageId: "a1" }),
+    );
+    await res.text();
+
+    expect(deleteLastAssistant).not.toHaveBeenCalled();
+    expect(persistUserMessage).toHaveBeenCalledWith("c1", "ciao");
   });
 
   it("RateLimitedError durante lo streaming → evento error recuperabile", async () => {
