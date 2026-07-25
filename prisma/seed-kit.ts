@@ -27,14 +27,18 @@ const TEMPLATES: KitTemplateSeed[] = [
     isActive: true,
   },
   {
+    // DISATTIVATO 2026-07-25: la composizione ARTECH PVC non esiste nel listino
+    // 2026 (i 4 codici material-specific sono solo nelle pagine-certificato ift,
+    // senza prezzo). Riattivare con il «listino PVC e ALLUMINIO» — vedi
+    // rules-artech-pvc.ts e docs/superpowers/kit-assunzioni/pvc.md.
     name: "ARTECH anta-ribalta PVC",
     description:
-      "Fase 1g Task 3 — finestra PVC (PROVVISORIO, da validare con esperto): struttura legno + 4 swap dalla cert ift EN 13126-8.",
+      "NON DISPONIBILE — la composizione PVC non è nel listino 2026: serve il «listino PVC e ALLUMINIO» (rimando a p0849).",
     windowType: "ANTA_RIBALTA",
     material: "PVC",
     rules: { engine: "artech-ar-pvc", version: 1 },
     priority: 10,
-    isActive: true,
+    isActive: false,
   },
   {
     // Fase 1g Task 4: ALLUMINIO gated (isActive:false). Il listino 2026 non ha

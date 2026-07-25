@@ -32,7 +32,7 @@ describe("NuovaRichiestaClient", () => {
     expect(screen.getByText(/artech/i)).toBeTruthy();
   });
 
-  it("materiale: LEGNO e PVC selezionabili, ALLUMINIO disabilitato (gated)", () => {
+  it("materiale: solo LEGNO selezionabile, PVC e ALLUMINIO disabilitati (gated)", () => {
     render(<NuovaRichiestaClient />);
     const materiale = screen.getByRole("group", { name: /materiale/i });
     const legno = within(materiale).getByRole("radio", { name: /legno/i }) as HTMLInputElement;
@@ -41,17 +41,21 @@ describe("NuovaRichiestaClient", () => {
 
     expect(legno.checked).toBe(true);
     expect(legno.disabled).toBe(false);
-    expect(pvc.disabled).toBe(false); // PVC ora attivo (provvisorio, in validazione)
+    expect(pvc.disabled).toBe(true); // PVC gated: composizione non a listino 2026
     expect(alluminio.disabled).toBe(true); // ALLUMINIO gated: manca il listino
     expect(within(materiale).getByText(/non ancora disponibile/i)).toBeTruthy();
+    expect(within(materiale).getByText(/non a listino 2026/i)).toBeTruthy();
   });
 
-  it("seleziona PVC aggiornando il materiale", () => {
+  it("il PVC è gated: cliccarlo non cambia il materiale", () => {
     render(<NuovaRichiestaClient />);
     const materiale = screen.getByRole("group", { name: /materiale/i });
     const pvc = within(materiale).getByRole("radio", { name: /pvc/i }) as HTMLInputElement;
     fireEvent.click(pvc);
-    expect(pvc.checked).toBe(true);
+    expect(pvc.checked).toBe(false);
+    expect(
+      (within(materiale).getByRole("radio", { name: /legno/i }) as HTMLInputElement).checked,
+    ).toBe(true);
   });
 
   it("radio disabilitata (ALLUMINIO): l'hint è descrizione (aria-describedby), non parte del nome accessibile", () => {

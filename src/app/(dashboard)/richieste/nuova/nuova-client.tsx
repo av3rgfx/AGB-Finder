@@ -44,15 +44,15 @@ const FUTURE_WINDOW_TYPES = [
 ] as const;
 
 /**
- * Materiali disponibili per tipologia. Il battente ha solo il LEGNO (il listino
- * 2026 non ha composizione PVC/ALLUMINIO per il battente); l'anta-ribalta espone
- * anche il PVC (provvisorio). ALLUMINIO sempre gated (manca il listino).
+ * Materiali disponibili per tipologia. Il listino 2026 copre solo il LEGNO per
+ * ARTECH: PVC e ALLUMINIO rimandano a un volume separato («listino PVC e
+ * ALLUMINIO», p0849) non ancora disponibile → entrambi gated.
  */
 type MaterialChoice = { value: "LEGNO" | "PVC" | "ALLUMINIO"; enabled: boolean; hint?: string };
 const MATERIAL_AVAILABILITY: Record<KitInput["windowType"], MaterialChoice[]> = {
   ANTA_RIBALTA: [
     { value: "LEGNO", enabled: true },
-    { value: "PVC", enabled: true, hint: "Provvisorio — in validazione" },
+    { value: "PVC", enabled: false, hint: "Non a listino 2026 — serve il listino PVC e alluminio" },
     { value: "ALLUMINIO", enabled: false, hint: "Non ancora disponibile" },
   ],
   ANTA_BATTENTE: [

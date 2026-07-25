@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { PrismaClient } from "@prisma/client";
 import { seedKitTemplates } from "../../../prisma/seed-kit";
 import { KitEngine } from "./engine";
+import { KitGenerationError } from "./types";
 
 const url = process.env.INTEGRATION_DATABASE_URL;
 
@@ -29,25 +30,26 @@ describe.runIf(Boolean(url))("KitEngine — integrazione su catalogo reale", () 
     expect(output.totalPrice).toBeGreaterThan(0);
   });
 
-  // PVC è PROVVISORIO (Task 3): NON si pretende zero-warning. I codici
-  // material-specific dalla cert ift e quelli su "listino PVC e ALLUMINIO"
-  // separato possono NON essere a catalogo → devono emergere come warning
-  // (mai silenziosi). Serve all'esperto per vedere quali codici mancano.
-  it("la distinta PVC provvisoria si genera e NON ha codici non prezzati silenziosi", async () => {
-    const output = await new KitEngine(db).generate({
-      windowType: "ANTA_RIBALTA", widthMm: 550, heightMm: 1820, material: "PVC",
-      airGapMm: 12, axisOffsetMm: 13, rebateMm: 20, seatMm: 18,
-      openingSide: "SINISTRA", openingDir: "TIRARE", finish: "ARGENTO", series: "ARTECH",
-    });
-    expect(output.lines.length).toBeGreaterThan(0);
-    const unpriced = output.lines.filter((line) => line.unitPrice === null);
-    // Ogni codice senza prezzo DEVE avere un warning (nessun kit monco silenzioso).
-    expect(output.warnings).toHaveLength(unpriced.length);
-    for (const line of unpriced) expect(output.warnings.some((w) => w.includes(line.code))).toBe(true);
-    // Diagnostica per la revisione: quanti/quali codici PVC restano da validare.
-    console.log(
-      `PVC provvisorio: ${output.lines.length - unpriced.length}/${output.lines.length} codici a listino;` +
-        (unpriced.length ? ` da validare: ${unpriced.map((l) => l.code).join(", ")}` : " tutti risolti"),
+  // PVC DISATTIVATO 2026-07-25: la composizione ARTECH PVC non esiste nel
+  // listino 2026 (i codici material-specific compaiono solo nelle pagine
+  // certificato ift p0013 (11) e p0395 (393), senza prezzo) → template
+  // isActive:false nel seed + modulo che rifiuta. Qui si verifica la barriera
+  // che scatta per prima con il DB reale: l'engine non trova nessun template
+  // attivo e rifiuta prima ancora di raggiungere il modulo. Nessuna distinta
+  // PVC monca può più uscire.
+  const pvcInput = {
+    windowType: "ANTA_RIBALTA", widthMm: 550, heightMm: 1820, material: "PVC",
+    airGapMm: 12, axisOffsetMm: 13, rebateMm: 20, seatMm: 18,
+    openingSide: "SINISTRA", openingDir: "TIRARE", finish: "ARGENTO", series: "ARTECH",
+  };
+
+  it("il PVC è disattivato: la generazione viene rifiutata", async () => {
+    await expect(new KitEngine(db).generate(pvcInput)).rejects.toThrow(KitGenerationError);
+  });
+
+  it("il rifiuto PVC arriva dal template spento, non da una distinta parziale", async () => {
+    await expect(new KitEngine(db).generate(pvcInput)).rejects.toThrow(
+      /Nessun template kit attivo/,
     );
   });
 
