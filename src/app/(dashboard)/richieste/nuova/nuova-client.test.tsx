@@ -15,7 +15,7 @@ vi.mock("@/trpc/react", () => ({
   },
 }));
 
-import { NuovaRichiestaClient } from "./nuova-client";
+import { NuovaRichiestaClient, materialForWindowType } from "./nuova-client";
 import { windowTypeLabel } from "@/lib/kit-labels";
 
 afterEach(() => {
@@ -32,7 +32,7 @@ describe("NuovaRichiestaClient", () => {
     expect(screen.getByText(/artech/i)).toBeTruthy();
   });
 
-  it("materiale: LEGNO e PVC selezionabili, ALLUMINIO disabilitato (gated)", () => {
+  it("materiale: solo LEGNO selezionabile, PVC e ALLUMINIO disabilitati (gated)", () => {
     render(<NuovaRichiestaClient />);
     const materiale = screen.getByRole("group", { name: /materiale/i });
     const legno = within(materiale).getByRole("radio", { name: /legno/i }) as HTMLInputElement;
@@ -41,18 +41,33 @@ describe("NuovaRichiestaClient", () => {
 
     expect(legno.checked).toBe(true);
     expect(legno.disabled).toBe(false);
-    expect(pvc.disabled).toBe(false); // PVC ora attivo (provvisorio, in validazione)
+    expect(pvc.disabled).toBe(true); // PVC gated: composizione non a listino 2026
     expect(alluminio.disabled).toBe(true); // ALLUMINIO gated: manca il listino
     expect(within(materiale).getByText(/non ancora disponibile/i)).toBeTruthy();
+    expect(within(materiale).getByText(/non a listino 2026/i)).toBeTruthy();
   });
 
-  it("seleziona PVC aggiornando il materiale", () => {
+  // Regola inviolabile «mobile-first»: gli hint dei materiali sono lunghi («Non
+  // a listino 2026 — serve il listino PVC e alluminio») e a tre colonne fisse
+  // finivano su 5-6 righe fuori dal bordo in ~90px di cella a 375px. Come per il
+  // font-mono dei codici, la regola sta in un test perché non sia possibile
+  // riportarla indietro senza accorgersene.
+  it("materiale: griglia a una colonna sotto sm (mobile-first)", () => {
     render(<NuovaRichiestaClient />);
-    const materiale = screen.getByRole("group", { name: /materiale/i });
-    const pvc = within(materiale).getByRole("radio", { name: /pvc/i }) as HTMLInputElement;
-    fireEvent.click(pvc);
-    expect(pvc.checked).toBe(true);
+    const grid = screen.getByRole("group", { name: /materiale/i }).querySelector("div.grid");
+    expect(grid?.className).toContain("grid-cols-1");
+    expect(grid?.className).toContain("sm:grid-cols-3");
   });
+
+  // RIMOSSE 2026-07-25 le due prove «cliccare la radio gated non cambia nulla»
+  // (una sul PVC, una sul battente): erano tautologiche. Il click su una radio
+  // `disabled` è inerte e l'asserzione finale — LEGNO/anta-ribalta ancora
+  // selezionati — è già vera al primo render, quindi passavano anche con il
+  // componente rotto. Che PVC/ALLUMINIO/battente siano gated è già asserito
+  // sopra (`disabled === true`), e il ramo di reset del materiale che la prova
+  // sul PVC voleva coprire è ora provato davvero su `materialForWindowType`, in
+  // fondo al file: via UI non è più raggiungibile, perché ogni tipologia
+  // selezionabile ammette il solo LEGNO.
 
   it("radio disabilitata (ALLUMINIO): l'hint è descrizione (aria-describedby), non parte del nome accessibile", () => {
     render(<NuovaRichiestaClient />);
@@ -105,49 +120,30 @@ describe("NuovaRichiestaClient", () => {
     expect(generateMutate).toHaveBeenCalledWith({ kitRequestId: "k9" });
   });
 
-  it("tipologia: ANTA_RIBALTA e ANTA_BATTENTE selezionabili, altre disabilitate", () => {
+  // ANTA_BATTENTE DISATTIVATO 2026-07-25: la distinta sarebbe priva del gruppo
+  // di sospensione superiore (schema p0416 (414)) → tipologia gated come le future.
+  // Le vecchie prove «ANTA_BATTENTE: materiali / chiusure» sono cadute qui: non
+  // essendo più selezionabile, verificavano l'anta-ribalta sotto un altro nome.
+  // L'equivalente su una tipologia non-ribalta è coperto dalle prove VASISTAS in
+  // fondo al file.
+  it("tipologia: ANTA_RIBALTA e VASISTAS selezionabili, battente e altre disabilitate", () => {
     render(<NuovaRichiestaClient />);
     const tipo = screen.getByRole("group", { name: /tipologia/i });
     const ribalta = within(tipo).getByRole("radio", { name: /anta.?ribalta/i }) as HTMLInputElement;
+    const vasistas = within(tipo).getByRole("radio", {
+      name: new RegExp(windowTypeLabel("VASISTAS"), "i"),
+    }) as HTMLInputElement;
     const battente = within(tipo).getByRole("radio", { name: /anta battente/i }) as HTMLInputElement;
     const proiettante = within(tipo).getByRole("radio", {
       name: new RegExp(windowTypeLabel("ANTA_PROIETTANTE"), "i"),
     }) as HTMLInputElement;
     expect(ribalta.checked).toBe(true);
-    expect(battente.disabled).toBe(false);
+    expect(vasistas.disabled).toBe(false);
+    expect(battente.disabled).toBe(true); // gated: distinta senza sospensione superiore
     expect(proiettante.disabled).toBe(true); // FUTURE_WINDOW_TYPES: non ancora coperta dal generatore
   });
 
-  it("ANTA_BATTENTE: solo LEGNO abilitato, PVC/ALLUMINIO gated", () => {
-    render(<NuovaRichiestaClient />);
-    const tipo = screen.getByRole("group", { name: /tipologia/i });
-    fireEvent.click(within(tipo).getByRole("radio", { name: /anta battente/i }));
-    const mat = screen.getByRole("group", { name: /materiale/i });
-    expect((within(mat).getByRole("radio", { name: /legno/i }) as HTMLInputElement).disabled).toBe(false);
-    expect((within(mat).getByRole("radio", { name: /pvc/i }) as HTMLInputElement).disabled).toBe(true);
-    expect((within(mat).getByRole("radio", { name: /alluminio/i }) as HTMLInputElement).disabled).toBe(true);
-  });
-
-  it("passando a ANTA_BATTENTE con PVC selezionato → materiale resettato a LEGNO", () => {
-    render(<NuovaRichiestaClient />);
-    const mat = screen.getByRole("group", { name: /materiale/i });
-    fireEvent.click(within(mat).getByRole("radio", { name: /pvc/i })); // ANTA_RIBALTA consente PVC
-    const tipo = screen.getByRole("group", { name: /tipologia/i });
-    fireEvent.click(within(tipo).getByRole("radio", { name: /anta battente/i }));
-    const mat2 = screen.getByRole("group", { name: /materiale/i });
-    expect((within(mat2).getByRole("radio", { name: /legno/i }) as HTMLInputElement).checked).toBe(true);
-  });
-
-  it("ANTA_BATTENTE: niente toggle chiusure supplementari (ribalta-only)", () => {
-    render(<NuovaRichiestaClient />);
-    const tipo = screen.getByRole("group", { name: /tipologia/i });
-    fireEvent.click(within(tipo).getByRole("radio", { name: /anta battente/i }));
-    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // step 2
-    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // step 3
-    expect(screen.queryByLabelText(/chiusure supplementari/i)).toBeNull();
-  });
-
-  it("attiva chiusure supplementari su ANTA_RIBALTA poi passa a ANTA_BATTENTE: resettate a false alla generazione", async () => {
+  it("attiva chiusure supplementari su ANTA_RIBALTA poi passa a VASISTAS: resettate a false alla generazione", async () => {
     createMutate.mockResolvedValue({ id: "k10", requestNumber: "KIT-2026-0002" });
     generateMutate.mockResolvedValue({ totalComponents: 16 });
     render(<NuovaRichiestaClient />);
@@ -162,7 +158,9 @@ describe("NuovaRichiestaClient", () => {
     fireEvent.click(screen.getByRole("button", { name: /indietro/i })); // torna a step 1
 
     const tipo = screen.getByRole("group", { name: /tipologia/i });
-    fireEvent.click(within(tipo).getByRole("radio", { name: /anta battente/i }));
+    fireEvent.click(
+      within(tipo).getByRole("radio", { name: new RegExp(windowTypeLabel("VASISTAS"), "i") }),
+    );
 
     fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // step 2
     fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // step 3
@@ -191,7 +189,7 @@ describe("NuovaRichiestaClient", () => {
     expect((within(mat).getByRole("radio", { name: /alluminio/i }) as HTMLInputElement).disabled).toBe(true);
   });
 
-  it("VASISTAS: niente toggle chiusure supplementari (come il battente)", () => {
+  it("VASISTAS: niente toggle chiusure supplementari (ribalta-only)", () => {
     render(<NuovaRichiestaClient />);
     const tipo = screen.getByRole("group", { name: /tipologia/i });
     fireEvent.click(
@@ -200,5 +198,30 @@ describe("NuovaRichiestaClient", () => {
     fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // step 2
     fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // step 3
     expect(screen.queryByLabelText(/chiusure supplementari/i)).toBeNull();
+  });
+});
+
+/**
+ * Reset del materiale al cambio di tipologia. Provato sulla funzione e non sui
+ * click perché via UI il ramo non è più raggiungibile: tutte le tipologie
+ * selezionabili (ANTA_RIBALTA, VASISTAS) ammettono il solo LEGNO, quindi non
+ * esiste una sequenza di click che porti a un materiale «non ammesso». La regola
+ * resta però l'unica cosa che impedisce a un materiale di sopravvivere a un
+ * cambio di tipologia che non lo prevede, e si riaccende appena un materiale
+ * torna abilitato su una sola tipologia.
+ */
+describe("materialForWindowType", () => {
+  it("conserva il materiale quando la tipologia lo ammette", () => {
+    expect(materialForWindowType("ANTA_RIBALTA", "LEGNO")).toBe("LEGNO");
+    expect(materialForWindowType("VASISTAS", "LEGNO")).toBe("LEGNO");
+  });
+
+  it("resetta a LEGNO un materiale che la tipologia non ammette", () => {
+    expect(materialForWindowType("VASISTAS", "PVC")).toBe("LEGNO");
+    expect(materialForWindowType("ANTA_RIBALTA", "ALLUMINIO")).toBe("LEGNO");
+  });
+
+  it("resetta a LEGNO anche per una tipologia senza materiali attivi (battente gated)", () => {
+    expect(materialForWindowType("ANTA_BATTENTE", "PVC")).toBe("LEGNO");
   });
 });

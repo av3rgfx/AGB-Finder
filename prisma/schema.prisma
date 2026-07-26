@@ -261,6 +261,9 @@ model KitRequest {
   finish       String
   series       String
   supplementaryClosures Boolean @default(false) @map("supplementary_closures")
+  // Peso dell'anta in kg — FACOLTATIVO (nullable, nessun default): le due NB
+  // dello schema vasistas p0418 (416) valgono solo se l'agente lo indica.
+  sashWeightKg Int? @map("sash_weight_kg")
 
   notes         String? @db.Text
   customerNotes String? @map("customer_notes") @db.Text

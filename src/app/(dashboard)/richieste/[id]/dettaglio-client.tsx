@@ -102,6 +102,10 @@ export function DettaglioClient({ id }: { id: string }) {
           <Spec label="Asse" value={`${r.axisOffsetMm} mm`} />
           <Spec label="Battuta" value={`${r.rebateMm} mm`} />
           <Spec label="Sede" value={`${r.seatMm} mm`} />
+          {/* Facoltativo: mostrato solo se indicato. Va reso visibile perché
+              cambia la distinta (terza cerniera oltre i 70 kg), altrimenti due
+              richieste identiche a video darebbero distinte diverse. */}
+          {r.sashWeightKg !== null && <Spec label="Peso anta" value={`${r.sashWeightKg} kg`} />}
         </dl>
       </section>
 

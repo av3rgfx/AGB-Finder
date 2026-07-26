@@ -78,6 +78,18 @@ describe("kit.create", () => {
     expect(requestCreate.mock.calls[0]![0].data).toMatchObject({ supplementaryClosures: true });
   });
 
+  it("inoltra sashWeightKg nel payload create (colonna KitRequest, facoltativa)", async () => {
+    // `create` fa lo spread dell'intero KitInput dentro prisma.kitRequest.create:
+    // ogni campo nuovo dello schema DEVE avere la sua colonna, altrimenti Prisma
+    // risponde «Unknown argument» a runtime (il typecheck non lo vede, lo spread
+    // non è soggetto all'excess property check).
+    requestCount.mockResolvedValue(0);
+    requestCreate.mockImplementation(({ data }) => Promise.resolve({ id: "k1", ...data }));
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await caller.kit.create({ ...validInput, sashWeightKg: 75 });
+    expect(requestCreate.mock.calls[0]![0].data).toMatchObject({ sashWeightKg: 75 });
+  });
+
   it("input invalido → BAD_REQUEST", async () => {
     const caller = createCallerFactory(appRouter)(makeCtx(agent));
     await expect(caller.kit.create({ ...validInput, widthMm: 10 })).rejects.toMatchObject({ code: "BAD_REQUEST" });
@@ -122,6 +134,24 @@ describe("kit.generate", () => {
       expect.objectContaining({ data: expect.objectContaining({ status: "COMPLETED", totalComponents: 12 }) }),
     );
     expect(activityCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ type: "KIT_GENERATED" }) });
+  });
+
+  it("rilegge sashWeightKg dalla richiesta e lo passa alle regole (vasistas)", async () => {
+    // L 600 → 1 forbice → portata 40 kg: un'anta da 50 kg va rifiutata in
+    // italiano. Se il router non inoltrasse il peso, la generazione riuscirebbe.
+    requestFindFirst.mockResolvedValue({
+      id: "k1", agentId: "agent1", ...validInput,
+      windowType: "VASISTAS", widthMm: 600, heightMm: 1000, sashWeightKg: 50, status: "DRAFT",
+    });
+    templateFindFirst.mockResolvedValue({
+      id: "t1", rules: { engine: "artech-vasistas-legno", version: 1 },
+    });
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await expect(caller.kit.generate({ kitRequestId: "k1" })).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: expect.stringContaining("portata delle forbici"),
+    });
+    expect(requestUpdate).not.toHaveBeenCalled();
   });
 });
 

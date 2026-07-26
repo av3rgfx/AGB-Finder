@@ -33,12 +33,21 @@ export interface ParseResult {
   stats: ParseStats;
 }
 
-/** Codice AGB: lettera + 5 cifre + .NN.NN (es. B00590.15.03). */
-export const CODE_TOKEN = /[A-Z]\d{5}\.\d{2}\.\d{2}/;
+/**
+ * Codice AGB: lettera + 5 caratteri + due segmenti da 2, es. B00590.15.03.
+ * I segmenti NON sono solo numerici: il listino usa suffissi alfabetici per la
+ * mano (A50805.05.DX/.SX, «Supporto cerniera Aria 12», p0451 (449)), per le
+ * finiture (…​.FM), per le varianti (…​.CR, …​.DC, …​.XX) e prefissi alfanumerici
+ * per i cilindri (CG0016.24.24, CP7126.25.25). Con i soli `\d{2}` il parser
+ * scartava in silenzio 1.297 codici a prezzo, fra cui A50805.05.DX/.SX usati dal
+ * kit ARTECH: la riga usciva senza prezzo. Allargato il 2026-07-25 — richiede il
+ * re-import del catalogo (azione ops) per avere effetto sul DB.
+ */
+export const CODE_TOKEN = /[A-Z][A-Z0-9]{5}\.[A-Z0-9]{2}\.[A-Z0-9]{2}/;
 
 /** Firma rigida: codice + confezione (2 interi) + prezzo IT + classe sconto. */
 const PRODUCT_SIGNATURE =
-  /([A-Z]\d{5}\.\d{2}\.\d{2})[ \t]+(\d+)[ \t]+(\d+)[ \t]+(\d{1,3}(?:\.\d{3})*,\d{2})[ \t]+([A-Z]\d)\b/g;
+  /([A-Z][A-Z0-9]{5}\.[A-Z0-9]{2}\.[A-Z0-9]{2})[ \t]+(\d+)[ \t]+(\d+)[ \t]+(\d{1,3}(?:\.\d{3})*,\d{2})[ \t]+([A-Z]\d)\b/g;
 
 /** "1.234,56" → 123456 (centesimi; niente float). */
 export function parsePriceCents(price: string): number {

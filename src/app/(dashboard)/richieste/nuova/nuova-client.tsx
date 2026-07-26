@@ -33,10 +33,11 @@ const DEFAULT_FORM: KitInput = {
 };
 
 /** Tipologie coperte dal generatore: radio selezionabili. */
-const ACTIVE_WINDOW_TYPES = ["ANTA_RIBALTA", "ANTA_BATTENTE", "VASISTAS"] as const;
+const ACTIVE_WINDOW_TYPES = ["ANTA_RIBALTA", "VASISTAS"] as const;
 
 /** Tipologie non ancora coperte: radio disabilitate. */
 const FUTURE_WINDOW_TYPES = [
+  "ANTA_BATTENTE",
   "ANTA_PROIETTANTE",
   "SCORREVOLE_ALZANTE",
   "SCORREVOLE_TRASLANTE",
@@ -44,21 +45,27 @@ const FUTURE_WINDOW_TYPES = [
 ] as const;
 
 /**
- * Materiali disponibili per tipologia. Il battente ha solo il LEGNO (il listino
- * 2026 non ha composizione PVC/ALLUMINIO per il battente); l'anta-ribalta espone
- * anche il PVC (provvisorio). ALLUMINIO sempre gated (manca il listino).
+ * Materiali disponibili per tipologia. Il listino 2026 copre solo il LEGNO per
+ * ARTECH: PVC e ALLUMINIO rimandano a un volume separato («listino PVC e
+ * ALLUMINIO», p0849 (847)) non ancora disponibile → entrambi gated.
  */
 type MaterialChoice = { value: "LEGNO" | "PVC" | "ALLUMINIO"; enabled: boolean; hint?: string };
 const MATERIAL_AVAILABILITY: Record<KitInput["windowType"], MaterialChoice[]> = {
   ANTA_RIBALTA: [
     { value: "LEGNO", enabled: true },
-    { value: "PVC", enabled: true, hint: "Provvisorio — in validazione" },
+    { value: "PVC", enabled: false, hint: "Non a listino 2026 — serve il listino PVC e alluminio" },
     { value: "ALLUMINIO", enabled: false, hint: "Non ancora disponibile" },
   ],
+  // ANTA_BATTENTE è gated in FUTURE_WINDOW_TYPES (distinta senza gruppo di
+  // sospensione superiore, schema p0416 (414)): questa voce non viene MAI
+  // renderizzata, resta solo perché il Record è tipizzato su tutte le
+  // windowType. Valori e hint dicono il vero — con la tipologia spenta nessun
+  // materiale è ordinabile — così se un domani il battente torna selezionabile
+  // la UI non promette un LEGNO che il generatore rifiuta.
   ANTA_BATTENTE: [
-    { value: "LEGNO", enabled: true, hint: "Provvisorio — in validazione" },
-    { value: "PVC", enabled: false, hint: "Non disponibile per l'anta battente" },
-    { value: "ALLUMINIO", enabled: false, hint: "Non disponibile per l'anta battente" },
+    { value: "LEGNO", enabled: false, hint: "Tipologia non disponibile — distinta incompleta" },
+    { value: "PVC", enabled: false, hint: "Tipologia non disponibile — distinta incompleta" },
+    { value: "ALLUMINIO", enabled: false, hint: "Tipologia non disponibile — distinta incompleta" },
   ],
   VASISTAS: [
     { value: "LEGNO", enabled: true, hint: "Provvisorio — in validazione" },
@@ -66,6 +73,24 @@ const MATERIAL_AVAILABILITY: Record<KitInput["windowType"], MaterialChoice[]> = 
     { value: "ALLUMINIO", enabled: false, hint: "Non disponibile per la vasistas" },
   ],
 };
+
+/**
+ * Materiale da tenere passando alla tipologia `wt`: quello corrente se la
+ * tipologia lo ammette, altrimenti LEGNO. Esportata (e provata a parte) perché
+ * oggi il ramo di reset NON è raggiungibile via UI — ogni tipologia
+ * selezionabile ammette il solo LEGNO, quindi cliccando non si può arrivare a un
+ * materiale «non ammesso». La regola però resta necessaria: appena un materiale
+ * torna abilitato su una sola tipologia, il ramo si riaccende. Provarla sulla
+ * funzione invece che sui click è l'unico modo onesto di coprirla.
+ */
+export function materialForWindowType(
+  wt: KitInput["windowType"],
+  current: KitInput["material"],
+): KitInput["material"] {
+  return MATERIAL_AVAILABILITY[wt].some((m) => m.enabled && m.value === current)
+    ? current
+    : "LEGNO";
+}
 
 /**
  * Finiture coperte dal generatore ARTECH legno: chiavi della tabella
@@ -84,6 +109,7 @@ const STEP2_SCHEMA = kitInputSchema.pick({
   axisOffsetMm: true,
   rebateMm: true,
   seatMm: true,
+  sashWeightKg: true,
 });
 const STEP3_SCHEMA = kitInputSchema.pick({ openingSide: true, openingDir: true, finish: true });
 
@@ -302,11 +328,11 @@ function Step1Tipologia({ form, update }: StepProps) {
 
   function selectWindowType(wt: KitInput["windowType"]) {
     update("windowType", wt);
-    const allowed = MATERIAL_AVAILABILITY[wt]
-      .filter((m) => m.enabled)
-      .map((m) => m.value);
-    if (!allowed.includes(form.material)) update("material", "LEGNO");
+    update("material", materialForWindowType(wt, form.material));
     if (wt !== "ANTA_RIBALTA") update("supplementaryClosures", false);
+    // Il peso serve solo alle due NB dello schema vasistas: cambiando tipologia
+    // non deve restare un valore che nessun altro modulo legge.
+    if (wt !== "VASISTAS") update("sashWeightKg", undefined);
   }
 
   return (
@@ -346,7 +372,13 @@ function Step1Tipologia({ form, update }: StepProps) {
 
       <fieldset>
         <legend className="mb-2 text-sm font-semibold text-ink">Materiale</legend>
-        <div className="grid grid-cols-3 gap-2">
+        {/* Mobile-first: una colonna sotto sm. A tre colonne fisse ogni cella
+            valeva ~90px a 375px e gli hint («Non a listino 2026 — serve il
+            listino PVC e alluminio») andavano a capo su 5-6 righe, con le
+            parole lunghe fuori dal bordo. Le tipologie qui sopra usano già
+            grid-cols-2 sm:grid-cols-3: i materiali hanno hint più lunghi e
+            stanno meglio a piena larghezza. */}
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           {materials.map((m) => (
             <RadioOption
               key={m.value}
@@ -411,6 +443,39 @@ function NumberField({
   );
 }
 
+/**
+ * Peso dell'anta: campo FACOLTATIVO, mostrato solo per la vasistas — è l'unica
+ * tipologia le cui regole lo leggono (schema p0418 (416): terza cerniera fra 70 e
+ * 80 kg, portata 40 kg per forbice). Non riusa `NumberField` perché lì il campo è
+ * obbligatorio (vuoto → NaN → errore di step) e l'unità è sempre «mm»: qui il
+ * vuoto deve valere `undefined`, che lo schema accetta. Sta nella stessa griglia
+ * responsive degli altri campi, quindi a ≤375px occupa la sua riga intera.
+ */
+function SashWeightField({ form, update }: StepProps) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label htmlFor="sashWeightKg" className="text-sm font-medium text-ink">
+        Peso anta <span className="font-normal text-ink-subtle">(1–200 kg)</span>
+      </label>
+      <Input
+        id="sashWeightKg"
+        type="number"
+        min={1}
+        max={200}
+        value={form.sashWeightKg ?? ""}
+        aria-describedby="sashWeightKg-hint"
+        onChange={(e) =>
+          update("sashWeightKg", e.target.value === "" ? undefined : Number(e.target.value))
+        }
+      />
+      <p id="sashWeightKg-hint" className="text-xs text-ink-subtle">
+        Facoltativo — serve a verificare la portata delle forbici e a stabilire se occorre la terza
+        cerniera.
+      </p>
+    </div>
+  );
+}
+
 function Step2Dimensioni({ form, update }: StepProps) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -425,6 +490,7 @@ function Step2Dimensioni({ form, update }: StepProps) {
           onChange={(v) => update(field.key, v)}
         />
       ))}
+      {form.windowType === "VASISTAS" && <SashWeightField form={form} update={update} />}
     </div>
   );
 }
@@ -532,6 +598,12 @@ function Step4Riepilogo({ form }: { form: KitInput }) {
       <SummaryItem label="Finitura" value={form.finish} />
       {form.windowType === "ANTA_RIBALTA" && (
         <SummaryItem label="Chiusure suppl." value={form.supplementaryClosures ? "Sì" : "No"} />
+      )}
+      {form.windowType === "VASISTAS" && (
+        <SummaryItem
+          label="Peso anta"
+          value={form.sashWeightKg === undefined ? "Non indicato" : `${form.sashWeightKg} kg`}
+        />
       )}
     </dl>
   );

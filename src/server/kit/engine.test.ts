@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { KitEngine } from "./engine";
+import { KitGenerationError } from "./types";
 
 const templateFindFirst = vi.fn();
 const productFindMany = vi.fn();
@@ -90,14 +91,21 @@ describe("KitEngine.generate", () => {
     );
   });
 
-  it("seleziona il template per ANTA_BATTENTE", async () => {
+  // ANTA_BATTENTE DISATTIVATO 2026-07-25 (distinta priva del gruppo di
+  // sospensione superiore): con il DB reale il template è isActive:false e la
+  // barriera scatta prima. Qui il template è mockato attivo, quindi si verifica
+  // la seconda barriera — il modulo rifiuta — e che l'engine abbia comunque
+  // inoltrato la windowType alla query di selezione.
+  it("seleziona il template per ANTA_BATTENTE, poi il modulo gated rifiuta", async () => {
     templateFindFirst.mockResolvedValue({
       id: "tb",
       rules: { engine: "artech-batt-legno", version: 1 },
     });
     productFindMany.mockResolvedValue([]);
     const engine = new KitEngine(db);
-    await engine.generate({ ...validInput, windowType: "ANTA_BATTENTE" });
+    await expect(engine.generate({ ...validInput, windowType: "ANTA_BATTENTE" })).rejects.toThrow(
+      KitGenerationError,
+    );
     expect(templateFindFirst).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({

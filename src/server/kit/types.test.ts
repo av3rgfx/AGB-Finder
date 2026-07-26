@@ -30,4 +30,16 @@ describe("kitInputSchema", () => {
     expect(kitInputSchema.safeParse({ ...valid, airGapMm: 3 }).success).toBe(false);
     expect(kitInputSchema.safeParse({ ...valid, seatMm: 25 }).success).toBe(false);
   });
+
+  it("sashWeightKg è opzionale e non rompe gli input esistenti", () => {
+    const senza = kitInputSchema.safeParse(valid);
+    expect(senza.success).toBe(true);
+    const con = kitInputSchema.safeParse({ ...valid, sashWeightKg: 75 });
+    expect(con.success).toBe(true);
+  });
+
+  it("sashWeightKg rifiuta valori fuori scala", () => {
+    expect(kitInputSchema.safeParse({ ...valid, sashWeightKg: 0 }).success).toBe(false);
+    expect(kitInputSchema.safeParse({ ...valid, sashWeightKg: 250 }).success).toBe(false);
+  });
 });

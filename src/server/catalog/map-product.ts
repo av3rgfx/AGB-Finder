@@ -80,7 +80,7 @@ export function toProductData(row: ParsedRow): ProductUpsertData {
   };
 }
 
-/** Deduplica per agbCode: l'ultima occorrenza nel listino vince (8.217 righe → 6.191 codici). */
+/** Deduplica per agbCode: l'ultima occorrenza nel listino vince (9.752 righe → 7.488 codici). */
 export function dedupeRows(rows: ParsedRow[]): ParsedRow[] {
   const byCode = new Map<string, ParsedRow>();
   for (const row of rows) byCode.set(row.agbCode, row);
