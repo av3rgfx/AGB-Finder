@@ -90,6 +90,38 @@
 > griglia dei materiali era `grid-cols-3` senza breakpoint → a 375px gli hint dei materiali gated sfondavano il
 > bordo; ora `grid-cols-1 sm:grid-cols-3`.
 >
+> **✅ VERIFICA FINALE END-TO-END (fatta a chiusura di sessione, dopo il Task 8 — è la prova che conta).**
+> L'ambiente è stato montato per intero in locale (`scripts/dev-bootstrap.sh` → Docker + Postgres + migrate +
+> seed) e il **listino 2026 è stato importato davvero** (`pnpm import:agb`, il PDF era stato scaricato dal link
+> in `CLAUDE.md`): **959 pagine · 10.297 righe con codice · 9.752 parsed · 7.488 prodotti unici · 22 categorie**
+> — cioè il **+1.297 del parser allargato è confermato end-to-end**, non solo su grep.
+> Poi, con `INTEGRATION_DATABASE_URL` puntato a quel DB:
+> - **integration test gated ESEGUITO: 5/5 verdi** (è l'unico test che vede i prezzi veri e intercetta le righe
+>   senza prezzo — in CI resta skipped);
+> - **distinte reali generate dal motore, con i prezzi del listino:**
+>   · anta-ribalta 550×1820 SX chiusure ON → **16 righe / 21 pezzi / 90,20 € · warning: NESSUNO** (identico al
+>     golden storico: la correzione del supporto cerniera **non** sposta il totale, `A50805.05.SX` = 4,44 € come
+>     il codice sbagliato che sostituisce);
+>   · vasistas 600×1000 → **13 righe / 19 pezzi / 90,59 € · warning: NESSUNO**;
+>   · vasistas 1000×1000 → **3 forbici** (banda LBB 861-1200) ma supporto forbice e perno restano **2** (seguono
+>     le cerniere portanti, non le forbici): la correzione del Task 6 si vede;
+>   · vasistas 600×1000 con `sashWeightKg: 75` → **rifiutato**: «Anta da 75 kg oltre la portata delle forbici:
+>     1 × 40 kg = 40 kg massimi per una larghezza di 600 mm»;
+>   · PVC e battente → **rifiutati** («Nessun template kit attivo…», perché il seed li ha disattivati);
+>   · aria 4 → **rifiutato** dalla guardia nuova, con il messaggio che elenca la geometria coperta.
+> - **Browser rifatto** a 375px e desktop sul wizard reale (login admin, DB vero): tipologie selezionabili solo
+>   anta-ribalta e vasistas, hint «Non a listino 2026 — serve il listino PVC e alluminio» sul PVC, campo «Peso
+>   anta» presente con la nota «Facoltativo — serve a verificare la portata delle forbici…», e il rifiuto per
+>   portata mostrato **in italiano nel box rosso del dettaglio richiesta**. Nessun overflow orizzontale.
+>
+> ⚠️ **C'È UNA MIGRAZIONE** (`20260725213059_kit_sash_weight`, `kit_requests.sash_weight_kg` INTEGER nullable):
+> il piano ne prevedeva zero, il Task 7 l'ha aggiunta per persistere il peso nella richiesta. È già inclusa nel
+> run di «Ops — Neon», ma va tenuta presente se si applica qualcosa a mano.
+>
+> **Branch PUSHATO** (`git push -u origin claude/kit-engine-study-wfo2hq`). **PR NON aperta**: l'utente ha
+> chiesto di dare l'ok prima. La PR va presentata per quello che è — **riduce** la copertura apparente da 3
+> tipologie a 2, allineandola a ciò che il listino sostiene davvero.
+>
 > **DIFETTO COLLATERALE, SEGNALATO E NON CORRETTO (fuori scope):** `dedupeRows` in
 > `src/server/catalog/map-product.ts` tiene l'**ultima** occorrenza di ogni codice. 921 codici compaiono su più
 > pagine e 609 cambiano categoria: la cremonese del golden `A50122.08.02` è a DB come *galileo-pro-alluminio,

@@ -276,4 +276,10 @@ gated. Gate verdi (typecheck·lint·**test 589/11 skip**) + verifica browser wiz
 senza prezzo e golden **90,20 → 85,76 €**) + **`db:seed:kit`** (è ciò che disattiva davvero PVC e battente) +
 `embed:products`; poi **audit di `kit_requests`** (se sono uscite distinte PVC/battente a clienti reali, avvisare
 gli agenti). Difetto collaterale segnalato e **non** corretto: `dedupeRows` last-wins in `map-product.ts`.
+**✅ VERIFICA FINALE END-TO-END** (a chiusura sessione): ambiente montato in locale e **listino importato davvero**
+(`import:agb` → 7.488 prodotti, +1.297 confermato), **integration test gated eseguito 5/5**, e distinte reali
+generate coi prezzi veri — anta-ribalta **16 righe/21 pezzi/90,20 € zero warning** (il totale NON cambia con la
+correzione), vasistas **13/19/90,59 € zero warning**, 3 forbici a LBB 1000 con supporto/perno fermi a 2, rifiuti
+corretti per peso 75 kg / PVC / battente / aria 4; browser rifatto su DB vero a **375px e desktop**. **Branch
+pushato, PR NON aperta** (attende l'ok dell'utente).
 Spec/piano: `docs/superpowers/{specs,plans}/2026-07-25-kit-bonifica-artech-legno*`.
