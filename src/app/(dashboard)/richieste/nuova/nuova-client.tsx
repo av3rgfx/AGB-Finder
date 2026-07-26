@@ -1,22 +1,25 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useState, type Dispatch, type SetStateAction } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { api } from "@/trpc/react";
-import { kitInputSchema, type KitInput } from "@/server/kit/types";
+import {
+  artechInputSchema,
+  kitInputSchema,
+  tourInputSchema,
+  type ArtechKitInput,
+  type KitInput,
+  type TourKitInput,
+} from "@/server/kit/types";
+import { SCHEMI_TOUR, FINITURE_TOUR } from "@/server/kit/rules-tour-bilico-legno";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import {
-  hingeSideLabel,
-  materialLabel,
-  openingDirLabel,
-  windowTypeLabel,
-} from "@/lib/kit-labels";
+import { hingeSideLabel, materialLabel, openingDirLabel, windowTypeLabel } from "@/lib/kit-labels";
 
-const DEFAULT_FORM: KitInput = {
+const ARTECH_DEFAULT: ArtechKitInput = {
   windowType: "ANTA_RIBALTA",
   series: "ARTECH",
   material: "LEGNO",
@@ -32,8 +35,28 @@ const DEFAULT_FORM: KitInput = {
   supplementaryClosures: false,
 };
 
+const TOUR_DEFAULT: TourKitInput = {
+  windowType: "BILICO",
+  series: "TOUR",
+  material: "LEGNO",
+  widthMm: 700,
+  heightMm: 900,
+  finish: "MARRONE RAL 8019",
+  tourSchema: 2,
+};
+
+/**
+ * Cambiando tipologia si cambia **ramo dell'unione**, non un campo: la geometria
+ * ARTECH non deve sopravvivere in un form bilico (e viceversa). Si conservano le
+ * sole quote, che sono comuni e che l'agente ha appena misurato.
+ */
+function defaultForWindowType(wt: KitInput["windowType"], prev: KitInput): KitInput {
+  const base = wt === "BILICO" ? TOUR_DEFAULT : ARTECH_DEFAULT;
+  return { ...base, windowType: wt, widthMm: prev.widthMm, heightMm: prev.heightMm } as KitInput;
+}
+
 /** Tipologie coperte dal generatore: radio selezionabili. */
-const ACTIVE_WINDOW_TYPES = ["ANTA_RIBALTA", "VASISTAS"] as const;
+const ACTIVE_WINDOW_TYPES = ["ANTA_RIBALTA", "VASISTAS", "BILICO"] as const;
 
 /** Tipologie non ancora coperte: radio disabilitate. */
 const FUTURE_WINDOW_TYPES = [
@@ -72,6 +95,13 @@ const MATERIAL_AVAILABILITY: Record<KitInput["windowType"], MaterialChoice[]> = 
     { value: "PVC", enabled: false, hint: "Non disponibile per la vasistas" },
     { value: "ALLUMINIO", enabled: false, hint: "Non disponibile per la vasistas" },
   ],
+  // Il bilico TOUR è pubblicato a listino solo per il legno (sezione BILICI,
+  // p0532-0553): non esiste una composizione PVC o alluminio da trascrivere.
+  BILICO: [
+    { value: "LEGNO", enabled: true },
+    { value: "PVC", enabled: false, hint: "Il bilico TOUR è a listino solo per il legno" },
+    { value: "ALLUMINIO", enabled: false, hint: "Il bilico TOUR è a listino solo per il legno" },
+  ],
 };
 
 /**
@@ -94,41 +124,72 @@ export function materialForWindowType(
 
 /**
  * Finiture coperte dal generatore ARTECH legno: chiavi della tabella
- * COPERTURE_KIT in `src/server/kit/rules-artech.ts` (kit copertura
+ * COPERTURE_KIT in `src/server/kit/rules-artech-legno.ts` (kit copertura
  * A51301.*). Aggiornare qui in coppia con quella tabella.
+ * (Il bilico non ha questo problema: importa `FINITURE_TOUR` dal suo modulo.)
  */
 const FINISH_OPTIONS = ["ARGENTO"] as const;
 
-const STEP_LABELS = ["Tipologia", "Dimensioni", "Mano e finitura", "Riepilogo"] as const;
+/** Il terzo step cambia nome: il bilico non ha una mano da scegliere. */
+function stepLabels(series: KitInput["series"]) {
+  return [
+    "Tipologia",
+    "Dimensioni",
+    series === "TOUR" ? "Schema e finitura" : "Mano e finitura",
+    "Riepilogo",
+  ] as const;
+}
 
-const STEP1_SCHEMA = kitInputSchema.pick({ windowType: true, series: true, material: true });
-const STEP2_SCHEMA = kitInputSchema.pick({
-  widthMm: true,
-  heightMm: true,
-  airGapMm: true,
-  axisOffsetMm: true,
-  rebateMm: true,
-  seatMm: true,
-  sashWeightKg: true,
-});
-const STEP3_SCHEMA = kitInputSchema.pick({ openingSide: true, openingDir: true, finish: true });
+/**
+ * Schemi di validazione per step, **per ramo**. `z.discriminatedUnion` non
+ * espone `.pick()`: i rami sì, perché sono `ZodObject`. È la ragione per cui in
+ * `types.ts` i due rami estendono un oggetto comune invece di essere scritti da
+ * zero.
+ */
+const STEP_SCHEMAS = {
+  ARTECH: [
+    artechInputSchema.pick({ windowType: true, series: true, material: true }),
+    artechInputSchema.pick({
+      widthMm: true,
+      heightMm: true,
+      airGapMm: true,
+      axisOffsetMm: true,
+      rebateMm: true,
+      seatMm: true,
+      sashWeightKg: true,
+    }),
+    artechInputSchema.pick({ openingSide: true, openingDir: true, finish: true }),
+  ],
+  TOUR: [
+    tourInputSchema.pick({ windowType: true, series: true, material: true }),
+    tourInputSchema.pick({ widthMm: true, heightMm: true, sashWeightKg: true }),
+    tourInputSchema.pick({ tourSchema: true, finish: true }),
+  ],
+} as const;
 
-/** Primo messaggio di un safeParse fallito — accetta il risultato di qualunque pick di kitInputSchema. */
-function firstIssueMessage(result: { success: false; error: { issues: Array<{ message: string }> } }) {
+/** Primo messaggio di un safeParse fallito — accetta il risultato di qualunque pick. */
+function firstIssueMessage(result: {
+  success: false;
+  error: { issues: Array<{ message: string }> };
+}) {
   return result.error.issues[0]?.message ?? "Dati non validi.";
 }
 
-type UpdateForm = <K extends keyof KitInput>(key: K, value: KitInput[K]) => void;
+/**
+ * Setter tipizzato sul ramo. Il cast avviene qui, una volta sola e per
+ * costruzione sicuro: `key` e `value` provengono da `T`, e ogni step riceve il
+ * ramo che gli compete.
+ */
+type Update<T> = <K extends keyof T>(key: K, value: T[K]) => void;
 
-interface StepProps {
-  form: KitInput;
-  update: UpdateForm;
+function makeUpdate<T>(setForm: Dispatch<SetStateAction<KitInput>>): Update<T> {
+  return (key, value) => setForm((prev) => ({ ...prev, [key]: value }) as KitInput);
 }
 
 export function NuovaRichiestaClient() {
   const router = useRouter();
   const [step, setStep] = useState(1);
-  const [form, setForm] = useState<KitInput>(DEFAULT_FORM);
+  const [form, setForm] = useState<KitInput>(ARTECH_DEFAULT);
   const [stepError, setStepError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -136,10 +197,12 @@ export function NuovaRichiestaClient() {
   const generate = api.kit.generate.useMutation();
   const isSubmitting = create.isPending || generate.isPending;
 
-  const update: UpdateForm = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+  const labels = stepLabels(form.series);
 
   function goNext() {
-    const schema = step === 1 ? STEP1_SCHEMA : step === 2 ? STEP2_SCHEMA : STEP3_SCHEMA;
+    // Gli step 1-3 validano; il 4 è il riepilogo e non ha schema proprio.
+    const schema = STEP_SCHEMAS[form.series][step - 1];
+    if (!schema) return;
     const result = schema.safeParse(form);
     if (!result.success) {
       setStepError(firstIssueMessage(result));
@@ -196,7 +259,7 @@ export function NuovaRichiestaClient() {
       <h1 className="text-xl font-semibold text-ink">Nuova richiesta kit</h1>
 
       <ol className="flex items-center gap-2">
-        {STEP_LABELS.map((label, index) => {
+        {labels.map((label, index) => {
           const n = index + 1;
           const current = n === step;
           const done = n < step;
@@ -223,7 +286,7 @@ export function NuovaRichiestaClient() {
               >
                 {label}
               </span>
-              {n < STEP_LABELS.length && <span className="h-px flex-1 bg-line" aria-hidden />}
+              {n < labels.length && <span className="h-px flex-1 bg-line" aria-hidden />}
             </li>
           );
         })}
@@ -247,9 +310,19 @@ export function NuovaRichiestaClient() {
           </div>
         )}
 
-        {step === 1 && <Step1Tipologia form={form} update={update} />}
-        {step === 2 && <Step2Dimensioni form={form} update={update} />}
-        {step === 3 && <Step3ManoFinitura form={form} update={update} />}
+        {step === 1 && <Step1Tipologia form={form} setForm={setForm} />}
+        {step === 2 &&
+          (form.series === "TOUR" ? (
+            <Step2DimensioniTour form={form} update={makeUpdate<TourKitInput>(setForm)} />
+          ) : (
+            <Step2DimensioniArtech form={form} update={makeUpdate<ArtechKitInput>(setForm)} />
+          ))}
+        {step === 3 &&
+          (form.series === "TOUR" ? (
+            <Step3SchemaFinitura form={form} update={makeUpdate<TourKitInput>(setForm)} />
+          ) : (
+            <Step3ManoFinitura form={form} update={makeUpdate<ArtechKitInput>(setForm)} />
+          ))}
         {step === 4 && <Step4Riepilogo form={form} />}
       </div>
 
@@ -323,16 +396,20 @@ function RadioOption({
   );
 }
 
-function Step1Tipologia({ form, update }: StepProps) {
+function Step1Tipologia({
+  form,
+  setForm,
+}: {
+  form: KitInput;
+  setForm: Dispatch<SetStateAction<KitInput>>;
+}) {
   const materials = MATERIAL_AVAILABILITY[form.windowType];
 
   function selectWindowType(wt: KitInput["windowType"]) {
-    update("windowType", wt);
-    update("material", materialForWindowType(wt, form.material));
-    if (wt !== "ANTA_RIBALTA") update("supplementaryClosures", false);
-    // Il peso serve solo alle due NB dello schema vasistas: cambiando tipologia
-    // non deve restare un valore che nessun altro modulo legge.
-    if (wt !== "VASISTAS") update("sashWeightKg", undefined);
+    setForm((prev) => {
+      const next = defaultForWindowType(wt, prev);
+      return { ...next, material: materialForWindowType(wt, prev.material) } as KitInput;
+    });
   }
 
   return (
@@ -365,19 +442,18 @@ function Step1Tipologia({ form, update }: StepProps) {
 
       <div>
         <span className="mb-2 block text-sm font-semibold text-ink">Serie</span>
+        {/* La serie non si sceglie: la determina la tipologia. Mostrarla evita
+            che l'agente si chieda dove sia finito il campo. */}
         <p className="w-fit rounded border border-line-strong bg-surface-sunken px-3.5 py-2.5 text-sm font-medium text-ink">
-          ARTECH
+          {form.series}
         </p>
       </div>
 
       <fieldset>
         <legend className="mb-2 text-sm font-semibold text-ink">Materiale</legend>
         {/* Mobile-first: una colonna sotto sm. A tre colonne fisse ogni cella
-            valeva ~90px a 375px e gli hint («Non a listino 2026 — serve il
-            listino PVC e alluminio») andavano a capo su 5-6 righe, con le
-            parole lunghe fuori dal bordo. Le tipologie qui sopra usano già
-            grid-cols-2 sm:grid-cols-3: i materiali hanno hint più lunghi e
-            stanno meglio a piena larghezza. */}
+            valeva ~90px a 375px e gli hint andavano a capo su 5-6 righe, con le
+            parole lunghe fuori dal bordo. */}
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           {materials.map((m) => (
             <RadioOption
@@ -386,7 +462,7 @@ function Step1Tipologia({ form, update }: StepProps) {
               label={materialLabel(m.value)}
               hint={m.hint}
               checked={form.material === m.value}
-              onChange={m.enabled ? () => update("material", m.value) : () => {}}
+              onChange={m.enabled ? () => setForm((p) => ({ ...p, material: m.value })) : () => {}}
               disabled={!m.enabled}
             />
           ))}
@@ -429,7 +505,10 @@ function NumberField({
   return (
     <div className="flex flex-col gap-1.5">
       <label htmlFor={id} className="text-sm font-medium text-ink">
-        {label} <span className="font-normal text-ink-subtle">({min}–{max} mm)</span>
+        {label}{" "}
+        <span className="font-normal text-ink-subtle">
+          ({min}–{max} mm)
+        </span>
       </label>
       <Input
         id={id}
@@ -444,14 +523,21 @@ function NumberField({
 }
 
 /**
- * Peso dell'anta: campo FACOLTATIVO, mostrato solo per la vasistas — è l'unica
- * tipologia le cui regole lo leggono (schema p0418 (416): terza cerniera fra 70 e
- * 80 kg, portata 40 kg per forbice). Non riusa `NumberField` perché lì il campo è
- * obbligatorio (vuoto → NaN → errore di step) e l'unità è sempre «mm»: qui il
- * vuoto deve valere `undefined`, che lo schema accetta. Sta nella stessa griglia
- * responsive degli altri campi, quindi a ≤375px occupa la sua riga intera.
+ * Peso dell'anta: campo FACOLTATIVO. Lo leggono la vasistas (schema p0418 (416):
+ * terza cerniera fra 70 e 80 kg, portata 40 kg per forbice) e il bilico (portata
+ * del kit cerniere: 200 kg su Tour 30/35, 300 kg su Tour 40). Non riusa
+ * `NumberField` perché lì il campo è obbligatorio (vuoto → NaN → errore di step)
+ * e l'unità è sempre «mm»: qui il vuoto deve valere `undefined`.
  */
-function SashWeightField({ form, update }: StepProps) {
+function SashWeightField({
+  value,
+  hint,
+  onChange,
+}: {
+  value: number | undefined;
+  hint: string;
+  onChange: (value: number | undefined) => void;
+}) {
   return (
     <div className="flex flex-col gap-1.5">
       <label htmlFor="sashWeightKg" className="text-sm font-medium text-ink">
@@ -462,21 +548,24 @@ function SashWeightField({ form, update }: StepProps) {
         type="number"
         min={1}
         max={200}
-        value={form.sashWeightKg ?? ""}
+        value={value ?? ""}
         aria-describedby="sashWeightKg-hint"
-        onChange={(e) =>
-          update("sashWeightKg", e.target.value === "" ? undefined : Number(e.target.value))
-        }
+        onChange={(e) => onChange(e.target.value === "" ? undefined : Number(e.target.value))}
       />
       <p id="sashWeightKg-hint" className="text-xs text-ink-subtle">
-        Facoltativo — serve a verificare la portata delle forbici e a stabilire se occorre la terza
-        cerniera.
+        {hint}
       </p>
     </div>
   );
 }
 
-function Step2Dimensioni({ form, update }: StepProps) {
+function Step2DimensioniArtech({
+  form,
+  update,
+}: {
+  form: ArtechKitInput;
+  update: Update<ArtechKitInput>;
+}) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       {DIMENSION_FIELDS.map((field) => (
@@ -490,12 +579,81 @@ function Step2Dimensioni({ form, update }: StepProps) {
           onChange={(v) => update(field.key, v)}
         />
       ))}
-      {form.windowType === "VASISTAS" && <SashWeightField form={form} update={update} />}
+      {form.windowType === "VASISTAS" && (
+        <SashWeightField
+          value={form.sashWeightKg}
+          hint="Facoltativo — serve a verificare la portata delle forbici e a stabilire se occorre la terza cerniera."
+          onChange={(v) => update("sashWeightKg", v)}
+        />
+      )}
     </div>
   );
 }
 
-function Step3ManoFinitura({ form, update }: StepProps) {
+/**
+ * Il bilico non ha aria/asse/battuta/sede: quelle quote le implica lo schema di
+ * montaggio, che si sceglie al passo dopo. Restano le due misure e il peso.
+ */
+function Step2DimensioniTour({
+  form,
+  update,
+}: {
+  form: TourKitInput;
+  update: Update<TourKitInput>;
+}) {
+  const areaM2 = (form.widthMm * form.heightMm) / 1_000_000;
+  const quattroLati = form.widthMm * form.heightMm >= 2_000_000;
+  const misureValide = Number.isFinite(areaM2) && areaM2 > 0;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <NumberField
+          id="widthMm"
+          label="Larghezza"
+          min={530}
+          max={2400}
+          value={form.widthMm}
+          onChange={(v) => update("widthMm", v)}
+        />
+        <NumberField
+          id="heightMm"
+          label="Altezza"
+          min={580}
+          max={2400}
+          value={form.heightMm}
+          onChange={(v) => update("heightMm", v)}
+        />
+        <SashWeightField
+          value={form.sashWeightKg}
+          hint="Facoltativo — serve a verificare la portata del kit cerniere (200 kg, 300 kg sullo schema 5)."
+          onChange={(v) => update("sashWeightKg", v)}
+        />
+      </div>
+
+      {/* Echeggia SUBITO la conseguenza delle quote. La ferramenta su 3 o 4 lati
+          non è una scelta dell'agente ma cambia quattro codici e circa 60 € di
+          distinta: mostrarla qui, dove le quote si toccano, è l'unico punto in
+          cui l'agente può accorgersi di un errore di misura. */}
+      {misureValide && (
+        <p className="rounded-md bg-surface-sunken px-3.5 py-2.5 text-xs text-ink-subtle">
+          Superficie <strong className="font-semibold text-ink">{areaM2.toFixed(2)} m²</strong> →
+          ferramenta sui{" "}
+          <strong className="font-semibold text-ink">{quattroLati ? "4 lati" : "3 lati"}</strong>.
+          Il listino lega i due kit alla superficie: non si sceglie.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function Step3ManoFinitura({
+  form,
+  update,
+}: {
+  form: ArtechKitInput;
+  update: Update<ArtechKitInput>;
+}) {
   return (
     <div className="flex flex-col gap-6">
       <fieldset>
@@ -573,6 +731,86 @@ function Step3ManoFinitura({ form, update }: StepProps) {
   );
 }
 
+const SCHEMA_NUMBERS = [1, 2, 3, 4, 5] as const;
+
+/** «17,5» in italiano; 15 resta «15». */
+function mm(value: number): string {
+  return Number.isInteger(value) ? String(value) : String(value).replace(".", ",");
+}
+
+/**
+ * Lo schema di montaggio è il campo più pericoloso di tutto il wizard: sbagliarlo
+ * produce una distinta **completa, plausibile e sbagliata** — il modo di fallire
+ * peggiore per questo motore. Perciò le opzioni non sono numeri nudi: ogni radio
+ * porta la geometria che quel numero implica (listello, asse, battuta) e il
+ * modello di cerniera, cioè esattamente i dati che il serramentista legge sul suo
+ * disegno. L'agente riconosce il proprio serramento invece di indovinare.
+ */
+function Step3SchemaFinitura({
+  form,
+  update,
+}: {
+  form: TourKitInput;
+  update: Update<TourKitInput>;
+}) {
+  return (
+    <div className="flex flex-col gap-6">
+      <fieldset>
+        <legend className="mb-1 text-sm font-semibold text-ink">Schema di montaggio</legend>
+        <p className="mb-2 text-xs text-ink-subtle">
+          Determina listello, asse, battuta, modello di cerniera e guarnizione. Va letto sul disegno
+          del serramento.
+        </p>
+        {/* Due colonne al massimo: gli hint sono lunghi e a 375px devono avere
+            la riga intera, come i materiali del primo passo. */}
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {SCHEMA_NUMBERS.map((n) => {
+            const s = SCHEMI_TOUR[n];
+            return (
+              <RadioOption
+                key={n}
+                name="tourSchema"
+                label={`Schema ${n}`}
+                hint={`Listello ${s.listelloMm} · asse ${mm(s.asseMm)} · battuta ${s.battutaMm} — Tour ${s.tour}, ${s.portataKg} kg`}
+                checked={form.tourSchema === n}
+                onChange={() => update("tourSchema", n)}
+              />
+            );
+          })}
+        </div>
+      </fieldset>
+
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="finish" className="text-sm font-medium text-ink">
+          Finitura
+        </label>
+        <select
+          id="finish"
+          value={form.finish}
+          onChange={(e) => update("finish", e.target.value)}
+          className="h-11 rounded border border-line-strong bg-surface px-3.5 text-sm text-ink focus-visible:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/25"
+        >
+          {FINITURE_TOUR.map((finish) => (
+            <option key={finish} value={finish}>
+              {finish}
+            </option>
+          ))}
+        </select>
+        <p className="text-xs text-ink-subtle">
+          Le cerniere TOUR sono a listino in queste due sole finiture.
+        </p>
+      </div>
+
+      {/* Il bilico non ha mano né direzione di apertura: dirlo esplicitamente,
+          perché sono due campi che l'agente si aspetta di trovare qui. */}
+      <p className="rounded-md bg-surface-sunken px-3.5 py-2.5 text-xs text-ink-subtle">
+        Nessuna mano da scegliere: sui 3 lati il listino prevede la sola configurazione sinistra,
+        sui 4 lati escono entrambe le mani.
+      </p>
+    </div>
+  );
+}
+
 function SummaryItem({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col gap-0.5">
@@ -583,12 +821,44 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
 }
 
 function Step4Riepilogo({ form }: { form: KitInput }) {
-  return (
-    <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm sm:grid-cols-3">
+  const comuni = (
+    <>
       <SummaryItem label="Tipologia" value={windowTypeLabel(form.windowType)} />
       <SummaryItem label="Serie" value={form.series} />
       <SummaryItem label="Materiale" value={materialLabel(form.material)} />
       <SummaryItem label="Dimensioni" value={`${form.widthMm} × ${form.heightMm} mm`} />
+    </>
+  );
+
+  if (form.series === "TOUR") {
+    const s = SCHEMI_TOUR[form.tourSchema as keyof typeof SCHEMI_TOUR];
+    const quattroLati = form.widthMm * form.heightMm >= 2_000_000;
+    return (
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm sm:grid-cols-3">
+        {comuni}
+        <SummaryItem label="Schema" value={`Schema ${form.tourSchema}`} />
+        {s && (
+          <>
+            <SummaryItem
+              label="Geometria"
+              value={`Listello ${s.listelloMm} · asse ${mm(s.asseMm)} · battuta ${s.battutaMm}`}
+            />
+            <SummaryItem label="Cerniere" value={`Tour ${s.tour} — ${s.portataKg} kg`} />
+          </>
+        )}
+        <SummaryItem label="Ferramenta" value={quattroLati ? "4 lati" : "3 lati"} />
+        <SummaryItem label="Finitura" value={form.finish} />
+        <SummaryItem
+          label="Peso anta"
+          value={form.sashWeightKg === undefined ? "Non indicato" : `${form.sashWeightKg} kg`}
+        />
+      </dl>
+    );
+  }
+
+  return (
+    <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm sm:grid-cols-3">
+      {comuni}
       <SummaryItem label="Aria" value={`${form.airGapMm} mm`} />
       <SummaryItem label="Asse" value={`${form.axisOffsetMm} mm`} />
       <SummaryItem label="Battuta" value={`${form.rebateMm} mm`} />

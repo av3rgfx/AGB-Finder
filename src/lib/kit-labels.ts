@@ -8,6 +8,7 @@ export const WINDOW_TYPE_LABELS: Record<string, string> = {
   SCORREVOLE_TRASLANTE: "Scorrevole traslante",
   VASISTAS: "Vasistas",
   FINESTRA_TETTO: "Finestra da tetto",
+  BILICO: "Bilico",
 };
 
 export const MATERIAL_LABELS: Record<string, string> = {

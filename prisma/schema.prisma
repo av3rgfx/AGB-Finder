@@ -224,6 +224,9 @@ enum WindowType {
   SCORREVOLE_TRASLANTE
   VASISTAS
   FINESTRA_TETTO
+  // Bilico rettangolare (serie TOUR, 2026-07-26). Il bilico TONDO (TOUR-R,
+  // p0554-0562) è un prodotto diverso e non è coperto.
+  BILICO
 }
 
 enum MaterialType {
@@ -248,18 +251,33 @@ model KitRequest {
   id            String @id @default(cuid())
   requestNumber String @unique @map("request_number")
 
-  windowType   WindowType       @map("window_type")
-  widthMm      Int              @map("width_mm")
-  heightMm     Int              @map("height_mm")
-  material     MaterialType
-  airGapMm     Int              @map("air_gap_mm")
-  axisOffsetMm Int              @map("axis_offset_mm")
-  rebateMm     Int              @map("rebate_mm")
-  seatMm       Int              @map("seat_mm")
-  openingSide  HingeSide        @map("opening_side")
-  openingDir   OpeningDirection @map("opening_direction")
-  finish       String
-  series       String
+  windowType WindowType   @map("window_type")
+  widthMm    Int          @map("width_mm")
+  heightMm   Int          @map("height_mm")
+  material   MaterialType
+  finish     String
+  series     String
+
+  // ── Geometria e mano: SOLO serie ARTECH ──────────────────────────────────
+  // Nullable dal 2026-07-26 (ingresso della serie TOUR). NON sono campi
+  // "facoltativi": sono campi di UN RAMO. `kitInputSchema` è un'unione
+  // discriminata su `series` e scarta i campi estranei al ramo, quindi una riga
+  // TOUR li ha tutti NULL per costruzione. Conta perché `kit.generate`
+  // ricostruisce l'input del motore rileggendo queste colonne: la riga È
+  // l'input di ogni rigenerazione.
+  airGapMm     Int?              @map("air_gap_mm")
+  axisOffsetMm Int?              @map("axis_offset_mm")
+  rebateMm     Int?              @map("rebate_mm")
+  seatMm       Int?              @map("seat_mm")
+  openingSide  HingeSide?        @map("opening_side")
+  openingDir   OpeningDirection? @map("opening_direction")
+
+  // ── Serie TOUR (bilico) ──────────────────────────────────────────────────
+  // Schema di montaggio 1-5 del listino. Da solo implica listello, asse,
+  // battuta, modello di cerniera e guarnizione: quei valori NON si persistono
+  // (sarebbero una seconda fonte di verità), si derivano in codice. In
+  // particolare l'asse dello schema 3 è 17,5 e non è un intero.
+  tourSchema Int? @map("tour_schema")
   supplementaryClosures Boolean @default(false) @map("supplementary_closures")
   // Peso dell'anta in kg — FACOLTATIVO (nullable, nessun default): le due NB
   // dello schema vasistas p0418 (416) valgono solo se l'agente lo indica.

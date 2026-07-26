@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { agentProcedure, createTRPCRouter } from "@/server/api/trpc";
 import { KitEngine } from "@/server/kit/engine";
 import { KitGenerationError, kitInputSchema } from "@/server/kit/types";
+import { kitInputFromRequest } from "@/server/kit/from-request";
 
 function toTRPC(error: unknown): never {
   if (error instanceof KitGenerationError)
@@ -18,9 +19,32 @@ export const kitRouter = createTRPCRouter({
     });
     const requestNumber = `KIT-${year}-${String(inYear + 1).padStart(4, "0")}`;
     const { notes, ...specs } = input;
+    // Le colonne del ramo NON scelto restano NULL. Sono esplicitate una per una
+    // invece di essere spalmate: la riga è l'input di ogni rigenerazione, e uno
+    // spread di un'unione lascerebbe passare in silenzio i campi dell'altro ramo
+    // il giorno in cui l'unione cambia.
+    const branch =
+      specs.series === "TOUR"
+        ? { tourSchema: specs.tourSchema }
+        : {
+            airGapMm: specs.airGapMm,
+            axisOffsetMm: specs.axisOffsetMm,
+            rebateMm: specs.rebateMm,
+            seatMm: specs.seatMm,
+            openingSide: specs.openingSide,
+            openingDir: specs.openingDir,
+            supplementaryClosures: specs.supplementaryClosures ?? false,
+          };
     const request = await ctx.db.kitRequest.create({
       data: {
-        ...specs,
+        windowType: specs.windowType,
+        widthMm: specs.widthMm,
+        heightMm: specs.heightMm,
+        material: specs.material,
+        finish: specs.finish,
+        series: specs.series,
+        sashWeightKg: specs.sashWeightKg ?? null,
+        ...branch,
         notes: notes ?? null,
         requestNumber,
         status: "DRAFT",
@@ -48,26 +72,18 @@ export const kitRouter = createTRPCRouter({
       if (!request)
         throw new TRPCError({ code: "NOT_FOUND", message: "Richiesta kit non trovata." });
 
+      // La riga È l'input: si ricostruisce per ramo e si ri-valida, invece di
+      // spalmare le colonne (vedi kit/from-request.ts).
+      const engineInput = (() => {
+        try {
+          return kitInputFromRequest(request);
+        } catch (error) {
+          return toTRPC(error);
+        }
+      })();
+
       const engine = new KitEngine(ctx.db);
-      const output = await engine
-        .generate({
-          windowType: request.windowType,
-          widthMm: request.widthMm,
-          heightMm: request.heightMm,
-          material: request.material,
-          airGapMm: request.airGapMm,
-          axisOffsetMm: request.axisOffsetMm,
-          rebateMm: request.rebateMm,
-          seatMm: request.seatMm,
-          openingSide: request.openingSide,
-          openingDir: request.openingDir,
-          finish: request.finish,
-          series: request.series,
-          supplementaryClosures: request.supplementaryClosures,
-          sashWeightKg: request.sashWeightKg ?? undefined,
-          notes: request.notes ?? undefined,
-        })
-        .catch(toTRPC);
+      const output = await engine.generate(engineInput).catch(toTRPC);
 
       const rows = output.lines
         .filter((line) => line.productId !== null)

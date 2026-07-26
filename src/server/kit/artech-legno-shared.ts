@@ -3,9 +3,9 @@
 // identico tra le tipologie legno — cerniere per mano, movimento angolare,
 // formula incontri nottolino. Estrazione BEHAVIOR-PRESERVING: l'output
 // anta-ribalta resta byte-identico (golden Fase 1d invariato).
-import { KitGenerationError, PILOT, type KitInput } from "./types";
+import { KitGenerationError, PILOT, type ArtechKitInput } from "./types";
 
-type Side = KitInput["openingSide"];
+type Side = ArtechKitInput["openingSide"];
 
 /**
  * Componenti cerniera dipendenti da mano, per la geometria del pilota
@@ -86,7 +86,7 @@ const GEOMETRY_LABELS: Record<keyof typeof PILOT_GEOMETRY, string> = {
  * guardia l'input veniva accettato e ignorato: un'aria 4 riceveva in silenzio i
  * codici dell'aria 12 — distinta dall'aria perfetta, di un'altra configurazione.
  */
-export function assertPilotGeometry(input: KitInput): void {
+export function assertPilotGeometry(input: ArtechKitInput): void {
   const keys = Object.keys(PILOT_GEOMETRY) as (keyof typeof PILOT_GEOMETRY)[];
   const wrong = keys
     .filter((key) => input[key] !== PILOT_GEOMETRY[key])
