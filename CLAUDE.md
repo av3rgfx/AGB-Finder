@@ -311,3 +311,13 @@ step verdi: migrazione `20260726120000_kit_bilico_tour` applicata, import 7.488,
 `docs/superpowers/specs/2026-07-26-kit-bilico-tour-design.md` · assunzioni e domande 11-16 in
 `kit-assunzioni/tour.md` · audit `kit_requests` e mail per AGB **pronti da usare** in
 `kit-assunzioni/DA-FARE-audit-e-domande-agb.md`.
+
+**▶ PROSSIMA SESSIONE — decisione utente.** Default consigliato: **GALILEO PRO scorrevole complanare**
+(listino pp. **812-883** fisiche), che sblocca la tipologia **SCORREVOLE** e poi l'**ALLUMINIO vero e
+prezzato** — l'unica composizione alluminio completa del 2026 (pp. 854-883). L'ostacolo che lo bloccava è
+caduto oggi: l'input non è più un oggetto piatto tarato su ARTECH ma un'unione discriminata su `series`, e
+`SCORREVOLE_TRASLANTE`/`SCORREVOLE_ALZANTE` **sono già nell'enum** → nessuna migrazione per la tipologia.
+Alternative pronte: **fix `dedupeRows`** (piccolo, alto valore, richiede re-import) · **PVC+alluminio ARTECH**
+(serve il listino separato) · **battente** (una riga, appena AGB risponde alla domanda 1) · **anta doppia**
+(serve prima modellare la sede 30). Prompt di apertura, ricognizione del listino già fatta e lezioni operative
+da non riscoprire: `handoff.md` §RIPRENDI DA QUI.

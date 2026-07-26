@@ -9,14 +9,139 @@
 
 | Campo | Valore |
 |-------|--------|
-| **Data** | 2026-07-26 — **KIT BILICO RETTANGOLARE TOUR**: nuova tipologia + prima serie non-ARTECH. Gate verdi; **PR #35 MERGIATA**, azioni ops **eseguite** |
+| **Data** | 2026-07-26 — sessione **CONCLUSA**. Prossima: **decisione utente** (default consigliato: Galileo Pro scorrevole) |
 | **Fase in corso** | Fase 1 — MVP Gestionale |
-| **Sotto-fase** | …bonifica kit (#33/#34 mergiate) · **BILICO TOUR ✅**: terza tipologia attiva, distinta di 7 righe (3 lati) / 9 (4 lati), tutta su codici reali del listino. L'input del motore diventa un'**unione discriminata su `series`**. |
-| **Branch git** | `claude/kit-engine-continuation-v42wnl` → **PR #35 mergiata** in `main` @ `4229cd5` (5 commit, 24 file, +2.245/−279). |
-| **Stato deploy** | **LIVE** su `catalogo-finder-kappa.vercel.app`, **Neon allineato**. Ops bonifica: run `30198585201` (11:00Z). Ops bilico: run **`30207287069`** (15:12Z, 11m33s, 12/12 step verdi) → migrazione `20260726120000_kit_bilico_tour` applicata (unica pendente), import 7.488 prodotti, template `TOUR bilico rettangolare legno` creato, embed «niente da fare». **Nessuna azione ops residua.** |
-| **Piani/spec** | `docs/superpowers/specs/2026-07-26-kit-bilico-tour-design.md` · assunzioni in `kit-assunzioni/tour.md` |
+| **Sotto-fase** | Kit engine: **tre tipologie attive e live** — anta-ribalta LEGNO, vasistas LEGNO, **bilico TOUR LEGNO**. Input del motore = **unione discriminata su `series`**. |
+| **Branch git** | nessuno in sospeso. `main` @ `6163981` (merge #36). |
+| **Stato deploy** | **LIVE** su `catalogo-finder-kappa.vercel.app`, **Neon allineato**, **nessuna azione ops residua** (run `30207287069`, 12/12 step verdi). |
+| **Aperto** | verifica funzionale in produzione · mail ad AGB · audit `kit_requests` · fix `dedupeRows` |
 
-> **▶ RIPRENDI DA QUI — BILICO RETTANGOLARE TOUR ✅. PR #35 MERGIATA, ops eseguite, niente in sospeso.**
+---
+
+> **▶ RIPRENDI DA QUI — PROSSIMA SESSIONE**
+>
+> ### Stato in una riga
+>
+> Tre tipologie kit **attive e in produzione**: anta-ribalta LEGNO (90,20 €), vasistas LEGNO
+> (provvisoria), bilico TOUR LEGNO (450-766 €). Battente e PVC **spenti** in attesa di dati,
+> alluminio **gated**. Niente in sospeso su git né su ops.
+>
+> ### Prompt di apertura (copiabile)
+>
+> ```
+> Nuova sessione. Riparti leggendo handoff.md (§«RIPRENDI DA QUI») e CLAUDE.md.
+> Segui il workflow: /using-superpowers → brainstorming → /llm-council per dubbi o
+> incongruenze sulle regole di distinta → /impeccable se tocchiamo UI (SEMPRE mobile
+> ≤375px + desktop) → /writing-plans → esecuzione TDD; /ponytail per il codice.
+> Vincoli CLAUDE.md: TS strict, API via tRPC/Prisma, UI in italiano, codici in mono,
+> mobile-first, e soprattutto: il KIT È UN ENGINE DETERMINISTICO TypeScript, MAI un LLM.
+> A fine lavoro: gate verdi (typecheck·lint·test·build) + verifica browser se c'è UI +
+> PR (chiedi il mio ok prima di aprirla) + indica le AZIONI OPS.
+>
+> Il PDF del listino AGB 2026 NON è nel container: scaricalo dal link in CLAUDE.md
+> (§FILE ESTERNI). Poi estrai il testo con pdftotext -layout e splittalo pagina per
+> pagina. ATTENZIONE: pagina fisica = pagina stampata + 2. E ricorda la lezione del
+> bilico: le legende «Componenti» degli schemi stanno DENTRO il disegno e nel testo
+> estratto NON compaiono — le pagine-schema vanno RENDERIZZATE in immagine e guardate,
+> non solo grepate.
+>
+> OBIETTIVO: GALILEO PRO scorrevole complanare (listino pp. 812-883 fisiche).
+> Sblocca la tipologia SCORREVOLE e, subito dopo, l'ALLUMINIO vero e prezzato —
+> l'unica composizione alluminio completa del listino 2026. Kit da ~850-1.100 €.
+> Fammi lo studio del caso e allineiamoci sullo scope prima di implementare.
+>
+> Prima di partire dimmi: ho fatto la verifica funzionale in produzione? Ho mandato
+> la mail ad AGB (docs/superpowers/kit-assunzioni/DA-FARE-audit-e-domande-agb.md)?
+> Ho il listino PVC e ALLUMINIO?
+> ```
+>
+> ### Perché Galileo Pro, e perché adesso
+>
+> Il lavoro del 2026-07-26 ha tolto di mezzo l'ostacolo che lo bloccava. L'input del motore
+> **non è più un oggetto piatto tarato su ARTECH**: è un'unione discriminata su `series`, e
+> aggiungere una serie ora costa **un ramo zod + un modulo + una riga di seed + un ramo di
+> wizard**. Il bilico TOUR l'ha dimostrato su scala piccola.
+>
+> In più: **`SCORREVOLE_TRASLANTE` e `SCORREVOLE_ALZANTE` sono GIÀ nell'enum `WindowType`** →
+> per la tipologia **nessuna migrazione**. Il campo `series` è già uno `String` a DB: si allarga
+> solo il letterale zod.
+>
+> ### Ricognizione già fatta sul listino (pagine FISICHE)
+>
+> | Pagine | Contenuto |
+> |---|---|
+> | 812-819 | GALILEO PRO — avvertenze e campi di applicazione (+ certificato ift a 815) |
+> | **820-821** | **Kit ferramenta comuni a tutte le realizzazioni** ← probabile equivalente dei «4 kit» del bilico |
+> | 822-825 | **Schema A - Legno**, **Schema E - Legno** |
+> | 826-831 | Schema A/E - PVC (Tipo 1 e Tipo 2, DX/SX) |
+> | **832-835** | Kit carrelli standard · **Kit forbici di scorrimento** · Kit binari e accessori · profili di copertura |
+> | 836-840 | Cremonesi (anta-ribalta maniglia fissa/variabile, con foro cilindro, per ante riceventi) |
+> | 841-844 | Monoblocco martellina · asta di collegamento orizzontale · movimenti angolari · prolunghe |
+> | 845-849 | Incontri (nottolino aria 4, antieffrazione aria 12, DSS, ribalta) — **849 rimanda al «listino PVC e ALLUMINIO»** |
+> | 850-853 | Dime (attrezzatura di bottega, fuori distinta) e ricambi |
+> | **854-883** | **GALILEO PRO - ALLUMINIO**: sezione completa e prezzata — kit comuni (855-857), schemi A/E con incontri **in zama** (858-861) o **in acciaio** (862-865), carrelli (866), binari (867), cremonesi (868-872), accessori (873-876), incontri camera europea (877-879), dime (880-881), ricambi (882-883) |
+>
+> ### Cosa aspettarsi di diverso dal bilico
+>
+> - **Due schemi** (A ed E) invece di cinque, ma **per materiale** (legno, PVC, alluminio) e con
+>   varianti di mano DX/SX già nei titoli → la combinatoria è maggiore.
+> - L'alluminio ha **due famiglie di incontri** (zama e acciaio): è una scelta in più, da capire
+>   se derivabile o se va chiesta all'agente.
+> - I **carrelli** dipendono dal peso dell'anta (scorrevole): `sashWeightKg` esiste già ed è
+>   opzionale — qui potrebbe diventare **obbligatorio**, ed è una decisione da prendere.
+> - `p0849 (847)` rimanda al **listino PVC e ALLUMINIO** per alcuni incontri PVC: il ramo PVC del
+>   Galileo Pro potrebbe incontrare lo stesso muro che ha spento l'ARTECH PVC. **Verificarlo
+>   presto**, prima di scrivere il modulo.
+>
+> ### Se preferisci un'altra direzione, sono tutte pronte
+>
+> - **F) Fix `dedupeRows`** (`src/server/catalog/map-product.ts`) — piccolo e ad alto valore.
+>   921 codici compaiono su più pagine e 609 cambiano categoria: tiene l'**ultima** occorrenza,
+>   dovrebbe tenere la **prima** (o quella coerente col prefisso del codice). Confermato dal vivo:
+>   `T18001.02.93` è a DB con `listinoPage` **561** (bilico *tondo*) invece di **551**, e per 113
+>   codici ARTECH «Visualizza nel listino» apre la pagina sbagliata. **Richiede un re-import** per
+>   vedersi in produzione. Prezzi non affetti.
+> - **A) PVC + ALLUMINIO ARTECH** — solo se hai ottenuto il «listino PVC e ALLUMINIO».
+> - **E) Battente** — si riattiva cambiando `isActive` e una riga di tabella, appena AGB risponde
+>   alla **domanda 1**.
+> - **D) Anta doppia ARTECH** (schema `p0407` fisica) — richiede prima di modellare la **sede 30**
+>   (oggi `seatMm` arriva a 22).
+> - **Domanda 16**: `openingDir` è raccolto dal wizard, validato, persistito e **letto da nessun
+>   modulo**. Va tolto dall'input o usato. Tocca il ramo ARTECH.
+> - Altri follow-up annotati: gate CI «ogni codice emettibile risolve a un prodotto **prezzato**»
+>   (con `isActive` derivato da quel gate invece che dichiarato nel seed), **disegno dello schema**
+>   nel wizard invece del solo numero, **stamp dell'edizione di catalogo** accanto a `engineVersion`.
+>
+> ### Cose che NON dipendono dal codice (ricordale all'utente)
+>
+> 1. **Verifica funzionale in produzione** — bilico 700×900 schema 2 marrone → **7 righe /
+>    450,03 € / zero warning**; anta-ribalta 550×1820 SX argento chiusure ON → deve restare
+>    **16 righe / 21 pezzi / 90,20 €** (canarino del re-import).
+> 2. **Mail ad AGB** — già scritta in `docs/superpowers/kit-assunzioni/DA-FARE-audit-e-domande-agb.md`.
+>    Le due bloccanti: **domanda 1** (terna cerniere del battente) e **domanda 6** (listino PVC e
+>    ALLUMINIO). Insieme riaprono **tre** tipologie ferme.
+> 3. **Audit `kit_requests`** — query pronta nello stesso file, per sapere se distinte PVC o
+>    battente sono uscite verso clienti reali.
+>
+> ### Lezioni operative da non riscoprire
+>
+> - **Pagina fisica = stampata + 2.** Sempre citare «fisica (stampata)».
+> - **Le legende degli schemi sono immagini.** `pdftotext` non le vede: `pdftoppm -r 150 -png` e
+>   guardare la pagina. È così che è emerso che il bilico erano 4 kit e non 20 componenti.
+> - **Verificare i codici con la firma di riga del parser reale**, non con un grep: è il criterio
+>   con cui l'import popola il catalogo, ed è ciò che distingue una tipologia ordinabile (bilico,
+>   61/61 con prezzo) da una che non lo è (PVC, 4 righe su 12 senza prezzo).
+> - **L'integration test gated è l'unico che vede i prezzi veri**: i test unitari mockano
+>   `product.findMany` e un codice assente dal catalogo gli sfugge.
+> - **Ambiente locale**: `bash scripts/dev-bootstrap.sh` poi riempire `.env` (`DATABASE_URL`,
+>   `DIRECT_URL`, `REDIS_URL`, `NEXTAUTH_URL`, `NEXTAUTH_SECRET`, `IP_HASH_SECRET`,
+>   `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`) — senza questi `pnpm build` fallisce alla raccolta
+>   pagine e `db:seed` rifiuta.
+> - **Chromium per la verifica browser**: `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`.
+>
+> ---
+>
+> **▶ STORICO — sessione 2026-07-26: BILICO RETTANGOLARE TOUR ✅ — PR #35 + #36 MERGIATE, ops eseguite.**
 >
 > **Gate:** `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ **659 passed / 15 skipped** (erano 589:
 > **+70 test**) · `pnpm build` ✅ 17 route · **integration gated 9/9 sul catalogo reale** ·
