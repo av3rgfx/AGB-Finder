@@ -25,7 +25,13 @@
 // superiori dei due angoli inferiori, speculari → 1 DX + 1 SX (vedi sotto).
 import { pick } from "./kit-shared";
 import { MOVIMENTO_ANGOLARE, assertPilotGeometry } from "./artech-legno-shared";
-import { KitGenerationError, type KitInput, type KitLine, type RuleModule } from "./types";
+import {
+  KitGenerationError,
+  asArtech,
+  type KitInput,
+  type KitLine,
+  type RuleModule,
+} from "./types";
 
 /**
  * Cremonese vasistas «maniglia variabile/centrale» A50111.15.NN (E.15) per GR,
@@ -147,7 +153,9 @@ const N_MOVIMENTI = 2;
 
 export const artechVasistasLegno: RuleModule = {
   engineId: "artech-vasistas-legno",
-  generate(input: KitInput): KitLine[] {
+  generate(rawInput: KitInput): KitLine[] {
+    // Restringe al ramo ARTECH dell'unione: il corpo sotto è invariato.
+    const input = asArtech(rawInput);
     if (input.material !== "LEGNO")
       throw new KitGenerationError(
         `Materiale "${input.material}" non ancora coperto per la vasistas: il generatore supporta LEGNO.`,

@@ -5,6 +5,7 @@ import { artechAntaRibaltaPvc } from "./rules-artech-pvc";
 import { artechAntaRibaltaAlu } from "./rules-artech-alu";
 import { artechAntaBattenteLegno } from "./rules-artech-battente-legno";
 import { artechVasistasLegno } from "./rules-artech-vasistas-legno";
+import { tourBilicoLegno } from "./rules-tour-bilico-legno";
 
 /**
  * KitTemplate.rules a DB è SOLO un puntatore versionato al modulo regole in
@@ -24,6 +25,7 @@ export const RULE_MODULES: Record<string, RuleModule> = {
   [artechAntaRibaltaAlu.engineId]: artechAntaRibaltaAlu,
   [artechAntaBattenteLegno.engineId]: artechAntaBattenteLegno,
   [artechVasistasLegno.engineId]: artechVasistasLegno,
+  [tourBilicoLegno.engineId]: tourBilicoLegno,
 };
 
 export function resolveRuleModule(rules: unknown): RuleModule {

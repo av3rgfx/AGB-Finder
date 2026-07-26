@@ -80,4 +80,44 @@ describe.runIf(Boolean(url))("KitEngine — integrazione su catalogo reale", () 
       /Nessun template kit attivo/,
     );
   });
+
+  // ── BILICO TOUR (2026-07-26) ────────────────────────────────────────────
+  // È il controllo che conta davvero per una serie nuova: i test unitari
+  // mockano `product.findMany`, quindi un codice assente dal catalogo sfugge —
+  // è esattamente così che il PVC è arrivato in produzione con 4 righe su 12
+  // senza prezzo. Qui ogni codice deve risolvere a un prodotto CON prezzo.
+  const bilico3Lati = {
+    windowType: "BILICO", series: "TOUR", material: "LEGNO",
+    widthMm: 700, heightMm: 900, finish: "MARRONE RAL 8019", tourSchema: 2,
+  };
+
+  it("il bilico 3 lati risolve 7 codici reali, tutti con prezzo", async () => {
+    const output = await new KitEngine(db).generate(bilico3Lati);
+    expect(output.warnings).toEqual([]);
+    expect(output.lines).toHaveLength(7);
+    expect(output.lines.every((line) => line.unitPrice !== null)).toBe(true);
+    expect(output.totalPrice).toBeGreaterThan(0);
+  });
+
+  it("il bilico 4 lati aggiunge le due aste di mano opposta", async () => {
+    const output = await new KitEngine(db).generate({
+      ...bilico3Lati, widthMm: 1500, heightMm: 1600, finish: "CROMATO OPACO", tourSchema: 5,
+    });
+    expect(output.warnings).toEqual([]);
+    expect(output.lines).toHaveLength(9);
+    expect(output.lines.every((line) => line.unitPrice !== null)).toBe(true);
+  });
+
+  it("lo schema 3 aggiunge il kit spessori, anch'esso a catalogo con prezzo", async () => {
+    const output = await new KitEngine(db).generate({ ...bilico3Lati, tourSchema: 3 });
+    expect(output.warnings).toEqual([]);
+    const spessori = output.lines.find((line) => line.code === "T16635.04.01");
+    expect(spessori?.unitPrice).toBeGreaterThan(0);
+  });
+
+  it("il bilico esiste solo per il legno: il PVC viene rifiutato", async () => {
+    await expect(
+      new KitEngine(db).generate({ ...bilico3Lati, material: "PVC" }),
+    ).rejects.toThrow(KitGenerationError);
+  });
 });

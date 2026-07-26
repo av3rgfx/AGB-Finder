@@ -1,0 +1,77 @@
+import { KitGenerationError, kitInputSchema, type KitInput } from "./types";
+
+/**
+ * La forma della riga `kit_requests` per quel che serve a rigenerare. Dichiarata
+ * qui e non importata da Prisma per tenere il modulo **puro e testabile senza DB**
+ * (stesso criterio dei moduli regole).
+ */
+export interface PersistedKitRequest {
+  windowType: string;
+  widthMm: number;
+  heightMm: number;
+  material: string;
+  finish: string;
+  series: string;
+  airGapMm: number | null;
+  axisOffsetMm: number | null;
+  rebateMm: number | null;
+  seatMm: number | null;
+  openingSide: string | null;
+  openingDir: string | null;
+  supplementaryClosures: boolean;
+  sashWeightKg: number | null;
+  tourSchema: number | null;
+  notes: string | null;
+}
+
+/**
+ * Ricostruisce l'input del motore da una richiesta persistita, **per ramo**.
+ *
+ * Questo modulo esiste perché `kit.generate` non rigenera dall'input originale:
+ * rilegge la riga a DB. La riga **è** l'input di ogni rigenerazione, quindi va
+ * trattata come input non fidato e **ri-validata** — non spalmata a colpi di
+ * `?? undefined`. Una riga incoerente (creata prima di un cambio di schema, o
+ * modificata a mano) deve produrre un **rifiuto**, mai una distinta a cui manca
+ * in silenzio un pezzo di input.
+ */
+export function kitInputFromRequest(row: PersistedKitRequest): KitInput {
+  const common = {
+    windowType: row.windowType,
+    widthMm: row.widthMm,
+    heightMm: row.heightMm,
+    material: row.material,
+    finish: row.finish,
+    ...(row.notes !== null && { notes: row.notes }),
+    ...(row.sashWeightKg !== null && { sashWeightKg: row.sashWeightKg }),
+  };
+
+  // Si costruisce SOLO ciò che il ramo prevede: i campi dell'altro ramo non
+  // vengono nemmeno proposti al parse. (L'unione li scarterebbe comunque, ma
+  // così il rifiuto per riga incoerente resta leggibile.)
+  const candidate =
+    row.series === "TOUR"
+      ? { ...common, series: row.series, tourSchema: row.tourSchema }
+      : {
+          ...common,
+          series: row.series,
+          airGapMm: row.airGapMm,
+          axisOffsetMm: row.axisOffsetMm,
+          rebateMm: row.rebateMm,
+          seatMm: row.seatMm,
+          openingSide: row.openingSide,
+          openingDir: row.openingDir,
+          supplementaryClosures: row.supplementaryClosures,
+        };
+
+  const parsed = kitInputSchema.safeParse(candidate);
+  if (!parsed.success) {
+    const details = parsed.error.issues
+      .map((issue) => `${issue.path.join(".") || "series"}: ${issue.message}`)
+      .join("; ");
+    throw new KitGenerationError(
+      `Richiesta kit incoerente con la serie "${row.series}" — ${details}`,
+      "kit.richiesta",
+    );
+  }
+  return parsed.data;
+}

@@ -8,7 +8,15 @@
 // Le voci marcate ASSUNZIONE non sono derivabili con certezza dai dati/dalla
 // distinta e si correggono alla prossima distinta reale o al listino cartaceo.
 import { pick, linesFromParts, requireKey } from "./kit-shared";
-import { KitGenerationError, PILOT, type KitInput, type KitLine, type RuleModule } from "./types";
+import {
+  KitGenerationError,
+  PILOT,
+  asArtech,
+  type ArtechKitInput,
+  type KitInput,
+  type KitLine,
+  type RuleModule,
+} from "./types";
 import {
   PER_MANO,
   MOVIMENTO_ANGOLARE,
@@ -16,7 +24,7 @@ import {
   assertPilotGeometry,
 } from "./artech-legno-shared";
 
-type Side = KitInput["openingSide"];
+type Side = ArtechKitInput["openingSide"];
 
 // ── Tabelle dati ───────────────────────────────────────────────────────────
 // ASSUNZIONE: estremi min/max inclusivi su tutti i range (non verificabile
@@ -150,7 +158,9 @@ const CHIUSURE_VERTICALI = [
 
 export const artechAntaRibaltaLegno: RuleModule = {
   engineId: "artech-ar-legno",
-  generate(input: KitInput): KitLine[] {
+  generate(rawInput: KitInput): KitLine[] {
+    // Restringe al ramo ARTECH dell'unione: il corpo sotto è invariato.
+    const input = asArtech(rawInput);
     // Guardia materiale (emendamento): kitInputSchema resta con enum a 3
     // materiali (Task 1 invariato), ma questo generatore copre solo LEGNO —
     // il pivot 2026 lascia PVC/ALLUMINIO fuori perimetro finché non esiste

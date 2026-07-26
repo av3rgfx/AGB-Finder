@@ -10,9 +10,23 @@ import {
   openingDirLabel,
   windowTypeLabel,
 } from "@/lib/kit-labels";
+import { SCHEMI_TOUR } from "@/server/kit/rules-tour-bilico-legno";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { DistintaTable } from "@/components/kit/distinta-table";
 import { Button } from "@/components/ui/button";
+
+/**
+ * Geometria implicata dallo schema TOUR. **Non è persistita**: lo schema è
+ * l'unica cosa a DB e il resto si deriva dalla stessa tabella che usa il motore
+ * (importata, non ricopiata — l'asse dello schema 3 è 17,5 e in una colonna
+ * intera non ci starebbe comunque).
+ */
+function tourGeometryLabel(schema: number): string | null {
+  const s = SCHEMI_TOUR[schema as keyof typeof SCHEMI_TOUR];
+  if (!s) return null;
+  const asse = Number.isInteger(s.asseMm) ? String(s.asseMm) : String(s.asseMm).replace(".", ",");
+  return `Listello ${s.listelloMm} · asse ${asse} · battuta ${s.battutaMm}`;
+}
 
 /** Estrae i warning dal JSON `generatedKit` (Prisma.JsonValue non tipizzato). */
 function getWarnings(generatedKit: unknown): string[] {
@@ -95,13 +109,38 @@ export function DettaglioClient({ id }: { id: string }) {
           <Spec label="Dimensioni" value={`${r.widthMm} × ${r.heightMm} mm`} />
           <Spec label="Materiale" value={materialLabel(r.material)} />
           <Spec label="Serie" value={r.series} />
-          <Spec label="Mano" value={hingeSideLabel(r.openingSide)} />
-          <Spec label="Apertura" value={openingDirLabel(r.openingDir)} />
           <Spec label="Finitura" value={r.finish} />
-          <Spec label="Aria" value={`${r.airGapMm} mm`} />
-          <Spec label="Asse" value={`${r.axisOffsetMm} mm`} />
-          <Spec label="Battuta" value={`${r.rebateMm} mm`} />
-          <Spec label="Sede" value={`${r.seatMm} mm`} />
+          {/* Le specifiche sono per SERIE: mano, apertura e geometria esistono
+              solo su ARTECH e sono NULL sulle righe TOUR. Il bilico mostra
+              invece il suo schema di montaggio e — echeggiata, non nascosta —
+              la geometria che quel numero implica: non è persistita, si deriva,
+              e l'agente deve poterla rileggere per accorgersi di uno schema
+              scelto male. */}
+          {r.series === "TOUR" && r.tourSchema !== null ? (
+            <>
+              <Spec label="Schema" value={`Schema ${r.tourSchema}`} />
+              {tourGeometryLabel(r.tourSchema) && (
+                <Spec label="Geometria" value={tourGeometryLabel(r.tourSchema)!} />
+              )}
+              <Spec
+                label="Ferramenta"
+                value={r.widthMm * r.heightMm >= 2_000_000 ? "4 lati" : "3 lati"}
+              />
+            </>
+          ) : (
+            <>
+              {r.openingSide !== null && (
+                <Spec label="Mano" value={hingeSideLabel(r.openingSide)} />
+              )}
+              {r.openingDir !== null && (
+                <Spec label="Apertura" value={openingDirLabel(r.openingDir)} />
+              )}
+              {r.airGapMm !== null && <Spec label="Aria" value={`${r.airGapMm} mm`} />}
+              {r.axisOffsetMm !== null && <Spec label="Asse" value={`${r.axisOffsetMm} mm`} />}
+              {r.rebateMm !== null && <Spec label="Battuta" value={`${r.rebateMm} mm`} />}
+              {r.seatMm !== null && <Spec label="Sede" value={`${r.seatMm} mm`} />}
+            </>
+          )}
           {/* Facoltativo: mostrato solo se indicato. Va reso visibile perché
               cambia la distinta (terza cerniera oltre i 70 kg), altrimenti due
               richieste identiche a video darebbero distinte diverse. */}

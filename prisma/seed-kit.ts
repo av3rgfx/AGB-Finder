@@ -6,6 +6,8 @@ type KitTemplateSeed = {
   description: string;
   windowType: WindowType;
   material: MaterialType;
+  /** Dal 2026-07-26 il kit engine ha più di una serie: non è più cablabile. */
+  series: string;
   rules: { engine: string; version: number };
   priority: number;
   isActive: boolean;
@@ -21,6 +23,7 @@ const TEMPLATES: KitTemplateSeed[] = [
     name: "ARTECH anta-ribalta legno",
     description: "Pilota Fase 1d — finestra legno, mano SX/DX, verticali passo 600.",
     windowType: "ANTA_RIBALTA",
+    series: "ARTECH",
     material: "LEGNO",
     rules: { engine: "artech-ar-legno", version: 1 },
     priority: 10,
@@ -35,6 +38,7 @@ const TEMPLATES: KitTemplateSeed[] = [
     description:
       "NON DISPONIBILE — la composizione PVC non è nel listino 2026: serve il «listino PVC e ALLUMINIO», rimando a p0849 (847).",
     windowType: "ANTA_RIBALTA",
+    series: "ARTECH",
     material: "PVC",
     rules: { engine: "artech-ar-pvc", version: 1 },
     priority: 10,
@@ -49,6 +53,7 @@ const TEMPLATES: KitTemplateSeed[] = [
     description:
       "Fase 1g Task 4 — ALLUMINIO NON DISPONIBILE (gated): manca il listino di composizione dedicato. Da attivare con i dati validati dall'esperto.",
     windowType: "ANTA_RIBALTA",
+    series: "ARTECH",
     material: "ALLUMINIO",
     rules: { engine: "artech-ar-alu", version: 1 },
     priority: 10,
@@ -63,6 +68,7 @@ const TEMPLATES: KitTemplateSeed[] = [
     description:
       "NON DISPONIBILE — distinta incompleta (manca il gruppo di sospensione superiore): in attesa della conferma AGB sulla terna di cerniere dello schema p0416 (414).",
     windowType: "ANTA_BATTENTE",
+    series: "ARTECH",
     material: "LEGNO",
     rules: { engine: "artech-batt-legno", version: 1 },
     priority: 10,
@@ -77,8 +83,26 @@ const TEMPLATES: KitTemplateSeed[] = [
       // p0418: la fisica 416 è lo schema del BATTENTE.
       "Fase 1i — finestra vasistas (apertura a ribalta pura) anta singola legno (PROVVISORIO, da validare con l'agente): trascrizione dello schema di montaggio p0418 (416) — cremonese A50111.15 per GR + forbici A50545 per larghezza + cerniere portanti/articolazioni + incontri via colonna NOT.(GR).",
     windowType: "VASISTAS",
+    series: "ARTECH",
     material: "LEGNO",
     rules: { engine: "artech-vasistas-legno", version: 1 },
+    priority: 10,
+    isActive: true,
+  },
+  {
+    // 2026-07-26 — prima serie non-ARTECH. Attivo: a differenza di PVC e
+    // battente, ogni codice del bilico esiste a listino CON PREZZO (61 su 61
+    // verificati) e i quattro kit sono il raggruppamento pubblicato da AGB
+    // stessa, non una ricostruzione. Le assunzioni residue (domande 11-15 in
+    // docs/superpowers/kit-assunzioni/tour.md) riguardano quantità di dettaglio,
+    // non l'esistenza dei codici.
+    name: "TOUR bilico rettangolare legno",
+    description:
+      "Bilico rettangolare serie TOUR, legno — 4 kit (elementi orizzontali, movimenti angolari, cerniere, incontri) + le due aste verticali, dalle legende degli schemi generici p0536 (534) e p0537 (535). Schema di montaggio 1-5; ferramenta su 3 o 4 lati derivata dalla superficie; mano derivata, non scelta.",
+    windowType: "BILICO",
+    series: "TOUR",
+    material: "LEGNO",
+    rules: { engine: "tour-bilico-legno", version: 1 },
     priority: 10,
     isActive: true,
   },
@@ -91,7 +115,7 @@ export async function seedKitTemplates(db: PrismaClient) {
       description: tpl.description,
       windowType: tpl.windowType,
       material: tpl.material,
-      series: "ARTECH",
+      series: tpl.series,
       rules: tpl.rules,
       isActive: tpl.isActive,
       priority: tpl.priority,

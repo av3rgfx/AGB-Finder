@@ -280,6 +280,33 @@ gli agenti). Difetto collaterale segnalato e **non** corretto: `dedupeRows` last
 (`import:agb` → 7.488 prodotti, +1.297 confermato), **integration test gated eseguito 5/5**, e distinte reali
 generate coi prezzi veri — anta-ribalta **16 righe/21 pezzi/90,20 € zero warning** (il totale NON cambia con la
 correzione), vasistas **13/19/90,59 € zero warning**, 3 forbici a LBB 1000 con supporto/perno fermi a 2, rifiuti
-corretti per peso 75 kg / PVC / battente / aria 4; browser rifatto su DB vero a **375px e desktop**. **Branch
-pushato, PR NON aperta** (attende l'ok dell'utente).
+corretti per peso 75 kg / PVC / battente / aria 4; browser rifatto su DB vero a **375px e desktop**.
+**PR #33 + #34 MERGIATE**; **AZIONI OPS ESEGUITE** (run «Ops — Neon» `30198585201`, 2026-07-26 11:00Z:
+migrate + re-import 7.488 + seed kit + embed, 4 step verdi).
 Spec/piano: `docs/superpowers/{specs,plans}/2026-07-25-kit-bonifica-artech-legno*`.
++ **KIT BILICO RETTANGOLARE TOUR ✅ (branch `claude/kit-engine-continuation-v42wnl`, PR da aprire)**: terza
+tipologia attiva e **prima serie non-ARTECH**. Scoperta chiave: il bilico non è una distinta di componenti
+sciolti ma **4 kit + 2 aste** — le legende «Componenti» degli schemi generici `p0536 (534)`/`p0537 (535)`
+stanno **dentro il disegno** (invisibili a `pdftotext`) e raggruppano tutto in quattro codici ordinabili; la
+tabella di `p0538 (536)` è la loro **composizione**, non una lista d'ordine (provato con l'aritmetica: kit
+incontri 43,95 € contro 44,12 € di contenuto dichiarato). Nasce **attivo** perché **61 codici su 61 sono a
+listino con prezzo** (verificati con la firma di riga del parser reale; totale 7.488 = import su Neon).
+**`kitInputSchema` diventa un'unione discriminata su `series`**: `kit.create` persiste ogni campo e
+`kit.generate` **ricostruisce l'input rileggendo le colonne**, quindi la riga a DB *è* l'input di ogni
+rigenerazione e campi solo `.optional()` avrebbero fatto nascere ogni riga bilico con la geometria ARTECH
+addosso (la bonifica riaperta, spostata nella persistenza); l'unione **scarta** i campi estranei al ramo →
+impossibilità strutturale, non una guardia. Deciso con **`/llm-council`** (5 advisor + peer review + chairman,
+verificando le loro affermazioni nel repo: `z.discriminatedUnion` non ha davvero `.pick()`, ma è **falso** che
+`finish` free-text sia un bug latente — `requireKey` solleva). Nuovo `from-request.ts` (ricostruzione per ramo,
+ri-validata) · modulo `rules-tour-bilico-legno.ts` (schema 1-5 = unica chiave; mano e 3/4 lati **derivati**,
+non scelti; asse 17,5 mai persistito) · **test di mutazione** `no-silent-fields.test.ts` (muta ogni campo di
+ogni modulo attivo: output identico in silenzio = fallimento), che ha scovato **`openingDir` raccolto,
+validato, persistito e mai letto da nessun modulo** (domanda 16). UI ramificata per serie, con lo schema
+mostrato come geometria (listello · asse · battuta) e non come numero nudo, e superficie/lati echeggiati già
+al passo delle quote. Gate verdi (typecheck·lint·**test 659**·build 17 route) + **integration gated 9/9 sul
+catalogo reale** + **browser 50/50** (desktop e **375px**). Distinte reali: **450,03 €** (3 lati) ·
+**766,51 €** (4 lati) · **433,46 €** (schema 3). **AZIONI OPS AL MERGE: solo migrazione
+`20260726120000_kit_bilico_tour` + `db:seed:kit`** (niente re-import). Spec:
+`docs/superpowers/specs/2026-07-26-kit-bilico-tour-design.md` · assunzioni e domande 11-16 in
+`kit-assunzioni/tour.md` · audit `kit_requests` e mail per AGB **pronti da usare** in
+`kit-assunzioni/DA-FARE-audit-e-domande-agb.md`.
