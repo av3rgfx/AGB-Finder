@@ -9,14 +9,14 @@
 
 | Campo | Valore |
 |-------|--------|
-| **Data** | 2026-07-26 — **KIT BILICO RETTANGOLARE TOUR**: nuova tipologia + prima serie non-ARTECH. Gate verdi; **PR da aprire** (attende ok utente) |
+| **Data** | 2026-07-26 — **KIT BILICO RETTANGOLARE TOUR**: nuova tipologia + prima serie non-ARTECH. Gate verdi; **PR #35 MERGIATA**, azioni ops **eseguite** |
 | **Fase in corso** | Fase 1 — MVP Gestionale |
 | **Sotto-fase** | …bonifica kit (#33/#34 mergiate) · **BILICO TOUR ✅**: terza tipologia attiva, distinta di 7 righe (3 lati) / 9 (4 lati), tutta su codici reali del listino. L'input del motore diventa un'**unione discriminata su `series`**. |
-| **Branch git** | `claude/kit-engine-continuation-v42wnl` (4 commit, da `origin/main` @ `bd66312`). **PR NON ancora aperta.** |
-| **Stato deploy** | **LIVE** su `catalogo-finder-kappa.vercel.app`. Le azioni ops della bonifica **sono state fatte** (run «Ops — Neon» `30198585201`, 2026-07-26 11:00Z, 4 step verdi). Al merge di questa branch servono **1 migrazione + `db:seed:kit`**, niente re-import. |
+| **Branch git** | `claude/kit-engine-continuation-v42wnl` → **PR #35 mergiata** in `main` @ `4229cd5` (5 commit, 24 file, +2.245/−279). |
+| **Stato deploy** | **LIVE** su `catalogo-finder-kappa.vercel.app`, **Neon allineato**. Ops bonifica: run `30198585201` (11:00Z). Ops bilico: run **`30207287069`** (15:12Z, 11m33s, 12/12 step verdi) → migrazione `20260726120000_kit_bilico_tour` applicata (unica pendente), import 7.488 prodotti, template `TOUR bilico rettangolare legno` creato, embed «niente da fare». **Nessuna azione ops residua.** |
 | **Piani/spec** | `docs/superpowers/specs/2026-07-26-kit-bilico-tour-design.md` · assunzioni in `kit-assunzioni/tour.md` |
 
-> **▶ RIPRENDI DA QUI — BILICO RETTANGOLARE TOUR ✅. Branch pushato, PR DA APRIRE (serve l'ok dell'utente).**
+> **▶ RIPRENDI DA QUI — BILICO RETTANGOLARE TOUR ✅. PR #35 MERGIATA, ops eseguite, niente in sospeso.**
 >
 > **Gate:** `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ **659 passed / 15 skipped** (erano 589:
 > **+70 test**) · `pnpm build` ✅ 17 route · **integration gated 9/9 sul catalogo reale** ·
@@ -68,15 +68,19 @@
 > che il serramentista legge sul disegno. Superficie e ferramenta 3/4 lati sono **echeggiate già al
 > passo delle quote**. La scheda dettaglio mostra le specifiche del ramo giusto.
 >
-> **🔴 AZIONI OPS AL MERGE (due, leggere)**
+> **✅ AZIONI OPS — ESEGUITE** (run `30207287069`, 2026-07-26 15:12Z, 12/12 step verdi)
 > 1. **`migrate deploy`** → `20260726120000_kit_bilico_tour` (valore enum `BILICO`; le 6 colonne
 >    geometria/mano diventano nullable; nuova `kit_requests.tour_schema`). **Nessuna riga esistente
 >    viene toccata**: sono tutte ARTECH e restano valorizzate.
 > 2. **`db:seed:kit`** → crea il template `TOUR bilico rettangolare legno` (senza, il motore non
 >    trova template attivo e rifiuta).
 >
-> **NON serve il re-import del catalogo** (i codici TOUR erano già dentro dal run del mattino) né
-> `embed:products`. Un run completo di «Ops — Neon» va comunque bene, costa solo tempo.
+> È stato lanciato un run completo, quindi sono passati anche `import:agb` (7.488 prodotti, invariati) ed
+> `embed:products` («niente da fare: tutti i prodotti hanno già l'embedding»). Non erano necessari.
+>
+> **Resta solo la verifica funzionale in produzione**, due minuti: bilico 700×900 schema 2 marrone →
+> **7 righe / 450,03 € / zero warning**; anta-ribalta 550×1820 SX argento chiusure ON → deve restare
+> **16 righe / 21 pezzi / 90,20 €** (è il canarino del re-import).
 >
 > **RESTA APERTO, non fatto di proposito**
 > - **Audit `kit_requests`** e **domande ad AGB**: entrambi ancora da fare, ma ora sono *pronti da
@@ -758,4 +762,4 @@ Actions** (rete aperta → Neon:5432 ok).
 | 2026-07-11 | **Fase 1f — Task 7 (pipeline ops) ESEGUITO**: lanciata la GH Action _Ops — Neon_ (run #1 `29132026156`) → **verde in ~35 min**: `migrate deploy` (schema + pgvector/pg_trgm) · `import:agb` **6.191** · `db:seed` admin + `db:seed:kit` · `embed:products` **6.191/6.191** (`Completato: 6191 embedding generati.`). **Neon ora popolato**; smoke test non autenticato OK (`/login` 200, «Accedi — UFPtrade»). **Resta**: Task 8 (verifica e2e autenticata — serve la password admin dall'utente) + Task 9 (chiusura docs). | `claude/handoff-review-irs3gv` |
 | 2026-07-11 | **Fase 1f — Task 8 (e2e) VERIFICATO**: login admin reale fornito dall'utente → verifica end-to-end via **API backend** (browser bloccato da challenge Vercel↔proxy sandbox: scoperto e diagnosticato). Passano TUTTI i flussi contro Neon popolato: auth Better Auth (role ADMIN, createdAt=seed) · `dashboard.overview` · `product.search` **testuale+ibrida** (semantica «maniglia con chiave…» → A50107\* per solo vettore vec≈0.72) · **chat tool-use** (Gemini cita 5 codici reali) · **kit ARTECH golden** `KIT-2026-0001` **16 righe/21 pezzi/90,20€** zero warning · `settings.aiKeys.status` (Gemini da env). Creati dati test in staging (1 conv + KIT-2026-0001). **Resta solo Task 9** (docs + scelta fase successiva). | `claude/handoff-review-irs3gv` |
 | 2026-07-12 | **Fase 1g — kit multi-materiale (SDD subagent-driven)**: spec+piano approvati + **LLM Council** (4/4 → Opzione C: `kit-shared` meccanica condivisa, moduli per-materiale isolati). 5 task TDD (7 commit `b51aa11→544d94c`, **PR #15**, gate verdi): (1) fix LEGNO chiusure supplementari opzionali (default off); (2) estrazione `kit-shared.ts` (refactor puro); (3) modulo **PVC provvisorio** (cert ift, `//ASSUNZIONE`) + scheda esperto; (4) **ALLUMINIO gated** — scoperto che il listino 2026 NON ha composizione alluminio («PLANA»=cerniera complanare legno/PVC, non alu, assunzione piano falsificata) → modulo rifiuta + `isActive:false` + domande esperto; (5) colonna `KitRequest.supplementary_closures` + migrazione + wiring `kit.generate` + wizard (PVC on/provvisorio, ALLUMINIO off, toggle). Task 1-3 review individuali *Approved*; Task 4-5 fatti inline (session limit) + review finale inline. **Resta**: merge PR #15 · `migrate deploy`+`db:seed:kit` su Neon al deploy · validazione esperto (`docs/superpowers/kit-assunzioni/`). | `claude/handoff-review-irs3gv` (PR #15) |
-| 2026-07-25 | **BONIFICA KIT ARTECH LEGNO** (8 task TDD, un commit per task, dopo il merge #32): studio di tutti i moduli kit contro il **listino AGB 2026** → dei 4 template attivi, **3 producevano distinte non ordinabili**. **PVC spento** (i 4 codici material-specific esistono solo nelle pagine-certificato ift p0013 (11)/p0395 (393), senza prezzo; altri 7 dedotti per simmetria non esistono affatto) · **battente spento** (schema p0416 (414) = 21 voci, il modulo ne generava 5: mancava la **sospensione superiore**; schema composito → terna cerniere non decidibile) · **pilota corretto** (supporto cerniera `A50801.01.0N`→**`A50805.05.DX/.SX`**, banda cremonese GR02 610, descrizione incontro ribalta 9x18) · **guardia `assertPilotGeometry`** (aria/interasse/battuta/sede erano raccolti e ignorati) · **vasistas riscritto** dallo schema p0418 (416): forbici per **LBB**, via DSS+incontro DSS, dentro le **cerniere** (voci 10-11-12) e il 2° terminale, `sashWeightKg` opzionale per le NB sul peso → golden **13 righe/19 pezzi** · **parser catalogo allargato** ai segmenti alfanumerici (**+1.297 codici a prezzo, 6.191→7.488**) · schede `kit-assunzioni/` riscritte come esito + nuova `legno.md` con l'indice **globale** delle 10 domande per l'esperto. Attive: **anta-ribalta LEGNO + vasistas LEGNO**. Gate: typecheck·lint·**test 589/11 skip**. Verifica browser wizard desktop+375px (8 screenshot). **AZIONI OPS AL MERGE**: «Ops — Neon» completo (migrazione `kit_sash_weight` + **RE-IMPORT catalogo** + `db:seed:kit` + embed) e audit `kit_requests`. | `claude/kit-engine-study-wfo2hq` (PR da aprire) |
+| 2026-07-25 | **BONIFICA KIT ARTECH LEGNO** (8 task TDD, un commit per task, dopo il merge #32): studio di tutti i moduli kit contro il **listino AGB 2026** → dei 4 template attivi, **3 producevano distinte non ordinabili**. **PVC spento** (i 4 codici material-specific esistono solo nelle pagine-certificato ift p0013 (11)/p0395 (393), senza prezzo; altri 7 dedotti per simmetria non esistono affatto) · **battente spento** (schema p0416 (414) = 21 voci, il modulo ne generava 5: mancava la **sospensione superiore**; schema composito → terna cerniere non decidibile) · **pilota corretto** (supporto cerniera `A50801.01.0N`→**`A50805.05.DX/.SX`**, banda cremonese GR02 610, descrizione incontro ribalta 9x18) · **guardia `assertPilotGeometry`** (aria/interasse/battuta/sede erano raccolti e ignorati) · **vasistas riscritto** dallo schema p0418 (416): forbici per **LBB**, via DSS+incontro DSS, dentro le **cerniere** (voci 10-11-12) e il 2° terminale, `sashWeightKg` opzionale per le NB sul peso → golden **13 righe/19 pezzi** · **parser catalogo allargato** ai segmenti alfanumerici (**+1.297 codici a prezzo, 6.191→7.488**) · schede `kit-assunzioni/` riscritte come esito + nuova `legno.md` con l'indice **globale** delle 10 domande per l'esperto. Attive: **anta-ribalta LEGNO + vasistas LEGNO**. Gate: typecheck·lint·**test 589/11 skip**. Verifica browser wizard desktop+375px (8 screenshot). **AZIONI OPS AL MERGE**: «Ops — Neon» completo (migrazione `kit_sash_weight` + **RE-IMPORT catalogo** + `db:seed:kit` + embed) e audit `kit_requests`. | `claude/kit-engine-study-wfo2hq` → PR #33 + #34 mergiate |

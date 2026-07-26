@@ -284,7 +284,7 @@ corretti per peso 75 kg / PVC / battente / aria 4; browser rifatto su DB vero a 
 **PR #33 + #34 MERGIATE**; **AZIONI OPS ESEGUITE** (run «Ops — Neon» `30198585201`, 2026-07-26 11:00Z:
 migrate + re-import 7.488 + seed kit + embed, 4 step verdi).
 Spec/piano: `docs/superpowers/{specs,plans}/2026-07-25-kit-bonifica-artech-legno*`.
-+ **KIT BILICO RETTANGOLARE TOUR ✅ (branch `claude/kit-engine-continuation-v42wnl`, PR da aprire)**: terza
++ **KIT BILICO RETTANGOLARE TOUR ✅ (PR #35 MERGIATA, ops eseguite)**: terza
 tipologia attiva e **prima serie non-ARTECH**. Scoperta chiave: il bilico non è una distinta di componenti
 sciolti ma **4 kit + 2 aste** — le legende «Componenti» degli schemi generici `p0536 (534)`/`p0537 (535)`
 stanno **dentro il disegno** (invisibili a `pdftotext`) e raggruppano tutto in quattro codici ordinabili; la
@@ -305,8 +305,9 @@ validato, persistito e mai letto da nessun modulo** (domanda 16). UI ramificata 
 mostrato come geometria (listello · asse · battuta) e non come numero nudo, e superficie/lati echeggiati già
 al passo delle quote. Gate verdi (typecheck·lint·**test 659**·build 17 route) + **integration gated 9/9 sul
 catalogo reale** + **browser 50/50** (desktop e **375px**). Distinte reali: **450,03 €** (3 lati) ·
-**766,51 €** (4 lati) · **433,46 €** (schema 3). **AZIONI OPS AL MERGE: solo migrazione
-`20260726120000_kit_bilico_tour` + `db:seed:kit`** (niente re-import). Spec:
+**766,51 €** (4 lati) · **433,46 €** (schema 3). **AZIONI OPS ESEGUITE** (run `30207287069`, 15:12Z, 12/12
+step verdi: migrazione `20260726120000_kit_bilico_tour` applicata, import 7.488, template TOUR creato, embed
+«niente da fare»); **resta solo la verifica funzionale in produzione**. Spec:
 `docs/superpowers/specs/2026-07-26-kit-bilico-tour-design.md` · assunzioni e domande 11-16 in
 `kit-assunzioni/tour.md` · audit `kit_requests` e mail per AGB **pronti da usare** in
 `kit-assunzioni/DA-FARE-audit-e-domande-agb.md`.
