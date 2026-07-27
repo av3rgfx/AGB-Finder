@@ -97,12 +97,28 @@ Le schede complete sono in `docs/superpowers/kit-assunzioni/` (`legno.md` per le
 >    alluminio, 7,54 €), `A50901.36` (con compensatore, 8,05 €) e `A50904.36` (per traverso in
 >    alluminio con compensatore, 9,83 €). Le legende degli schemi chiedono genericamente «con
 >    compensatore»; il certificato ift «ARTech Legno» prescrive la `A50904.36`. Quale va usata?
-> 4. **Incontri nottolino:** come si determina il **numero** di incontri perimetrali? E su un
->    serramento interasse 13, gli incontri vanno in **asse 9** (`A51400.05.70`, 9x18) o in
->    **13x24** (`A51400.CR.70`)?
+> 4. **Incontri nottolino — c'è una contraddizione che non riusciamo a sciogliere.** Nelle
+>    tabelle degli incontri il formato è scritto come token unico nella colonna ASSE (`9x18`,
+>    `13x24`, `13x30`), dove il secondo numero è la sede telaio. Abbiamo estratto tutti i
+>    formati dalle 959 pagine: esistono **solo** `9x18`, `9x20`, `13x24` e `13x30` — **`13x18`
+>    non compare mai**. La distinta che usiamo come riferimento (vostra, del 16/11/2021)
+>    dichiara però **interasse 13** e monta incontri **`9x18`** (`A51400.05.70`,
+>    `A51400.05.02`). Quale delle due indicazioni è corretta: l'interasse è in realtà 9, oppure
+>    gli incontri avrebbero dovuto essere `13x24`/`13x30`?
+>    E, collegata: come si determina il **numero** di incontri perimetrali?
+>
+>    *(Nota di terminologia, che ci ha fatto perdere tempo e che forse vale anche per i vostri
+>    clienti: la stessa quota è chiamata «sede telaio» nei titoli degli schemi, nella tabella
+>    microventilazione e nel Galileo Pro alluminio, ma nelle tabelle degli incontri compare solo
+>    come secondo numero di `asse × sede`. Un nostro agente esperto non ha riconosciuto la parola
+>    «sede» proprio per questo.)*
 > 5. **Sede 18 o sede 30?** Tutti gli schemi base ARTECH del 2026 sono intitolati «sede 30 mm»,
->    ma la distinta reale che usiamo come riferimento (del 16/11/2021) è a sede 18. La sede 18
->    è ancora ordinabile o il 2026 l'ha sostituita?
+>    e la NB «per tipologia di serramento con sede incontri da 30 mm riferirsi agli schemi
+>    "sede 30 mm"» compare su 22 pagine: la sede sembra distinguere due famiglie di schemi. Per
+>    la **sede 18** però nel volume 2026 non troviamo alcuna pagina-schema, mentre la distinta
+>    reale che usiamo come riferimento (del 16/11/2021) è proprio a sede 18. La sede 18 è ancora
+>    ordinabile, o il 2026 l'ha sostituita con la 30? È la domanda che decide se il nostro
+>    generatore sta lavorando sulla configurazione giusta.
 > 6. **Finestre basse:** la tabella cremonesi che usiamo copre HBB da 610 a 2510. Per HBB fra
 >    357 e 609 si usa la famiglia `A50122.15.31`/`.41`? Con quale regola, dato che si
 >    selezionano per altezza **e** larghezza? E la `A50122.15.17` quando si usa?

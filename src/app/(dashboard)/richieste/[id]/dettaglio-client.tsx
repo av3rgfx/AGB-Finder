@@ -138,7 +138,7 @@ export function DettaglioClient({ id }: { id: string }) {
               {r.airGapMm !== null && <Spec label="Aria" value={`${r.airGapMm} mm`} />}
               {r.axisOffsetMm !== null && <Spec label="Asse" value={`${r.axisOffsetMm} mm`} />}
               {r.rebateMm !== null && <Spec label="Battuta" value={`${r.rebateMm} mm`} />}
-              {r.seatMm !== null && <Spec label="Sede" value={`${r.seatMm} mm`} />}
+              {r.seatMm !== null && <Spec label="Sede telaio" value={`${r.seatMm} mm`} />}
             </>
           )}
           {/* Facoltativo: mostrato solo se indicato. Va reso visibile perché

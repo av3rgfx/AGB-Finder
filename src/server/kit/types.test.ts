@@ -38,7 +38,20 @@ describe("kitInputSchema", () => {
   it("rifiuta dimensioni fuori 300-3000 e parametri fuori range", () => {
     expect(kitInputSchema.safeParse({ ...valid, widthMm: 200 }).success).toBe(false);
     expect(kitInputSchema.safeParse({ ...valid, airGapMm: 3 }).success).toBe(false);
-    expect(kitInputSchema.safeParse({ ...valid, seatMm: 25 }).success).toBe(false);
+    expect(kitInputSchema.safeParse({ ...valid, seatMm: 35 }).success).toBe(false);
+  });
+
+  /**
+   * La sede 30 è quella di TUTTI gli schemi di montaggio base ARTECH del listino
+   * 2026 (22 pagine rimandano agli «schemi sede 30 mm»). Deve essere
+   * *scrivibile*: chi ha quel serramento deve arrivare al messaggio del motore,
+   * che gli dice quale configurazione è coperta, invece di sbattere contro un
+   * errore di range che non spiega niente. Restare generabile è un altro
+   * discorso — se ne occupa assertPilotGeometry.
+   */
+  it("accetta le sedi telaio che il listino pubblica davvero (18, 20, 24, 30)", () => {
+    for (const seatMm of [18, 20, 24, 30])
+      expect(kitInputSchema.safeParse({ ...valid, seatMm }).success).toBe(true);
   });
 
   it("sashWeightKg è opzionale e non rompe gli input esistenti", () => {
