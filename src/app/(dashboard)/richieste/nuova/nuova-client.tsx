@@ -478,13 +478,40 @@ type DimensionKey = "widthMm" | "heightMm" | "airGapMm" | "axisOffsetMm" | "reba
  * nel testo del label sia negli attributi nativi min/max dell'input, così
  * l'indicazione visiva non può disallinearsi dal vincolo reale. I range
  * ricalcano kitInputSchema in `src/server/kit/types.ts`. */
-const DIMENSION_FIELDS: Array<{ key: DimensionKey; label: string; min: number; max: number }> = [
+/**
+ * «Asse» e «Sede» sono le due metà dello stesso formato, e il listino le scrive
+ * in DUE modi diversi: nelle tabelle degli incontri come token unico nella
+ * colonna ASSE (`9x18`, `13x24`, `13x30`), e solo nei titoli degli schemi e nel
+ * Galileo Pro alluminio come «sede telaio». Un agente che ordina guardando le
+ * tabelle **non incontra mai la parola «sede»** — ed è esattamente il motivo per
+ * cui alcuni la conoscono e altri no. Gli hint riportano il formato del listino
+ * così il campo si riconosce, invece di essere una quota da indovinare.
+ */
+const DIMENSION_FIELDS: Array<{
+  key: DimensionKey;
+  label: string;
+  min: number;
+  max: number;
+  hint?: string;
+}> = [
   { key: "widthMm", label: "Larghezza", min: 300, max: 3000 },
   { key: "heightMm", label: "Altezza", min: 300, max: 3000 },
   { key: "airGapMm", label: "Aria", min: 4, max: 20 },
-  { key: "axisOffsetMm", label: "Asse", min: 9, max: 20 },
+  {
+    key: "axisOffsetMm",
+    label: "Asse",
+    min: 9,
+    max: 20,
+    hint: "Interasse dei fori dell'incontro. Sul listino è il primo numero del formato asse × sede.",
+  },
   { key: "rebateMm", label: "Battuta", min: 15, max: 30 },
-  { key: "seatMm", label: "Sede", min: 12, max: 22 },
+  {
+    key: "seatMm",
+    label: "Sede telaio",
+    min: 12,
+    max: 30,
+    hint: "Alloggiamento dell'incontro sul telaio. Sul listino è il secondo numero del formato asse × sede: 9x18, 13x24, 13x30.",
+  },
 ];
 
 function NumberField({
@@ -493,6 +520,7 @@ function NumberField({
   min,
   max,
   value,
+  hint,
   onChange,
 }: {
   id: string;
@@ -500,6 +528,7 @@ function NumberField({
   min: number;
   max: number;
   value: number;
+  hint?: string;
   onChange: (value: number) => void;
 }) {
   return (
@@ -516,8 +545,14 @@ function NumberField({
         min={min}
         max={max}
         value={Number.isNaN(value) ? "" : value}
+        aria-describedby={hint ? `${id}-hint` : undefined}
         onChange={(e) => onChange(e.target.value === "" ? Number.NaN : Number(e.target.value))}
       />
+      {hint && (
+        <p id={`${id}-hint`} className="text-xs text-ink-subtle">
+          {hint}
+        </p>
+      )}
     </div>
   );
 }
@@ -575,6 +610,7 @@ function Step2DimensioniArtech({
           label={field.label}
           min={field.min}
           max={field.max}
+          hint={field.hint}
           value={form[field.key]}
           onChange={(v) => update(field.key, v)}
         />
@@ -862,7 +898,7 @@ function Step4Riepilogo({ form }: { form: KitInput }) {
       <SummaryItem label="Aria" value={`${form.airGapMm} mm`} />
       <SummaryItem label="Asse" value={`${form.axisOffsetMm} mm`} />
       <SummaryItem label="Battuta" value={`${form.rebateMm} mm`} />
-      <SummaryItem label="Sede" value={`${form.seatMm} mm`} />
+      <SummaryItem label="Sede telaio" value={`${form.seatMm} mm`} />
       <SummaryItem label="Mano" value={hingeSideLabel(form.openingSide)} />
       <SummaryItem label="Apertura" value={openingDirLabel(form.openingDir)} />
       <SummaryItem label="Finitura" value={form.finish} />

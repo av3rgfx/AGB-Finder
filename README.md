@@ -1,9 +1,18 @@
 # UFPtrade — Utensilferramenta Pistoiese S.p.A.
 
 WebApp gestionale B2B per agenti di vendita: catalogo AGB, assistente AI e
-generazione kit deterministica. **Fase 1a — Fondamenta** (setup, DB, auth,
-tRPC, login, dashboard) + **Fase 1b — Catalogo & ricerca** (parser listino,
-import, RAGEngine tsvector+trigram, Archivio + dettaglio).
+generazione kit deterministica.
+
+In produzione: **catalogo** (7.488 prodotti dal listino AGB 2026, ricerca
+ibrida testo+vettori, viewer del listino a pagina singola, foto prodotto) ·
+**assistente AI** in streaming SSE (Gemini, tool-use sul catalogo) ·
+**generatore di kit deterministico** con tre tipologie attive (anta-ribalta,
+vasistas e bilico TOUR) · **gestione utenti** admin.
+
+Il generatore di kit è **TypeScript deterministico, mai un LLM**: le regole
+sono trascritte dagli schemi di montaggio del listino e ogni codice emesso
+deve risolvere a un prodotto a catalogo con prezzo, altrimenti il motore
+rifiuta invece di produrre una distinta incompleta.
 
 ## Stack
 

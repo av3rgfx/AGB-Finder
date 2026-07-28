@@ -112,13 +112,36 @@ quindi la formula **resta**.
 Da notare: il modulo **vasistas** usa invece la colonna NOT. del suo cremonese. Due
 tipologie, due regole diverse — una delle due è sbagliata.
 
-**(b) Formato.** Il kit emette `A51400.05.70` («Incontri Ribalta · Aria 12 · ZAMA · **9x18**
-viti dritte», p0471 (469)) e `A51400.05.02` per i nottolini, cioè tutto **asse 9**, mentre
-bracci, squadre e cerniere sono **interasse 13**. Esiste `A51400.CR.70` in formato 13x24
-allo stesso prezzo.
+**(b) Formato — e qui c'è una CONTRADDIZIONE DIMOSTRABILE, non più solo un dubbio.**
 
-**Domanda:** come si determina davvero il numero di incontri nottolino? E gli incontri di
-un serramento interasse 13 vanno in asse 9 (come oggi) o 13x24?
+Il kit emette `A51400.05.70` («Incontri Ribalta · Aria 12 · ZAMA · **9x18** viti dritte»,
+p0471 (469)) e `A51400.05.02` per i nottolini: tutta la famiglia `.05`, cioè **asse 9**.
+Ma il wizard fa dichiarare all'agente **interasse 13**, e bracci, squadre e cerniere sono
+effettivamente interasse 13.
+
+Il numero dopo la `x` nella colonna **ASSE** delle tabelle incontri **è la sede**: il listino
+scrive `9x18`, `13x24`, `13x30` come token unico, mentre chiama lo stesso numero «sede telaio»
+nei titoli degli schemi e nella tabella microventilazione (p0474 (472)) e «SEDE TELAIO» nel
+Galileo Pro alluminio (p0877 (875)). Sono due nomi per la stessa quota.
+
+**Estraendo tutti i formati dalle 959 pagine esistono solo questi quattro:**
+
+| formato | occorrenze |
+|---|---|
+| `13x24` | 19 |
+| `9x18` | 15 |
+| `13x30` | 10 |
+| `9x20` | 4 |
+
+**`13x18` non esiste.** Zero occorrenze. Quindi la coppia dichiarata dal pilota
+(**interasse 13 + sede 18**) non è una configurazione del listino 2026: o l'interasse vero è
+**9** (e i codici emessi sono giusti), oppure la sede vera è **24 o 30** (e i codici emessi
+sono sbagliati). Una delle due etichette è errata dalla Fase 1d. Non cambia i codici né il
+totale di 90,20 €, ma è un dato falso scritto sulla richiesta.
+
+**Domanda:** come si determina il numero di incontri nottolino? E soprattutto: la distinta
+reale del 16/11/2021, che dichiara interasse 13 e monta incontri `9x18`, ha l'interasse
+sbagliato o gli incontri sbagliati?
 
 ---
 
@@ -128,6 +151,12 @@ Il generatore copre **solo** la geometria del pilota: aria 12 / interasse 13 / b
 **sede 18**, che viene dalla distinta reale 2021. **Tutti** gli schemi di montaggio base
 ARTECH del listino 2026 sono però intitolati «**sede 30 mm**» e chiedono incontri «Sede 30»
 / «Battuta 30»: per la sede 18 **non esiste alcuno schema stampato** nel volume 2026.
+
+Rilievo aggiunto il 2026-07-27: la NB «*per tipologia di serramento con sede incontri da
+30 mm riferirsi agli schemi "sede 30 mm"*» compare su **22 pagine** (fisiche 409-421 in ARTECH,
+513-519 in ARTECH PLANA). È AGB stessa a trattare la **sede come discriminante fra famiglie di
+schemi**, non come un dettaglio d'ordine. E per la sede 18 nel volume 2026 non esiste alcuna
+pagina-schema.
 
 **Domanda:** la sede 18 è ancora una configurazione ordinabile, o il 2026 l'ha sostituita
 con la sede 30? Se è sostituita, il pilota va rifatto sulla sede 30 (e con esso il golden).

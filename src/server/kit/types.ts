@@ -46,7 +46,15 @@ export const artechInputSchema = z.object({
   airGapMm: z.number().int().min(4).max(20),
   axisOffsetMm: z.number().int().min(9).max(20),
   rebateMm: z.number().int().min(15).max(30),
-  seatMm: z.number().int().min(12).max(22),
+  // Le sedi telaio che il listino 2026 pubblica davvero sono 18, 20, 24 e 30
+  // (per l'alluminio anche 22/35 e 24/37). Il massimo era 22 e tagliava fuori la
+  // **sede 30**, che è quella di TUTTI gli schemi di montaggio base ARTECH del
+  // 2026: chi ha un serramento sede 30 non riusciva nemmeno a scriverlo, e si
+  // prendeva un errore di range invece del messaggio del motore, che spiega
+  // quale configurazione è coperta. Il generatore continua a coprire la sola
+  // sede 18 (PILOT_GEOMETRY): qui si allarga solo ciò che è *scrivibile*, non
+  // ciò che è generabile.
+  seatMm: z.number().int().min(12).max(30),
   openingSide: z.enum(["DESTRA", "SINISTRA"]),
   openingDir: z.enum(["TIRARE", "SPINGERE"]),
   // Gate del blocco «chiusure supplementari» LEGNO (Fase 1g, CHIUSURE_VERTICALI

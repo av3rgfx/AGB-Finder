@@ -9,14 +9,161 @@
 
 | Campo | Valore |
 |-------|--------|
-| **Data** | 2026-07-26 — **KIT BILICO RETTANGOLARE TOUR**: nuova tipologia + prima serie non-ARTECH. Gate verdi; **PR #35 MERGIATA**, azioni ops **eseguite** |
+| **Data** | 2026-07-26/27 — sessione **CONCLUSA**. Prossima: **perfezionamento dell'ANTA-RIBALTA** (scelta utente) |
 | **Fase in corso** | Fase 1 — MVP Gestionale |
-| **Sotto-fase** | …bonifica kit (#33/#34 mergiate) · **BILICO TOUR ✅**: terza tipologia attiva, distinta di 7 righe (3 lati) / 9 (4 lati), tutta su codici reali del listino. L'input del motore diventa un'**unione discriminata su `series`**. |
-| **Branch git** | `claude/kit-engine-continuation-v42wnl` → **PR #35 mergiata** in `main` @ `4229cd5` (5 commit, 24 file, +2.245/−279). |
-| **Stato deploy** | **LIVE** su `catalogo-finder-kappa.vercel.app`, **Neon allineato**. Ops bonifica: run `30198585201` (11:00Z). Ops bilico: run **`30207287069`** (15:12Z, 11m33s, 12/12 step verdi) → migrazione `20260726120000_kit_bilico_tour` applicata (unica pendente), import 7.488 prodotti, template `TOUR bilico rettangolare legno` creato, embed «niente da fare». **Nessuna azione ops residua.** |
-| **Piani/spec** | `docs/superpowers/specs/2026-07-26-kit-bilico-tour-design.md` · assunzioni in `kit-assunzioni/tour.md` |
+| **Sotto-fase** | Kit engine: **tre tipologie attive e live** — anta-ribalta LEGNO, vasistas LEGNO, bilico TOUR LEGNO. Input = **unione discriminata su `series`**. |
+| **Branch git** | `claude/kit-engine-continuation-v42wnl` → **PR #37 aperta** (fix «sede» + chiusura sessione). `main` @ `6163981`. |
+| **Stato deploy** | **LIVE**, **Neon allineato**, **nessuna azione ops residua** (run `30207287069`, 12/12 verdi). |
+| **Aperto** | verifica funzionale in produzione · **mail ad AGB** · audit `kit_requests` · fix `dedupeRows` |
 
-> **▶ RIPRENDI DA QUI — BILICO RETTANGOLARE TOUR ✅. PR #35 MERGIATA, ops eseguite, niente in sospeso.**
+---
+
+> **▶ RIPRENDI DA QUI — PROSSIMA SESSIONE: PERFEZIONARE L'ANTA-RIBALTA**
+>
+> ### Perché proprio l'anta-ribalta
+>
+> È il **pilota** — la tipologia che gli agenti usano di più — ed è l'**unico modulo mai
+> trascritto da uno schema di montaggio**. Nasce da una distinta reale AGB del **16/11/2021**;
+> la bonifica del 2026-07-25 ne ha corretto i codici contro le *tabelle prezzi*, ma non ha mai
+> fatto il confronto voce-per-voce con la **pagina-schema**. È esattamente il confronto che ha
+> smascherato il battente (21 voci sullo schema, 5 righe generate) e la vasistas.
+>
+> ### L'aggancio concreto, già misurato — parti da qui
+>
+> Lo schema `p0406 (404)` «Finestra rettangolare legno · anta singola · apertura anta/ribalta ·
+> sicurezza base · **sede 30 mm**» elenca **22 voci numerate**. Il modulo emette **16 posizioni
+> distinte**. Le voci che **non** trovano corrispondenza evidente sono sei:
+>
+> | Voce | Descrizione a schema | Nota |
+> |---|---|---|
+> | **2** | Cremonesi - Accessori » **DSS** | il modulo emette l'*incontro* DSS (`A51400.05.03`, voce 15) ma forse non l'asta DSS |
+> | **9** | Movimenti angolari » **Doppio nottolino a fungo** | |
+> | **17** | **Incontri microventilazione** | plausibilmente opzionale |
+> | **19** | Spessori di sollevamento per doppio nottolino a fungo | dipende dalla 9 |
+> | **20** | Movimenti angolari » **Spessori di sollevamento** | |
+> | **22** | **Copertura per incontro nottolino** | il listino annota «*ordinare coperture separatamente*» |
+>
+> ⚠️ **Non è una prova di bug**: alcune sono verosimilmente opzionali o accessori. È la domanda
+> giusta da cui partire, non una conclusione. Il metodo è quello che ha funzionato: **renderizzare
+> la pagina** (`pdftoppm -f 406 -l 406 -r 150 -png`), leggere la legenda dentro il disegno, e per
+> ogni voce decidere se è obbligatoria, condizionale o accessoria — motivando dal listino.
+>
+> ### Il nodo che decide tutto: sede 18 o sede 30 (domanda 4)
+>
+> Il pilota copre **aria 12 · interasse 13 · battuta 20 · sede 18**. Ma **tutti** gli schemi base
+> ARTECH del 2026 sono intitolati «sede 30 mm», e la NB «*per tipologia di serramento con sede
+> incontri da 30 mm riferirsi agli schemi "sede 30 mm"*» compare su **22 pagine**: è AGB stessa a
+> trattare la sede come **discriminante fra famiglie di schemi**. Per la sede 18 nel volume 2026
+> **non esiste alcuna pagina-schema**.
+>
+> E c'è una contraddizione ormai **dimostrata** (domanda 3b): estraendo tutti i formati dalle 959
+> pagine esistono solo `9x18` (15), `9x20` (4), `13x24` (19), `13x30` (10) — **`13x18` non
+> esiste**. Il pilota dichiara interasse 13 + sede 18 e monta la famiglia `.05`, che è **9x18**.
+> Una delle due etichette è sbagliata dalla Fase 1d. Non muove i codici né i 90,20 €, ma è un
+> dato falso sulla richiesta.
+>
+> **Se AGB ha risposto** → il perfezionamento è pieno: si allinea la geometria, eventualmente si
+> rifà il pilota sulla sede 30 (e con esso il golden), e si sostituiscono i quattro campi
+> geometria con un **selettore di configurazione** sul modello del bilico.
+> **Se AGB non ha risposto** → tutto il resto qui sotto è comunque lavorabile.
+>
+> ### Fronti NON bloccati (si può lavorare subito)
+>
+> 1. **Trascrizione completa di `p0406 (404)`** e verdetto sulle sei voci — il lavoro principale.
+> 2. **Domanda 16 — `openingDir`**: raccolto dal wizard, validato, persistito e **letto da nessun
+>    modulo**. È una decisione interna, non serve AGB: o si toglie dall'input o si usa. Oggi è
+>    dichiarato inerte in `no-silent-fields.test.ts`, con la ragione.
+> 3. **Coperture oltre ARGENTO**: `COPERTURE_KIT` ha una sola finitura trascritta e il wizard
+>    offre solo quella. Le altre sono a listino, si trascrivono.
+> 4. **Domanda 7 — HBB 357-609**: le finestre basse vengono **rifiutate** pur essendo a listino
+>    (famiglia `A50122.15.31`/`.41`, p0425 (423), che si seleziona per HBB **e** LBB).
+> 5. **Domanda 10 — offset altezza→HBB**: l'anta-ribalta usa **−10**, la vasistas **0**. Due
+>    moduli, due regole: una delle due è sbagliata.
+> 6. **Chiusure supplementari**: una sola banda (H 1520-2120) ricavata dalla distinta 2021; fuori
+>    banda il modulo rifiuta. Da verificare sul listino se la banda è davvero quella.
+> 7. **Disegno dello schema nel wizard** invece dei quattro numeri: la ferramenta esiste già
+>    (`listinoPage` + viewer del listino a pagina singola + estrazione immagini).
+>
+> ### Prompt di apertura (copiabile)
+>
+> ```
+> Nuova sessione. Riparti leggendo handoff.md (§«RIPRENDI DA QUI») e CLAUDE.md.
+> Segui il workflow: /using-superpowers → brainstorming → /llm-council per dubbi o
+> incongruenze sulle regole di distinta → /impeccable se tocchiamo UI (SEMPRE mobile
+> ≤375px + desktop) → /writing-plans → esecuzione TDD; /ponytail per il codice.
+> Vincoli CLAUDE.md: TS strict, API via tRPC/Prisma, UI in italiano, codici in mono,
+> mobile-first, e soprattutto: il KIT È UN ENGINE DETERMINISTICO TypeScript, MAI un LLM.
+> A fine lavoro: gate verdi (typecheck·lint·test·build) + verifica browser se c'è UI +
+> PR (chiedi il mio ok prima di aprirla) + indica le AZIONI OPS.
+>
+> Il PDF del listino AGB 2026 NON è nel container: scaricalo dal link in CLAUDE.md
+> (§FILE ESTERNI). Estrai il testo con pdftotext -layout e splittalo pagina per pagina.
+> ATTENZIONE: pagina fisica = stampata + 2. E ricorda la lezione che è costata di più:
+> le legende «Componenti» degli schemi stanno DENTRO il disegno e nel testo estratto NON
+> compaiono — le pagine-schema vanno RENDERIZZATE in immagine e guardate, non grepate.
+>
+> OBIETTIVO: PERFEZIONARE L'ANTA-RIBALTA, il pilota. È la tipologia più usata dagli
+> agenti e l'unico modulo mai trascritto da uno schema di montaggio: nasce da una
+> distinta reale del 2021.
+>
+> Parti dal confronto voce-per-voce fra lo schema p0406 (404) — 22 voci numerate — e le
+> 16 posizioni che il modulo emette oggi. Sei voci non trovano corrispondenza evidente
+> (2 DSS, 9 doppio nottolino a fungo, 17 incontri microventilazione, 19 e 20 spessori di
+> sollevamento, 22 copertura per incontro nottolino): per ognuna decidi se è
+> obbligatoria, condizionale o accessoria, motivando dal listino. È lo stesso confronto
+> che ha smascherato il battente (21 voci, 5 righe generate).
+>
+> Poi, se resta tempo, i fronti non bloccati elencati nell'handoff: openingDir mai letto
+> (domanda 16), coperture oltre ARGENTO, finestre basse HBB 357-609, offset altezza→HBB
+> divergente fra anta-ribalta e vasistas.
+>
+> Prima di partire dimmi: AGB ha risposto? In particolare sede 18 vs sede 30 (domanda 4)
+> e il formato incontri 13x18 che non esiste (domanda 3b) — sono i due nodi che decidono
+> se il pilota sta lavorando sulla configurazione giusta.
+> ```
+>
+> ### Attenzione a non rompere
+>
+> Il golden dell'anta-ribalta è **16 righe / 21 pezzi / 90,20 €** con chiusure supplementari
+> (12 righe / 17 pezzi senza). È l'unico riscontro con una distinta reale in nostro possesso:
+> ogni modifica va misurata contro quello, e se il totale si muove va **spiegato perché**.
+> L'integration test gated (`INTEGRATION_DATABASE_URL`) è l'unico che vede i prezzi veri.
+>
+> ### Cose che NON dipendono dal codice (ricordale all'utente)
+>
+> 1. **Verifica funzionale in produzione** — bilico 700×900 schema 2 marrone → **7 righe /
+>    450,03 € / zero warning**; anta-ribalta del golden fermo a **16 righe / 90,20 €**.
+> 2. **Mail ad AGB** — pronta in `docs/superpowers/kit-assunzioni/DA-FARE-audit-e-domande-agb.md`,
+>    con le domande 4 e 3b già affilate. Sblocca il grosso di questa sessione.
+> 3. **Audit `kit_requests`** — query pronta nello stesso file.
+>
+> ### Lezioni operative da non riscoprire
+>
+> - **Pagina fisica = stampata + 2.** Citare sempre «fisica (stampata)».
+> - **Le legende degli schemi sono immagini**: `pdftoppm -r 150 -png` e guardarle.
+> - **Verificare i codici con la firma di riga del parser reale**, non con un grep.
+> - **Attenzione ai nomi doppi del listino**: la stessa quota è «sede telaio» nei titoli degli
+>   schemi e secondo numero di `asse × sede` (`9x18`, `13x24`, `13x30`) nelle tabelle incontri.
+>   Un agente esperto non ha riconosciuto la parola «sede» proprio per questo.
+> - **Ambiente locale**: `bash scripts/dev-bootstrap.sh`, poi riempire `.env` (`DATABASE_URL`,
+>   `DIRECT_URL`, `REDIS_URL`, `NEXTAUTH_URL`, `NEXTAUTH_SECRET`, `IP_HASH_SECRET`,
+>   `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`) — senza, `pnpm build` fallisce alla raccolta
+>   pagine e `db:seed` rifiuta. Se il browser test redirige a `/login`, i container Docker sono
+>   giù: `docker compose up -d`.
+> - **Chromium**: `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`.
+>
+> ### Se invece si cambia direzione
+>
+> **Galileo Pro scorrevole** (pp. 812-883 fisiche) resta il candidato successivo: sblocca
+> SCORREVOLE e l'unica composizione alluminio completa e prezzata del 2026. `SCORREVOLE_TRASLANTE`
+> è già nell'enum → nessuna migrazione. La ricognizione pagina-per-pagina è nello storico della
+> sessione 2026-07-26 qui sotto. Alternative: **fix `dedupeRows`** (piccolo, richiede re-import) ·
+> **battente** (una riga, appena AGB risponde alla domanda 1) · **PVC+alluminio** (serve il
+> listino separato) · **anta doppia** `p0407 (405)`, ora meno bloccata perché `seatMm` arriva a 30.
+>
+> ---
+>
+> **▶ STORICO — sessione 2026-07-26: BILICO RETTANGOLARE TOUR ✅ — PR #35 + #36 MERGIATE, ops eseguite.**
 >
 > **Gate:** `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ **659 passed / 15 skipped** (erano 589:
 > **+70 test**) · `pnpm build` ✅ 17 route · **integration gated 9/9 sul catalogo reale** ·
