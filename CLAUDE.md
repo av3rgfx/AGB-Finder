@@ -312,12 +312,37 @@ step verdi: migrazione `20260726120000_kit_bilico_tour` applicata, import 7.488,
 `kit-assunzioni/tour.md` · audit `kit_requests` e mail per AGB **pronti da usare** in
 `kit-assunzioni/DA-FARE-audit-e-domande-agb.md`.
 
-**▶ PROSSIMA SESSIONE — decisione utente.** Default consigliato: **GALILEO PRO scorrevole complanare**
-(listino pp. **812-883** fisiche), che sblocca la tipologia **SCORREVOLE** e poi l'**ALLUMINIO vero e
-prezzato** — l'unica composizione alluminio completa del 2026 (pp. 854-883). L'ostacolo che lo bloccava è
-caduto oggi: l'input non è più un oggetto piatto tarato su ARTECH ma un'unione discriminata su `series`, e
-`SCORREVOLE_TRASLANTE`/`SCORREVOLE_ALZANTE` **sono già nell'enum** → nessuna migrazione per la tipologia.
-Alternative pronte: **fix `dedupeRows`** (piccolo, alto valore, richiede re-import) · **PVC+alluminio ARTECH**
-(serve il listino separato) · **battente** (una riga, appena AGB risponde alla domanda 1) · **anta doppia**
-(serve prima modellare la sede 30). Prompt di apertura, ricognizione del listino già fatta e lezioni operative
-da non riscoprire: `handoff.md` §RIPRENDI DA QUI.
++ **FIX «SEDE» — segnalazione dal campo ✅ (PR #37)**: un agente esperto, chiamato a verificare
+un'anta-ribalta, **non ha saputo dire cosa fosse il campo «Sede»**. Non è ignoranza sua: il listino
+chiama la stessa quota in due modi. La sede è l'**alloggiamento dell'incontro sul telaio**; è scritta
+«sede telaio» nei titoli degli schemi, nella tabella microventilazione `p0474 (472)` e nel Galileo Pro
+alluminio `p0877 (875)`, ma in **tutte** le tabelle degli incontri — quelle che l'agente guarda per
+ordinare — non compare mai: è il **secondo numero** del token nella colonna ASSE (`9x18`, `13x24`,
+`13x30`). E **non è derivabile** da aria+asse: per aria 12 esistono quattro formati, quindi «asse 13»
+lascia due sedi possibili. Fix: etichetta → «**Sede telaio**» + hint col formato di listino (idem per
+«Asse», l'altra metà del token), legati con `aria-describedby`; **`seatMm` da max 22 a max 30**, perché
+il 22 tagliava fuori la **sede 30** — quella di *tutti* gli schemi base 2026 — e dava un errore di range
+invece del messaggio del motore (si allarga ciò che è *scrivibile*, non ciò che è *generabile*).
+Collaterale importante: estraendo tutti i formati dalle 959 pagine esistono solo `9x18`/`9x20`/`13x24`/
+`13x30` — **`13x18` non esiste**, ma il pilota dichiara interasse 13 + sede 18 e monta la famiglia `.05`
+(= 9x18): una delle due etichette è sbagliata dalla Fase 1d (non muove codici né i 90,20 €, ma è un dato
+falso sulla richiesta). Domande 3b e 4 per AGB riscritte come **dimostrate**. Gate: typecheck·lint·**test
+660**·browser **14/14** desktop e 375px. Nessuna migrazione, nessuna azione ops.
+
+**▶ PROSSIMA SESSIONE — PERFEZIONARE L'ANTA-RIBALTA** (scelta utente). È il **pilota**, la tipologia
+più usata dagli agenti, e l'**unico modulo mai trascritto da uno schema di montaggio**: nasce da una
+distinta reale AGB del 16/11/2021, e la bonifica ne ha corretto i codici contro le tabelle prezzi ma non
+ha mai fatto il confronto voce-per-voce con la pagina-schema. **Aggancio già misurato**: lo schema
+`p0406 (404)` elenca **22 voci**, il modulo emette **16 posizioni** — sei non trovano corrispondenza
+evidente (2 DSS · 9 doppio nottolino a fungo · 17 incontri microventilazione · 19-20 spessori di
+sollevamento · 22 copertura per incontro nottolino), alcune verosimilmente opzionali. È lo stesso
+confronto che ha smascherato il battente (21 voci, 5 righe). **Nodo che decide tutto: domanda 4**
+(sede 18 vs sede 30 — tutti gli schemi 2026 sono «sede 30 mm» e 22 pagine ci rimandano; per la sede 18
+non esiste pagina-schema) e **domanda 3b**, ora dimostrata (esistono solo i formati `9x18`/`9x20`/`13x24`/
+`13x30`: **`13x18` non esiste**, ma il pilota dichiara interasse 13 + sede 18 e monta la famiglia `.05`
+= 9x18). Fronti **non bloccati** anche senza risposta AGB: trascrizione di p0406 · `openingDir` mai letto
+da nessun modulo (domanda 16) · coperture oltre ARGENTO · finestre basse HBB 357-609 · offset altezza→HBB
+divergente fra anta-ribalta (−10) e vasistas (0). **Non rompere il golden: 16 righe / 21 pezzi / 90,20 €.**
+Alternative pronte: **Galileo Pro scorrevole** (pp. 812-883, sblocca SCORREVOLE e l'alluminio vero;
+`SCORREVOLE_TRASLANTE` è già nell'enum) · **fix `dedupeRows`** · **battente** · **anta doppia** (ora meno
+bloccata: `seatMm` arriva a 30). Prompt di apertura e lezioni operative: `handoff.md` §RIPRENDI DA QUI.
