@@ -135,7 +135,7 @@
 > distinta reale che abbiamo. Se il totale si muove, spiega perché.
 >
 > Prima di partire dimmi: AGB ha risposto? E ho le risposte dell'agente alle domande in
-> docs/superpowers/kit-assunzioni/DOMANDE-PER-AGENTE.md? La 16 in particolare — se
+> docs/superpowers/kit-assunzioni/DOMANDE-APERTE.md? La 16 in particolare — se
 > esiste una distinta reale per la finestra 700×1400 battuta 18 sede 30, diventa il
 > secondo golden e cambia tutto il piano.
 > ```
@@ -156,7 +156,7 @@
 >
 > ### Cose che NON dipendono dal codice (ricordale all'utente)
 >
-> 1. **Domande all'agente** → `docs/superpowers/kit-assunzioni/DOMANDE-PER-AGENTE.md` (16 domande
+> 1. **Domande all'agente** → `docs/superpowers/kit-assunzioni/DOMANDE-APERTE.md` (16 domande
 >    in parole semplici). **La 16 è la più preziosa**: una distinta reale per battuta 18 / sede 30
 >    diventerebbe il secondo golden.
 > 2. **Mail ad AGB** → `DA-FARE-audit-e-domande-agb.md`, con le domande 4 e 3b già affilate.

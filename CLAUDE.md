@@ -347,6 +347,6 @@ cremonese sbagliato. Stessa classe di bug della bonifica, sopravvissuta dove nes
 il confronto voce-per-voce con `p0406 (404)`: **22 voci a schema, 16 posizioni emesse**, sei senza
 corrispondenza (2 DSS · 9 doppio nottolino a fungo · 17 microventilazione · 19-20 spessori di sollevamento ·
 22 copertura incontro). **Non rompere il golden: 16 righe / 21 pezzi / 90,20 €.** Domande in parole semplici
-per un agente esperto: `docs/superpowers/kit-assunzioni/DOMANDE-PER-AGENTE.md` (la **16** — se esiste una
+per un agente esperto: `docs/superpowers/kit-assunzioni/DOMANDE-APERTE.md` (la **16** — se esiste una
 distinta reale per battuta 18/sede 30 diventa il **secondo golden**). Prompt di apertura, tabelle e lezioni
 operative: `handoff.md` §RIPRENDI DA QUI.

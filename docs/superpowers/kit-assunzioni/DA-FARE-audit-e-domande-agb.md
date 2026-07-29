@@ -1,3 +1,7 @@
+> ⚠️ **Le domande sono state unificate in [`DOMANDE-APERTE.md`](./DOMANDE-APERTE.md)**, che le
+> raccoglie tutte — AGB e agente — con le bloccanti in cima. Qui restano il **testo della mail
+> per AGB** (sotto, §2) e l'**audit di `kit_requests`** (§1), che non è una domanda.
+
 # Due cose da fare fuori dall'app
 
 > Preparate il 2026-07-26 perché nessuna delle due era ancora stata fatta.
