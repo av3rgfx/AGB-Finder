@@ -76,7 +76,10 @@ describe.runIf(Boolean(url))("ogni codice emettibile esiste a catalogo con prezz
       // in un altro file: se un domani `generate()` tornasse a restituire `[]` per
       // un caso limite, questo gate ridiventerebbe silenziosamente inutile. La
       // soglia è il set obbligatorio (12) più le 4 chiusure supplementari.
-      expect(codici.length, "distinta vuota: il gate non avrebbe verificato nulla").toBeGreaterThanOrEqual(16);
+      expect(
+        codici.length,
+        "distinta vuota: il gate non avrebbe verificato nulla",
+      ).toBeGreaterThanOrEqual(16);
 
       const trovati = await db.product.findMany({
         where: { agbCode: { in: codici } },
@@ -127,7 +130,10 @@ describe.runIf(Boolean(url))("ogni codice emettibile esiste a catalogo con prezz
       } as KitInput);
 
       const codici = [...new Set(lines.map((l) => l.code))];
-      expect(codici.length, "distinta vuota: il gate non avrebbe verificato nulla").toBeGreaterThanOrEqual(16);
+      expect(
+        codici.length,
+        "distinta vuota: il gate non avrebbe verificato nulla",
+      ).toBeGreaterThanOrEqual(16);
 
       const trovati = await db.product.findMany({
         where: { agbCode: { in: codici } },
@@ -210,9 +216,7 @@ describe.runIf(Boolean(url))("ogni codice emettibile esiste a catalogo con prezz
       select: { agbCode: true, basePrice: true },
     });
     const prezzati = new Set(
-      trovati
-        .filter((p) => p.basePrice !== null && Number(p.basePrice) > 0)
-        .map((p) => p.agbCode),
+      trovati.filter((p) => p.basePrice !== null && Number(p.basePrice) > 0).map((p) => p.agbCode),
     );
     const orfani = codici.filter((c) => !prezzati.has(c));
     expect(orfani, `codici assenti o senza prezzo: ${orfani.join(", ")}`).toEqual([]);

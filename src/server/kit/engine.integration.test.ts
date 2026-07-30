@@ -25,9 +25,17 @@ describe.runIf(Boolean(url))("KitEngine — integrazione su catalogo reale", () 
   // rimasto indietro e il test sarebbe fallito al primo run con DB reale).
   it("la distinta golden risolve 16 codici reali senza warning", async () => {
     const output = await new KitEngine(db).generate({
-      windowType: "ANTA_RIBALTA", widthMm: 550, heightMm: 1820, material: "LEGNO",
-      geometry: "A12_I13_B20", entrata: "E15", seatConfig: "STANDARD",
-      openingSide: "SINISTRA", openingDir: "TIRARE", finish: "ARGENTO", series: "ARTECH",
+      windowType: "ANTA_RIBALTA",
+      widthMm: 550,
+      heightMm: 1820,
+      material: "LEGNO",
+      geometry: "A12_I13_B20",
+      entrata: "E15",
+      seatConfig: "STANDARD",
+      openingSide: "SINISTRA",
+      openingDir: "TIRARE",
+      finish: "ARGENTO",
+      series: "ARTECH",
       supplementaryClosures: true,
     });
     expect(output.warnings).toEqual([]);
@@ -47,9 +55,17 @@ describe.runIf(Boolean(url))("KitEngine — integrazione su catalogo reale", () 
   // l'entrata sia ortogonale alla geometria, fatta sui prezzi veri.
   it("il gemello a entrata 7,5 fa 96,29 €, e cambia solo la cremonese", async () => {
     const output = await new KitEngine(db).generate({
-      windowType: "ANTA_RIBALTA", widthMm: 550, heightMm: 1820, material: "LEGNO",
-      geometry: "A12_I13_B20", entrata: "E75", seatConfig: "STANDARD",
-      openingSide: "SINISTRA", openingDir: "TIRARE", finish: "ARGENTO", series: "ARTECH",
+      windowType: "ANTA_RIBALTA",
+      widthMm: 550,
+      heightMm: 1820,
+      material: "LEGNO",
+      geometry: "A12_I13_B20",
+      entrata: "E75",
+      seatConfig: "STANDARD",
+      openingSide: "SINISTRA",
+      openingDir: "TIRARE",
+      finish: "ARGENTO",
+      series: "ARTECH",
       supplementaryClosures: true,
     });
     expect(output.warnings).toEqual([]);
@@ -67,9 +83,17 @@ describe.runIf(Boolean(url))("KitEngine — integrazione su catalogo reale", () 
   // attivo e rifiuta prima ancora di raggiungere il modulo. Nessuna distinta
   // PVC monca può più uscire.
   const pvcInput = {
-    windowType: "ANTA_RIBALTA", widthMm: 550, heightMm: 1820, material: "PVC",
-    geometry: "A12_I13_B20", entrata: "E15", seatConfig: "STANDARD",
-    openingSide: "SINISTRA", openingDir: "TIRARE", finish: "ARGENTO", series: "ARTECH",
+    windowType: "ANTA_RIBALTA",
+    widthMm: 550,
+    heightMm: 1820,
+    material: "PVC",
+    geometry: "A12_I13_B20",
+    entrata: "E15",
+    seatConfig: "STANDARD",
+    openingSide: "SINISTRA",
+    openingDir: "TIRARE",
+    finish: "ARGENTO",
+    series: "ARTECH",
   };
 
   it("il PVC è disattivato: la generazione viene rifiutata", async () => {
@@ -89,9 +113,17 @@ describe.runIf(Boolean(url))("KitEngine — integrazione su catalogo reale", () 
   // Template isActive:false nel seed + modulo che rifiuta. Come per il PVC, con
   // il DB reale scatta per prima la barriera del template spento.
   const battenteInput = {
-    windowType: "ANTA_BATTENTE", widthMm: 600, heightMm: 1300, material: "LEGNO",
-    geometry: "A12_I13_B20", entrata: "E15", seatConfig: "STANDARD",
-    openingSide: "DESTRA", openingDir: "TIRARE", finish: "ARGENTO", series: "ARTECH",
+    windowType: "ANTA_BATTENTE",
+    widthMm: 600,
+    heightMm: 1300,
+    material: "LEGNO",
+    geometry: "A12_I13_B20",
+    entrata: "E15",
+    seatConfig: "STANDARD",
+    openingSide: "DESTRA",
+    openingDir: "TIRARE",
+    finish: "ARGENTO",
+    series: "ARTECH",
   };
 
   it("il battente è disattivato: la generazione viene rifiutata", async () => {
@@ -110,8 +142,13 @@ describe.runIf(Boolean(url))("KitEngine — integrazione su catalogo reale", () 
   // è esattamente così che il PVC è arrivato in produzione con 4 righe su 12
   // senza prezzo. Qui ogni codice deve risolvere a un prodotto CON prezzo.
   const bilico3Lati = {
-    windowType: "BILICO", series: "TOUR", material: "LEGNO",
-    widthMm: 700, heightMm: 900, finish: "MARRONE RAL 8019", tourSchema: 2,
+    windowType: "BILICO",
+    series: "TOUR",
+    material: "LEGNO",
+    widthMm: 700,
+    heightMm: 900,
+    finish: "MARRONE RAL 8019",
+    tourSchema: 2,
   };
 
   it("il bilico 3 lati risolve 7 codici reali, tutti con prezzo", async () => {
@@ -124,7 +161,11 @@ describe.runIf(Boolean(url))("KitEngine — integrazione su catalogo reale", () 
 
   it("il bilico 4 lati aggiunge le due aste di mano opposta", async () => {
     const output = await new KitEngine(db).generate({
-      ...bilico3Lati, widthMm: 1500, heightMm: 1600, finish: "CROMATO OPACO", tourSchema: 5,
+      ...bilico3Lati,
+      widthMm: 1500,
+      heightMm: 1600,
+      finish: "CROMATO OPACO",
+      tourSchema: 5,
     });
     expect(output.warnings).toEqual([]);
     expect(output.lines).toHaveLength(9);
@@ -139,8 +180,8 @@ describe.runIf(Boolean(url))("KitEngine — integrazione su catalogo reale", () 
   });
 
   it("il bilico esiste solo per il legno: il PVC viene rifiutato", async () => {
-    await expect(
-      new KitEngine(db).generate({ ...bilico3Lati, material: "PVC" }),
-    ).rejects.toThrow(KitGenerationError);
+    await expect(new KitEngine(db).generate({ ...bilico3Lati, material: "PVC" })).rejects.toThrow(
+      KitGenerationError,
+    );
   });
 });

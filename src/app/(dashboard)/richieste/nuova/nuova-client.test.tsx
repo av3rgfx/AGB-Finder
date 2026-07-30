@@ -727,11 +727,7 @@ describe("NuovaRichiestaClient — il cliente", () => {
   });
 
   /** Porta al riepilogo scegliendo cliente, geometria ed entrata. */
-  function alRiepilogo(opts: {
-    cliente?: RegExp;
-    geometry: ArtechGeometryId;
-    entrata: RegExp;
-  }) {
+  function alRiepilogo(opts: { cliente?: RegExp; geometry: ArtechGeometryId; entrata: RegExp }) {
     render(<NuovaRichiestaClient />);
     if (opts.cliente !== undefined)
       fireEvent.click(screen.getByRole("button", { name: opts.cliente }));
