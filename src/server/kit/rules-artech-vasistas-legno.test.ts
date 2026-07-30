@@ -19,6 +19,7 @@ const golden = {
   heightMm: 1000, // → GR03 (820-1220): 1 nottolino
   material: "LEGNO",
   geometry: "A12_I13_B20",
+  entrata: "E15",
   seatConfig: "STANDARD",
   openingSide: "DESTRA",
   openingDir: "TIRARE",

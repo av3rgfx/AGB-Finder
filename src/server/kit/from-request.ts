@@ -17,6 +17,7 @@ export interface PersistedKitRequest {
   // qui: nessun modulo li legge più, e tenerli nell'interfaccia inviterebbe a
   // rimetterli nell'input. La geometria è una colonna sola.
   geometry: string | null;
+  entrata: string | null;
   seatConfig: string | null;
   openingSide: string | null;
   openingDir: string | null;
@@ -57,6 +58,12 @@ export function kitInputFromRequest(row: PersistedKitRequest): KitInput {
           ...common,
           series: row.series,
           geometry: row.geometry,
+          // NESSUN `?? "E15"`. `seatConfig` e `openingDir` hanno un default nello
+          // schema zod e qui lo si riapplica; l'entrata NON ne ha, di proposito.
+          // Il backfill della migrazione ha valorizzato tutte le righe ARTECH
+          // esistenti: se ne comparisse una a NULL è un dato rotto e va rifiutata
+          // con un messaggio, non tappata con un valore plausibile.
+          entrata: row.entrata,
           // Le due colonne hanno un default nello schema **zod** (non a DB: a DB
           // sono nullable senza default, di proposito), e una riga scritta prima
           // della migrazione può averle a NULL: qui si applica lo stesso default

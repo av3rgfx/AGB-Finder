@@ -39,6 +39,7 @@ describe.runIf(Boolean(url))("ogni codice emettibile esiste a catalogo con prezz
     material: "LEGNO",
     widthMm: 550,
     heightMm: 1820,
+    entrata: "E15",
     seatConfig: "STANDARD",
     openingDir: "TIRARE",
     finish: "ARGENTO",

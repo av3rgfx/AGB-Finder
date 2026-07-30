@@ -26,7 +26,7 @@ describe.runIf(Boolean(url))("KitEngine — integrazione su catalogo reale", () 
   it("la distinta golden risolve 16 codici reali senza warning", async () => {
     const output = await new KitEngine(db).generate({
       windowType: "ANTA_RIBALTA", widthMm: 550, heightMm: 1820, material: "LEGNO",
-      geometry: "A12_I13_B20", seatConfig: "STANDARD",
+      geometry: "A12_I13_B20", entrata: "E15", seatConfig: "STANDARD",
       openingSide: "SINISTRA", openingDir: "TIRARE", finish: "ARGENTO", series: "ARTECH",
       supplementaryClosures: true,
     });
@@ -45,7 +45,7 @@ describe.runIf(Boolean(url))("KitEngine — integrazione su catalogo reale", () 
   // PVC monca può più uscire.
   const pvcInput = {
     windowType: "ANTA_RIBALTA", widthMm: 550, heightMm: 1820, material: "PVC",
-    geometry: "A12_I13_B20", seatConfig: "STANDARD",
+    geometry: "A12_I13_B20", entrata: "E15", seatConfig: "STANDARD",
     openingSide: "SINISTRA", openingDir: "TIRARE", finish: "ARGENTO", series: "ARTECH",
   };
 
@@ -67,7 +67,7 @@ describe.runIf(Boolean(url))("KitEngine — integrazione su catalogo reale", () 
   // il DB reale scatta per prima la barriera del template spento.
   const battenteInput = {
     windowType: "ANTA_BATTENTE", widthMm: 600, heightMm: 1300, material: "LEGNO",
-    geometry: "A12_I13_B20", seatConfig: "STANDARD",
+    geometry: "A12_I13_B20", entrata: "E15", seatConfig: "STANDARD",
     openingSide: "DESTRA", openingDir: "TIRARE", finish: "ARGENTO", series: "ARTECH",
   };
 

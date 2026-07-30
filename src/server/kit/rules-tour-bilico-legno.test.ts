@@ -183,6 +183,7 @@ describe("tourBilicoLegno — rifiuti", () => {
       heightMm: 1820,
       finish: "ARGENTO",
       geometry: "A12_I13_B20",
+      entrata: "E15",
       seatConfig: "STANDARD",
       openingSide: "SINISTRA",
       openingDir: "TIRARE",

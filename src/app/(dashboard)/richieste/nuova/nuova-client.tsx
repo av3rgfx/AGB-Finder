@@ -41,6 +41,9 @@ const ARTECH_DEFAULT: ArtechKitInput = {
   // Il pilota storico (distinta reale AGB 16/11/2021): aria 12 · interasse 13 ·
   // battuta 20. È la geometria del golden 16 righe / 21 pezzi / 90,20 €.
   geometry: "A12_I13_B20",
+  // TEMPORANEO (Task 1 → rimosso dal Task 6): tiene il build verde finché il
+  // wizard non chiede l'entrata. Il valore definitivo è «nessun valore».
+  entrata: "E15",
   seatConfig: "STANDARD",
   openingSide: "SINISTRA",
   openingDir: "TIRARE",

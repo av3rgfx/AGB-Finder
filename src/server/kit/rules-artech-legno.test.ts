@@ -20,6 +20,7 @@ const base = {
   widthMm: 550,
   heightMm: 1820,
   geometry: "A12_I13_B20",
+  entrata: "E15",
   seatConfig: "STANDARD",
   openingSide: "SINISTRA",
   openingDir: "TIRARE",

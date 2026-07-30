@@ -7,6 +7,7 @@ const valid = {
   heightMm: 1820,
   material: "ALLUMINIO",
   geometry: "A12_I13_B20",
+  entrata: "E15",
   seatConfig: "STANDARD",
   openingSide: "SINISTRA",
   openingDir: "TIRARE",
@@ -93,6 +94,20 @@ describe("kitInputSchema", () => {
     expect(kitInputSchema.safeParse(senzaGeometria).success).toBe(false);
   });
 
+  it("il ramo ARTECH esige l'entrata: senza, rifiuta con un messaggio italiano", () => {
+    const { entrata: _omessa, ...senzaEntrata } = valid;
+    const result = kitInputSchema.safeParse(senzaEntrata);
+    expect(result.success).toBe(false);
+    if (!result.success)
+      expect(result.error.issues[0]?.message).toBe("Scegli l'entrata maniglia (7,5 o 15 mm).");
+  });
+
+  it("accetta entrambe le entrate pubblicate e rifiuta qualunque altra", () => {
+    for (const entrata of ["E75", "E15"] as const)
+      expect(kitInputSchema.safeParse({ ...valid, entrata }).success).toBe(true);
+    expect(kitInputSchema.safeParse({ ...valid, entrata: "E0" }).success).toBe(false);
+  });
+
   it("il ramo ARTECH non accetta le tipologie di un'altra serie", () => {
     expect(kitInputSchema.safeParse({ ...valid, windowType: "BILICO" }).success).toBe(false);
   });
@@ -143,6 +158,11 @@ describe("kitInputSchema — ramo TOUR", () => {
 
   it("sashWeightKg resta disponibile al bilico (portata delle cerniere)", () => {
     expect(kitInputSchema.safeParse({ ...validTour, sashWeightKg: 180 }).success).toBe(true);
+  });
+
+  it("scarta l'entrata da un input TOUR invece di persistirla", () => {
+    const parsed = kitInputSchema.parse({ ...validTour, entrata: "E15" });
+    expect("entrata" in parsed).toBe(false);
   });
 });
 

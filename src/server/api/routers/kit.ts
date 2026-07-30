@@ -28,6 +28,7 @@ export const kitRouter = createTRPCRouter({
         ? { tourSchema: specs.tourSchema }
         : {
             geometry: specs.geometry,
+            entrata: specs.entrata,
             seatConfig: specs.seatConfig,
             openingSide: specs.openingSide,
             openingDir: specs.openingDir,
@@ -207,6 +208,7 @@ export const kitRouter = createTRPCRouter({
             series: request.series,
             sashWeightKg: request.sashWeightKg,
             geometry: request.geometry,
+            entrata: request.entrata,
             seatConfig: request.seatConfig,
             openingSide: request.openingSide,
             openingDir: request.openingDir,

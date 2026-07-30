@@ -11,7 +11,7 @@ const db = {
 
 const validInput = {
   windowType: "ANTA_RIBALTA", widthMm: 550, heightMm: 1820, material: "LEGNO",
-  geometry: "A12_I13_B20", seatConfig: "STANDARD",
+  geometry: "A12_I13_B20", entrata: "E15", seatConfig: "STANDARD",
   openingSide: "SINISTRA", openingDir: "TIRARE", finish: "ARGENTO", series: "ARTECH",
 };
 

@@ -10,6 +10,7 @@ const artechRow: PersistedKitRequest = {
   finish: "ARGENTO",
   series: "ARTECH",
   geometry: "A12_I13_B20",
+  entrata: "E15",
   seatConfig: "STANDARD",
   openingSide: "SINISTRA",
   openingDir: "TIRARE",
@@ -27,6 +28,7 @@ const tourRow: PersistedKitRequest = {
   finish: "MARRONE RAL 8019",
   series: "TOUR",
   geometry: null,
+  entrata: null,
   seatConfig: null,
   openingSide: null,
   openingDir: null,
@@ -46,6 +48,7 @@ describe("kitInputFromRequest", () => {
       finish: "ARGENTO",
       series: "ARTECH",
       geometry: "A12_I13_B20",
+      entrata: "E15",
       seatConfig: "STANDARD",
       openingSide: "SINISTRA",
       openingDir: "TIRARE",
@@ -102,5 +105,20 @@ describe("kitInputFromRequest", () => {
     expect(() => kitInputFromRequest({ ...artechRow, series: "PLANA" })).toThrow(
       KitGenerationError,
     );
+  });
+
+  it("rilegge l'entrata dalla riga e la consegna al motore", () => {
+    const input = kitInputFromRequest({ ...artechRow, entrata: "E75" });
+    expect(input.series).toBe("ARTECH");
+    if (input.series === "ARTECH") expect(input.entrata).toBe("E75");
+  });
+
+  it("rifiuta una riga ARTECH senza entrata invece di assumerne una", () => {
+    expect(() => kitInputFromRequest({ ...artechRow, entrata: null })).toThrow(/entrata/i);
+  });
+
+  it("non pretende l'entrata sulle righe TOUR", () => {
+    const input = kitInputFromRequest({ ...tourRow, entrata: null });
+    expect(input.series).toBe("TOUR");
   });
 });
