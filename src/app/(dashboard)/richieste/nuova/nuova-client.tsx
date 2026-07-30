@@ -1020,6 +1020,11 @@ function Step4Riepilogo({ form }: { form: FormValues }) {
     <dl className="grid grid-cols-1 gap-x-6 gap-y-4 text-sm sm:grid-cols-3">
       {comuni}
       <SummaryItem label="Geometria" value={geometriaLabel(form.geometry)} />
+      {/* `form.entrata` è opzionale nello stato ma qui è sempre valorizzata: al
+          passo 4 si arriva solo dopo la validazione del passo 3. */}
+      {form.entrata && (
+        <SummaryItem label="Entrata maniglia" value={entrataLabel(form.entrata)} />
+      )}
       {/* La sede è l'unica quota DERIVATA che finisce nella distinta: mostrarla
           qui è ciò che permette all'agente di accorgersi di una geometria scelta
           male, ed è la ragione per cui il campo può sparire dall'input. */}

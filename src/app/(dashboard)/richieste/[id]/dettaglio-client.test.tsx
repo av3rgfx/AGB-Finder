@@ -57,6 +57,7 @@ const request = {
   openingDir: "TIRARE",
   finish: "ARGENTO",
   geometry: "A12_I13_B20",
+  entrata: "E15",
   seatConfig: "STANDARD",
   airGapMm: null,
   axisOffsetMm: null,
@@ -131,6 +132,30 @@ describe("DettaglioClient — geometria", () => {
     render(<DettaglioClient id="k1" />);
     expect(screen.getByText(/^aria$/i)).toBeTruthy();
     expect(screen.getByText(/sede telaio/i)).toBeTruthy();
+  });
+});
+
+/**
+ * L'entrata sceglie un codice e un prezzo: deve essere leggibile dove si
+ * controlla la richiesta, non solo dove si compila. Sulle righe TOUR (o su
+ * storico non riconosciuto) il campo è NULL e la riga non deve comparire.
+ */
+describe("DettaglioClient — entrata maniglia", () => {
+  it("mostra l'entrata maniglia fra le specifiche ARTECH", () => {
+    getQuery.mockReturnValue({
+      isPending: false, isError: false, data: { ...request, entrata: "E75" },
+    });
+    render(<DettaglioClient id="k1" />);
+    expect(screen.getByText("Entrata maniglia")).toBeTruthy();
+    expect(screen.getByText("7,5 mm")).toBeTruthy();
+  });
+
+  it("non mostra l'entrata quando la riga non ce l'ha (TOUR, o storico)", () => {
+    getQuery.mockReturnValue({
+      isPending: false, isError: false, data: { ...request, entrata: null },
+    });
+    render(<DettaglioClient id="k1" />);
+    expect(screen.queryByText("Entrata maniglia")).toBeNull();
   });
 });
 
