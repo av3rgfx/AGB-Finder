@@ -285,9 +285,17 @@ diverse dal golden, altrimenti non discrimina nulla.
 
 - `KitRequest.engineVersion` promossa da campo del JSON a **colonna**, timbrata alla
   generazione (`ENGINE_VERSION` esiste già in `engine.ts:6`).
-- **Rigenerazione bloccata fuori da `DRAFT`**: rigenerare riesegue il codice-regole
+- **Ricalcolo versionato invece del blocco.** Rigenerare riesegue il codice-regole
   *corrente* e riscrive `kit_components`; la bonifica ha già cambiato codici e i re-import
-  cambiano i prezzi. Una distinta già mandata al cliente non può cambiare sotto i piedi.
+  cambiano i prezzi, quindi una distinta già mandata al cliente non può cambiare sotto i
+  piedi. La prima stesura di questa spec lo risolveva **bloccando** la rigenerazione fuori
+  da `DRAFT`. È troppo rozzo: il confronto con AGB 4K (§7) mostra che il **ricalcolo** è
+  una funzione che serve nel mestiere — 4K le dedica un modulo.
+  **Sintesi adottata: versionare invece di bloccare.** Su una richiesta non più `DRAFT`,
+  «Ricalcola» **crea una nuova versione** e lascia intatta quella emessa. Si ottiene
+  l'immutabilità che chiedeva il consiglio *e* la funzione che serve all'agente.
+  Implementazione minima: `KitRequest.supersededById` (auto-relazione) + la nuova riga che
+  copia l'input e rigenera. Nessuna tabella di versioning separata.
 - **Query di audit** su `kit_requests` (già pronta in
   `kit-assunzioni/DA-FARE-audit-e-domande-agb.md`) → azione ops, richiede il DB.
 
@@ -316,6 +324,17 @@ diverse dal golden, altrimenti non discrimina nulla.
   naturale per la sessione successiva.
 - **Divario schema p0406**: 22 voci a schema contro 16 posizioni emesse. Resta aperto; va
   chiuso **prima** delle varianti.
+
+### 4.1 Roadmap dopo il piano 2 — ordine consigliato
+
+1. **Scontistica e prezzo cliente** ⭐. Oggi i totali sono il **lordo di listino AGB**, non
+   quello che il cliente paga. `Customer` ha **già** a schema `discount`, `priceList` e
+   `paymentTerms`, **inutilizzati**: metà del lavoro è fatta. È il rapporto
+   valore/costo più alto del progetto, ed è un modulo intero di 4K (§7).
+2. **Classe di sicurezza RC1/RC2** come asse esplicito + varianti componenti.
+3. **Divario schema p0406** (22 voci contro 16).
+4. **Commesse**: raggruppare N serramenti in un unico lavoro. Oggi le richieste kit sono una
+   lista piatta, un serramento ciascuna; un ordine reale ne contiene molti (§7).
 
 ---
 
@@ -359,3 +378,62 @@ Il piano 1 è autonomo e rilasciabile da solo. Il piano 2 dipende da `ArtechGeom
 3. **Nessun re-import del catalogo**: tutti i codici delle 7 geometrie sono già a listino
    (verifica in §5 come gate).
 4. Audit `kit_requests` (query pronta) — fuori dall'app.
+
+---
+
+## 7. Confronto con AGB 4K (fonti verificate, 2026-07-29)
+
+Il software di riferimento del settore è **AGB 4K** (parte *Calcolo e Preventivazione*; la
+parte *schemi grafici / xDesigner* è fuori interesse). Fonti: [pagina ufficiale](https://www.agb.it/software/agb-4k),
+[depliant PDF](https://www.agb.it/getattachment/2fc87bd0-7230-4bf1-9749-a75bd166c932/54768.aspx)
+(testo estratto con `pdftotext`: WebFetch non ci riusciva), [video-tutorial](https://www.agb.it/it-it/documentale?path=%2FDocumentale%2FVIDEO-TUTORIAL%2FAGB-4K-SOFTWARE).
+
+**Moduli reali**, dai titoli dei video-tutorial: *gestione cartelle su commesse e preferiti* ·
+*creazione e gestione configurazioni* · *esportazione, importazione, funzione di ricalcolo* ·
+*impostazioni generali* · *xDesigner* · **wizard per sviluppo ferramenta** ·
+**anagrafica cliente — inserimento e gestione scontistiche** · *gestione commerciale*.
+
+### 7.1 Dove 4K conferma le nostre scelte
+
+| Nostra scelta | Riscontro testuale in 4K |
+|---|---|
+| Wizard + composer guidato (§3.6, §3.9) | «Sviluppo del serramento veloce e **guidato**» · «Funzionalità **wizard** per sviluppo ferramenta» |
+| Terminale **rasabile** che assorbe il resto | «Calcolo immediato di posizioni, lavorazioni e **rasabilità** di tutti gli elementi» |
+| Schemi cliente / non richiedere sempre gli stessi dati (§3.5) | «**Organizzazione in preferiti e commesse** delle configurazioni» |
+| Motore deterministico, mai un LLM | 4K è un calcolatore: nessuna traccia di AI |
+| La distinta come oggetto centrale | «Generazione della **distinta base**» |
+
+### 7.2 Dove divergiamo — deliberatamente
+
+4K àncora l'unità tecnica riusabile a una **configurazione salvata** (in preferiti/commesse)
+e tiene l'**anagrafica cliente** per la **scontistica**. Noi ancoriamo la geometria **al
+cliente** (§3.5).
+
+Non è un errore di nessuno dei due: **cambia chi sta alla tastiera.**
+
+| | AGB 4K | Noi |
+|---|---|---|
+| Utente | il **serramentista** | l'**agente di un distributore** |
+| Di chi è la geometria | sua, una linea produttiva | di **ciascun cliente**, diversa |
+| Unità riusabile corretta | «la mia configurazione preferita» | «lo schema di *quel* cliente» |
+
+4K **non può** precompilare per cliente: non possiede la geometria del cliente. Noi sì.
+`CustomerKitProfile` non è quindi una deviazione da 4K, è la stessa idea ri-domiciliata su
+un ruolo che 4K non serve — ed è il vantaggio strutturale del prodotto.
+
+### 7.3 Cosa 4K ha e noi no
+
+1. **Scontistica per cliente** → promossa a priorità 1 della roadmap (§4.1).
+2. **«Ottimizzazione pezzi singoli o confezioni».** Base contrattuale reale: art. 4 delle
+   condizioni generali, `p0006 (4)` — «*per ordini di quantità inferiori alla confezione …
+   di aumentare l'ordine fino al quantitativo della confezione, oppure di applicare una
+   maggiorazione di prezzo del 20%*». I nostri kit emettono quantità 1/2/5 contro confezioni
+   da 50/20/10 (colonna CS del listino). Per UFPtrade, che è distributore e rompe le
+   confezioni, plausibilmente non ricade sul cliente finale — **domanda 18** per l'azienda,
+   non un'assunzione da prendere in silenzio.
+3. **Commesse e cartelle** → roadmap §4.1 punto 4.
+4. **Ricalcolo esplicito** → recepito in §3.8 come ricalcolo *versionato*.
+5. **Export/import e interfacciamento col gestionale** → rilevante quando si affronterà
+   l'e-commerce.
+6. «Distinta base con **bollatura**»: il significato esatto di *bollatura* in questo contesto
+   non è determinabile dalle fonti pubbliche. Non si assume nulla.
