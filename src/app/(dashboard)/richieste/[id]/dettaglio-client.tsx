@@ -1,16 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, RefreshCw } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, Calculator, RefreshCw } from "lucide-react";
 import { api } from "@/trpc/react";
 import { formatPrice } from "@/lib/format";
 import {
   hingeSideLabel,
   materialLabel,
   openingDirLabel,
+  sedeIncontriLabel,
   windowTypeLabel,
 } from "@/lib/kit-labels";
 import { SCHEMI_TOUR } from "@/server/kit/rules-tour-bilico-legno";
+import { GEOMETRIE, geometriaLabel } from "@/server/kit/artech-geometrie";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { DistintaTable } from "@/components/kit/distinta-table";
 import { Button } from "@/components/ui/button";
@@ -38,10 +41,20 @@ function getWarnings(generatedKit: unknown): string[] {
 }
 
 export function DettaglioClient({ id }: { id: string }) {
+  const router = useRouter();
   const utils = api.useUtils();
   const request = api.kit.get.useQuery({ id });
 
   const generate = api.kit.generate.useMutation({
+    onSuccess: () => {
+      void utils.kit.get.invalidate({ id });
+      void utils.kit.list.invalidate();
+    },
+  });
+
+  // Ricalcolo VERSIONATO: su una richiesta già emessa non riscrive la distinta
+  // che il cliente ha in mano, crea una nuova versione e ci porta sopra.
+  const ricalcola = api.kit.ricalcola.useMutation({
     onSuccess: () => {
       void utils.kit.get.invalidate({ id });
       void utils.kit.list.invalidate();
@@ -135,10 +148,31 @@ export function DettaglioClient({ id }: { id: string }) {
               {r.openingDir !== null && (
                 <Spec label="Apertura" value={openingDirLabel(r.openingDir)} />
               )}
-              {r.airGapMm !== null && <Spec label="Aria" value={`${r.airGapMm} mm`} />}
-              {r.axisOffsetMm !== null && <Spec label="Asse" value={`${r.axisOffsetMm} mm`} />}
-              {r.rebateMm !== null && <Spec label="Battuta" value={`${r.rebateMm} mm`} />}
-              {r.seatMm !== null && <Spec label="Sede telaio" value={`${r.seatMm} mm`} />}
+              {/* La geometria è UNA colonna, e la sede si DERIVA da quella (stessa
+                  tabella che usa il motore: non è una seconda fonte di verità).
+                  Le quattro colonne numeriche restano solo come LEGACY e sono NULL
+                  su ogni riga creata dopo la migrazione: se le mostrassimo lì, il
+                  dettaglio perderebbe la geometria proprio sulle righe nuove.
+                  Il ramo `else` non è morto — la migrazione lascia `geometry` NULL
+                  sulle righe storiche che non ha saputo riconoscere (aria 4, sede
+                  30): quelle non si possono rigenerare, ma le loro quote vanno
+                  comunque lette. */}
+              {r.geometry !== null ? (
+                <>
+                  <Spec label="Geometria" value={geometriaLabel(r.geometry)} />
+                  <Spec
+                    label="Sede incontri"
+                    value={sedeIncontriLabel(GEOMETRIE[r.geometry].sedeMm)}
+                  />
+                </>
+              ) : (
+                <>
+                  {r.airGapMm !== null && <Spec label="Aria" value={`${r.airGapMm} mm`} />}
+                  {r.axisOffsetMm !== null && <Spec label="Asse" value={`${r.axisOffsetMm} mm`} />}
+                  {r.rebateMm !== null && <Spec label="Battuta" value={`${r.rebateMm} mm`} />}
+                  {r.seatMm !== null && <Spec label="Sede telaio" value={`${r.seatMm} mm`} />}
+                </>
+              )}
             </>
           )}
           {/* Facoltativo: mostrato solo se indicato. Va reso visibile perché
@@ -153,16 +187,54 @@ export function DettaglioClient({ id }: { id: string }) {
           <h2 id="distinta-heading" className="text-sm font-semibold text-ink">
             Distinta componenti
           </h2>
-          <Button
-            variant="secondary"
-            size="sm"
-            loading={generate.isPending}
-            onClick={() => generate.mutate({ kitRequestId: id })}
-          >
-            <RefreshCw className="size-4" aria-hidden />
-            Rigenera
-          </Button>
+          {/* Mobile-first: i due pulsanti vanno a capo insieme sotto il titolo a
+              375px, invece di stringersi in colonna. */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              loading={generate.isPending}
+              onClick={() => generate.mutate({ kitRequestId: id })}
+            >
+              <RefreshCw className="size-4" aria-hidden />
+              Rigenera
+            </Button>
+            {/* «Ricalcola» compare solo dove serve e dove è lecito: su una bozza
+                basta «Rigenera» (nessuno l'ha ancora vista), e su una riga già
+                superata il ricalcolo va fatto sulla versione più recente — il
+                router lo rifiuta con CONFLICT. */}
+            {r.status !== "DRAFT" && r.supersededById === null && (
+              <Button
+                variant="secondary"
+                size="sm"
+                loading={ricalcola.isPending}
+                onClick={() =>
+                  void ricalcola
+                    .mutateAsync({ kitRequestId: r.id })
+                    .then((nuova) => router.push(`/richieste/${nuova.id}`))
+                    .catch(() => {
+                      /* il messaggio lo mostra `ricalcola.isError` qui sotto */
+                    })
+                }
+              >
+                <Calculator className="size-4" aria-hidden />
+                Ricalcola
+              </Button>
+            )}
+          </div>
         </div>
+
+        {r.supersededById !== null && (
+          <p className="rounded-md border border-line bg-surface-sunken px-4 py-3 text-xs text-ink-subtle">
+            Questa distinta è stata ricalcolata.{" "}
+            <Link
+              href={`/richieste/${r.supersededById}`}
+              className="font-medium text-brand underline"
+            >
+              Apri la versione più recente
+            </Link>
+          </p>
+        )}
 
         {generate.isError && (
           <div
@@ -170,6 +242,15 @@ export function DettaglioClient({ id }: { id: string }) {
             className="rounded-md border border-danger/30 bg-danger/5 p-4 text-sm text-danger"
           >
             {generate.error.message}
+          </div>
+        )}
+
+        {ricalcola.isError && (
+          <div
+            role="alert"
+            className="rounded-md border border-danger/30 bg-danger/5 p-4 text-sm text-danger"
+          >
+            {ricalcola.error.message}
           </div>
         )}
 

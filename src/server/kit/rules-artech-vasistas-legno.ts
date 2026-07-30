@@ -56,7 +56,7 @@ import {
  * sono i dati. Si riapre quando le tre famiglie di cerniere del vasistas saranno
  * trascritte per geometria, come è stato fatto per l'anta-ribalta.
  */
-const GEOMETRIA_COPERTA = "A12_I13_B20";
+export const GEOMETRIA_COPERTA = "A12_I13_B20";
 
 /**
  * Cremonese vasistas «maniglia variabile/centrale» A50111.15.NN (E.15) per GR,
