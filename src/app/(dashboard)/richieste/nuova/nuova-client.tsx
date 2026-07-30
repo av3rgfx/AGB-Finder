@@ -38,12 +38,23 @@ import {
 } from "@/lib/kit-labels";
 
 /**
- * Lo stato del form NON è un `ArtechKitInput`: l'entrata deve nascere **non
- * valorizzata**, perché sceglierla è il punto di questo campo. È l'unico prezzo
- * della decisione «nessun default», e si paga solo qui — la validazione vera
- * resta quella dello schema, all'avanzamento del passo e al submit.
+ * Lo stato del form NON è un `ArtechKitInput`: **entrata e geometria** devono
+ * nascere non valorizzate, perché sceglierle è il punto di questi campi.
+ *
+ * L'entrata lo fa dal 2026-07-30 (PR #40). La geometria si è aggiunta dopo: fino
+ * ad allora `ARTECH_DEFAULT` la cablava a `A12_I13_B20`, cioè alla geometria del
+ * cliente storico del golden — ogni nuovo ordine partiva con la geometria di un
+ * ALTRO cliente. Sceglierla male non produce un errore: i codici dell'altra
+ * combinazione esistono a listino, hanno un prezzo e non danno warning. Era la
+ * stessa classe di difetto della cremonese cablata, con la stessa cura.
+ *
+ * È l'unico prezzo della decisione «nessun default», e si paga solo qui — la
+ * validazione vera resta quella dello schema, all'avanzamento del passo e al submit.
  */
-type ArtechFormValues = Omit<ArtechKitInput, "entrata"> & { entrata?: Entrata };
+type ArtechFormValues = Omit<ArtechKitInput, "entrata" | "geometry"> & {
+  entrata?: Entrata;
+  geometry?: ArtechGeometryId;
+};
 type FormValues = ArtechFormValues | TourKitInput;
 
 const ARTECH_DEFAULT: ArtechFormValues = {
@@ -52,9 +63,6 @@ const ARTECH_DEFAULT: ArtechFormValues = {
   material: "LEGNO",
   widthMm: 550,
   heightMm: 1820,
-  // Il pilota storico (distinta reale AGB 16/11/2021): aria 12 · interasse 13 ·
-  // battuta 20. È la geometria del golden 16 righe / 21 pezzi / 90,20 €.
-  geometry: "A12_I13_B20",
   seatConfig: "STANDARD",
   openingSide: "SINISTRA",
   openingDir: "TIRARE",
@@ -158,8 +166,9 @@ export function materialForWindowType(
  * che non genereranno mai, come una sede 30. Gated con la ragione, non nascoste.
  *
  * Non serve un reset del valore al cambio di tipologia (come per il materiale):
- * `defaultForWindowType` riparte da `ARTECH_DEFAULT.geometry`, che è appunto la
- * geometria coperta anche dal vasistas.
+ * nessuna geometria è preselezionata (vedi `ArtechFormValues`), quindi
+ * `defaultForWindowType` riparte da «nessuna scelta» e non può sopravvivere una
+ * geometria non ammessa dalla nuova tipologia.
  */
 function geometriaAmmessa(wt: KitInput["windowType"], id: ArtechGeometryId): boolean {
   return wt === "VASISTAS" ? id === GEOMETRIA_COPERTA : true;
@@ -735,7 +744,9 @@ function Step3ManoFinitura({
   form: ArtechFormValues;
   update: Update<ArtechFormValues>;
 }) {
-  const sedeMm = GEOMETRIE[form.geometry].sedeMm;
+  // Tre stati, non due: `undefined` = geometria non ancora scelta, `null` = aria 4
+  // (il listino prevede una fresatura, non una sede), numero = la sede derivata.
+  const sedeMm = form.geometry === undefined ? undefined : GEOMETRIE[form.geometry].sedeMm;
   return (
     <div className="flex flex-col gap-6">
       <fieldset>
@@ -849,9 +860,11 @@ function Step3ManoFinitura({
             // riepilogo e nella scheda) stonava. Per l'aria 4 il listino non
             // parla di sede ma di fresatura (p0469 (467)).
             hint={
-              sedeMm === null
-                ? "Per questa geometria (aria 4) il listino prevede una fresatura, non una sede."
-                : `Sede per questa geometria: ${sedeMm} mm.`
+              sedeMm === undefined
+                ? "La sede la determina la geometria: sceglila qui sopra."
+                : sedeMm === null
+                  ? "Per questa geometria (aria 4) il listino prevede una fresatura, non una sede."
+                  : `Sede per questa geometria: ${sedeMm} mm.`
             }
             checked={form.seatConfig === "STANDARD"}
             onChange={() => update("seatConfig", "STANDARD")}
@@ -1090,17 +1103,20 @@ function Step4Riepilogo({ form, cliente }: { form: FormValues; cliente: Customer
     // Vedi sopra: «Aria 12 · interasse 13 · battuta 20» a 375px vuole la riga intera.
     <dl className="grid grid-cols-1 gap-x-6 gap-y-4 text-sm sm:grid-cols-3">
       {comuni}
-      <SummaryItem label="Geometria" value={geometriaLabel(form.geometry)} />
-      {/* `form.entrata` è opzionale nello stato ma qui è sempre valorizzata: al
-          passo 4 si arriva solo dopo la validazione del passo 3. */}
+      {/* `form.geometry` e `form.entrata` sono opzionali nello stato ma qui sono
+          sempre valorizzate: al passo 4 si arriva solo dopo la validazione del
+          passo 3, che le richiede entrambe. */}
+      {form.geometry && <SummaryItem label="Geometria" value={geometriaLabel(form.geometry)} />}
       {form.entrata && <SummaryItem label="Entrata maniglia" value={entrataLabel(form.entrata)} />}
       {/* La sede è l'unica quota DERIVATA che finisce nella distinta: mostrarla
           qui è ciò che permette all'agente di accorgersi di una geometria scelta
           male, ed è la ragione per cui il campo può sparire dall'input. */}
-      <SummaryItem
-        label="Sede incontri"
-        value={sedeIncontriLabel(GEOMETRIE[form.geometry].sedeMm)}
-      />
+      {form.geometry && (
+        <SummaryItem
+          label="Sede incontri"
+          value={sedeIncontriLabel(GEOMETRIE[form.geometry].sedeMm)}
+        />
+      )}
       <SummaryItem label="Mano" value={hingeSideLabel(form.openingSide)} />
       <SummaryItem label="Apertura" value={openingDirLabel(form.openingDir)} />
       <SummaryItem label="Finitura" value={form.finish} />
