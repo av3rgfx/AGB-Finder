@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 /**
  * Aritmetica dello sconto cliente.
  *
@@ -51,3 +53,22 @@ export function euroToCent(euro: number): number {
 export function centToEuro(cent: number): number {
   return cent / 100;
 }
+
+/**
+ * Percentuale di sconto valida: 0-100 con al massimo due decimali, perché le
+ * colonne sono `Decimal(5,2)` e troncare in silenzio falsificherebbe i totali.
+ *
+ * Sta QUI, in un posto solo, perché la serve sia `customer` sia `kit`, e la
+ * verifica dei due decimali ha una trappola che copiata a mano si sbaglia:
+ * `Number.isInteger(40.55 * 100)` è **falso** (fa `4054.9999999999995`), quindi
+ * il controllo ovvio rifiuterebbe uno sconto perfettamente legittimo. Si
+ * confronta con l'intero più vicino a meno di un epsilon.
+ */
+export const scontoPercentSchema = z
+  .number()
+  .min(0, "Lo sconto non può essere negativo.")
+  .max(100, "Lo sconto non può superare 100.")
+  .refine(
+    (v) => Math.abs(v * 100 - Math.round(v * 100)) < 1e-9,
+    "Lo sconto ammette al massimo due decimali.",
+  );

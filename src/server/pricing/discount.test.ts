@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { applicaSconto, centToEuro, euroToCent, superaSoglia } from "./discount";
+import {
+  applicaSconto,
+  centToEuro,
+  euroToCent,
+  scontoPercentSchema,
+  superaSoglia,
+} from "./discount";
 
 describe("applicaSconto", () => {
   it("il caso del golden: 90,20 € meno 40% fa 54,12 €", () => {
@@ -73,5 +79,22 @@ describe("conversione euro/centesimi", () => {
   it("centToEuro torna indietro", () => {
     expect(centToEuro(5412)).toBe(54.12);
     expect(centToEuro(0)).toBe(0);
+  });
+});
+
+describe("scontoPercentSchema", () => {
+  it.each([0, 40, 40.5, 42.5, 100, 0.01, 99.99])("accetta %s", (v) => {
+    expect(scontoPercentSchema.safeParse(v).success).toBe(true);
+  });
+
+  it("accetta 40,55 — il controllo ovvio `Number.isInteger(v*100)` lo rifiuterebbe", () => {
+    // 40.55 * 100 fa 4054.9999999999995: è la trappola per cui questo schema
+    // vive in un posto solo invece di essere ricopiato nei due router.
+    expect(Number.isInteger(40.55 * 100)).toBe(false);
+    expect(scontoPercentSchema.safeParse(40.55).success).toBe(true);
+  });
+
+  it.each([-1, 101, 40.555])("rifiuta %s", (v) => {
+    expect(scontoPercentSchema.safeParse(v).success).toBe(false);
   });
 });
