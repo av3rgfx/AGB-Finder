@@ -1,9 +1,13 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { adminProcedure, createTRPCRouter } from "@/server/api/trpc";
+import { adminProcedure, agentProcedure, createTRPCRouter } from "@/server/api/trpc";
 import { getRedis } from "@/server/ai/redis";
 import { testProviderKey } from "@/server/ai/test-connection";
 import { getStatus, resolveApiKey, setApiKey, type AiProvider } from "@/server/settings/service";
+import {
+  getDiscountThreshold,
+  setDiscountThreshold,
+} from "@/server/settings/discount-threshold";
 
 const providerSchema = z.enum(["gemini"]);
 const ALL_PROVIDERS: AiProvider[] = ["gemini"];
@@ -32,5 +36,27 @@ export const settingsRouter = createTRPCRouter({
         await setApiKey(ctx.db, getRedis(), input.provider, input.apiKey, ctx.session.user.id);
         return getStatus(ctx.db, input.provider);
       }),
+  }),
+
+  /**
+   * La soglia la LEGGE anche un agente: gli serve per sapere quando mostrare
+   * l'avviso sullo sconto. La SCRIVE solo un ADMIN — è una politica
+   * commerciale, non una preferenza personale.
+   */
+  discountThreshold: createTRPCRouter({
+    get: agentProcedure.query(({ ctx }) => getDiscountThreshold(ctx.db)),
+
+    set: adminProcedure
+      .input(
+        z.object({
+          soglia: z
+            .number({ invalid_type_error: "La soglia deve essere un numero." })
+            .min(0, "La soglia non può essere negativa.")
+            .max(100, "La soglia non può superare 100."),
+        }),
+      )
+      .mutation(({ ctx, input }) =>
+        setDiscountThreshold(ctx.db, input.soglia, ctx.session.user.id),
+      ),
   }),
 });
