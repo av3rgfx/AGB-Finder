@@ -2,7 +2,12 @@
 
 > Sostituisce le due liste separate (AGB da una parte, agente dall'altra). La **numerazione è
 > globale e va conservata**: i commenti nel codice rimandano per numero («domanda 4 per
-> l'esperto»). Le 1-16 esistevano già; le 17-23 sono nuove e nascono dalla verifica del 2026-07-27.
+> l'esperto»). Le 1-16 esistevano già; le **17-23** nascono dalla verifica del 2026-07-27; le
+> **24-26** dal lavoro sulle sette geometrie del 2026-07-29.
+>
+> ⚠️ Questo è l'**unico** indice della numerazione globale: le schede per tipologia
+> (`legno.md`, `tour.md`, …) discutono le domande nel merito ma **non** ricopiano l'elenco —
+> due indici della stessa numerazione divergono al primo aggiornamento.
 >
 > L'audit di `kit_requests` è rimasto in `DA-FARE-audit-e-domande-agb.md`: non è una domanda.
 
@@ -25,6 +30,7 @@
 | 22 | Quali finiture vendete davvero | agente | 🟡 oggi solo argento |
 | 19 | Quali combinazioni ordinate più spesso | agente | 🟡 ordine di priorità del lavoro |
 | 23 | La finestra 700×1400 battuta 18 sede 30 | agente | 🟡 **secondo golden**, se esiste |
+| 26 | Il nottolino di Fosca vuole una copertura | agente o AGB | 🟡 una riga mancante sulle geometrie nuove |
 | 25 | Confezioni: si applica il +20% fuori confezione? | AGB o ufficio | 🟡 **i totali di ogni distinta** |
 | 24 | Interasse 8,5: quali incontri? | agente o AGB | 🟡 la famiglia incontri del cliente «MC» |
 | 18 | Dove leggete le quote | agente | ⚪ come impostare il wizard |
@@ -116,6 +122,36 @@ Il listino ne ha quattro versioni: una base, una «per traverso in alluminio», 
 compensatore» e una con tutte e due. Su una finestra **tutta in legno** quale montate?
 *Fra la più economica e quella che usiamo noi ballano 4 € a pezzo.*
 
+> **⚠️ Aggiornata il 2026-07-29 — ora ci sono due clienti che ricevono pezzi diversi.**
+>
+> Finché il generatore copriva una sola geometria, questa domanda valeva un pezzo su una
+> finestra. Ora ne copre sette, e la situazione è questa:
+>
+> | Cliente | Geometria | Squadra emessa | € |
+> |---|---|---|---|
+> | **MC** | aria 4 · interasse **8,5** · battuta 15 | `A50902.22.02` — **base** | 5,77 |
+> | **Peruzzi** | aria 4 · interasse 9 · battuta 18 | `A50904.24.02` — traverso alu + compensatore | 9,83 |
+>
+> Sono **entrambi serramenti tutto-legno ad aria 4**, e ricevono **varianti diverse dello
+> stesso pezzo**. La ragione non è tecnica: è che `A50904` **non esiste** nel formato `.22`
+> (per l'interasse 8,5 il listino pubblica solo la base `A50902.22` e la «per traverso in
+> alluminio» `A50903.22`), quindi per MC la base è **forzata**, mentre sulle altre sei
+> geometrie si è conservata `A50904` perché è quella prescritta dal certificato ift
+> «ARTech Legno» per il pilota.
+>
+> Il commento nel codice (`artech-geometrie.ts`) argomenta che per MC la base è
+> «appropriata a una finestra tutto-legno» — il che, se è vero, **contraddice la scelta
+> fatta sulle altre sei righe**. Una delle due è sbagliata, e sono 4,06 € a pezzo.
+>
+> **Domanda, in concreto:** su un serramento tutto-legno senza traverso in alluminio, la
+> squadra giusta è la **base**? Se sì, va cambiata su tutte e sette le geometrie e il
+> certificato ift descrive una configurazione particolare, non la regola. Se no, MC sta
+> ricevendo un pezzo sottodimensionato per un limite del listino, e va segnalato ad AGB.
+>
+> *Riferimento tecnico: base `A50902.{22,24,26,34,36}` 5,77 € (`p0451 (449)`) · traverso alu
+> `A50903.*` 7,54 € · compensatore `A50901.*` 8,05 € (solo interasse 9 e 13) · traverso alu +
+> compensatore `A50904.*` 9,83 € (solo interasse 9 e 13) — `p0452 (450)`.*
+
 ## 20 — Cosa è di serie e cosa è opzione
 Una risposta per riga, anche solo «sempre» o «a richiesta»:
 - la **microventilazione**?
@@ -147,6 +183,27 @@ ordinata**? Va bene anche una foto dell'ordine.
 > configurazione diventa il **secondo esempio di riferimento**, e possiamo *verificare* quello che
 > costruiamo invece di fidarci della nostra lettura del listino. È esattamente così che è nato il
 > generatore attuale: da una distinta reale del 16/11/2021.
+
+## 26 — Il nottolino di Fosca vuole una copertura che non emettiamo
+
+**In parole semplici:** l'incontro nottolino `13x24` (`A51400.CR.13`) — quello che esce sulle
+distinte di **Fosca** — a listino è marcato **«(*) ordinare coperture separatamente»**. La
+copertura c'è (`A52102.01.44` grigio / `.87` grigio antracite, 0,39 €) e c'è anche un «inserto DSS
+per incontri con copertura» dedicato (`A52104.13.44`/`.87`). Il generatore **non li emette**.
+
+**Perché è nuovo:** il nottolino `9x18` del pilota **non** ha l'asterisco. È quindi un'incompletezza
+che compare **solo sulle geometrie nuove**, cioè proprio quelle che questo lavoro ha aperto.
+
+**Perché non è implementabile oggi:** le coperture esistono in **grigio RAL 7040 e grigio
+antracite**, mentre il modulo copre la sola finitura **ARGENTO**. Emetterle vorrebbe dire scegliere
+una finitura che non c'entra con quella del kit. Ricade nel «divario schema `p0406`» già dichiarato
+(voce 22 = «copertura per incontro nottolino»).
+
+**Domanda:** su un serramento aria 12 / interasse 13 / battuta 18 (il caso Fosca), la copertura
+dell'incontro nottolino va ordinata sempre, o solo su richiesta? E in quale finitura, se la
+ferramenta è argento?
+
+*Riferimento tecnico: `p0469 (467)` per l'asterisco e le coperture; `p0473 (471)` per l'inserto DSS.*
 
 ## 25 — Confezioni: si applica il «+20% fuori confezione»?
 

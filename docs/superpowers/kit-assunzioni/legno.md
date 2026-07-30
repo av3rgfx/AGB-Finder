@@ -1,6 +1,8 @@
-> 📋 Le domande 1-10 citate qui sono raccolte, con priorità e testi pronti da inviare, in
-> [`DOMANDE-APERTE.md`](./DOMANDE-APERTE.md). **La numerazione è la stessa**: i commenti nel
-> codice rimandano per numero.
+> 📋 **L'indice delle domande vive in [`DOMANDE-APERTE.md`](./DOMANDE-APERTE.md)**, che è il
+> documento unico e aggiornato (1-26, con priorità e testi pronti da inviare). **La numerazione
+> è globale e condivisa**: i commenti nel codice rimandano per numero, quindi il numero deve
+> risolvere lì. Questa scheda conserva il *merito tecnico* delle domande che riguardano
+> l'anta-ribalta, non l'elenco.
 
 # Anta-ribalta ARTECH LEGNO — esito della verifica e domande residue
 
@@ -18,34 +20,19 @@
 
 ## Numerazione delle domande — leggere prima
 
-Le domande per l'esperto AGB hanno una **numerazione GLOBALE**, unica per tutte le schede
-di `kit-assunzioni/`: i commenti nel codice rimandano **per numero** («domanda 2 per
-l'esperto in …/legno.md»), quindi il numero deve identificare la domanda ovunque, non la
-sua posizione dentro una scheda.
+Le domande hanno una **numerazione GLOBALE**, unica per tutte le schede di `kit-assunzioni/`:
+i commenti nel codice rimandano **per numero**, quindi il numero deve identificare la domanda
+ovunque. **L'elenco completo e ordinato per priorità è in
+[`DOMANDE-APERTE.md`](./DOMANDE-APERTE.md)** — non è duplicato qui, perché due indici della
+stessa numerazione divergono al primo aggiornamento (è già successo: la tabella che stava qui
+saltava le domande 17-23, aggiunte da un altro lavoro in parallelo).
 
-| # | Domanda | Scheda | Sblocca |
-|---|---|---|---|
-| 1 | Battente: quale terna di cerniere nello schema p0416 (414)? | `battente.md` | riattivazione della tipologia |
-| 2 | Squadra angolare: quale delle **quattro** varianti a listino? | qui | codici già scritti (`GEOMETRIE`) |
-| 3 | Incontri: quantità (formula vs somma colonna NOT.) e formato (asse 9 vs 13) | qui | quantità e codice degli incontri |
-| 4 | Sede 30 (schemi 2026) vs sede 18 (distinta 2021) | qui | campo di applicazione del generatore |
-| 5 | Vasistas: variante base o alternativa per le tre cerniere? Servono entrambi i terminali? | `vasistas.md` | codice già scritto |
-| 6 | Il «listino PVC e ALLUMINIO» citato a p0849 (847) | `pvc.md` (e `alu.md`) | PVC **e** alluminio insieme |
-| 7 | Anta-ribalta: l'intervallo **HBB 357-609** resta scoperto | qui | finestre basse |
-| 8 | Vasistas: voce 7, terminali delle chiusure supplementari sui montanti | `vasistas.md` | 13ª voce dello schema |
-| 9 | Vasistas: GR00 (HBB 274-662) | `vasistas.md` | finestre piccole |
-| 10 | Offset altezza → HBB: −10 (anta-ribalta) o 0 (vasistas)? | qui | scelta del cremonese in entrambi i moduli |
-| 11 | Bilico: asta verticale **senza** braccetto | `tour.md` | codice sbagliato sopra HBB 1000 |
-| 12 | Bilico: superficie **esattamente** 2 m² | `tour.md` | ~60 € e 4 codici |
-| 13 | Bilico: la guarnizione fa parte della distinta? | `tour.md` | ~24% del totale |
-| 14 | Bilico: quantità del kit spessori sullo schema 3 | `tour.md` | 5,46 € |
-| 15 | Bilico: sovrapposizione LBB 640-650 | `tour.md` | 3,73 € |
-| 16 | `openingDir` non è letto da nessun modulo | `tour.md` | rilievo **interno**, non una domanda per AGB |
-| 24 | Interasse **8,5**: quale asse per gli incontri? | qui | famiglia incontri del cliente «MC» |
-| 25 | Confezioni: si applica il **+20% fuori confezione**? | qui | correttezza dei totali di ogni distinta |
+Le domande discusse **nel merito** in questa scheda: **2** (squadra angolare), **3** (incontri),
+**4** (sede 18 vs 30), **7** (finestre basse), **10** (offset altezza→HBB), **24** (interasse
+8,5), **25** (confezioni).
 
-⚠️ `alu.md` conserva una propria lista numerata 1-13 della Fase 1g: quella è **locale a
-quella scheda** e non va confusa con questa. Nella numerazione globale l'alluminio è
+⚠️ `alu.md` conserva una propria lista numerata 1-13 della Fase 1g: quella è **locale a quella
+scheda** e non va confusa con la numerazione globale. Nell'indice globale l'alluminio è
 interamente dentro la **domanda 6**.
 
 ---
