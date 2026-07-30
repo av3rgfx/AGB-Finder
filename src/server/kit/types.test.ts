@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { kitInputSchema, asArtech, asTour, KitGenerationError } from "./types";
+import {
+  artechInputSchema,
+  asArtech,
+  asTour,
+  KitGenerationError,
+  kitInputSchema,
+  tourInputSchema,
+} from "./types";
 
 const valid = {
   windowType: "ANTA_RIBALTA",
@@ -177,5 +184,39 @@ describe("restringimenti asArtech / asTour", () => {
     const tour = kitInputSchema.parse(validTour);
     expect(asTour(tour).tourSchema).toBe(2);
     expect(() => asTour(kitInputSchema.parse(valid))).toThrow(KitGenerationError);
+  });
+});
+
+/**
+ * Lo sconto e il cliente sono dati COMMERCIALI e vivono FUORI da
+ * `kitInputSchema`: `kit.create` li riceve accanto alle specifiche, non dentro.
+ *
+ * Se un domani qualcuno li aggiungesse allo schema, `kitInputFromRequest`
+ * dovrebbe decidere se ricostruirli — cioe` esattamente la confusione che
+ * l'unione discriminata esiste per impedire. Questo test rende la cosa
+ * impossibile invece che sconsigliata.
+ *
+ * Non serve invece un ennesimo test che ricalcoli il golden: che lo sconto non
+ * muova la distinta e` gia` provato dai golden esistenti in
+ * `rules-artech-legno.test.ts`, che restano verdi PROPRIO perche` lo sconto non
+ * entra mai nel motore. Questo test protegge quella premessa.
+ */
+describe("i campi commerciali restano fuori dall'input del motore", () => {
+  it("kitInputSchema scarta customerId e discountPercent", () => {
+    const parsed = kitInputSchema.parse({
+      ...valid,
+      material: "LEGNO",
+      customerId: "c1",
+      discountPercent: 40,
+    });
+    expect(parsed).not.toHaveProperty("customerId");
+    expect(parsed).not.toHaveProperty("discountPercent");
+  });
+
+  it("nessuno dei due e` un campo dello schema, in nessuno dei due rami", () => {
+    for (const ramo of [artechInputSchema, tourInputSchema]) {
+      expect(Object.keys(ramo.shape)).not.toContain("customerId");
+      expect(Object.keys(ramo.shape)).not.toContain("discountPercent");
+    }
   });
 });

@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createTRPCRouter, createCallerFactory, type TRPCContext } from "@/server/api/trpc";
 import { ENGINE_VERSION } from "@/server/kit/engine";
+vi.mock("@/server/settings/discount-threshold", () => ({
+  getDiscountThreshold: vi.fn().mockResolvedValue(40),
+  SOGLIA_SCONTO_DEFAULT: 40,
+}));
+
 import { kitRouter } from "./kit";
 
 const appRouter = createTRPCRouter({ kit: kitRouter });
@@ -16,6 +21,7 @@ const componentCreateMany = vi.fn();
 const templateFindFirst = vi.fn();
 const productFindMany = vi.fn();
 const activityCreate = vi.fn();
+const customerFindUnique = vi.fn();
 const transaction = vi.fn();
 
 const dbStub = {
@@ -24,6 +30,7 @@ const dbStub = {
   kitTemplate: { findFirst: templateFindFirst },
   product: { findMany: productFindMany },
   activityLog: { create: activityCreate },
+  customer: { findUnique: customerFindUnique },
 };
 
 const makeCtx = (session: unknown): TRPCContext =>
@@ -44,7 +51,7 @@ const validInput = {
 } as const;
 
 beforeEach(() => {
-  for (const fn of [requestCreate, requestFindFirst, requestFindMany, requestUpdate, requestUpdateMany, requestCount, componentDeleteMany, componentCreateMany, templateFindFirst, productFindMany, activityCreate, transaction]) {
+  for (const fn of [requestCreate, requestFindFirst, requestFindMany, requestUpdate, requestUpdateMany, requestCount, componentDeleteMany, componentCreateMany, templateFindFirst, productFindMany, activityCreate, customerFindUnique, transaction]) {
     fn.mockReset();
   }
   activityCreate.mockResolvedValue({});
@@ -66,14 +73,14 @@ beforeEach(() => {
 describe("kit.create", () => {
   it("senza sessione → UNAUTHORIZED", async () => {
     const caller = createCallerFactory(appRouter)(makeCtx(null));
-    await expect(caller.kit.create(validInput)).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    await expect(caller.kit.create({ specs: validInput })).rejects.toMatchObject({ code: "UNAUTHORIZED" });
   });
 
   it("crea DRAFT con requestNumber KIT-YYYY-NNNN e logga", async () => {
     requestCount.mockResolvedValue(41);
     requestCreate.mockImplementation(({ data }) => Promise.resolve({ id: "k1", ...data }));
     const caller = createCallerFactory(appRouter)(makeCtx(agent));
-    const created = await caller.kit.create(validInput);
+    const created = await caller.kit.create({ specs: validInput });
     const year = new Date().getFullYear();
     expect(created.requestNumber).toBe(`KIT-${year}-0042`);
     expect(requestCreate.mock.calls[0]![0].data).toMatchObject({
@@ -93,7 +100,7 @@ describe("kit.create", () => {
     requestCount.mockResolvedValue(0);
     requestCreate.mockImplementation(({ data }) => Promise.resolve({ id: "k1", ...data }));
     const caller = createCallerFactory(appRouter)(makeCtx(agent));
-    await caller.kit.create({ ...validInput, geometry: "A12_I9_B18", seatConfig: "SEDE_30" });
+    await caller.kit.create({ specs: { ...validInput, geometry: "A12_I9_B18", seatConfig: "SEDE_30" } });
     expect(requestCreate.mock.calls[0]![0].data).toMatchObject({
       geometry: "A12_I9_B18",
       seatConfig: "SEDE_30",
@@ -107,7 +114,7 @@ describe("kit.create", () => {
     requestCount.mockResolvedValue(0);
     requestCreate.mockImplementation(({ data }) => Promise.resolve({ id: "k1", ...data }));
     const caller = createCallerFactory(appRouter)(makeCtx(agent));
-    await caller.kit.create({ ...validInput, seatConfig: undefined });
+    await caller.kit.create({ specs: { ...validInput, seatConfig: undefined } });
     expect(requestCreate.mock.calls[0]![0].data).toMatchObject({ seatConfig: "STANDARD" });
   });
 
@@ -115,7 +122,7 @@ describe("kit.create", () => {
     requestCount.mockResolvedValue(0);
     requestCreate.mockImplementation(({ data }) => Promise.resolve({ id: "k1", ...data }));
     const caller = createCallerFactory(appRouter)(makeCtx(agent));
-    await caller.kit.create({ ...validInput, supplementaryClosures: true });
+    await caller.kit.create({ specs: { ...validInput, supplementaryClosures: true } });
     expect(requestCreate.mock.calls[0]![0].data).toMatchObject({ supplementaryClosures: true });
   });
 
@@ -127,7 +134,7 @@ describe("kit.create", () => {
     requestCount.mockResolvedValue(0);
     requestCreate.mockImplementation(({ data }) => Promise.resolve({ id: "k1", ...data }));
     const caller = createCallerFactory(appRouter)(makeCtx(agent));
-    await caller.kit.create({ ...validInput, sashWeightKg: 75 });
+    await caller.kit.create({ specs: { ...validInput, sashWeightKg: 75 } });
     expect(requestCreate.mock.calls[0]![0].data).toMatchObject({ sashWeightKg: 75 });
   });
 
@@ -140,13 +147,13 @@ describe("kit.create", () => {
     requestCount.mockResolvedValue(0);
     requestCreate.mockImplementation(({ data }) => Promise.resolve({ id: "k1", ...data }));
     const caller = createCallerFactory(appRouter)(makeCtx(agent));
-    await caller.kit.create({ ...validInput, entrata: "E75" });
+    await caller.kit.create({ specs: { ...validInput, entrata: "E75" } });
     expect(requestCreate.mock.calls[0]![0].data).toMatchObject({ entrata: "E75" });
   });
 
   it("input invalido → BAD_REQUEST", async () => {
     const caller = createCallerFactory(appRouter)(makeCtx(agent));
-    await expect(caller.kit.create({ ...validInput, widthMm: 10 })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    await expect(caller.kit.create({ specs: { ...validInput, widthMm: 10 } })).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 });
 
@@ -479,5 +486,151 @@ describe("kit.ricalcola", () => {
 
     const caller = createCallerFactory(appRouter)(makeCtx(agent));
     await expect(caller.kit.ricalcola({ kitRequestId: "req1" })).rejects.toThrow(/già.*ricalcolata/i);
+  });
+});
+
+describe("kit.create — il cliente e il suo sconto", () => {
+  beforeEach(() => {
+    requestCount.mockResolvedValue(0);
+    requestCreate.mockImplementation(({ data }) => Promise.resolve({ id: "k1", ...data }));
+  });
+
+  it("senza cliente la richiesta nasce senza sconto", async () => {
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await caller.kit.create({ specs: validInput });
+    expect(requestCreate.mock.calls[0]![0].data).toMatchObject({
+      customerId: null,
+      discountPercent: null,
+    });
+    expect(customerFindUnique).not.toHaveBeenCalled();
+  });
+
+  it("col cliente timbra lo sconto del cliente sulla richiesta", async () => {
+    customerFindUnique.mockResolvedValue({ id: "c1", discount: { toString: () => "42.5" } });
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await caller.kit.create({ specs: validInput, customerId: "c1" });
+    const data = requestCreate.mock.calls[0]![0].data;
+    expect(data.customerId).toBe("c1");
+    expect(Number(data.discountPercent)).toBe(42.5);
+  });
+
+  it("un cliente senza sconto non inventa una percentuale", async () => {
+    customerFindUnique.mockResolvedValue({ id: "c1", discount: null });
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await caller.kit.create({ specs: validInput, customerId: "c1" });
+    expect(requestCreate.mock.calls[0]![0].data).toMatchObject({
+      customerId: "c1",
+      discountPercent: null,
+    });
+  });
+
+  it("un cliente inesistente e` NOT_FOUND e non crea niente", async () => {
+    customerFindUnique.mockResolvedValue(null);
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await expect(
+      caller.kit.create({ specs: validInput, customerId: "fantasma" }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(requestCreate).not.toHaveBeenCalled();
+  });
+});
+
+describe("kit.get — il netto", () => {
+  const base = {
+    id: "k1",
+    requestNumber: "KIT-2026-0001",
+    totalPrice: { toString: () => "90.20" },
+    components: [],
+    customer: null,
+  };
+
+  it("senza sconto il netto e` il lordo e lo sconto e` nullo", async () => {
+    requestFindFirst.mockResolvedValue({ ...base, discountPercent: null });
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    const r = await caller.kit.get({ id: "k1" });
+    expect(r.totalPrice).toBe(90.2);
+    expect(r.discountPercent).toBeNull();
+    expect(r.netPrice).toBe(90.2);
+    expect(r.discountAmount).toBeNull();
+  });
+
+  it("col 40% il netto del golden e` 54,12 EUR", async () => {
+    requestFindFirst.mockResolvedValue({
+      ...base,
+      discountPercent: { toString: () => "40" },
+    });
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    const r = await caller.kit.get({ id: "k1" });
+    expect(r.totalPrice).toBe(90.2);
+    expect(r.discountPercent).toBe(40);
+    expect(r.discountAmount).toBe(36.08);
+    expect(r.netPrice).toBe(54.12);
+  });
+
+  it("una distinta non ancora generata non ha netto", async () => {
+    requestFindFirst.mockResolvedValue({
+      ...base,
+      totalPrice: null,
+      discountPercent: { toString: () => "40" },
+    });
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    const r = await caller.kit.get({ id: "k1" });
+    expect(r.netPrice).toBeNull();
+    expect(r.discountAmount).toBeNull();
+  });
+
+  it("restituisce la soglia, perche` la UI deve sapere quando avvisare", async () => {
+    requestFindFirst.mockResolvedValue({ ...base, discountPercent: null });
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await expect(caller.kit.get({ id: "k1" })).resolves.toMatchObject({ soglia: 40 });
+  });
+});
+
+describe("kit.setDiscount", () => {
+  it("modifica lo sconto anche su una distinta GIA` generata (e` il punto)", async () => {
+    requestFindFirst.mockResolvedValue({ id: "k1", supersededById: null });
+    requestUpdate.mockResolvedValue({ id: "k1", discountPercent: { toString: () => "42.5" } });
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await expect(caller.kit.setDiscount({ id: "k1", discountPercent: 42.5 })).resolves.toEqual({
+      id: "k1",
+      discountPercent: 42.5,
+    });
+  });
+
+  it("azzerare lo sconto e` possibile", async () => {
+    requestFindFirst.mockResolvedValue({ id: "k1", supersededById: null });
+    requestUpdate.mockResolvedValue({ id: "k1", discountPercent: null });
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await expect(caller.kit.setDiscount({ id: "k1", discountPercent: null })).resolves.toEqual({
+      id: "k1",
+      discountPercent: null,
+    });
+    expect(requestUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { discountPercent: null } }),
+    );
+  });
+
+  it("su una richiesta di un altro agente e` NOT_FOUND", async () => {
+    requestFindFirst.mockResolvedValue(null);
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await expect(
+      caller.kit.setDiscount({ id: "altrui", discountPercent: 40 }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(requestUpdate).not.toHaveBeenCalled();
+  });
+
+  it("su una riga gia` superata rifiuta: si sconta la versione piu` recente", async () => {
+    requestFindFirst.mockResolvedValue({ id: "k1", supersededById: "k2" });
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await expect(
+      caller.kit.setDiscount({ id: "k1", discountPercent: 40 }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(requestUpdate).not.toHaveBeenCalled();
+  });
+
+  it.each([101, -1, 40.555])("rifiuta lo sconto non valido %s", async (v) => {
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await expect(
+      caller.kit.setDiscount({ id: "k1", discountPercent: v }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 });

@@ -143,7 +143,9 @@ describe("DettaglioClient — geometria", () => {
 describe("DettaglioClient — entrata maniglia", () => {
   it("mostra l'entrata maniglia fra le specifiche ARTECH", () => {
     getQuery.mockReturnValue({
-      isPending: false, isError: false, data: { ...request, entrata: "E75" },
+      isPending: false,
+      isError: false,
+      data: { ...request, entrata: "E75" },
     });
     render(<DettaglioClient id="k1" />);
     expect(screen.getByText("Entrata maniglia")).toBeTruthy();
@@ -152,7 +154,9 @@ describe("DettaglioClient — entrata maniglia", () => {
 
   it("non mostra l'entrata quando la riga non ce l'ha (TOUR, o storico)", () => {
     getQuery.mockReturnValue({
-      isPending: false, isError: false, data: { ...request, entrata: null },
+      isPending: false,
+      isError: false,
+      data: { ...request, entrata: null },
     });
     render(<DettaglioClient id="k1" />);
     expect(screen.queryByText("Entrata maniglia")).toBeNull();

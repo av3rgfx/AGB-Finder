@@ -26,7 +26,9 @@ import {
 } from "@/server/kit/artech-geometrie";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CustomerPicker, type CustomerOption } from "@/components/kit/customer-picker";
 import { cn } from "@/lib/utils";
+import { formatPercent } from "@/lib/format";
 import {
   hingeSideLabel,
   materialLabel,
@@ -245,6 +247,9 @@ export function NuovaRichiestaClient() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<FormValues>(ARTECH_DEFAULT);
+  // Il cliente NON e` un campo del form: non entra in `kitInputSchema` (che e`
+  // l'input del motore) e viaggia a parte fino a `kit.create`.
+  const [cliente, setCliente] = useState<CustomerOption | null>(null);
   const [stepError, setStepError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -283,7 +288,10 @@ export function NuovaRichiestaClient() {
 
     let id: string;
     try {
-      const created = await create.mutateAsync(result.data);
+      const created = await create.mutateAsync({
+        specs: result.data,
+        ...(cliente ? { customerId: cliente.id } : {}),
+      });
       id = created.id;
     } catch (error) {
       setSubmitError(
@@ -365,7 +373,12 @@ export function NuovaRichiestaClient() {
           </div>
         )}
 
-        {step === 1 && <Step1Tipologia form={form} setForm={setForm} />}
+        {step === 1 && (
+          <div className="flex flex-col gap-8">
+            <Step1Tipologia form={form} setForm={setForm} />
+            <CustomerPicker value={cliente?.id ?? null} onChange={setCliente} />
+          </div>
+        )}
         {step === 2 &&
           (form.series === "TOUR" ? (
             <Step2DimensioniTour form={form} update={makeUpdate<TourKitInput>(setForm)} />
@@ -378,7 +391,7 @@ export function NuovaRichiestaClient() {
           ) : (
             <Step3ManoFinitura form={form} update={makeUpdate<ArtechFormValues>(setForm)} />
           ))}
-        {step === 4 && <Step4Riepilogo form={form} />}
+        {step === 4 && <Step4Riepilogo form={form} cliente={cliente} />}
       </div>
 
       <div className="flex items-center justify-between">
@@ -795,9 +808,7 @@ function Step3ManoFinitura({
                   ammessa ? (
                     <>
                       Codice{" "}
-                      <span className="font-mono">
-                        A50122.{valore === "E75" ? "08" : "15"}.NN
-                      </span>
+                      <span className="font-mono">A50122.{valore === "E75" ? "08" : "15"}.NN</span>
                     </>
                   ) : (
                     "Non coperta per la vasistas: a entrata 7,5 il listino dichiara le forbici " +
@@ -1023,9 +1034,22 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Step4Riepilogo({ form }: { form: FormValues }) {
+function Step4Riepilogo({ form, cliente }: { form: FormValues; cliente: CustomerOption | null }) {
   const comuni = (
     <>
+      {/* Il cliente e` la prima cosa del riepilogo: e` cio` che decide lo
+          sconto, e va letto prima delle quote. Vale per entrambe le serie,
+          quindi sta in `comuni` e non nei due rami. */}
+      <SummaryItem
+        label="Cliente"
+        value={
+          cliente === null
+            ? "Nessuno"
+            : cliente.discount === null
+              ? cliente.companyName
+              : `${cliente.companyName} · sconto ${formatPercent(cliente.discount)}`
+        }
+      />
       <SummaryItem label="Tipologia" value={windowTypeLabel(form.windowType)} />
       <SummaryItem label="Serie" value={form.series} />
       <SummaryItem label="Materiale" value={materialLabel(form.material)} />
@@ -1069,9 +1093,7 @@ function Step4Riepilogo({ form }: { form: FormValues }) {
       <SummaryItem label="Geometria" value={geometriaLabel(form.geometry)} />
       {/* `form.entrata` è opzionale nello stato ma qui è sempre valorizzata: al
           passo 4 si arriva solo dopo la validazione del passo 3. */}
-      {form.entrata && (
-        <SummaryItem label="Entrata maniglia" value={entrataLabel(form.entrata)} />
-      )}
+      {form.entrata && <SummaryItem label="Entrata maniglia" value={entrataLabel(form.entrata)} />}
       {/* La sede è l'unica quota DERIVATA che finisce nella distinta: mostrarla
           qui è ciò che permette all'agente di accorgersi di una geometria scelta
           male, ed è la ragione per cui il campo può sparire dall'input. */}

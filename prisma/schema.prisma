@@ -309,6 +309,22 @@ model KitRequest {
   /// anche le righe che non devono averlo. Il backfill è nella migrazione.
   entrata Entrata?
 
+  /// Sconto applicato al cliente, in punti percentuali (42.50 = −42,5%).
+  /// NULL = nessuno sconto: la distinta resta al lordo di listino, che è il
+  /// comportamento di OGNI riga esistente prima del 2026-07-30 — per questo la
+  /// migrazione non ha backfill, a differenza di `entrata`.
+  ///
+  /// Vive QUI e non solo su `Customer` di proposito: se stesse solo sul cliente,
+  /// ritoccarne lo sconto cambierebbe in silenzio il totale di ogni distinta già
+  /// mandata. È la stessa ragione per cui il ricalcolo è versionato
+  /// (`supersededById`). Il cliente porta il default, la richiesta conserva il
+  /// valore davvero applicato.
+  ///
+  /// Nessun `@default` a livello DB, stesso criterio di `seatConfig` ed
+  /// `entrata`: un default DB valorizzerebbe anche le righe che non devono
+  /// averlo.
+  discountPercent Decimal? @map("discount_percent") @db.Decimal(5, 2)
+
   openingSide HingeSide?        @map("opening_side")
   openingDir  OpeningDirection? @map("opening_direction")
 

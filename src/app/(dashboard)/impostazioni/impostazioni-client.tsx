@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { CheckCircle2, KeyRound, XCircle } from "lucide-react";
 import { api } from "@/trpc/react";
 
@@ -43,6 +43,7 @@ export function ImpostazioniClient() {
           onSaved={() => void status.refetch()}
         />
       ))}
+      <SogliaScontoCard />
     </div>
   );
 }
@@ -79,8 +80,7 @@ function ProviderCard({
         ? "Configurata (variabile ambiente)"
         : "Non configurata";
 
-  const sourceClass =
-    current?.source === "none" ? "text-ink-subtle" : "text-success";
+  const sourceClass = current?.source === "none" ? "text-ink-subtle" : "text-success";
 
   return (
     <section className="rounded-lg border border-line bg-surface p-4 shadow-card">
@@ -181,5 +181,72 @@ function SkeletonCards() {
         </div>
       ))}
     </div>
+  );
+}
+
+/**
+ * Soglia oltre la quale lo sconto cliente produce un avviso. E` una politica
+ * commerciale, quindi vive in `Settings` e non in una costante: cambiarla non
+ * deve richiedere un rilascio.
+ */
+export function SogliaScontoCard() {
+  const utils = api.useUtils();
+  const corrente = api.settings.discountThreshold.get.useQuery();
+  const [valore, setValore] = useState("");
+  const campoId = useId();
+
+  // Il campo si idrata dal server una volta arrivato il dato, senza
+  // sovrascrivere quello che l'admin sta scrivendo.
+  useEffect(() => {
+    if (corrente.data !== undefined) setValore((v) => (v === "" ? String(corrente.data) : v));
+  }, [corrente.data]);
+
+  const salva = api.settings.discountThreshold.set.useMutation({
+    onSuccess: () => void utils.settings.discountThreshold.get.invalidate(),
+  });
+
+  const parsed = Number(valore.trim().replace(",", "."));
+  const valido = valore.trim() !== "" && Number.isFinite(parsed) && parsed >= 0 && parsed <= 100;
+
+  return (
+    <section className="rounded-lg border border-line bg-surface p-4 shadow-card">
+      <h2 className="mb-1 font-semibold text-ink">Soglia di avviso sullo sconto</h2>
+      <p className="mb-3 text-sm text-ink-subtle">
+        Oltre questa percentuale la scheda della richiesta mostra un avviso. Non impedisce mai di
+        salvare lo sconto.
+      </p>
+
+      <label htmlFor={campoId} className="mb-1.5 block text-sm text-ink-muted">
+        Soglia %
+      </label>
+      {/* Mobile-first: campo a piena larghezza sotto sm, tastierino numerico. */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <input
+          id={campoId}
+          inputMode="decimal"
+          value={valore}
+          onChange={(event) => setValore(event.target.value)}
+          aria-invalid={!valido || undefined}
+          className="h-11 w-full rounded border border-line-strong bg-surface px-3 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20 sm:w-32"
+        />
+        <button
+          type="button"
+          disabled={!valido || salva.isPending}
+          onClick={() => salva.mutate({ soglia: parsed })}
+          className="h-11 rounded bg-brand px-4 text-sm font-medium text-white transition-colors duration-150 ease-out-quart hover:bg-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-brand"
+        >
+          {salva.isPending ? "Salvataggio…" : "Salva"}
+        </button>
+      </div>
+
+      {!valido && valore.trim() !== "" && (
+        <p className="mt-2 text-sm text-danger">Scrivi una percentuale fra 0 e 100.</p>
+      )}
+      {salva.isError && (
+        <p className="mt-2 text-sm text-danger" role="alert">
+          {salva.error.message}
+        </p>
+      )}
+    </section>
   );
 }

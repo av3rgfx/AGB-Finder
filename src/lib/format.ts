@@ -1,5 +1,8 @@
 const priceFormatter = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
-const dateFormatter = new Intl.DateTimeFormat("it-IT", { dateStyle: "short", timeZone: "Europe/Rome" }); // Date sempre in fuso italiano: app B2B italiana, server (Vercel) in UTC.
+const dateFormatter = new Intl.DateTimeFormat("it-IT", {
+  dateStyle: "short",
+  timeZone: "Europe/Rome",
+}); // Date sempre in fuso italiano: app B2B italiana, server (Vercel) in UTC.
 
 export function formatPrice(value: number): string {
   return priceFormatter.format(value);
@@ -7,6 +10,16 @@ export function formatPrice(value: number): string {
 
 export function formatDate(value: Date | string): string {
   return dateFormatter.format(new Date(value));
+}
+
+const percentFormatter = new Intl.NumberFormat("it-IT", { maximumFractionDigits: 2 });
+
+/**
+ * Percentuale in italiano: `42,5%`, non `42.5%`. Prende punti percentuali
+ * (42.5), non frazioni — è la forma in cui lo sconto vive a DB e nell'input.
+ */
+export function formatPercent(value: number): string {
+  return `${percentFormatter.format(value)}%`;
 }
 
 /**

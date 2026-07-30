@@ -9,16 +9,57 @@
 
 | Campo | Valore |
 |-------|--------|
-| **Data** | 2026-07-30 — sessione **CONCLUSA**. Prossima: **decisione dell'utente fra tre strade** |
+| **Data** | 2026-07-30 — **SCONTISTICA CLIENTE** fatta (PR #42). Prossima: **schemi cliente + composer** o **varianti componenti** |
 | **Fase in corso** | Fase 1 — MVP Gestionale |
 | **Sotto-fase** | Kit engine: tre tipologie attive (anta-ribalta LEGNO su **7 geometrie × 2 entrate**, vasistas LEGNO, bilico TOUR LEGNO) |
-| **Branch git** | `claude/handoff-workflow-choice-u7hvc9`, da `main` @ `459ba81` (merge #39) |
-| **Stato deploy** | **LIVE e allineato.** PR #40 **MERGIATA** (`b2d8fcd`) · **ops ESEGUITE** (run `30572337032`, 2026-07-30 19:11Z, 12/12 verdi) |
+| **Branch git** | `claude/kit-listino-distinte-r1zn22`, da `main` @ `b2d8fcd` (merge #40), poi mergiato `origin/main` @ `94784fd` (merge #41) |
+| **Stato deploy** | **LIVE.** #40 e #41 mergiate, ops #40 eseguite (run `30572337032`). **Al merge della #42 serve UNA migrazione**: `20260730201437_kit_discount_percent` |
 | **Aperto** | le **tre distinte reali** · mail ad AGB · domande all'agente · audit `kit_requests` · fix `dedupeRows` |
 
 ---
 
 > **▶ RIPRENDI DA QUI**
+>
+> ### Cosa è stato fatto (2026-07-30)
+>
+> I totali mostravano il **lordo di listino AGB** — quello che paghiamo al fornitore — non quello
+> che il cliente paga. Ora la distinta dice entrambi. Dettaglio completo in `CLAUDE.md` §STATO e
+> in `docs/superpowers/specs/2026-07-30-scontistica-cliente-design.md`.
+>
+> **Gate**: typecheck ✅ · lint ✅ · **test 843** (erano 660) ✅ · build 17 route ✅ ·
+> **browser 40/40** (desktop 1440×900 + **375px**, 18 screenshot) · **integration gated 38/38 sul
+> catalogo reale** (7.488 prodotti importati in locale).
+>
+> **I due riscontri sono intatti, verificati esplicitamente sul catalogo vero:**
+> anta-ribalta entrata 15 → **16 righe / 21 pezzi / 90,20 €**, zero warning ·
+> gemello entrata 7,5 → **16 / 21 / 96,29 €**, zero warning.
+>
+> ### 🔴 AZIONE OPS AL MERGE — una sola, e nient'altro
+>
+> `prisma migrate deploy` per **`20260730201437_kit_discount_percent`**
+> (`ALTER TABLE "kit_requests" ADD COLUMN "discount_percent" DECIMAL(5,2);`).
+> **Niente re-import del catalogo, niente `db:seed`, niente `db:seed:kit`, niente `embed:products`.**
+> Un run completo di «Ops — Neon» li farebbe comunque senza danno, ma non servono.
+>
+> Dopo il deploy la scontistica è **inerte finché non si crea un cliente**: `customers` è vuota, e
+> senza cliente selezionato nulla cambia rispetto a oggi. Non c'è nessun rischio di distinte
+> scontate per sbaglio.
+>
+> ### Le tre cose che questa sessione ha scoperto e vanno ricordate
+>
+> 1. **Il listino ha 34 classi di sconto**, e i nostri codici ne toccano due: ARTECH tutto **F3**,
+>    TOUR tutto **T1**. Una percentuale unica per cliente li tratta uguali. È la scelta fatta
+>    consapevolmente (**domanda 28**), non una svista: se lo sconto vero cambia per classe, il
+>    totale di un **bilico** (433-766 €) è sbagliato di 20-38 € a serramento. La percentuale sta su
+>    una colonna propria della richiesta, quindi passare a una tabella cliente × classe cambierebbe
+>    *come si calcola* quel numero, non le distinte già emesse.
+> 2. **`Customer` era un modello fantasma**: tabella a schema dal primo giorno, nessun router,
+>    nessuna CRUD, `customerId` **sempre NULL** in produzione. Le colonne a schema fanno risparmiare
+>    una migrazione, non metà del lavoro — vale la pena ricordarlo prima di stimare in base allo schema.
+> 3. **A 375px la tabella della distinta scorre in orizzontale**, e ci finiva dentro anche il piè
+>    con i totali: sul telefono il numero per cui si apre la pagina era fuori schermo. Trovato da
+>    uno **screenshot**, non da un'asserzione (che leggeva `innerText`, il quale include ciò che è
+>    fuori vista). I totali ora vivono nel riepilogo. **Guardare le immagini, non solo i verdi.**
 >
 > ### Prima di scegliere cosa fare: due domande
 >
@@ -43,11 +84,11 @@
 >
 > ### Le tre strade rimaste
 >
-> A inizio sessione le strade erano quattro; l'**entrata cablata** è stata fatta. Restano:
+> A inizio sessione le strade erano quattro; l'**entrata cablata** e la **scontistica** sono fatte. Restano:
 >
 > | Strada | Dipende dalle distinte mancanti? | Nota |
 > |---|---|---|
-> | **Scontistica cliente** ⭐ | no | Oggi i totali sono il **lordo di listino AGB**, non ciò che il cliente paga. `Customer` ha già a schema `discount`, `priceList`, `paymentTerms`, **inutilizzati**: metà del lavoro è fatta. È il rapporto valore/costo più alto del progetto |
+> | ~~**Scontistica cliente**~~ | — | **FATTA 2026-07-30, PR #42.** Nota per la stima: `Customer` era un modello **fantasma** — tabella a schema, zero router, zero CRUD, `customerId` sempre NULL. Le colonne a schema hanno risparmiato *una migrazione*, non metà del lavoro |
 > | **Schemi cliente + composer** | in parte | Il profilo geometria per cliente (§3.5 spec 2026-07-29) no; il composer delle chiusure sì — la sua calibrazione resta su un punto solo finché non arrivano le distinte |
 > | **Varianti componenti** | sì, e non solo | La spec le mette fuori scope: «non si impilano varianti su una distinta che sappiamo ancora incompleta». Bloccate anche dalle domande 2, 20, 22, 26 |
 >

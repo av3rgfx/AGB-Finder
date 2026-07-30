@@ -88,7 +88,7 @@ function RequestRow({ item }: { item: RequestListItem }) {
         <Link
           href={href}
           onClick={(e) => e.stopPropagation()}
-          className="font-mono text-sm text-ink hover:text-brand focus-visible:outline-none focus-visible:underline"
+          className="font-mono text-sm text-ink hover:text-brand focus-visible:underline focus-visible:outline-none"
         >
           {item.requestNumber}
         </Link>

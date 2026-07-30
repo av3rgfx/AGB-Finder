@@ -6,6 +6,7 @@ const push = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 const createMutate = vi.fn();
 const generateMutate = vi.fn();
+const customerCreateMutate = vi.fn();
 vi.mock("@/trpc/react", () => ({
   api: {
     kit: {
@@ -14,6 +15,25 @@ vi.mock("@/trpc/react", () => ({
         useMutation: () => ({ mutateAsync: generateMutate, isPending: false, error: null }),
       },
     },
+    // Il passo 1 monta ora il selettore cliente: senza queste voci il mock
+    // fa esplodere ogni test del wizard, non solo quelli sul cliente.
+    customer: {
+      list: {
+        useQuery: () => ({
+          data: [{ id: "c1", companyName: "Fosca", discount: 42.5 }],
+          isPending: false,
+        }),
+      },
+      create: {
+        useMutation: () => ({
+          mutateAsync: customerCreateMutate,
+          isPending: false,
+          isError: false,
+          error: null,
+        }),
+      },
+    },
+    useUtils: () => ({ customer: { list: { invalidate: vi.fn() } } }),
   },
 }));
 
@@ -252,7 +272,10 @@ describe("NuovaRichiestaClient", () => {
     fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
     fireEvent.click(screen.getByRole("button", { name: /genera kit/i }));
     await vi.waitFor(() => expect(push).toHaveBeenCalledWith("/richieste/k11"));
-    expect(createMutate).toHaveBeenCalledWith(
+    // `create` riceve ora { specs, customerId? }: il cliente e` un dato
+    // commerciale e viaggia ACCANTO alle specifiche, non dentro l'input del
+    // motore. Si asserisce su `.specs`, che e` cio` che il motore vede.
+    expect(createMutate.mock.calls[0]![0].specs).toEqual(
       // entrata: il test clicca «7,5 mm» sopra — verifica che il valore scelto
       // arrivi davvero nell'input di create, non solo che il passo avanzi.
       expect.objectContaining({ geometry: "A12_I13_B18", seatConfig: "STANDARD", entrata: "E75" }),
@@ -283,7 +306,10 @@ describe("NuovaRichiestaClient", () => {
     fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
     fireEvent.click(screen.getByRole("button", { name: /genera kit/i }));
     await vi.waitFor(() => expect(push).toHaveBeenCalledWith("/richieste/k9"));
-    expect(createMutate).toHaveBeenCalledWith(
+    // `create` riceve ora { specs, customerId? }: il cliente e` un dato
+    // commerciale e viaggia ACCANTO alle specifiche, non dentro l'input
+    // del motore. Si asserisce su `.specs`, che e` cio` che il motore vede.
+    expect(createMutate.mock.calls[0]![0].specs).toEqual(
       expect.objectContaining({
         material: "LEGNO",
         supplementaryClosures: false,
@@ -354,7 +380,10 @@ describe("NuovaRichiestaClient", () => {
     fireEvent.click(screen.getByRole("button", { name: /genera kit/i }));
 
     await vi.waitFor(() => expect(push).toHaveBeenCalledWith("/richieste/k10"));
-    expect(createMutate).toHaveBeenCalledWith(
+    // `create` riceve ora { specs, customerId? }: il cliente e` un dato
+    // commerciale e viaggia ACCANTO alle specifiche, non dentro l'input
+    // del motore. Si asserisce su `.specs`, che e` cio` che il motore vede.
+    expect(createMutate.mock.calls[0]![0].specs).toEqual(
       expect.objectContaining({ supplementaryClosures: false }),
     );
   });
@@ -521,5 +550,60 @@ describe("materialForWindowType", () => {
 
   it("resetta a LEGNO anche per una tipologia senza materiali attivi (battente gated)", () => {
     expect(materialForWindowType("ANTA_BATTENTE", "PVC")).toBe("LEGNO");
+  });
+});
+
+// Il cliente e` l'unico campo del wizard che NON passa da `kitInputSchema`:
+// viaggia accanto alle specifiche. Questi due test coprono il giro completo,
+// perche` i test del CustomerPicker da soli non provano che il wizard lo
+// inoltri davvero.
+describe("NuovaRichiestaClient — il cliente", () => {
+  it("sceglierlo lo fa arrivare a kit.create accanto alle specifiche", async () => {
+    createMutate.mockResolvedValue({ id: "k1", requestNumber: "KIT-2026-0001" });
+    generateMutate.mockResolvedValue({ totalComponents: 16 });
+    render(<NuovaRichiestaClient />);
+    fireEvent.click(screen.getByRole("button", { name: /fosca/i }));
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // 1 → 2
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // 2 → 3
+    fireEvent.click(
+      within(screen.getByRole("group", { name: /entrata maniglia/i })).getByRole("radio", {
+        name: /7,5 mm/i,
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // 3 → 4
+    fireEvent.click(screen.getByRole("button", { name: /genera kit/i }));
+    await vi.waitFor(() => expect(createMutate).toHaveBeenCalled());
+    expect(createMutate.mock.calls[0]![0].customerId).toBe("c1");
+  });
+
+  it("senza cliente `customerId` non viene proprio inviato", async () => {
+    createMutate.mockResolvedValue({ id: "k1", requestNumber: "KIT-2026-0001" });
+    generateMutate.mockResolvedValue({ totalComponents: 16 });
+    render(<NuovaRichiestaClient />);
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
+    fireEvent.click(
+      within(screen.getByRole("group", { name: /entrata maniglia/i })).getByRole("radio", {
+        name: /7,5 mm/i,
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
+    fireEvent.click(screen.getByRole("button", { name: /genera kit/i }));
+    await vi.waitFor(() => expect(createMutate).toHaveBeenCalled());
+    expect(createMutate.mock.calls[0]![0]).not.toHaveProperty("customerId");
+  });
+
+  it("il riepilogo mostra il cliente e il suo sconto all'italiana", () => {
+    render(<NuovaRichiestaClient />);
+    fireEvent.click(screen.getByRole("button", { name: /fosca/i }));
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
+    fireEvent.click(
+      within(screen.getByRole("group", { name: /entrata maniglia/i })).getByRole("radio", {
+        name: /7,5 mm/i,
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
+    expect(screen.getByText(/Fosca · sconto 42,5%/)).toBeTruthy();
   });
 });

@@ -17,6 +17,7 @@ import { GEOMETRIE, geometriaLabel } from "@/server/kit/artech-geometrie";
 import { entrataLabel } from "@/server/kit/types";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { DistintaTable } from "@/components/kit/distinta-table";
+import { RiepilogoSconto } from "@/components/kit/riepilogo-sconto";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -146,6 +147,7 @@ export function DettaglioClient({ id }: { id: string }) {
         </div>
         <p className="text-sm text-ink-subtle">
           {windowTypeLabel(r.windowType)} · {r.series}
+          {r.customer && <> · {r.customer.companyName}</>}
           {r.totalComponents > 0 && (
             <>
               {" "}
@@ -313,14 +315,27 @@ export function DettaglioClient({ id }: { id: string }) {
         )}
 
         {hasDistinta ? (
-          <DistintaTable
-            components={r.components.map((c) => ({
-              ...c,
-              listinoPage: c.product?.listinoPage ?? null,
-            }))}
-            totalPrice={r.totalPrice ?? 0}
-            warnings={warnings}
-          />
+          <>
+            <DistintaTable
+              components={r.components.map((c) => ({
+                ...c,
+                listinoPage: c.product?.listinoPage ?? null,
+              }))}
+              warnings={warnings}
+            />
+            {/* Su una riga superata il riepilogo e` in sola lettura: lo sconto va
+                messo sulla versione piu` recente, e il router lo rifiuterebbe
+                comunque con CONFLICT. */}
+            <RiepilogoSconto
+              requestId={r.id}
+              lordo={r.totalPrice ?? 0}
+              discountPercent={r.discountPercent}
+              netto={r.netPrice ?? r.totalPrice ?? 0}
+              scontoImporto={r.discountAmount}
+              soglia={r.soglia}
+              readOnly={r.supersededById !== null}
+            />
+          </>
         ) : (
           <div className="rounded-md border border-dashed border-line-strong bg-surface p-6 text-center text-sm text-ink-subtle">
             {distintaVuotaMsg}

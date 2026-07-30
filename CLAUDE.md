@@ -385,3 +385,31 @@ fissa `widthMm: 550` → esercita 1 banda su 5 di `FORBICI` e 1 su 4 di `BRACCI_
 righe, stessa forma del test appena scritto) · `no-silent-fields` non è legato a `RULE_MODULES` ·
 `dedupeRows` last-wins. Dettagli, lezioni operative e prompt di apertura: `handoff.md`
 §RIPRENDI DA QUI.
+
++ **SCONTISTICA CLIENTE ✅ (PR #42)**: i totali mostravano il
+**lordo di listino AGB**, cioè quello che paghiamo al fornitore, non quello che il cliente paga. Workflow completo
+(brainstorming → 4 domande all'utente → spec → `/writing-plans` → 10 task TDD → `/impeccable` → verifica browser).
+**Scelte utente**: sconto **unico per cliente** · **modificabile anche a distinta generata** · righe **al lordo**,
+sconto solo nel riepilogo · **avviso oltre soglia, mai blocco** · soglia **configurabile da ADMIN**.
+**(1) Dati — una sola colonna**: `KitRequest.discountPercent Decimal(5,2)?` (migrazione `20260730201437_kit_discount_percent`,
+nessun backfill: NULL = nessuno sconto = comportamento storico). Lo sconto vive **sulla richiesta** e non solo su
+`Customer`: se stesse solo lì, ritoccarlo cambierebbe in silenzio il totale di **ogni distinta già mandata** — la
+stessa ragione per cui il ricalcolo è versionato. `Customer.discount`, `KitRequest.customerId` e
+`SettingCategory.COMPANY_INFO` **esistevano già** → nessun'altra migrazione. **`totalPrice` resta il LORDO**, il netto
+è derivato e mai salvato (due totali a DB divergono al primo bug); il KPI «valore» in dashboard resta quindi al lordo.
+**(2) Confine col motore**: `kit.create` passa da `kitInputSchema` nudo a **`{ specs, customerId? }`** — il commerciale
+non entra nell'input che `kit.generate` ricostruisce dalle colonne; un test in `types.test.ts` prova che lo schema
+**scarti** `customerId`/`discountPercent`. **(3)** `customer` router (list/create/update/delete con paletto sulle
+richieste collegate, anagrafica **condivisa**) · `kit.setDiscount` ammessa in **qualunque stato** (rifiuta solo sulla
+riga superata) · soglia in `Settings{COMPANY_INFO}` in chiaro. **(4) UI**: selettore cliente nel wizard (con
+empty-state vero — in produzione l'anagrafica è **vuota**) · riepilogo `Totale listino AGB → Sconto → Totale cliente`
+· sezione soglia in `/impostazioni`. **Bug trovati dai test e dagli screenshot, non dal codice**: `Number.isInteger(v*100)`
+**rifiuta 40,55** (fa `4054.9999…`) → validazione in un posto solo; `42.5%` col punto in una UI italiana → `formatPercent`;
+e a **375px la tabella scorre in orizzontale**, quindi il suo piè con i totali era **fuori schermo** → i totali sono
+migrati nel riepilogo, che è l'unico posto in cui compaiono. Gate verdi (typecheck·lint·**test 843**·build 17 route) ·
+**browser 40/40** (desktop + 375px) · **integration gated 38/38 sul catalogo reale** · golden **16 righe / 21 pezzi /
+90,20 €** e gemello entrata 7,5 **96,29 €** invariati, verificati esplicitamente. **AZIONE OPS: una sola migrazione**
+(`migrate deploy`) — niente re-import, niente seed, niente embed. Nuova **domanda 28** in `DOMANDE-APERTE.md`: il
+listino ha **34 classi di sconto**, i codici ARTECH sono tutti **F3** e i TOUR tutti **T1** → una percentuale unica li
+tratta uguali (scelta consapevole, da riverificare con l'ufficio commerciale).
+Spec/piano: `docs/superpowers/{specs,plans}/2026-07-30-scontistica-cliente*`.

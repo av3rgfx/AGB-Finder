@@ -3,7 +3,8 @@
 > Sostituisce le due liste separate (AGB da una parte, agente dall'altra). La **numerazione è
 > globale e va conservata**: i commenti nel codice rimandano per numero («domanda 4 per
 > l'esperto»). Le 1-16 esistevano già; le **17-23** nascono dalla verifica del 2026-07-27; le
-> **24-26** dal lavoro sulle sette geometrie del 2026-07-29; la **27** dal lavoro sull'entrata maniglia del 2026-07-30.
+> **24-26** dal lavoro sulle sette geometrie del 2026-07-29; la **27** dal lavoro sull'entrata maniglia
+> e la **28** dalla scontistica cliente, entrambe del 2026-07-30.
 >
 > ⚠️ Questo è l'**unico** indice della numerazione globale: le schede per tipologia
 > (`legno.md`, `tour.md`, …) discutono le domande nel merito ma **non** ricopiano l'elenco —
@@ -31,6 +32,7 @@
 | 23 | La finestra 700×1400 battuta 18 sede 30 | agente | 🟡 **secondo golden**, se esiste |
 | 26 | Il nottolino di Fosca vuole una copertura | agente o AGB | 🟡 una riga mancante sulle geometrie nuove |
 | 25 | Confezioni: si applica il +20% fuori confezione? | AGB o ufficio | 🟡 **i totali di ogni distinta** |
+| 28 | Lo sconto è unico per cliente, o per classe? | AGB o ufficio | 🟡 **il netto di ogni distinta** |
 | 24 | Interasse 8,5: quali incontri? | agente o AGB | 🟡 la famiglia incontri del cliente «MC» |
 | 17 | **L'entrata: quale usate?** | agente | 🟡 quale sia il caso frequente |
 | 27 | GR03: l'entrata 7,5 dichiara zero nottolini | agente o AGB | ⚪ asimmetria fra le due entrate |
@@ -225,6 +227,33 @@ un'assunzione che vale l'intero prezzario, e non l'abbiamo mai verificata con ne
 
 *Riferimento tecnico: colonna CS del listino, art. 4 delle condizioni generali `p0006 (4)`.*
 
+## 28 — Lo sconto è unico per cliente, o cambia per classe di articolo?
+
+**In parole semplici:** il listino AGB stampa una **classe di sconto** accanto a ogni articolo (la
+colonna con `A2`, `F3`, `T1`…). Sulle 959 pagine del 2026 ce ne sono **34**. Quando fate lo sconto
+a un cliente, applicate **una sola percentuale a tutto**, oppure una percentuale **diversa per
+classe**?
+
+**Perché conta:** i codici che il generatore emette non stanno tutti nella stessa classe.
+
+| Distinta | Classe |
+|---|---|
+| Anta-ribalta e vasistas ARTECH (tutte e sette le geometrie) | **F3** |
+| Bilico rettangolare TOUR | **T1** |
+
+Dentro una distinta la classe è uniforme; fra le due serie cambia. Dal 2026-07-30 il programma
+applica **una percentuale sola** — è una scelta fatta consapevolmente, non una svista. Ma se lo
+sconto vero cambia per classe, il totale mostrato su un **bilico** è sbagliato: quelle distinte
+stanno fra 433 € e 766 €, quindi cinque punti di scarto valgono 20-38 € a serramento.
+
+**Cosa cambierebbe la risposta:** se è per classe, `Customer.discount` diventa una tabella
+cliente × classe. La percentuale è già su una colonna propria della richiesta e non dentro il
+prezzo delle righe, quindi cambierebbe **come si calcola** quel numero, non le distinte già emesse.
+
+*Riferimento tecnico: classe sconto catturata dal parser in `Product.specifications.classeSconto`
+(gruppo 5 di `PRODUCT_SIGNATURE`, `parse-listino.ts`); i conteggi vengono dall'applicazione della
+stessa firma di riga a tutte le 959 pagine — 7.488 codici, identico all'import su Neon.*
+
 ## 24 — Interasse 8,5: quali incontri si ordinano?
 
 **In parole semplici:** il cliente «MC» lavora ad aria 4 · interasse **8,5** · battuta 15. Per
@@ -338,6 +367,8 @@ Il testo completo è in `DA-FARE-audit-e-domande-agb.md`. Le due che contano pi�
 
 - **domanda 4** — sede 18 o sede 30, con la 3b (il formato `13x18` che non esiste) che va sciolta
   nella stessa risposta;
-- **domanda 6** — il «listino PVC e ALLUMINIO».
+- **domanda 6** — il «listino PVC e ALLUMINIO»;
+- **domanda 28** — se lo sconto cliente sia unico o per classe di articolo (questa si può girare
+  anche all'ufficio commerciale, non serve AGB).
 
 Se ne mandi solo due, manda queste.
