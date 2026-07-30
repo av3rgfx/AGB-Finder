@@ -71,7 +71,7 @@ export function DistintaTable({
           <tfoot>
             <tr className="border-t border-line-strong bg-surface-sunken font-semibold text-ink">
               <td colSpan={5} className="px-4 py-2.5 text-right">
-                Totale kit
+                Totale listino AGB
               </td>
               <td className="px-4 py-2.5 text-right">{formatPrice(totalPrice)}</td>
             </tr>

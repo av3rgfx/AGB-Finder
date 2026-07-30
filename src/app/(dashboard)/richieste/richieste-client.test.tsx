@@ -8,7 +8,15 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 // (preventDefault → routing client-side, mai una navigazione full) e inoltra
 // l'onClick del componente.
 vi.mock("next/link", () => ({
-  default: ({ href, children, onClick }: { href: string; children: React.ReactNode; onClick?: (e: React.MouseEvent) => void }) => (
+  default: ({
+    href,
+    children,
+    onClick,
+  }: {
+    href: string;
+    children: React.ReactNode;
+    onClick?: (e: React.MouseEvent) => void;
+  }) => (
     <a
       href={href}
       onClick={(e) => {
