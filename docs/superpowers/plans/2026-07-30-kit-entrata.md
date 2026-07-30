@@ -48,7 +48,6 @@
 
 | File | Responsabilità |
 |---|---|
-| `src/lib/kit-labels.ts` | `ENTRATA_LABELS` / `entrataLabel` — un solo posto per «7,5 mm» e «15 mm» |
 | `src/app/(dashboard)/richieste/nuova/nuova-client.tsx` | Il fieldset «Entrata maniglia», senza preselezione, nello step 3 e nel riepilogo |
 | `src/app/(dashboard)/richieste/[id]/dettaglio-client.tsx` | Riga «Entrata maniglia» nelle specifiche |
 
@@ -147,6 +146,19 @@ In `src/server/kit/types.ts`, subito prima di `const COMMON`:
  */
 export const ENTRATE = ["E75", "E15"] as const;
 export type Entrata = (typeof ENTRATE)[number];
+
+/**
+ * Etichetta unica dell'entrata: la leggono la `ruleDescription` della riga
+ * cremonese, il wizard, il riepilogo e la scheda richiesta, e **devono dire la
+ * stessa cosa**. Sta qui, accanto ai valori che etichetta, per lo stesso motivo
+ * per cui `geometriaLabel` sta accanto a `GEOMETRIE`.
+ *
+ * Quota all'italiana, con la virgola: la UI del progetto è in italiano e «7.5»
+ * stona (stessa ragione della funzione `mm()` in `artech-geometrie.ts`).
+ */
+export function entrataLabel(value: Entrata): string {
+  return value === "E75" ? "7,5 mm" : "15 mm";
+}
 ```
 
 Dentro `artechInputSchema`, dopo `geometry`:
@@ -467,12 +479,11 @@ const CREMONESI: Record<Entrata, readonly { minH: number; maxH: number; code: st
     { minH: 2194, maxH: 2510, code: "A50122.08.10" },
   ],
 };
-
-/** «7,5» / «15» per le descrizioni di riga — la UI ha il suo in `kit-labels.ts`. */
-const ENTRATA_MM: Record<Entrata, string> = { E75: "7,5", E15: "15" };
 ```
 
-Aggiungere `Entrata` all'import da `./types` già presente in testa al file.
+Aggiungere `Entrata` **e `entrataLabel`** all'import da `./types` già presente in
+testa al file. L'etichetta **non** si riscrive qui: è definita una volta sola nel
+Task 1, accanto ai valori che etichetta.
 
 - [ ] **Step 4: Leggere l'entrata all'emissione**
 
@@ -491,7 +502,7 @@ Sostituire il blocco dell'emissione della cremonese con:
       quantity: 1,
       ruleId: "artech.cremonese",
       ruleDescription:
-        `Cremonese A/R entrata ${ENTRATA_MM[input.entrata]} mm per altezza anta ` +
+        `Cremonese A/R entrata ${entrataLabel(input.entrata)} per altezza anta ` +
         `${input.heightMm} mm (hbb ${input.heightMm - 10})`,
     });
 ```
@@ -834,34 +845,14 @@ lettura del PDF, non un riscontro."
 ### Task 6: Il wizard chiede l'entrata, senza preselezionarla
 
 **Files:**
-- Modify: `src/lib/kit-labels.ts`
 - Modify: `src/app/(dashboard)/richieste/nuova/nuova-client.tsx` (`ARTECH_DEFAULT` :35-49 · `STEP_SCHEMAS` :182-190 · `Step3ManoFinitura`)
 - Test: `src/app/(dashboard)/richieste/nuova/nuova-client.test.tsx`
 
 **Interfaces:**
-- Produces: `entrataLabel(value: string): string` da `@/lib/kit-labels`; il tipo di stato del form `ArtechFormValues = Omit<ArtechKitInput, "entrata"> & { entrata?: Entrata }`.
+- Consumes: `ENTRATE`, `Entrata` e `entrataLabel` da `@/server/kit/types` (Task 1). **Non** si crea una seconda etichetta in `src/lib/kit-labels.ts`: la UI importa quella del motore, esattamente come già fa con `geometriaLabel` da `@/server/kit/artech-geometrie`.
+- Produces: il tipo di stato del form `ArtechFormValues = Omit<ArtechKitInput, "entrata"> & { entrata?: Entrata }`.
 
-- [ ] **Step 1: Aggiungere le etichette**
-
-In `src/lib/kit-labels.ts`, dopo `OPENING_DIR_LABELS`:
-
-```ts
-/**
- * Entrata maniglia. Le due sole pubblicate: `p0424 (422)` etichetta la colonna
- * ENTRATA come `1) 7,5` e `2) 15`. Il valore si scrive all'italiana, con la
- * virgola — la UI del progetto è in italiano e «7.5» stona.
- */
-export const ENTRATA_LABELS: Record<string, string> = {
-  E75: "7,5 mm",
-  E15: "15 mm",
-};
-
-export function entrataLabel(value: string): string {
-  return ENTRATA_LABELS[value] ?? value;
-}
-```
-
-- [ ] **Step 2: Scrivere i test falliti del wizard**
+- [ ] **Step 1: Scrivere i test falliti del wizard**
 
 In `src/app/(dashboard)/richieste/nuova/nuova-client.test.tsx`:
 
@@ -921,12 +912,12 @@ leggerlo in `nuova-client.tsx` invece di indovinarlo fra le tre alternative del
 regex. **La verifica che il riepilogo riporti l'entrata è del Task 7**, che è
 dove quella riga viene aggiunta.
 
-- [ ] **Step 3: Eseguire e verificare il fallimento**
+- [ ] **Step 2: Eseguire e verificare il fallimento**
 
 Run: `pnpm test src/app/\(dashboard\)/richieste/nuova/nuova-client.test.tsx`
 Expected: FAIL — nessun radio con nome «entrata».
 
-- [ ] **Step 4: Togliere il default e allentare il tipo del form**
+- [ ] **Step 3: Togliere il default e allentare il tipo del form**
 
 In `nuova-client.tsx`, rimuovere da `ARTECH_DEFAULT` la riga temporanea `entrata: "E15",` inserita nel Task 1, e cambiarne il tipo:
 
@@ -947,9 +938,9 @@ const ARTECH_DEFAULT: ArtechFormValues = {
 
 Sostituire nel file le annotazioni `KitInput` dello **stato** con `FormValues` (`useState<FormValues>`, `Dispatch<SetStateAction<FormValues>>` in `makeUpdate`, e i tipi dei componenti di step ARTECH da `ArtechKitInput` a `ArtechFormValues`). `pnpm typecheck` elenca i punti esatti. La chiamata a `api.kit.create.useMutation` continua a ricevere l'output **parsato** dallo schema, non lo stato: nessun `as KitInput` nuovo.
 
-Aggiungere l'import: `import { ENTRATE, type Entrata } from "@/server/kit/types";` e `import { entrataLabel } from "@/lib/kit-labels";`.
+Aggiungere l'import: `import { ENTRATE, type Entrata } from "@/server/kit/types";` e `import { entrataLabel } from "@/server/kit/types";` — la stessa che usa il motore.
 
-- [ ] **Step 5: Aggiungere `entrata` allo schema del passo**
+- [ ] **Step 4: Aggiungere `entrata` allo schema del passo**
 
 In `STEP_SCHEMAS.ARTECH`, terzo elemento:
 
@@ -963,7 +954,7 @@ In `STEP_SCHEMAS.ARTECH`, terzo elemento:
     }),
 ```
 
-- [ ] **Step 6: Aggiungere il fieldset**
+- [ ] **Step 5: Aggiungere il fieldset**
 
 In `Step3ManoFinitura`, **fra** il fieldset «Geometria del serramento» e quello «Sede degli incontri» — l'ordine in cui le tre quote si leggono sul disegno:
 
@@ -1004,17 +995,17 @@ In `Step3ManoFinitura`, **fra** il fieldset «Geometria del serramento» e quell
 proprio hint con `aria-describedby` e `useId`. Aggiungere un ruolo ARIA sopra a
 markup nativo che fa già la cosa giusta è il modo tipico di romperla.
 
-- [ ] **Step 7: Eseguire i test del wizard**
+- [ ] **Step 6: Eseguire i test del wizard**
 
 Run: `pnpm test src/app/\(dashboard\)/richieste/nuova/nuova-client.test.tsx`
 Expected: PASS
 
-- [ ] **Step 8: Gate completo**
+- [ ] **Step 7: Gate completo**
 
 Run: `pnpm typecheck && pnpm lint && pnpm test`
 Expected: tutti verdi.
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add -A
@@ -1088,7 +1079,7 @@ In `dettaglio-client.tsx`, dentro il ramo `r.geometry !== null`, dopo lo `<Spec 
                   )}
 ```
 
-Aggiungere `entrataLabel` all'import da `@/lib/kit-labels`.
+Aggiungere `entrataLabel` all'import da `@/server/kit/types` (il file importa già `geometriaLabel` da `@/server/kit/artech-geometrie`: stesso schema).
 
 - [ ] **Step 4: Aggiungere la riga al riepilogo del wizard**
 
