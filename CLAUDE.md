@@ -329,20 +329,24 @@ Collaterale importante: estraendo tutti i formati dalle 959 pagine esistono solo
 falso sulla richiesta). Domande 3b e 4 per AGB riscritte come **dimostrate**. Gate: typecheck·lint·**test
 660**·browser **14/14** desktop e 375px. Nessuna migrazione, nessuna azione ops.
 
-**▶ PROSSIMA SESSIONE — PERFEZIONARE L'ANTA-RIBALTA** (scelta utente). È il **pilota**, la tipologia
-più usata dagli agenti, e l'**unico modulo mai trascritto da uno schema di montaggio**: nasce da una
-distinta reale AGB del 16/11/2021, e la bonifica ne ha corretto i codici contro le tabelle prezzi ma non
-ha mai fatto il confronto voce-per-voce con la pagina-schema. **Aggancio già misurato**: lo schema
-`p0406 (404)` elenca **22 voci**, il modulo emette **16 posizioni** — sei non trovano corrispondenza
-evidente (2 DSS · 9 doppio nottolino a fungo · 17 incontri microventilazione · 19-20 spessori di
-sollevamento · 22 copertura per incontro nottolino), alcune verosimilmente opzionali. È lo stesso
-confronto che ha smascherato il battente (21 voci, 5 righe). **Nodo che decide tutto: domanda 4**
-(sede 18 vs sede 30 — tutti gli schemi 2026 sono «sede 30 mm» e 22 pagine ci rimandano; per la sede 18
-non esiste pagina-schema) e **domanda 3b**, ora dimostrata (esistono solo i formati `9x18`/`9x20`/`13x24`/
-`13x30`: **`13x18` non esiste**, ma il pilota dichiara interasse 13 + sede 18 e monta la famiglia `.05`
-= 9x18). Fronti **non bloccati** anche senza risposta AGB: trascrizione di p0406 · `openingDir` mai letto
-da nessun modulo (domanda 16) · coperture oltre ARGENTO · finestre basse HBB 357-609 · offset altezza→HBB
-divergente fra anta-ribalta (−10) e vasistas (0). **Non rompere il golden: 16 righe / 21 pezzi / 90,20 €.**
-Alternative pronte: **Galileo Pro scorrevole** (pp. 812-883, sblocca SCORREVOLE e l'alluminio vero;
-`SCORREVOLE_TRASLANTE` è già nell'enum) · **fix `dedupeRows`** · **battente** · **anta doppia** (ora meno
-bloccata: `seatMm` arriva a 30). Prompt di apertura e lezioni operative: `handoff.md` §RIPRENDI DA QUI.
+**▶ PROSSIMA SESSIONE — PERFEZIONARE L'ANTA-RIBALTA.** Il pilota copre **UNA SOLA** configurazione
+(aria 12 / interasse 13 / battuta 20 / sede 18) e un agente vero si è già visto **rifiutare** una
+finestra legittima (700×1400, battuta 18, **sede 30**) — rifiuto corretto, ma la sua configurazione è
+a listino ed è **più coerente della nostra**: `asse 13 + sede 30` = formato `13x30`, che esiste, mentre
+`asse 13 + sede 18` non esiste in 959 pagine; e per la sede 30 c'è una **pagina-schema stampata**
+(`p0406 (404)`), per la sede 18 no. **Mappa delle dipendenze ricostruita** (in `handoff.md`): cremonese
+← **entrata** × HBB · braccio forbice ← **battuta × interasse** (suffisso `.34` = battuta 18/interasse 13,
+`.36` = battuta 20/interasse 13) · squadra angolare ← **aria × battuta** · supporto cerniera ← **aria ×
+interasse × battuta** · incontri ← **aria × (asse × sede)** · fusto/movimento/supporti/coperture/chiusure
+non toccati. **Coprire battuta 18 + sede 30 costa cinque codici**, tutti già a listino e prezzati
+(`.36`→`.34`, `A50805.05`→`A50804.05`, squadra riga aria 12/battuta 18, incontri `.05`→`.MN`): **non serve
+attendere AGB**, manca solo il riscontro di una distinta reale. **🔴 SCOPERTA — quinto parametro mai
+notato: l'ENTRATA.** Il cremonese esiste in entrata **0/8/15** e il motore usa sempre la **15 cablata**,
+senza guardia, perché il campo non esiste nell'input: un serramento entrata 8 riceve **in silenzio** il
+cremonese sbagliato. Stessa classe di bug della bonifica, sopravvissuta dove nessuno guardava. Resta poi
+il confronto voce-per-voce con `p0406 (404)`: **22 voci a schema, 16 posizioni emesse**, sei senza
+corrispondenza (2 DSS · 9 doppio nottolino a fungo · 17 microventilazione · 19-20 spessori di sollevamento ·
+22 copertura incontro). **Non rompere il golden: 16 righe / 21 pezzi / 90,20 €.** Domande in parole semplici
+per un agente esperto: `docs/superpowers/kit-assunzioni/DOMANDE-APERTE.md` (la **16** — se esiste una
+distinta reale per battuta 18/sede 30 diventa il **secondo golden**). Prompt di apertura, tabelle e lezioni
+operative: `handoff.md` §RIPRENDI DA QUI.
