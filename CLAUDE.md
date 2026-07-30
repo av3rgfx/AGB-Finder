@@ -329,24 +329,59 @@ Collaterale importante: estraendo tutti i formati dalle 959 pagine esistono solo
 falso sulla richiesta). Domande 3b e 4 per AGB riscritte come **dimostrate**. Gate: typecheck·lint·**test
 660**·browser **14/14** desktop e 375px. Nessuna migrazione, nessuna azione ops.
 
-**▶ PROSSIMA SESSIONE — PERFEZIONARE L'ANTA-RIBALTA.** Il pilota copre **UNA SOLA** configurazione
-(aria 12 / interasse 13 / battuta 20 / sede 18) e un agente vero si è già visto **rifiutare** una
-finestra legittima (700×1400, battuta 18, **sede 30**) — rifiuto corretto, ma la sua configurazione è
-a listino ed è **più coerente della nostra**: `asse 13 + sede 30` = formato `13x30`, che esiste, mentre
-`asse 13 + sede 18` non esiste in 959 pagine; e per la sede 30 c'è una **pagina-schema stampata**
-(`p0406 (404)`), per la sede 18 no. **Mappa delle dipendenze ricostruita** (in `handoff.md`): cremonese
-← **entrata** × HBB · braccio forbice ← **battuta × interasse** (suffisso `.34` = battuta 18/interasse 13,
-`.36` = battuta 20/interasse 13) · squadra angolare ← **aria × battuta** · supporto cerniera ← **aria ×
-interasse × battuta** · incontri ← **aria × (asse × sede)** · fusto/movimento/supporti/coperture/chiusure
-non toccati. **Coprire battuta 18 + sede 30 costa cinque codici**, tutti già a listino e prezzati
-(`.36`→`.34`, `A50805.05`→`A50804.05`, squadra riga aria 12/battuta 18, incontri `.05`→`.MN`): **non serve
-attendere AGB**, manca solo il riscontro di una distinta reale. **🔴 SCOPERTA — quinto parametro mai
-notato: l'ENTRATA.** Il cremonese esiste in entrata **0/8/15** e il motore usa sempre la **15 cablata**,
-senza guardia, perché il campo non esiste nell'input: un serramento entrata 8 riceve **in silenzio** il
-cremonese sbagliato. Stessa classe di bug della bonifica, sopravvissuta dove nessuno guardava. Resta poi
-il confronto voce-per-voce con `p0406 (404)`: **22 voci a schema, 16 posizioni emesse**, sei senza
-corrispondenza (2 DSS · 9 doppio nottolino a fungo · 17 microventilazione · 19-20 spessori di sollevamento ·
-22 copertura incontro). **Non rompere il golden: 16 righe / 21 pezzi / 90,20 €.** Domande in parole semplici
-per un agente esperto: `docs/superpowers/kit-assunzioni/DOMANDE-APERTE.md` (la **16** — se esiste una
-distinta reale per battuta 18/sede 30 diventa il **secondo golden**). Prompt di apertura, tabelle e lezioni
-operative: `handoff.md` §RIPRENDI DA QUI.
++ **SETTE GEOMETRIE REALI ✅ (PR #38 + #39 MERGIATE)**: un agente intervistato disse che il
+generatore non era funzionale — verificato eseguendo il codice, i suoi **tre clienti principali
+erano tutti rifiutati** (MC aria 4/interasse **8,5**/battuta 15, respinto da zod perché 8,5 non è
+intero; Peruzzi aria 4/interasse 9/battuta 18; Fosca aria 12/interasse 13/battuta **18**), mentre
+il motore copriva una **quarta** combinazione che nessuno dei tre ordina. **Causa radice: due
+quote, un nome** — a `p0474 (472)` AGB pubblica due tabelle adiacenti, stessa pagina e stesse
+famiglie, intitolate «sede telaio 18/24/30» e «BATTUTA 18/20/24/30»: «battuta» indica quindi sia
+la battuta dell'anta (15/18/20 → `.22`/`.24`/`.26`/`.34`/`.36`) sia la sede telaio (18/20/24/30 →
+`.05`/`.12`/`.CR`/`.MN`), e l'agente nomina solo la prima. Entrarono: `geometry: ArtechGeometry`
+(7 valori) + `seatConfig` al posto di 4 campi numerici liberi · **sede derivata** e mostrata, non
+più chiesta · tabelle di **codici interi** (`A50904.22` **non esiste**) · **ricalcolo versionato**
+garantito nel router (una distinta emessa non si riscrive: se ne crea una nuova versione) · **gate
+su catalogo reale**. Test **709**.
++ **ENTRATA MANIGLIA ✅ (PR #40 MERGIATA, ops eseguite)**, branch `claude/handoff-workflow-choice-u7hvc9`: chiude
+l'ultimo parametro che il motore decideva da sé. La cremonese era cablata in **entrata 15**
+(`A50122.15.NN`) dalla Fase 1d, senza guardia, perché il campo **non esisteva nell'input**: un
+serramento a entrata 7,5 riceveva **in silenzio** il codice della 15 — che esiste, ha un prezzo e
+non produce warning. Sul GR07 del golden vale **6,09 € su 90,20 €** (+38 % sulla riga).
+**L'handoff descriveva l'asse sbagliato** («0, 8 e 15»): a `p0424 (422)` la colonna ENTRATA è
+`1) 7,5` · `2) 15` · `3) Asta*` — `.08` è l'entrata **7,5** e `.00` **non è un'entrata** ma la
+versione ad asta, senza DSS né monoblocco martellina; conferma trovata **nei dati** (il nome a
+catalogo di `A50122.08.07` è «per schema A **1) 7,5**»). Cosa c'è: `entrata: "E75" | "E15"` sul
+ramo ARTECH, **ortogonale** a `geometry` (un test prova che cambia SOLO la riga della cremonese) ·
+**nessun valore preselezionato** — un default sarebbe lo stesso silenzio in un posto più visibile ·
+tabelle di **codici interi** per entrata · colonna `kit_requests.entrata` nullable + backfill
+`E15` sulle sole righe ARTECH · trasporto da **entrambe** le mutation (`create` **e** `ricalcola`) ·
+rilettura **senza fallback** · **vasistas rifiuta** l'entrata 7,5 (due NB di `p0426 (424)` tolgono
+le forbici su 4 GR su 6 senza indicare il sostituto) e il wizard **la disabilita** invece di farla
+scegliere e fallire dopo · battente: `p0429 (427)` pubblica una sola entrata, l'asse lì non esiste.
+**Chiuso anche il buco che aveva lasciato passare il bug**: le liste di `no-silent-fields.test.ts`
+erano scritte a mano e nulla verificava che coprissero lo schema — ora un campo non dichiarato fa
+fallire il test col proprio nome (e ha scovato subito che la vasistas ignora
+`supplementaryClosures`, legittimo e ora dichiarato). Gate: typecheck·lint·**test 748**·build ·
+**gate su catalogo reale 29 casi** · **browser 375px e desktop**. Distinte reali su catalogo
+importato (7.488 prodotti): entrata 15 → **16 righe / 21 pezzi / 90,20 €** (golden invariato) ·
+entrata 7,5 → **16 / 21 / 96,29 €**, cremonese `A50122.08.07`, zero warning. **AZIONI OPS ESEGUITE**
+(run `30572337032`, 2026-07-30 19:11Z, 12/12 verdi: migrate `20260730160444_kit_entrata` + import
++ seed + embed). ⚠️ **Lezione pagata sul campo**: fra il merge (18:33Z) e la migrazione (18:53Z)
+la produzione è rimasta **rotta venti minuti** — `kit.get` fa `findFirst` senza `select`, quindi
+prima della migrazione fallivano le **letture**, non solo le creazioni. Alla prossima migrazione
+il run ops parte **nella stessa finestra del merge**: scriverlo nella PR non basta.
+Spec/piano: `docs/superpowers/{specs,plans}/2026-07-30-kit-entrata*`.
+
+**▶ PROSSIMA SESSIONE — SCELTA FRA TRE STRADE.** L'entrata era la quarta di quattro ed è fatta.
+Restano: **scontistica cliente** (la consigliata — oggi i totali sono il **lordo di listino AGB**,
+non ciò che il cliente paga, e `Customer` ha già a schema `discount`/`priceList`/`paymentTerms`
+inutilizzati) · **schemi cliente + composer chiusure** (§3.5-3.7 della spec 2026-07-29) · **varianti
+componenti** (la spec le tiene fuori scope finché la distinta è incompleta). **Prima di scegliere**: la PR #40 è mergiata e le ops sono eseguite, quindi resta una sola
+domanda — **sono arrivate le tre
+distinte reali** di MC, Peruzzi e Fosca? Aperta da due sessioni, è la cosa che vale di più: senza,
+i tre clienti principali ricevono distinte mai confrontate con un ordine vero, e la formula della
+corsa delle chiusure resta una retta tirata per un punto solo. Debito noto e circoscritto: il gate
+fissa `widthMm: 550` → esercita 1 banda su 5 di `FORBICI` e 1 su 4 di `BRACCI_GRUPPI` (chiusura ~15
+righe, stessa forma del test appena scritto) · `no-silent-fields` non è legato a `RULE_MODULES` ·
+`dedupeRows` last-wins. Dettagli, lezioni operative e prompt di apertura: `handoff.md`
+§RIPRENDI DA QUI.
