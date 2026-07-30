@@ -13,7 +13,12 @@ vi.mock("@/trpc/react", () => ({
     customer: {
       list: { useQuery: (...args: unknown[]) => listQuery(...args) },
       create: {
-        useMutation: () => ({ mutateAsync: createMutate, isPending: false, isError: false, error: null }),
+        useMutation: () => ({
+          mutateAsync: createMutate,
+          isPending: false,
+          isError: false,
+          error: null,
+        }),
       },
     },
     useUtils: () => ({ customer: { list: { invalidate: invalidateList } } }),

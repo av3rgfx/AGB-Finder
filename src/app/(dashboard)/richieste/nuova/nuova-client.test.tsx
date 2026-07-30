@@ -20,7 +20,25 @@ vi.mock("@/trpc/react", () => ({
     customer: {
       list: {
         useQuery: () => ({
-          data: [{ id: "c1", companyName: "Fosca", discount: 42.5 }],
+          // Due clienti, e di proposito diversi: Fosca HA un profilo serramento,
+          // Peruzzi no. Serve a provare che il blocco «Usa il profilo» e la riga
+          // di divergenza compaiano solo quando c'è qualcosa da confrontare.
+          data: [
+            {
+              id: "c1",
+              companyName: "Fosca",
+              discount: 42.5,
+              kitGeometry: "A12_I13_B18",
+              kitEntrata: "E15",
+            },
+            {
+              id: "c2",
+              companyName: "Peruzzi",
+              discount: null,
+              kitGeometry: null,
+              kitEntrata: null,
+            },
+          ],
           isPending: false,
         }),
       },
@@ -665,5 +683,92 @@ describe("NuovaRichiestaClient — il cliente", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
     expect(screen.getByText(/Fosca · sconto 42,5%/)).toBeTruthy();
+  });
+
+  // PROFILO SERRAMENTO. Nulla è preselezionato: il profilo del cliente si
+  // applica con un clic esplicito. È la sintesi del council — stessa ergonomia
+  // della precompilazione, ma il riempimento resta un atto dell'agente.
+  it("«Usa il profilo» riempie geometria ed entrata in un colpo", () => {
+    render(<NuovaRichiestaClient />);
+    fireEvent.click(screen.getByRole("button", { name: /fosca/i }));
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // 1 → 2
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // 2 → 3
+
+    const geometria = screen.getByRole("group", { name: /geometria/i });
+    const entrataGruppo = screen.getByRole("group", { name: /entrata maniglia/i });
+    // Prima del clic: nulla scelto.
+    expect(
+      (within(geometria).getAllByRole("radio") as HTMLInputElement[]).some((r) => r.checked),
+    ).toBe(false);
+
+    fireEvent.click(screen.getByRole("button", { name: /usa il profilo/i }));
+
+    expect(
+      (within(geometria).getByLabelText(geometriaLabel("A12_I13_B18")) as HTMLInputElement).checked,
+    ).toBe(true);
+    expect(
+      (within(entrataGruppo).getByRole("radio", { name: /15 mm/i }) as HTMLInputElement).checked,
+    ).toBe(true);
+  });
+
+  it("senza profilo il blocco non compare affatto", () => {
+    render(<NuovaRichiestaClient />);
+    fireEvent.click(screen.getByRole("button", { name: /peruzzi/i }));
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
+    expect(screen.queryByRole("button", { name: /usa il profilo/i })).toBeNull();
+  });
+
+  it("senza cliente il blocco non compare affatto", () => {
+    render(<NuovaRichiestaClient />);
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
+    expect(screen.queryByRole("button", { name: /usa il profilo/i })).toBeNull();
+  });
+
+  /** Porta al riepilogo scegliendo cliente, geometria ed entrata. */
+  function alRiepilogo(opts: {
+    cliente?: RegExp;
+    geometry: ArtechGeometryId;
+    entrata: RegExp;
+  }) {
+    render(<NuovaRichiestaClient />);
+    if (opts.cliente !== undefined)
+      fireEvent.click(screen.getByRole("button", { name: opts.cliente }));
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // 1 → 2
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // 2 → 3
+    scegliGeometria(opts.geometry);
+    fireEvent.click(
+      within(screen.getByRole("group", { name: /entrata maniglia/i })).getByRole("radio", {
+        name: opts.entrata,
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // 3 → 4
+  }
+
+  // LA DIVERGENZA. Constata, non blocca: non sa quale delle due dichiarazioni
+  // sia giusta — il profilo l'ha scritto lo stesso agente, a memoria. Ma e' il
+  // primo rilevatore d'errore che il sistema possieda.
+  it("il riepilogo segnala la divergenza dal profilo del cliente", () => {
+    // Fosca ha profilo A12_I13_B18 / E15; l'agente sceglie A12_I13_B20 / 7,5.
+    alRiepilogo({ cliente: /fosca/i, geometry: "A12_I13_B20", entrata: /7,5 mm/i });
+    expect(screen.getByText(/diverso dal profilo di Fosca/i)).toBeTruthy();
+    // Mostra i valori DEL PROFILO: sono cio' con cui confrontarsi.
+    expect(screen.getByText(new RegExp(geometriaLabel("A12_I13_B18")))).toBeTruthy();
+  });
+
+  it("non segnala nulla se la scelta coincide col profilo", () => {
+    alRiepilogo({ cliente: /fosca/i, geometry: "A12_I13_B18", entrata: /15 mm/i });
+    expect(screen.queryByText(/diverso dal profilo/i)).toBeNull();
+  });
+
+  it("non segnala nulla se il cliente non ha profilo", () => {
+    alRiepilogo({ cliente: /peruzzi/i, geometry: "A12_I13_B20", entrata: /7,5 mm/i });
+    expect(screen.queryByText(/diverso dal profilo/i)).toBeNull();
+  });
+
+  it("non segnala nulla senza cliente", () => {
+    alRiepilogo({ geometry: "A12_I13_B20", entrata: /7,5 mm/i });
+    expect(screen.queryByText(/diverso dal profilo/i)).toBeNull();
   });
 });

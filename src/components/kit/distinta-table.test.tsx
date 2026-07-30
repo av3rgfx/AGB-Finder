@@ -11,8 +11,28 @@ import { DistintaTable } from "./distinta-table";
 afterEach(cleanup);
 
 const components = [
-  { id: "c1", componentCode: "A50122.15.07", componentName: "CREMONESE ARTECH", position: "cremonese", quantity: 1, unitPrice: 13.655, totalPrice: 13.655, ruleDescription: "Cremonese per H 1820", listinoPage: 418 },
-  { id: "c2", componentCode: "A51401.05.02", componentName: "INC NOTT", position: "incontri-nottolino", quantity: 5, unitPrice: 0.677, totalPrice: 3.385, ruleDescription: "Incontri nottolino", listinoPage: null },
+  {
+    id: "c1",
+    componentCode: "A50122.15.07",
+    componentName: "CREMONESE ARTECH",
+    position: "cremonese",
+    quantity: 1,
+    unitPrice: 13.655,
+    totalPrice: 13.655,
+    ruleDescription: "Cremonese per H 1820",
+    listinoPage: 418,
+  },
+  {
+    id: "c2",
+    componentCode: "A51401.05.02",
+    componentName: "INC NOTT",
+    position: "incontri-nottolino",
+    quantity: 5,
+    unitPrice: 0.677,
+    totalPrice: 3.385,
+    ruleDescription: "Incontri nottolino",
+    listinoPage: null,
+  },
 ];
 
 describe("DistintaTable", () => {
@@ -23,7 +43,12 @@ describe("DistintaTable", () => {
   });
 
   it("mostra i warning quando presenti", () => {
-    render(<DistintaTable components={components} warnings={["Codice X non a listino: verificare con AGB."]} />);
+    render(
+      <DistintaTable
+        components={components}
+        warnings={["Codice X non a listino: verificare con AGB."]}
+      />,
+    );
     expect(screen.getByRole("alert").textContent).toContain("non a listino");
   });
 
