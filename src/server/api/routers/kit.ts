@@ -163,36 +163,70 @@ export const kitRouter = createTRPCRouter({
       });
       const requestNumber = `KIT-${year}-${String(inYear + 1).padStart(4, "0")}`;
 
-      // Copia campo per campo (niente spread): la nuova riga è l'input della
-      // sua prima generazione, e un campo dimenticato qui produrrebbe una
-      // distinta diversa in silenzio quando il chiamante fa `kit.generate`.
-      const nuova = await ctx.db.kitRequest.create({
+      // Le due scritture (nuova riga + marcatura della vecchia) devono riuscire
+      // o fallire insieme: senza transazione, un fallimento della seconda
+      // lascerebbe una riga DRAFT orfana (non collegata dalla vecchia, mai
+      // restituita al chiamante). `generate` sopra usa già `$transaction` per
+      // lo stesso motivo — qui va nella forma a callback perché la seconda
+      // scrittura dipende dall'id appena creato dalla prima.
+      const nuova = await ctx.db.$transaction(async (tx) => {
+        // Copia campo per campo (niente spread): la nuova riga è l'input della
+        // sua prima generazione, e un campo dimenticato qui produrrebbe una
+        // distinta diversa in silenzio quando il chiamante fa `kit.generate`.
+        const creata = await tx.kitRequest.create({
+          data: {
+            windowType: request.windowType,
+            widthMm: request.widthMm,
+            heightMm: request.heightMm,
+            material: request.material,
+            finish: request.finish,
+            series: request.series,
+            sashWeightKg: request.sashWeightKg,
+            geometry: request.geometry,
+            seatConfig: request.seatConfig,
+            openingSide: request.openingSide,
+            openingDir: request.openingDir,
+            supplementaryClosures: request.supplementaryClosures,
+            tourSchema: request.tourSchema,
+            notes: request.notes,
+            customerId: request.customerId,
+            requestNumber,
+            status: "DRAFT",
+            agentId: ctx.session.user.id,
+          },
+        });
+
+        // `updateMany` condizionato invece di `update`: il check fail-fast sopra
+        // (`if (request.supersededById) throw …`) è un check-then-act — due
+        // `ricalcola` concorrenti sulla stessa riga possono superarlo entrambi.
+        // Condizionando la scrittura a `supersededById: null` la seconda
+        // chiamata trova `count === 0` (la prima ha già marcato la riga) e fa
+        // fallire l'intera transazione, scartando anche la riga appena creata:
+        // nessun orfano.
+        const marcate = await tx.kitRequest.updateMany({
+          where: { id: request.id, supersededById: null },
+          data: { supersededById: creata.id },
+        });
+        if (marcate.count === 0)
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Questa richiesta è già stata ricalcolata: aprire la versione più recente.",
+          });
+
+        return creata;
+      });
+
+      await ctx.db.activityLog.create({
         data: {
-          windowType: request.windowType,
-          widthMm: request.widthMm,
-          heightMm: request.heightMm,
-          material: request.material,
-          finish: request.finish,
-          series: request.series,
-          sashWeightKg: request.sashWeightKg,
-          geometry: request.geometry,
-          seatConfig: request.seatConfig,
-          openingSide: request.openingSide,
-          openingDir: request.openingDir,
-          supplementaryClosures: request.supplementaryClosures,
-          tourSchema: request.tourSchema,
-          notes: request.notes,
-          customerId: request.customerId,
-          requestNumber,
-          status: "DRAFT",
-          agentId: ctx.session.user.id,
+          userId: ctx.session.user.id,
+          type: "KIT_REQUEST_CREATED",
+          description: `Richiesta kit ${nuova.requestNumber} (nuova versione di ${request.requestNumber})`,
+          resourceType: "kit_request",
+          resourceId: nuova.id,
         },
       });
-      await ctx.db.kitRequest.update({
-        where: { id: request.id },
-        data: { supersededById: nuova.id },
-      });
-      return { id: nuova.id, requestNumber };
+
+      return { id: nuova.id, requestNumber: nuova.requestNumber };
     }),
 
   get: agentProcedure.input(z.object({ id: z.string().min(1) })).query(async ({ ctx, input }) => {

@@ -9,6 +9,7 @@ const requestCreate = vi.fn();
 const requestFindFirst = vi.fn();
 const requestFindMany = vi.fn();
 const requestUpdate = vi.fn();
+const requestUpdateMany = vi.fn();
 const requestCount = vi.fn();
 const componentDeleteMany = vi.fn();
 const componentCreateMany = vi.fn();
@@ -18,7 +19,7 @@ const activityCreate = vi.fn();
 const transaction = vi.fn();
 
 const dbStub = {
-  kitRequest: { create: requestCreate, findFirst: requestFindFirst, findMany: requestFindMany, update: requestUpdate, count: requestCount },
+  kitRequest: { create: requestCreate, findFirst: requestFindFirst, findMany: requestFindMany, update: requestUpdate, updateMany: requestUpdateMany, count: requestCount },
   kitComponent: { deleteMany: componentDeleteMany, createMany: componentCreateMany },
   kitTemplate: { findFirst: templateFindFirst },
   product: { findMany: productFindMany },
@@ -43,11 +44,23 @@ const validInput = {
 } as const;
 
 beforeEach(() => {
-  for (const fn of [requestCreate, requestFindFirst, requestFindMany, requestUpdate, requestCount, componentDeleteMany, componentCreateMany, templateFindFirst, productFindMany, activityCreate, transaction]) {
+  for (const fn of [requestCreate, requestFindFirst, requestFindMany, requestUpdate, requestUpdateMany, requestCount, componentDeleteMany, componentCreateMany, templateFindFirst, productFindMany, activityCreate, transaction]) {
     fn.mockReset();
   }
   activityCreate.mockResolvedValue({});
-  transaction.mockImplementation((ops: unknown[]) => Promise.all(ops as Promise<unknown>[]));
+  requestUpdateMany.mockResolvedValue({ count: 1 });
+  // Il mock supporta entrambe le forme di `$transaction` usate nel router:
+  // l'array (`generate`, batch indipendente) e la callback interattiva
+  // (`ricalcola`, dove la seconda scrittura dipende dall'id creato dalla
+  // prima). Se l'argomento è una funzione la si invoca passandole lo stub
+  // del db (stessi mock condivisi, quindi le asserzioni sui singoli metodi
+  // restano valide dentro o fuori dalla transazione); altrimenti si
+  // comporta come prima.
+  transaction.mockImplementation((arg: unknown) =>
+    typeof arg === "function"
+      ? (arg as (tx: typeof dbStub) => Promise<unknown>)(dbStub)
+      : Promise.all(arg as Promise<unknown>[]),
+  );
 });
 
 describe("kit.create", () => {
@@ -302,10 +315,45 @@ describe("kit.ricalcola", () => {
         data: expect.objectContaining({ status: "DRAFT", geometry: validInput.geometry }),
       }),
     );
-    expect(requestUpdate).toHaveBeenCalledWith({
-      where: { id: "req1" },
+    expect(requestUpdateMany).toHaveBeenCalledWith({
+      where: { id: "req1", supersededById: null },
       data: { supersededById: "req2" },
     });
+    expect(activityCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        type: "KIT_REQUEST_CREATED",
+        resourceId: "req2",
+      }),
+    });
+  });
+
+  it("marcatura concorrente (count 0) → CONFLICT, nessun orfano", async () => {
+    // Simula due `ricalcola` concorrenti sulla stessa riga: il check fail-fast
+    // in cima (`if (request.supersededById)`) è check-then-act e può essere
+    // superato da entrambe. La garanzia vera è la `updateMany` condizionata
+    // dentro la transazione — qui la si fa fallire (count 0, come se un'altra
+    // chiamata avesse già marcato la riga) e si verifica che l'intera
+    // transazione (quindi anche la `create`) venga rigettata: nessuna riga
+    // orfana, nessun log d'audit per una versione mai davvero creata.
+    requestFindFirst.mockResolvedValue({
+      ...validInput,
+      id: "req1",
+      requestNumber: "KIT-2026-0001",
+      status: "COMPLETED",
+      supersededById: null,
+      customerId: null,
+      tourSchema: null,
+      sashWeightKg: null,
+      notes: null,
+    });
+    requestCreate.mockResolvedValue({ id: "req2", requestNumber: "KIT-2026-0008" });
+    requestUpdateMany.mockResolvedValue({ count: 0 });
+
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await expect(caller.kit.ricalcola({ kitRequestId: "req1" })).rejects.toMatchObject({
+      code: "CONFLICT",
+    });
+    expect(activityCreate).not.toHaveBeenCalled();
   });
 
   it("copia tutti i campi necessari a rigenerare (nessun campo dimenticato)", async () => {
