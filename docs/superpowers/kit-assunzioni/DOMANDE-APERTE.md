@@ -3,8 +3,9 @@
 > Sostituisce le due liste separate (AGB da una parte, agente dall'altra). La **numerazione è
 > globale e va conservata**: i commenti nel codice rimandano per numero («domanda 4 per
 > l'esperto»). Le 1-16 esistevano già; le **17-23** nascono dalla verifica del 2026-07-27; le
-> **24-26** dal lavoro sulle sette geometrie del 2026-07-29; la **27** dal lavoro sull'entrata maniglia
-> e la **28** dalla scontistica cliente, entrambe del 2026-07-30.
+> **24-26** dal lavoro sulle sette geometrie del 2026-07-29; la **27** dal lavoro sull'entrata maniglia,
+> la **28** dalla scontistica cliente e la **29** dal profilo serramento del cliente, tutte e tre
+> del 2026-07-30.
 >
 > ⚠️ Questo è l'**unico** indice della numerazione globale: le schede per tipologia
 > (`legno.md`, `tour.md`, …) discutono le domande nel merito ma **non** ricopiano l'elenco —
@@ -31,6 +32,7 @@
 | 19 | Quali combinazioni ordinate più spesso | agente | 🟡 ordine di priorità del lavoro |
 | 23 | La finestra 700×1400 battuta 18 sede 30 | agente | 🟡 **secondo golden**, se esiste |
 | 26 | Il nottolino di Fosca vuole una copertura | agente o AGB | 🟡 una riga mancante sulle geometrie nuove |
+| **29** | **«Incontro nottolino incassato»: quale dei tre assi?** | agente | 🟡 **tre assi che il motore cabla senza chiederli** |
 | 25 | Confezioni: si applica il +20% fuori confezione? | AGB o ufficio | 🟡 **i totali di ogni distinta** |
 | 28 | Lo sconto è unico per cliente, o per classe? | AGB o ufficio | 🟡 **il netto di ogni distinta** |
 | 24 | Interasse 8,5: quali incontri? | agente o AGB | 🟡 la famiglia incontri del cliente «MC» |
@@ -166,6 +168,58 @@ Una risposta per riga, anche solo «sempre» o «a richiesta»:
 
 *Sono cinque delle sei voci che compaiono sullo schema di montaggio ma che il programma oggi non
 emette. Sapere quali sono opzionali chiude la questione.*
+
+**I codici che fanno scattare la copertura** (verificati 2026-07-30, listino 2026):
+
+| Codice emesso | Dove | Marcato |
+|---|---|---|
+| `A51400.CR.13` | incontro nottolino 13x24 — è la geometria **`A12_I13_B18`, cioè Fosca** | `(*)` |
+| `A51400.05.70` | incontro **ribalta** 9x18 — è quello del **golden** | `*` |
+| `A51400.CR.70` | incontro ribalta 13x24 | `*` |
+
+`(*)`/`*` = «ordinare coperture separatamente» (p0469 (467) e p0471 (469)). Coperture:
+`A52102.01.44` (grigio RAL 7040) o `.87` (antracite), **0,39 €**.
+
+Il golden è un ordine **reale** del 16/11/2021 a 16 righe: o la copertura è facoltativa nella
+pratica, o il listino 2021 differiva. **Non si tocca il golden** su questa base — è la ragione per
+cui la domanda resta aperta invece di essere «risolta» aggiungendo righe.
+
+*Nota di lettura:* `A52102.05.44` **non** è una copertura viti nonostante la famiglia — a catalogo
+si chiama «Inserto DSS per incontri con copertura».
+
+## 29 — «Incontro nottolino incassato»: quale dei tre assi?
+
+**Da dove nasce:** richiesta dell'utente, 2026-07-30. I clienti esprimono una preferenza per
+l'incontro nottolino **incassato**, descritto così: «sagomato per essere inserito **a filo nel
+telaio tramite fresatura**, con scasso eseguito a fresa o pantografo, viti a testa ridotta»,
+scelto per **mano DX/SX**.
+
+**Il problema:** la parola «incassato» compare **due volte in 959 pagine**, entrambe fuori
+contesto — p0590 (588) per un *binario*, p0628 (626) per una *serratura*. Non è mappabile a un
+codice. Il blocco incontri pubblica però **tre assi che il generatore cabla senza chiederli**:
+
+| # | Asse | Fonte | Codici | Cosa fa oggi il motore |
+|---|---|---|---|---|
+| **a** | **Corpo dell'incontro** — stesso formato 9x18, due pezzi fisicamente diversi | p0469 (467), voci **2** e **4** del disegno | `A51400.05.02` (piastrina stampata sottile) · `A51400.05.13` (corpo pieno con rampa) — **stesso prezzo 0,81 €** | emette **sempre** `.02` |
+| **b** | **Con perni di posizionamento Ø 8x3** | p0469 (467), p0471 (469), p0473 (471) | famiglia `A52200.*` — stessi formati, stesso prezzo, pubblicata per nottolino, ribalta **e** DSS | non la emette **mai** |
+| **c** | **Antieffrazione** | p0470 (468) — pagina **non citata** fra le fonti di `artech-incontri.ts` | `A514DX/SX.05.67` (viti inclinate) · `.68` (viti dritte) · `A522DX/SX.05.67` — **2,04-3,03 €** contro 0,81 | non la emette **mai** |
+
+**Due indizi si contraddicono, e vietano di indovinare:**
+
+1. La descrizione parla di **mano DX/SX**, ma gli incontri nottolino aria 12 standard (asse **a**)
+   sono **ambidestri**. Ad avere DX/SX per aria 12 è l'**antieffrazione** (**c**).
+2. «Fresatura» nel listino AGB è una caratterizzazione della **geometria**, non una variante
+   ordinabile: p0469 (467) scrive «Aria 4 - Asse 13 - **Fresatura** 23 mm» contro «Aria 12 -
+   Asse 13 - **Sede** 24 mm». E le dime esistono per entrambe («Per fresatura incontri aria 4»,
+   «Dima per fresatura a telaio per asse 9 - aria 12»).
+
+**Domanda:** quale dei tre? E se è **a**, occorre prima la domanda 20 — il `.13` richiede la
+copertura viti che oggi non emettiamo, quindi metterlo nel profilo di un cliente produrrebbe una
+distinta che sappiamo già incompleta.
+
+*Perché non è stato indovinato: scegliere l'asse sbagliato significa scrivere nel profilo di un
+cliente una preferenza che il motore applica alla riga sbagliata — cioè un campo raccolto,
+mostrato al cliente, e inerte.*
 
 ## 7 — Finestre basse
 Vi capitano finestre con altezza maniglia **sotto i 60 cm**? Se sì, come le ordinate?
@@ -352,9 +406,26 @@ modulo**. Va tolto dall'input o usato: è una decisione nostra.
 > 12. La **direzione di apertura** (tirare/spingere) cambia qualcosa nella ferramenta, o è solo
 >     un'informazione per il cliente?
 >
+> **Sull'incontro «incassato»** *(nuova, 2026-07-30)*
+>
+> 13. Quando dici **incontro nottolino incassato** — quello che va fresato nel telaio e sta a
+>     filo — a listino ne trovo **tre** che potrebbero essere quello, e il programma ne monta
+>     sempre uno solo senza chiedertelo. Ti mando la foto della pagina 467:
+>
+>     - il pezzo **2** del disegno (`A51400.05.02`, piastrina sottile) contro il pezzo **4**
+>       (`A51400.05.13`, corpo pieno con la rampa) — stesso formato 9x18, stesso prezzo;
+>     - quelli **«con perni di posizionamento Ø 8x3»** (`A52200.*`), che si piantano in due fori
+>       da 8 nel telaio;
+>     - quelli **antieffrazione** in acciaio o zama (pagina 468), che costano 2-3 € invece di 0,81.
+>
+>     Quale usate? E cambia da cliente a cliente, o è sempre lo stesso?
+>
+>     *(Me lo chiedo perché tu hai detto «si sceglie DX o SX», e i primi due sono ambidestri:
+>     ad avere destro e sinistro è l'antieffrazione. Non voglio indovinare.)*
+>
 > **Una in particolare**
 >
-> 13. La finestra **700 × 1400 con battuta 18 e sede 30** che abbiamo provato insieme: era una
+> 14. La finestra **700 × 1400 con battuta 18 e sede 30** che abbiamo provato insieme: era una
 >     richiesta vera? Se sì, **sai quale distinta è stata poi ordinata**? Anche una foto
 >     dell'ordine mi basta — con quella posso verificare il programma invece di fidarmi della mia
 >     lettura del listino.

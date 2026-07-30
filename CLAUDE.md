@@ -414,3 +414,46 @@ migrazione; il workflow esegue comunque tutti e quattro i passi, idempotenti. Nu
 listino ha **34 classi di sconto**, i codici ARTECH sono tutti **F3** e i TOUR tutti **T1** → una percentuale unica li
 tratta uguali (scelta consapevole, da riverificare con l'ufficio commerciale).
 Spec/piano: `docs/superpowers/{specs,plans}/2026-07-30-scontistica-cliente*`.
+
++ **PROFILO SERRAMENTO DEL CLIENTE ✅ (branch `claude/distinte-schema-cliente-6qhe7o`, PR da aprire)**:
+il wizard chiedeva **geometria ed entrata a ogni richiesta**, fra 14 combinazioni, e sbagliarle non produce alcun
+errore — i codici dell'altra combinazione esistono a listino, hanno un prezzo, nessun warning. Ma quelle due quote
+**non cambiano** fra un ordine e l'altro dello stesso cliente (i tre principali ne hanno una fissa ciascuno).
+**(0) Un difetto già in produzione, trovato dal council mentre rispondeva ad altro**: `nuova-client.tsx:57` cablava
+`geometry: "A12_I13_B20"`, la geometria del cliente del golden → **ogni nuovo ordine partiva con la geometria di un
+altro cliente**. Tolto nel primo commit, isolato; **dieci test** navigavano al riepilogo senza scegliere la geometria
+(uno asseriva perfino `checked === true`): erano la codifica del difetto, non la sua sentinella.
+**(1) Dati**: due colonne nullable su `customers` (`kit_geometry`, `kit_entrata`, migrazione
+`20260730232026_customer_kit_profile`, **nessun backfill**, nessun `CREATE TYPE`). Nessun modello nuovo: la tabella
+separata della spec 2026-07-29 §3.5 aveva come unica giustificazione «più profili per cliente», e l'utente ha stabilito
+**una linea a testa**. Lo **snapshot è già gratis** — `kit.create` scrive di suo geometria ed entrata sulla riga.
+**(2) Confine col motore**: `kitInputSchema` **scarta** i due campi (due test), perché `kit.generate` rilegge le
+colonne di `kit_requests` e un campo senza colonna lì farebbe divergere ogni rigenerazione.
+**(3) La UI l'ha decisa il `/llm-council`** (5 advisor + 3 peer review), respingendo la mia proposta: precompilare
+reintroduce un valore che l'agente **non ha scelto in quel momento**, con in più un'etichetta che lo fa *sembrare*
+verificato — mentre il primo dato lo digita l'agente, dalla stessa memoria che è il punto di rottura. Sintesi adottata:
+**nessun prefill, un pulsante «Usa il profilo»** — atto esplicito, e la regola della #40 regge alla lettera su
+**entrambi** i campi. Etichetta onesta: *dichiarato in anagrafica, mai confrontato con un ordine*. **Guadagno non
+richiesto**: al passo 4 il riepilogo **constata** la divergenza dal profilo (non blocca: non sappiamo quale delle due
+dichiarazioni sia giusta) — è il **primo rilevatore d'errore** che il sistema possieda.
+**(4) Pagina `/clienti`**, che chiude anche il buco per cui `customer.update`/`delete` esistevano nel router **senza
+essere raggiungibili da alcuna schermata**: un cliente, una volta creato, non era più correggibile. Nessun gate ADMIN
+(anagrafica condivisa, `agentProcedure`). **(5) Debito chiuso**: il gate su catalogo reale fissava `widthMm: 550` e
+verificava **10 dei 40 codici braccio** → 5 larghezze × 7 geometrie × 2 mani + una **guardia** contro il calo silenzioso
+di copertura; da **29 a 100 casi**, tutti verdi. E il golden ora è **asserito davvero** (`16 righe / 21 pezzi /
+90,20 €`, gemello `96,29 €`): prima il gate diceva `totalPrice > 0`.
+**(6) Fuori scope motivato — nuova domanda 29**: l'«**incontro nottolino incassato**» chiesto dall'utente **non è
+mappabile a un codice** (la parola compare 2 volte in 959 pagine, entrambe fuori contesto). Il listino pubblica però
+**tre assi che il motore cabla senza chiederli**: il **corpo** (`A51400.05.02` piastrina vs `A51400.05.13` corpo pieno,
+stesso formato 9x18, stesso prezzo, p0469 (467) voci 2 e 4 del **disegno**) · i **perni di posizionamento** (`A52200.*`,
+su nottolino/ribalta/DSS) · l'**antieffrazione** (p0470 (468), pagina **non citata** fra le fonti del modulo, 2-3 €
+contro 0,81). Due indizi si contraddicono (la mano DX/SX indica l'antieffrazione, non il corpo; «fresatura» è la
+geometria aria 4, non una variante) e il `.13` richiede la copertura della **domanda 20** → **non si indovina**.
+Circostanziata anche la 20: i codici che fanno scattare la copertura sono `A51400.CR.13` (Fosca) e i ribalta
+`A51400.05.70`/`.CR.70`, **entrambi** marcati `*` — il primo è quello del **golden**, che essendo un ordine reale a 16
+righe **non si tocca** su questa base. Gate verdi (typecheck·lint·**test 875**·build 18 route) · **integration gated
+100 casi** · **browser 30/30** (desktop e **375px**, 24 screenshot guardati — è così che è saltato fuori lo sconto
+precompilato «42.5» col punto in una UI italiana, con 30 check verdi).
+**🔴 AZIONE OPS AL MERGE**: la sola migrazione `20260730232026_customer_kit_profile`, **da applicare PRIMA del merge**
+dal branch della PR (nella direzione inversa `customer.list` chiede colonne inesistenti e falliscono **le letture**
+dell'anagrafica). Spec/piano: `docs/superpowers/{specs,plans}/2026-07-30-profilo-serramento-cliente*`.

@@ -9,158 +9,152 @@
 
 | Campo | Valore |
 |-------|--------|
-| **Data** | 2026-07-30 — sessione **CONCLUSA**. Prossima: **decisione dell'utente fra due strade** |
+| **Data** | 2026-07-30 — sessione **CONCLUSA**. PR **da aprire** (attesa ok utente) |
 | **Fase in corso** | Fase 1 — MVP Gestionale |
-| **Sotto-fase** | Kit engine: tre tipologie attive (anta-ribalta LEGNO su **7 geometrie × 2 entrate**, vasistas LEGNO, bilico TOUR LEGNO) |
-| **Branch git** | `claude/kit-listino-distinte-r1zn22` — **PR #42 MERGIATA** (`9fc8bfd`). Ripartire da `main`. |
-| **Stato deploy** | **LIVE e ALLINEATO.** #42 mergiata · **ops ESEGUITE** (run `30583325831`, 21:41Z, 4/4 verdi). **Nessuna azione ops residua.** |
-| **Aperto** | le **tre distinte reali** · **preview Vercel rotte** · mail ad AGB · domande all'agente · audit `kit_requests` · fix `dedupeRows` |
+| **Sotto-fase** | Kit engine: profilo serramento per cliente, e il default cablato della geometria tolto |
+| **Branch git** | `claude/distinte-schema-cliente-6qhe7o` — 11 commit su `origin/main` |
+| **Stato deploy** | **LIVE.** Ops precedenti eseguite (run `30583325831`). **Una migrazione nuova da applicare PRIMA del merge** |
+| **Aperto** | le **tre distinte reali** · **domanda 29** (incontro incassato) · preview Vercel rotte · mail ad AGB · audit `kit_requests` · `dedupeRows` |
 
 ---
 
 > **▶ RIPRENDI DA QUI**
 >
-> ### Cosa è stato fatto (2026-07-30)
+> ### Cosa è stato fatto (2026-07-30, terza sessione della giornata)
 >
-> I totali mostravano il **lordo di listino AGB** — quello che paghiamo al fornitore — non quello
-> che il cliente paga. Ora la distinta dice entrambi. Dettaglio completo in `CLAUDE.md` §STATO e
-> in `docs/superpowers/specs/2026-07-30-scontistica-cliente-design.md`.
+> Il wizard chiedeva geometria ed entrata **a ogni richiesta**, fra 14 combinazioni, e sbagliarle
+> non produce alcun errore: i codici dell'altra combinazione esistono a listino, hanno un prezzo,
+> nessun warning. Ma quelle due quote **non cambiano** fra un ordine e l'altro dello stesso
+> cliente. Ora vivono sul cliente, e si applicano con **un clic esplicito**.
 >
-> **Gate**: typecheck ✅ · lint ✅ · **test 843** (erano 660) ✅ · build 17 route ✅ ·
-> **browser 40/40** (desktop 1440×900 + **375px**, 18 screenshot) · **integration gated 38/38 sul
-> catalogo reale** (7.488 prodotti importati in locale).
+> **Gate**: typecheck ✅ · lint ✅ · **test 875** (erano 843) ✅ · build 18 route ✅ ·
+> **integration gated 100 casi** sul catalogo reale (erano 29) · **browser 30/30**
+> (desktop 1440×900 **e 375px**, 24 screenshot **aperti e guardati**).
 >
-> **I due riscontri sono intatti, verificati esplicitamente sul catalogo vero:**
-> anta-ribalta entrata 15 → **16 righe / 21 pezzi / 90,20 €**, zero warning ·
-> gemello entrata 7,5 → **16 / 21 / 96,29 €**, zero warning.
+> **I due riscontri sono intatti, e ora sono ASSERITI davvero:** anta-ribalta entrata 15 →
+> **16 righe / 21 pezzi / 90,20 €** · gemello entrata 7,5 → **16 / 21 / 96,29 €** con
+> `A50122.08.07`. Fino a oggi il gate diceva `totalPrice > 0`.
 >
-> ### Ops: FATTE, nessuna azione residua
+> ### 🔴 AZIONE OPS — UNA, E VA FATTA PRIMA DEL MERGE
 >
-> Run **`30583325831`** (2026-07-30 21:41Z, 4/4 verdi): migrazione
-> **`20260730201437_kit_discount_percent`** applicata, import 7.488 invariato, seed 6 template,
-> embed «niente da fare». Neon è allineato.
+> Migrazione **`20260730232026_customer_kit_profile`**: due colonne nullable su `customers`
+> (`kit_geometry`, `kit_entrata`), **nessun backfill**, nessun `CREATE TYPE` (gli enum esistevano).
 >
-> La scontistica è **inerte finché non si crea il primo cliente**: `customers` è vuota, quindi in
-> questo momento nessuna distinta mostra uno sconto e nessun totale storico è cambiato. Per provarla:
-> `/richieste/nuova` → scegli o crea un cliente col suo sconto → genera. Oppure «Applica uno sconto»
-> in fondo a una scheda già esistente.
+> **Si applica dal branch della PR, prima di mergiare.** «Ops — Neon» accetta `workflow_dispatch`
+> su un ref qualunque. Nella direzione inversa `customer.list` — che ha un `SELECT` esplicito —
+> chiederebbe a Postgres colonne inesistenti, e fallirebbero **le letture** dell'anagrafica, non
+> solo le scritture. È la lezione pagata due volte (#40: venti minuti di produzione rotta; #42:
+> qualche minuto). Import, seed ed embed non servono ma sono idempotenti.
 >
-> ### Le tre cose che questa sessione ha scoperto e vanno ricordate
+> ### Il difetto che era già in produzione, e che nessuno cercava
 >
-> 1. **Il listino ha 34 classi di sconto**, e i nostri codici ne toccano due: ARTECH tutto **F3**,
->    TOUR tutto **T1**. Una percentuale unica per cliente li tratta uguali. È la scelta fatta
->    consapevolmente (**domanda 28**), non una svista: se lo sconto vero cambia per classe, il
->    totale di un **bilico** (433-766 €) è sbagliato di 20-38 € a serramento. La percentuale sta su
->    una colonna propria della richiesta, quindi passare a una tabella cliente × classe cambierebbe
->    *come si calcola* quel numero, non le distinte già emesse.
-> 2. **`Customer` era un modello fantasma**: tabella a schema dal primo giorno, nessun router,
->    nessuna CRUD, `customerId` **sempre NULL** in produzione. Le colonne a schema fanno risparmiare
->    una migrazione, non metà del lavoro — vale la pena ricordarlo prima di stimare in base allo schema.
-> 3. **A 375px la tabella della distinta scorre in orizzontale**, e ci finiva dentro anche il piè
->    con i totali: sul telefono il numero per cui si apre la pagina era fuori schermo. Trovato da
->    uno **screenshot**, non da un'asserzione (che leggeva `innerText`, il quale include ciò che è
->    fuori vista). I totali ora vivono nel riepilogo. **Guardare le immagini, non solo i verdi.**
+> `nuova-client.tsx:57` cablava `geometry: "A12_I13_B20"` — la geometria del cliente del golden.
+> **Ogni nuovo ordine partiva con la geometria di un altro cliente.** L'hanno segnalato tutti e
+> cinque gli advisor del council, indipendentemente, mentre rispondevano a una domanda diversa.
+> Verificato nel file, tolto nel primo commit, isolato.
 >
-> ### Prima di scegliere cosa fare: UNA domanda
+> Dieci test navigavano fino al riepilogo **senza scegliere la geometria**, perché gliela regalava
+> il default; uno asseriva perfino `checked === true` sull'unica geometria ammessa dal vasistas.
+> Erano la codifica del difetto, non la sua sentinella.
 >
-> **Sono arrivate le tre distinte reali di MC, Peruzzi e Fosca?** È la domanda che vale più di
-> tutte le altre messe insieme, ed è aperta da **tre sessioni**. Senza, i tre clienti principali
-> ricevono distinte che il motore genera ma che **nessuno ha mai confrontato con un ordine vero**:
-> l'unico riscontro reale che questo progetto possiede resta la distinta AGB del 16/11/2021 (il
-> golden a 90,20 €). Con anche una sola di quelle tre, e con un'**altezza diversa dal golden**, si
-> calibra la formula della corsa delle chiusure — che oggi è **una retta tirata per un punto, con
-> la pendenza assunta a 1**. Basta una foto dell'ordine.
+> ### Cosa ha cambiato il council (e perché la UI non è quella che avevo proposto)
 >
-> *(La domanda sulle ops della sessione precedente non serve più: run `30583325831`, 4/4 verdi,
-> nessuna azione residua. Ma vedi la regola operativa qui sotto.)*
+> La proposta era **precompilare** geometria ed entrata dal profilo. Il council l'ha respinta: un
+> valore che arriva da un profilo resta un valore che l'agente **non ha scelto in quel momento**,
+> con in più un'etichetta che lo fa *sembrare* verificato — mentre il primo dato lo digita
+> l'agente, dalla stessa memoria che è il punto di rottura.
 >
-> ### Le due strade rimaste
+> **Sintesi adottata**, approvata da tutte e tre le peer review: nessun prefill, un pulsante
+> **«Usa il profilo»**. Stesso codice, stessa ergonomia, ma il riempimento è un **atto esplicito**.
+> La regola della #40 («nessun valore preselezionato») regge ora **alla lettera su entrambi i
+> campi**. L'etichetta dice ciò che è vero: *dichiarato in anagrafica, mai confrontato con un
+> ordine*.
 >
-> Erano quattro: l'**entrata cablata** e la **scontistica** sono fatte. Restano queste due, ed
-> entrambe hanno una dipendenza dichiarata:
+> **Guadagno non richiesto:** al passo 4 il riepilogo **constata** se la scelta diverge dal
+> profilo. Non blocca — non sappiamo quale delle due dichiarazioni sia giusta — ma è il **primo
+> rilevatore d'errore** che il sistema possieda: oggi nessuno confronta la richiesta di marzo con
+> quella di settembre.
 >
-> | Strada | Dipende dalle distinte mancanti? | Nota |
-> |---|---|---|
-> | ~~**Scontistica cliente**~~ | — | **FATTA 2026-07-30, PR #42.** Nota per la stima: `Customer` era un modello **fantasma** — tabella a schema, zero router, zero CRUD, `customerId` sempre NULL. Le colonne a schema hanno risparmiato *una migrazione*, non metà del lavoro |
-> | **Schemi cliente + composer** | in parte | Il profilo geometria per cliente (§3.5 spec 2026-07-29) no; il composer delle chiusure sì — la sua calibrazione resta su un punto solo finché non arrivano le distinte |
-> | **Varianti componenti** | sì, e non solo | La spec le mette fuori scope: «non si impilano varianti su una distinta che sappiamo ancora incompleta». Bloccate anche dalle domande 2, 20, 22, 26 |
+> ### 🆕 Domanda 29: l'«incontro nottolino incassato»
 >
-> Se l'entrata dovesse diventare un campo del **profilo cliente**, il posto è già preparato:
-> è tipicamente costante per cliente, ed è un candidato naturale per `CustomerKitProfile`.
+> L'utente ha chiesto in corsa di mettere nel profilo anche la preferenza per l'**incontro
+> nottolino incassato**. **Non è mappabile a un codice**: «incassato» compare **due volte in 959
+> pagine**, entrambe fuori contesto (p0590 (588) binario, p0628 (626) serratura).
 >
-> ### Debito noto, piccolo e già circoscritto
+> Il blocco incontri pubblica però **tre assi che il motore cabla senza chiederli**, ed è una
+> scoperta che vale da sola: (**a**) il **corpo** — stesso formato 9x18, due pezzi diversi,
+> `A51400.05.02` piastrina contro `A51400.05.13` corpo pieno, stesso prezzo; (**b**) **«con perni
+> di posizionamento Ø 8x3»**, famiglia `A52200.*` parallela su nottolino, ribalta e DSS; (**c**)
+> **antieffrazione**, p0470 (468), pagina **non citata** fra le fonti di `artech-incontri.ts`,
+> 2,04-3,03 € contro 0,81.
 >
-> - **Il gate su catalogo reale fissa `widthMm: 550`**, quindi esercita **1 banda su 5** di
->   `FORBICI` e **1 su 4** di `BRACCI_GRUPPI` — lo stesso limite che la cremonese aveva prima
->   di questa sessione. La chiusura è **la stessa forma** del test appena scritto per le nove
->   bande d'altezza: ~15 righe, un `it` che spazza 5 larghezze rappresentative. *(`CHIUSURE_VERTICALI`
->   è un'altra cosa: non è copertura mancante ma una formula su un punto solo → è la domanda 21.)*
-> - **`no-silent-fields.test.ts`: `CASI` non è legato a `RULE_MODULES`.** Copre i tre moduli
->   attivi, ma il giorno che battente o PVC si riaccendono la garanzia non li segue e **nulla
->   lo dice**. Chiusura: asserire che ogni voce del registry sia in `CASI` o in un elenco
->   `INATTIVI` esplicito, i cui moduli sollevano su qualunque input.
-> - **`dedupeRows` last-wins** in `map-product.ts` (`T18001.02.93` ha `listinoPage` 561 invece
->   di 551 → «Visualizza nel listino» apre la pagina sbagliata; prezzo non affetto).
-> - 🆕 **Le preview di Vercel falliscono su OGNI PR** — verificato su #39, #40, #41, #42: tutte
->   rosse, tutte mergiate lo stesso, e i deploy di *produzione* su `main` sono invece verdi.
->   Non è mai stato il codice: la build locale pulita passa (`.next` cancellato, `node_modules`
->   allineato al lockfile, 17 route). **Ipotesi da verificare**: le variabili d'ambiente su Vercel
->   sono configurate solo per l'ambiente *Production* e non per *Preview*, e `src/env.ts` valida
->   con zod e muore al primo `parseEnv`. Costo di tenerselo: **una preview che non parte è un
->   collaudo che non hai** — ogni PR va provata a mano in locale. Chiusura: aggiungere le env
->   all'ambiente Preview su Vercel (nessun codice da scrivere).
+> Due indizi si contraddicono: la descrizione parla di **mano DX/SX**, ma (a) e (b) sono
+> **ambidestri** — ad avere DX/SX è (c). E «fresatura» nel listino è una caratterizzazione della
+> **geometria** (aria 4), non una variante. **Deciso di non indovinare**: il campo entra nel
+> profilo solo dopo la risposta dell'esperto, e il `.13` non è comunque emettibile oggi perché
+> richiede la copertura della **domanda 20**. Testo pronto da inviare in `DOMANDE-APERTE.md`.
 >
-> ### Cose che NON dipendono dal codice
+> **Collaterale, sulla domanda 20:** ora si sa **quali codici** fanno scattare la copertura —
+> `A51400.CR.13` (13x24, cioè **Fosca**) e gli incontri ribalta `A51400.05.70`/`.CR.70`, **entrambi**
+> marcati `*`; il primo è quello del **golden**. Coperture `A52102.01.44`/`.87`, 0,39 €.
+> Il golden è un ordine reale a 16 righe: **non si tocca** su questa base.
 >
-> 1. **Le tre distinte reali** (vedi sopra). 2. **Domande all'agente** →
-> `docs/superpowers/kit-assunzioni/DOMANDE-APERTE.md`, ora **27**, con i testi già pronti da
-> inviare. 3. **Mail ad AGB** → `DA-FARE-audit-e-domande-agb.md`. 4. **Audit `kit_requests`**,
-> query pronta — e ora c'è una ragione in più: dopo il backfill dell'entrata, una riga storica
-> di un serramento davvero a 7,5 è **indistinguibile** da una scelta deliberata. Se un ordine
-> passato era a entrata 7,5, la cremonese spedita era il pezzo sbagliato.
+> ### Debito chiuso: il gate su catalogo reale
+>
+> Fissava `widthMm: 550`, quindi esercitava **1 banda su 5** di `FORBICI` e **1 su 4** di
+> `BRACCI_GRUPPI`: **40 codici braccio esistono, ne verificava 10**. Ora cinque larghezze
+> (400/550/700/900/1100, ciascuna nell'interno **non sovrapposto** della sua banda) × 7 geometrie
+> × 2 mani = **70 casi**, più una **guardia** che fallisce se un domani le bande cambiano e la
+> copertura cala in silenzio. **Tutti verdi**: i 34 codici mai verificati esistono a listino con
+> prezzo — ora dimostrato, non assunto. Il gate passa da 29 a **100 casi**.
+>
+> ### Le tre distinte reali: ANCORA NO
+>
+> Quarta sessione che la domanda resta aperta. Cercate nel repo, nella scratchpad e negli allegati:
+> non ci sono. Senza, i tre clienti principali ricevono distinte che nessuno ha mai confrontato con
+> un ordine vero, e `corsa = altezza − 420` resta **una retta tirata per un punto**. Basta una
+> foto, purché con **altezza diversa da 1820**.
+>
+> ### Debito noto residuo
+>
+> - **`no-silent-fields.test.ts`: `CASI` non è legato a `RULE_MODULES`.** Il giorno che battente o
+>   PVC si riaccendono la garanzia non li segue e nulla lo dice.
+> - **`dedupeRows` last-wins** in `map-product.ts` (`T18001.02.93` ha `listinoPage` 561 invece di
+>   551 → «Visualizza nel listino» apre la pagina sbagliata; prezzo non affetto).
+> - **Le preview di Vercel falliscono su OGNI PR** — verificato su #39-#42. Ipotesi mai smentita:
+>   le env sono configurate solo per *Production* e non per *Preview*, e `src/env.ts` valida con
+>   zod e muore al primo `parseEnv`. **Nessun codice da scrivere**, ma una preview che non parte è
+>   un collaudo che non hai.
+> - Il form cabla ancora `seatConfig`, `openingSide`, `widthMm 550`, `heightMm 1820`. Le quote sono
+>   innocue (si digitano sempre); `seatConfig` ha oggi un solo valore ammesso dai moduli, quindi
+>   non può sbagliare in silenzio. Dichiarato nella spec §3.5, non risolto.
 >
 > ### Lezioni operative da non riscoprire
 >
 > - **Pagina fisica = stampata + 2.** Citare sempre «fisica (stampata)».
-> - **Le legende degli schemi sono immagini**: `pdftoppm -r 150 -png` e guardarle, non grepparle.
-> - **Verificare i codici con la firma di riga del parser reale**, non con un grep.
-> - **I suffissi dei codici codificano la geometria.** E l'handoff può sbagliarli: questa
->   sessione ha scoperto che «entrata 0, 8 e 15» erano in realtà **7,5 e 15**, più una famiglia
->   di prodotto diversa (la versione ad asta). Implementare ciò che c'era scritto avrebbe
->   prodotto un enum a tre valori di cui uno inesistente. **Rileggere sempre la pagina.**
-> - **Un test verde non è un test che verifica.** Tre difetti di questa sessione erano test
->   verdi: uno non raggiungeva più la schermata che dichiarava di controllare (passava per una
->   coincidenza di testo), uno copriva 1 codice su 9, uno non esisteva affatto proprio sul
->   campo centrale del lavoro. Il criterio non è «è rosso?», è **«raggiunge lo stato che dice
->   di verificare?»**.
-> - **Dopo un `--amend`, leggere il commit e non il disco**: `git show --stat HEAD`, non `cat`.
->   Meglio ancora: mettere `test -z "$(git status --porcelain)"` come **prima** asserzione del
->   gate di fine task — un amend fatto prima dello staging sporca il tree per costruzione.
-> - 🆕 **L'ordine giusto è MIGRARE PRIMA e MERGIARE DOPO.** Ci ha preso due volte di fila (#40:
->   venti minuti di produzione rotta; #42: qualche minuto, solo perché il run è partito subito).
->   Una colonna **nuova e nullable** applicata a un DB dove il codice non la usa ancora è del
->   tutto innocua; l'ordine inverso apre invece una finestra in cui `kit.get` — che fa
->   `findFirst` **senza `select`** — chiede a Postgres una colonna che non esiste, e falliscono
->   **le letture**, non solo le creazioni: dashboard e schede in 500. Il workflow «Ops — Neon» si
->   può lanciare su un **branch**, non solo su `main`: `workflow_dispatch` fa il checkout del ref
->   che gli indichi, e `DATABASE_URL` punta a Neon comunque. Quindi la migrazione si applica
->   *prima* del merge, dal branch della PR.
-> - 🆕 **Guardare gli screenshot, non solo i verdi.** Il difetto peggiore di questa sessione (il
->   totale fuori schermo a 375px) era coperto da un'asserzione **verde**: leggeva `innerText`,
->   che include anche ciò che sta fuori da un contenitore a scorrimento orizzontale. L'ha trovato
->   l'occhio su un PNG. Quando la verifica browser produce immagini, **aprirle**.
-> - **Ambiente**: `bash scripts/dev-bootstrap.sh`, poi riempire `.env`. Catalogo:
->   `pnpm import:agb <listino.pdf>` (~15 min, 7.488 prodotti; serve `poppler-utils`). DB locale
->   `utpistoia`. Integration gated: `INTEGRATION_DATABASE_URL="$DATABASE_URL" pnpm test <file>`
->   — **senza quella variabile i gate passano a vuoto**. Chromium:
->   `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`.
->   ⚠️ `dev-bootstrap.sh` fa `[ -f .env ] || cp .env.example .env`, ma `setup-prisma-engines.sh`
->   **crea già** `.env` con le sole var degli engine: il copy viene saltato e mancano
->   `DATABASE_URL`/`DIRECT_URL`. Va composto a mano (`.env.example` + le var engine), e
->   `NEXTAUTH_SECRET`/`IP_HASH_SECRET` vogliono valori veri, non i `change-me`: `src/env.ts` li
->   valida con zod. Playwright non è in `package.json`: per la verifica browser
->   `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 pnpm add -D playwright`, e **rimuoverlo prima del commit**
->   (`git checkout package.json pnpm-lock.yaml`).
+> - **Le legende degli schemi sono immagini**: `pdftoppm -r 150 -png` e **guardarle**. I numeri
+>   `1)…5)` delle tabelle incontri puntano dentro il disegno: senza renderizzare non si sa che
+>   `9x18` esiste in **due corpi diversi**.
+> - **`jest-dom` NON è configurato**: i soli matcher sono `toBeTruthy`/`toBeNull`/`.textContent`.
+>   Metà del piano usava `toBeInTheDocument` e sarebbe esploso a runtime — corretto nella
+>   self-review, prima di costare tempo.
+> - **Idiom dei test**: `nuova-client.test.tsx` usa `fireEvent`, i componenti `userEvent`,
+>   **nessuno usa un wrapper** (tRPC mockata a livello di modulo).
+> - 🆕 **Il council risponde anche a domande che non hai fatto.** Cinque advisor su cinque hanno
+>   segnalato il default cablato della geometria mentre rispondevano a una domanda sul prefill.
+>   Vale la pena dare loro il contesto vero, non solo la domanda.
+> - 🆕 **Guardare gli screenshot, non solo i verdi** — di nuovo. I 30 check del browser erano tutti
+>   verdi mentre il campo sconto precompilava **`42.5` col punto** in una UI italiana, due righe
+>   sotto una tabella che scrive `−42,5%`. L'ha trovato l'occhio su un PNG.
+> - **`INTEGRATION_DATABASE_URL` è obbligatoria**: senza, i gate passano **a vuoto**.
+> - **Docker in questo container muore** se `dockerd` è avviato dentro uno script che poi esce:
+>   `setsid nohup dockerd … & disown`, e ricontrollare prima di ogni comando che tocchi il DB.
+> - **`poppler-utils` non è installato** di serie: `sudo apt-get install -y poppler-utils` prima
+>   di `pnpm import:agb`.
+> - **Ambiente**: `.env` va composto a mano (`.env.example` + var engine), con segreti veri.
+>   Catalogo: `pnpm import:agb <listino.pdf>` (~15 min, 7.488 prodotti). Playwright non è in
+>   `package.json`: `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 pnpm add -D playwright`, e **rimuoverlo
+>   prima del commit**. Chromium: `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`.
 >
 > ### Prompt di apertura (copiabile)
 >
@@ -179,32 +173,55 @@
 > ATTENZIONE: pagina fisica = stampata + 2. E le legende degli schemi stanno DENTRO il
 > disegno: nel testo estratto NON compaiono, vanno renderizzate in immagine e guardate.
 >
-> STATO: nessuna azione ops pendente. PR #42 (scontistica cliente) mergiata e
-> migrazione applicata a Neon (run 30583325831, 4/4 verdi). Non serve richiederlo:
-> verificalo e basta, guardando i run di «Ops — Neon», non fidandoti dell'handoff.
+> STATO: verifica tu i run di «Ops — Neon» invece di fidarti dell'handoff. La sessione
+> precedente ha lasciato la migrazione `20260730232026_customer_kit_profile` (profilo
+> serramento cliente): controlla se è stata applicata a Neon e se la PR è mergiata.
 >
 > Prima di propormi qualsiasi cosa, rispondi a UNA domanda: sono arrivate le tre
-> distinte reali di MC, Peruzzi e Fosca? È aperta da TRE sessioni ed è la cosa che
-> vale di più: senza, i tre clienti principali ricevono distinte che il motore
-> genera ma che nessuno ha mai confrontato con un ordine vero, e la formula della
-> corsa delle chiusure (altezza − 420) resta una retta tirata per un punto solo.
-> Se ne è arrivata anche una sola con altezza diversa dal golden, cambia le priorità.
+> distinte reali di MC, Peruzzi e Fosca? È aperta da QUATTRO sessioni ed è la cosa che
+> vale di più. Se ne è arrivata anche una sola con altezza diversa da 1820, cambia
+> tutte le priorità: si tara la corsa delle chiusure, che oggi è una retta per un punto.
 >
-> Poi si sceglie fra le due strade rimaste:
->  · schemi cliente + composer chiusure (§3.5-3.7 spec 2026-07-29) — il profilo
->    geometria per cliente non dipende dalle distinte, il composer sì;
->  · varianti componenti — che la spec mette DOPO il divario dello schema p0406
->    (22 voci a schema contro 16 emesse), quindi in pratica prima va chiuso quello.
->
-> Se non ci sono le distinte e vuoi qualcosa di utile e piccolo, ci sono tre debiti
-> già circoscritti in handoff.md §«Debito noto»: il gate su catalogo reale che fissa
-> widthMm 550, CASI non legato a RULE_MODULES, dedupeRows last-wins. Più uno di
-> ambiente: le preview di Vercel falliscono su OGNI PR (probabile: env solo su
-> Production e non su Preview) — non è codice, ma ci lascia senza collaudo.
+> Se non sono arrivate, le strade sono: (1) la DOMANDA 29 — l'«incontro nottolino
+> incassato»: se l'esperto ha risposto, il campo entra nel profilo (ma serve prima la
+> domanda 20, perché il codice candidato richiede una copertura che non emettiamo);
+> (2) il composer delle chiusure (§3.6 spec 2026-07-29), che però resta tarato su un
+> punto solo; (3) i debiti residui in handoff.md §«Debito noto residuo» — CASI non
+> legato a RULE_MODULES, dedupeRows last-wins, e le preview Vercel rotte su ogni PR.
 >
 > NON rompere il golden: 16 righe / 21 pezzi / 90,20 €, e il suo gemello a entrata
-> 7,5 a 96,29 €. Sono gli unici due riscontri numerici che abbiamo.
+> 7,5 a 96,29 €. Sono gli unici due riscontri numerici che abbiamo, e ora il gate su
+> catalogo reale li asserisce per davvero (prima diceva «> 0»).
 > ```
+>
+> ---
+>
+
+> **▶ STORICO — sessione 2026-07-30: SCONTISTICA CLIENTE ✅ — PR #42 MERGIATA, ops eseguite.**
+>
+> I totali mostravano il **lordo di listino AGB** — quello che paghiamo al fornitore — non quello
+> che il cliente paga. Una sola colonna nuova (`KitRequest.discountPercent`, migrazione
+> `20260730201437`, nessun backfill: NULL = comportamento storico); `totalPrice` **resta il lordo**
+> e il netto è derivato, mai salvato — due totali a DB divergono al primo bug. Lo sconto vive
+> **sulla richiesta** e non solo su `Customer`: se stesse solo lì, ritoccarlo cambierebbe in
+> silenzio il totale di ogni distinta già mandata.
+>
+> **Gate**: test **843** · browser 40/40 · integration gated 38/38 · golden **90,20 €** e gemello
+> **96,29 €** invariati. **Ops eseguite** (run `30583325831`, 21:41Z, 4/4 verdi).
+>
+> **Le tre cose che quella sessione ha scoperto, e che restano vere:**
+>
+> 1. **Il listino ha 34 classi di sconto**, e i nostri codici ne toccano due: ARTECH tutto **F3**,
+>    TOUR tutto **T1**. Una percentuale unica per cliente li tratta uguali — scelta consapevole
+>    (**domanda 28**), non svista: se lo sconto vero cambia per classe, il totale di un **bilico**
+>    (433-766 €) è sbagliato di 20-38 € a serramento.
+> 2. **`Customer` era un modello fantasma**: tabella a schema dal primo giorno, zero router, zero
+>    CRUD, `customerId` **sempre NULL** in produzione. Le colonne a schema fanno risparmiare *una
+>    migrazione*, non metà del lavoro — ricordarlo prima di stimare guardando lo schema.
+> 3. **A 375px la tabella della distinta scorre in orizzontale**, e ci finiva dentro il piè con i
+>    totali: sul telefono il numero per cui si apre la pagina era **fuori schermo**. Trovato da uno
+>    **screenshot**, non da un'asserzione — che leggeva `innerText`, il quale include anche ciò che
+>    sta fuori da un contenitore a scorrimento. **Guardare le immagini, non solo i verdi.**
 >
 > ---
 >
