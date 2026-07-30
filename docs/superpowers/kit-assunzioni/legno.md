@@ -22,7 +22,7 @@ sua posizione dentro una scheda.
 | # | Domanda | Scheda | Sblocca |
 |---|---|---|---|
 | 1 | Battente: quale terna di cerniere nello schema p0416 (414)? | `battente.md` | riattivazione della tipologia |
-| 2 | Squadra angolare: quale delle **quattro** varianti a listino? | qui | codice già scritto (`PER_MANO`) |
+| 2 | Squadra angolare: quale delle **quattro** varianti a listino? | qui | codici già scritti (`GEOMETRIE`) |
 | 3 | Incontri: quantità (formula vs somma colonna NOT.) e formato (asse 9 vs 13) | qui | quantità e codice degli incontri |
 | 4 | Sede 30 (schemi 2026) vs sede 18 (distinta 2021) | qui | campo di applicazione del generatore |
 | 5 | Vasistas: variante base o alternativa per le tre cerniere? Servono entrambi i terminali? | `vasistas.md` | codice già scritto |
@@ -31,6 +31,14 @@ sua posizione dentro una scheda.
 | 8 | Vasistas: voce 7, terminali delle chiusure supplementari sui montanti | `vasistas.md` | 13ª voce dello schema |
 | 9 | Vasistas: GR00 (HBB 274-662) | `vasistas.md` | finestre piccole |
 | 10 | Offset altezza → HBB: −10 (anta-ribalta) o 0 (vasistas)? | qui | scelta del cremonese in entrambi i moduli |
+| 11 | Bilico: asta verticale **senza** braccetto | `tour.md` | codice sbagliato sopra HBB 1000 |
+| 12 | Bilico: superficie **esattamente** 2 m² | `tour.md` | ~60 € e 4 codici |
+| 13 | Bilico: la guarnizione fa parte della distinta? | `tour.md` | ~24% del totale |
+| 14 | Bilico: quantità del kit spessori sullo schema 3 | `tour.md` | 5,46 € |
+| 15 | Bilico: sovrapposizione LBB 640-650 | `tour.md` | 3,73 € |
+| 16 | `openingDir` non è letto da nessun modulo | `tour.md` | rilievo **interno**, non una domanda per AGB |
+| 17 | Interasse **8,5**: quale asse per gli incontri? | qui | famiglia incontri del cliente «MC» |
+| 18 | Confezioni: si applica il **+20% fuori confezione**? | qui | correttezza dei totali di ogni distinta |
 
 ⚠️ `alu.md` conserva una propria lista numerata 1-13 della Fase 1g: quella è **locale a
 quella scheda** e non va confusa con questa. Nella numerazione globale l'alluminio è
@@ -38,7 +46,49 @@ interamente dentro la **domanda 6**.
 
 ---
 
+## Domanda 17 — interasse 8,5: quale asse per gli incontri?
+
+Il cliente «MC» lavora ad **aria 4 · interasse 8,5 · battuta 15** (geometria `A4_I85_B15`).
+Le cerniere, i bracci forbice e i supporti per quella combinazione esistono a listino ed è
+la famiglia `.22`. Ma gli **incontri** aria 4 sono pubblicati **solo per asse 9 e asse 13**
+(`p0469 (467)`, `p0471 (469)`, `p0473 (471)`): un asse 8,5 **non esiste**.
+
+Il generatore assume che l'interasse 8,5 usi gli incontri **asse 9** (famiglia `.01`).
+È un'inferenza, non un dato stampato.
+
+**Domanda:** su un serramento aria 4 / interasse 8,5 / battuta 15, quali incontri si
+ordinano? Gli asse 9 come assumiamo noi, o esiste una regola diversa?
+
+*(Se l'assunzione cade cambia la famiglia incontri di MC — non i suoi codici di cerniera,
+forbice e supporto, che sono `.22` verificati a listino.)*
+
+---
+
+## Domanda 18 — confezioni: si applica il +20% fuori confezione?
+
+L'art. 4 delle condizioni generali (`p0006 (4)`) dice: «*per ordini di quantità inferiori
+alla confezione, la Alban Giacomo SpA si riserva … di aumentare l'ordine stesso fino al
+quantitativo della confezione, oppure di applicare una maggiorazione di prezzo del 20%*».
+
+Le nostre distinte emettono quantità **1, 2, 5** contro confezioni da **50, 20, 10**
+(colonna CS del listino): ogni riga è formalmente «fuori confezione». Il software AGB 4K
+ha per questo una funzione dedicata («ottimizzazione pezzi singoli o confezioni»).
+
+Plausibilmente non ricade sul cliente finale, perché UFPtrade è **distributore** e rompe le
+confezioni. Ma se ricadesse, **tutti i totali che mostriamo sono sottostimati**.
+
+**Domanda:** il prezzo unitario di listino è quello che paga il serramentista anche per
+quantità sotto la confezione, o c'è una maggiorazione?
+
+---
+
 ## Cosa è stato corretto il 2026-07-25 (tutto con evidenza diretta a listino)
+
+> **Nota di lettura (2026-07-29).** La tabella qui sotto è **storica** e cita `PER_MANO`, la
+> costante che teneva squadra angolare e supporto cerniera del solo pilota. Il cutover della
+> geometria l'ha **rimossa**: quei codici vivono ora riga per riga in
+> `src/server/kit/artech-geometrie.ts` (`GEOMETRIE`), una riga per ciascuna delle 7
+> geometrie. Le correzioni descritte restano valide, cambia solo dove abitano i codici.
 
 | Rilievo | Evidenza | Correzione |
 |---|---|---|
