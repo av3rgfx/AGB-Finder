@@ -1,3 +1,7 @@
+> 📋 Le domande 1-10 citate qui sono raccolte, con priorità e testi pronti da inviare, in
+> [`DOMANDE-APERTE.md`](./DOMANDE-APERTE.md). **La numerazione è la stessa**: i commenti nel
+> codice rimandano per numero.
+
 # Anta-ribalta ARTECH LEGNO — esito della verifica e domande residue
 
 > **Stato: ATTIVO.** È il pilota del kit engine: modulo `src/server/kit/rules-artech-legno.ts`

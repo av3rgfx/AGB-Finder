@@ -1,3 +1,7 @@
+> 📋 Le domande 11-16 citate qui sono raccolte, con priorità e testi pronti da inviare, in
+> [`DOMANDE-APERTE.md`](./DOMANDE-APERTE.md). **La numerazione è la stessa**: i commenti nel
+> codice rimandano per numero.
+
 # Bilico rettangolare TOUR (legno) — esito della verifica e domande residue
 
 > **Stato: ATTIVO.** Modulo `src/server/kit/rules-tour-bilico-legno.ts`
