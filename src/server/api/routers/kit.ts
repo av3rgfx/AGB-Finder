@@ -27,10 +27,8 @@ export const kitRouter = createTRPCRouter({
       specs.series === "TOUR"
         ? { tourSchema: specs.tourSchema }
         : {
-            airGapMm: specs.airGapMm,
-            axisOffsetMm: specs.axisOffsetMm,
-            rebateMm: specs.rebateMm,
-            seatMm: specs.seatMm,
+            geometry: specs.geometry,
+            seatConfig: specs.seatConfig,
             openingSide: specs.openingSide,
             openingDir: specs.openingDir,
             supplementaryClosures: specs.supplementaryClosures ?? false,
@@ -110,6 +108,7 @@ export const kitRouter = createTRPCRouter({
             generatedKit: JSON.parse(JSON.stringify(output)),
             totalComponents: output.totalComponents,
             totalPrice: output.totalPrice,
+            engineVersion: output.engineVersion,
             status: "COMPLETED",
             generatedAt: new Date(),
           },
