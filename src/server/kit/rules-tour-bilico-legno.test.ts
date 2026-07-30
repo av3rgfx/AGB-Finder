@@ -182,10 +182,8 @@ describe("tourBilicoLegno — rifiuti", () => {
       widthMm: 550,
       heightMm: 1820,
       finish: "ARGENTO",
-      airGapMm: 12,
-      axisOffsetMm: 13,
-      rebateMm: 20,
-      seatMm: 18,
+      geometry: "A12_I13_B20",
+      seatConfig: "STANDARD",
       openingSide: "SINISTRA",
       openingDir: "TIRARE",
     } satisfies KitInput;

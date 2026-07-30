@@ -2,7 +2,9 @@
 // PROVVISORIO (da validare con l'esperto AGB): la distinta è la TRASCRIZIONE
 // delle 13 voci dello schema di montaggio p0418 (416) «Finestra rettangolare
 // legno - apertura vasistas», anta singola, entrata E.15, variante base, per la
-// geometria del pilota (aria 12 / interasse 13 / battuta 20 / sede 18).
+// geometria `A12_I13_B20` (aria 12 / interasse 13 / battuta 20) — l'UNICA che
+// questo modulo copre, anche dopo il cutover del 2026-07-29 che ne ha aperte
+// sette all'anta-ribalta. Vedi GEOMETRIA_COPERTA più sotto per il perché.
 //
 // ⚠️ Numerazione: nel listino la pagina FISICA del PDF è la stampata + 2, e qui
 // si cita sempre «fisica (stampata)». Il commento precedente diceva «pag.416»
@@ -24,7 +26,8 @@
 // basso e non ha una mano. Le uniche varianti di mano sono le due articolazioni
 // superiori dei due angoli inferiori, speculari → 1 DX + 1 SX (vedi sotto).
 import { pick } from "./kit-shared";
-import { MOVIMENTO_ANGOLARE, assertPilotGeometry } from "./artech-legno-shared";
+import { MOVIMENTO_ANGOLARE } from "./artech-legno-shared";
+import { geometria, assertSeatConfigSupportata } from "./artech-geometrie";
 import {
   KitGenerationError,
   asArtech,
@@ -32,6 +35,28 @@ import {
   type KitLine,
   type RuleModule,
 } from "./types";
+
+/**
+ * L'UNICA geometria per cui questo modulo ha dati: quella su cui è trascritto lo
+ * schema p0418 (416).
+ *
+ * PERCHÉ IL VASISTAS NON APRE LE 7 GEOMETRIE INSIEME ALL'ANTA-RIBALTA. L'apertura
+ * è possibile solo dove esiste una tabella di codici per geometria, e per il
+ * vasistas non c'è: le sue voci geometria-dipendenti sono cablate a mano —
+ * cerniere `A51101.36.01` e `A51001.36.0N` (il `.36` **è** interasse 13/battuta
+ * 20), supporto forbice `A50702.05.00` (aria 12/battuta 20), incontro nottolino
+ * `A51400.05.02` (aria 12, formato 9x18). Su un'altra geometria almeno tre di
+ * queste quattro sono sbagliate: A12_I9_B18 vuole `.24` e `A50701.05.00`,
+ * A12_I13_B18 vuole `.34` e l'incontro `A51400.CR.13`.
+ *
+ * Accettare le altre arie-12 «perché lo schema è dell'aria 12» produrrebbe quindi
+ * distinte plausibili e sbagliate — lo stesso difetto che ha fatto disattivare
+ * PVC e battente, e che `assertPilotGeometry` (rimossa oggi) qui impediva. Il
+ * perimetro resta perciò IDENTICO a prima del cutover: si allarga solo dove ci
+ * sono i dati. Si riapre quando le tre famiglie di cerniere del vasistas saranno
+ * trascritte per geometria, come è stato fatto per l'anta-ribalta.
+ */
+const GEOMETRIA_COPERTA = "A12_I13_B20";
 
 /**
  * Cremonese vasistas «maniglia variabile/centrale» A50111.15.NN (E.15) per GR,
@@ -162,9 +187,19 @@ export const artechVasistasLegno: RuleModule = {
         "artech.materiale",
       );
 
-    // Guardia geometria: anche qui le tabelle valgono solo per la geometria del
-    // pilota (aria 12 / interasse 13 / battuta 20 / sede 18).
-    assertPilotGeometry(input);
+    // Guardia geometria: vedi GEOMETRIA_COPERTA. Le voci geometria-dipendenti di
+    // questo modulo sono cablate, non tabellate — fuori da quella riga il modulo
+    // emetterebbe la ferramenta di un'altra finestra.
+    assertSeatConfigSupportata(input.seatConfig);
+    const geo = geometria(input.geometry);
+    if (input.geometry !== GEOMETRIA_COPERTA)
+      throw new KitGenerationError(
+        `Geometria «aria ${geo.airGapMm} / interasse ${geo.axisOffsetMm} / battuta ${geo.rebateMm}» ` +
+          `non coperta per la vasistas: lo schema p0418 (416) è trascritto per la sola aria 12 / ` +
+          `interasse 13 / battuta 20, e le cerniere del vasistas non sono ancora tabellate per ` +
+          `geometria. L'anta-ribalta le copre tutte e sette.`,
+        "artech.vasistas.geometria",
+      );
 
     // Guardia superficie ≤ 2 m² (limite stampato sullo schema p0418 (416)).
     const areaM2 = (input.widthMm * input.heightMm) / 1_000_000;
@@ -277,7 +312,7 @@ export const artechVasistasLegno: RuleModule = {
         code: "A50702.05.00",
         quantity: nCerniere,
         ruleId: "artech.cerniere",
-        ruleDescription: `Supporto forbice legno battuta ${input.rebateMm} = n. cerniere portanti (${nCerniere})`,
+        ruleDescription: `Supporto forbice legno battuta ${geo.rebateMm} = n. cerniere portanti (${nCerniere})`,
       },
       {
         position: "perno-supporto-forbice",

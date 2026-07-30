@@ -9,10 +9,8 @@ const artechRow: PersistedKitRequest = {
   material: "LEGNO",
   finish: "ARGENTO",
   series: "ARTECH",
-  airGapMm: 12,
-  axisOffsetMm: 13,
-  rebateMm: 20,
-  seatMm: 18,
+  geometry: "A12_I13_B20",
+  seatConfig: "STANDARD",
   openingSide: "SINISTRA",
   openingDir: "TIRARE",
   supplementaryClosures: true,
@@ -28,10 +26,8 @@ const tourRow: PersistedKitRequest = {
   material: "LEGNO",
   finish: "MARRONE RAL 8019",
   series: "TOUR",
-  airGapMm: null,
-  axisOffsetMm: null,
-  rebateMm: null,
-  seatMm: null,
+  geometry: null,
+  seatConfig: null,
   openingSide: null,
   openingDir: null,
   supplementaryClosures: false,
@@ -49,20 +45,29 @@ describe("kitInputFromRequest", () => {
       material: "LEGNO",
       finish: "ARGENTO",
       series: "ARTECH",
-      airGapMm: 12,
-      axisOffsetMm: 13,
-      rebateMm: 20,
-      seatMm: 18,
+      geometry: "A12_I13_B20",
+      seatConfig: "STANDARD",
       openingSide: "SINISTRA",
       openingDir: "TIRARE",
       supplementaryClosures: true,
     });
   });
 
+  /**
+   * Le due colonne con default a schema possono essere NULL su una riga scritta
+   * prima della migrazione: il default si applica qui, non si fa fallire il
+   * parse. `geometry` invece NON ha default e resta l'unico dato indispensabile.
+   */
+  it("applica il default a seatConfig e openingDir nulli, senza inventare la geometria", () => {
+    expect(
+      kitInputFromRequest({ ...artechRow, seatConfig: null, openingDir: null }),
+    ).toMatchObject({ seatConfig: "STANDARD", openingDir: "TIRARE" });
+  });
+
   it("ricostruisce una richiesta TOUR con il solo schema", () => {
     const input = kitInputFromRequest(tourRow);
     expect(input).toMatchObject({ series: "TOUR", windowType: "BILICO", tourSchema: 2 });
-    expect(input).not.toHaveProperty("airGapMm");
+    expect(input).not.toHaveProperty("geometry");
     expect(input).not.toHaveProperty("openingSide");
   });
 
@@ -84,7 +89,13 @@ describe("kitInputFromRequest", () => {
   });
 
   it("rifiuta una riga ARTECH cui manca la geometria", () => {
-    expect(() => kitInputFromRequest({ ...artechRow, airGapMm: null })).toThrow(KitGenerationError);
+    expect(() => kitInputFromRequest({ ...artechRow, geometry: null })).toThrow(KitGenerationError);
+  });
+
+  it("rifiuta una geometria che non è fra le 7 del listino", () => {
+    expect(() => kitInputFromRequest({ ...artechRow, geometry: "A9_I11_B17" })).toThrow(
+      KitGenerationError,
+    );
   });
 
   it("rifiuta una serie sconosciuta", () => {

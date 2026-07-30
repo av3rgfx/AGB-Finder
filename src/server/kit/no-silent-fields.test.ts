@@ -40,10 +40,8 @@ const artechBase: KitInput = {
   material: "LEGNO",
   widthMm: 550,
   heightMm: 1820,
-  airGapMm: 12,
-  axisOffsetMm: 13,
-  rebateMm: 20,
-  seatMm: 18,
+  geometry: "A12_I13_B20",
+  seatConfig: "STANDARD",
   openingSide: "SINISTRA",
   openingDir: "TIRARE",
   finish: "ARGENTO",
@@ -56,10 +54,8 @@ const vasistasBase: KitInput = {
   material: "LEGNO",
   widthMm: 600,
   heightMm: 1000,
-  airGapMm: 12,
-  axisOffsetMm: 13,
-  rebateMm: 20,
-  seatMm: 18,
+  geometry: "A12_I13_B20",
+  seatConfig: "STANDARD",
   openingSide: "SINISTRA",
   openingDir: "TIRARE",
   finish: "ARGENTO",
@@ -84,10 +80,8 @@ const CASI: Caso[] = [
       { campo: "widthMm", valore: 1200 },
       { campo: "heightMm", valore: 1200 },
       { campo: "material", valore: "PVC" },
-      { campo: "airGapMm", valore: 4 },
-      { campo: "axisOffsetMm", valore: 9 },
-      { campo: "rebateMm", valore: 30 },
-      { campo: "seatMm", valore: 22 },
+      { campo: "geometry", valore: "A4_I9_B18" },
+      { campo: "seatConfig", valore: "SEDE_30" },
       { campo: "openingSide", valore: "DESTRA" },
       { campo: "finish", valore: "BRONZO" },
       { campo: "supplementaryClosures", valore: false },
@@ -97,10 +91,10 @@ const CASI: Caso[] = [
         campo: "openingDir",
         valore: "SPINGERE",
         perche:
-          "RILIEVO APERTO, non una scelta: `openingDir` è raccolto dal wizard, validato e " +
-          "persistito, ma NESSUN modulo lo legge. È la stessa classe di bug della bonifica, " +
-          "sopravvissuta perché la guardia copriva solo i quattro campi geometria. Va risolto " +
-          "togliendolo dall'input o usandolo — vedi docs/superpowers/kit-assunzioni/tour.md.",
+          "RILIEVO APERTO (domanda 16): `openingDir` è raccolto, validato e persistito, ma " +
+          "NESSUN modulo lo legge. L'agente dice che l'apertura è quasi sempre «a tirare», " +
+          "ora è il default dello schema. Va risolto togliendolo dall'input o usandolo — " +
+          "vedi docs/superpowers/kit-assunzioni/legno.md.",
       },
       { campo: "notes", valore: "nota libera", perche: "Testo per l'ordine, non un parametro." },
       {
@@ -119,10 +113,8 @@ const CASI: Caso[] = [
       { campo: "widthMm", valore: 1000 },
       { campo: "heightMm", valore: 700 },
       { campo: "material", valore: "ALLUMINIO" },
-      { campo: "airGapMm", valore: 4 },
-      { campo: "axisOffsetMm", valore: 9 },
-      { campo: "rebateMm", valore: 30 },
-      { campo: "seatMm", valore: 22 },
+      { campo: "geometry", valore: "A4_I9_B18" },
+      { campo: "seatConfig", valore: "SEDE_30" },
       { campo: "sashWeightKg", valore: 75 },
     ],
     inerti: [

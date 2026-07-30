@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import type { KitInput } from "./types";
+import type { ArtechKitInput, KitInput } from "./types";
 import { KitGenerationError } from "./types";
 import { artechVasistasLegno } from "./rules-artech-vasistas-legno";
 
@@ -7,21 +7,24 @@ import { artechVasistasLegno } from "./rules-artech-vasistas-legno";
  * Golden PROVVISORIO: distinta vasistas ARTECH legno anta singola, trascritta
  * dallo schema di montaggio p0418 (416). NON validata da un esperto — vedi
  * docs/superpowers/kit-assunzioni/vasistas.md. Config GR03 (H1000, non ambigua).
+ *
+ * `A12_I13_B20` è la geometria su cui lo schema è trascritto (aria 12 / interasse
+ * 13 / battuta 20): dal cutover del 2026-07-29 è un discriminatore, non quattro
+ * numeri. Per il vasistas resta anche l'UNICA coperta — vedi GEOMETRIA_COPERTA
+ * nel modulo.
  */
-const golden: KitInput = {
+const golden = {
   windowType: "VASISTAS",
   widthMm: 600,
   heightMm: 1000, // → GR03 (820-1220): 1 nottolino
   material: "LEGNO",
-  airGapMm: 12,
-  axisOffsetMm: 13,
-  rebateMm: 20,
-  seatMm: 18,
+  geometry: "A12_I13_B20",
+  seatConfig: "STANDARD",
   openingSide: "DESTRA",
   openingDir: "TIRARE",
   finish: "ARGENTO",
   series: "ARTECH",
-};
+} as const satisfies ArtechKitInput;
 
 /**
  * Golden vasistas — TRASCRIZIONE di 12 delle 13 voci dello schema di montaggio
@@ -250,22 +253,42 @@ describe("artechVasistasLegno — aderenza allo schema p0418 (416)", () => {
 });
 
 /**
- * La guardia di geometria è provata in isolamento in artech-legno-shared.test.ts;
- * qui si prova che il MODULO la chiami. Senza questo caso, togliendo
- * `assertPilotGeometry(input)` da rules-artech-vasistas-legno.ts la suite
- * resterebbe verde e la vasistas tornerebbe a servire in silenzio i codici della
- * geometria del pilota a chi ha chiesto un'altra aria.
+ * Il cutover del 2026-07-29 apre le 7 geometrie all'ANTA-RIBALTA, che ha una
+ * tabella di codici per geometria. Il vasistas NON ce l'ha: le sue cerniere
+ * (`A51101.36.01`, `A51001.36.0N`), il supporto forbice (`A50702.05.00`) e
+ * l'incontro nottolino (`A51400.05.02`) sono cablati sulla geometria dello
+ * schema. Il perimetro resta perciò quello di prima — e questi casi lo provano:
+ * senza la guardia, chi chiede un'altra geometria riceverebbe in silenzio la
+ * ferramenta di un'altra finestra.
  */
 describe("artechVasistasLegno — guardia di geometria cablata nel modulo", () => {
-  it("aria 4 (fuori pilota) → KitGenerationError «Configurazione non coperta»", () => {
+  it("aria 4 → KitGenerationError, non i codici dell'aria 12", () => {
     try {
-      artechVasistasLegno.generate({ ...golden, airGapMm: 4 });
+      artechVasistasLegno.generate({ ...golden, geometry: "A4_I9_B18" });
       expect.unreachable("attesa geometria fuori campo");
     } catch (err) {
       expect(err).toBeInstanceOf(KitGenerationError);
-      expect((err as KitGenerationError).ruleId).toBe("artech.geometria");
-      expect((err as Error).message).toMatch(/Configurazione non coperta \(aria 4\)/);
+      expect((err as KitGenerationError).ruleId).toBe("artech.vasistas.geometria");
+      expect((err as Error).message).toMatch(/aria 4/);
     }
+  });
+
+  /**
+   * Il caso che una guardia sulla sola ARIA lascerebbe passare: A12_I13_B18 è
+   * aria 12 come lo schema, ma vuole il supporto forbice `A50701.05.00` e
+   * l'incontro `A51400.CR.13` — due codici che questo modulo non sa emettere.
+   */
+  it("altra aria 12 (interasse/battuta diversi) → rifiutata anch'essa", () => {
+    for (const geometry of ["A12_I9_B18", "A12_I9_B20", "A12_I13_B18"] as const)
+      expect(() => artechVasistasLegno.generate({ ...golden, geometry })).toThrow(
+        KitGenerationError,
+      );
+  });
+
+  it("SEDE_30 viene rifiutata come nell'anta-ribalta", () => {
+    expect(() => artechVasistasLegno.generate({ ...golden, seatConfig: "SEDE_30" })).toThrow(
+      /sede 30/i,
+    );
   });
 });
 

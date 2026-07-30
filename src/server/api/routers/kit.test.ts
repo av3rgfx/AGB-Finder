@@ -37,7 +37,7 @@ const agent = { user: { id: "agent1", role: "AGENT", status: "ACTIVE" } };
 // regole reale copre solo material "LEGNO" — vedi rules-artech.ts.
 const validInput = {
   windowType: "ANTA_RIBALTA", widthMm: 550, heightMm: 1820, material: "LEGNO",
-  airGapMm: 12, axisOffsetMm: 13, rebateMm: 20, seatMm: 18,
+  geometry: "A12_I13_B20", seatConfig: "STANDARD",
   openingSide: "SINISTRA", openingDir: "TIRARE", finish: "ARGENTO", series: "ARTECH",
 } as const;
 
