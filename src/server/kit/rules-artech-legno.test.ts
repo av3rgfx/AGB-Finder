@@ -191,22 +191,33 @@ describe("artechAntaRibaltaLegno — banda cremonese GR02", () => {
  */
 describe("le tre geometrie dei clienti reali", () => {
   /**
-   * Le colonne coprono TUTTE le righe geometria-dipendenti, non solo due: oltre a
-   * squadra e nottolino ci sono `supporto-forbice`, `incontro-dss` e
-   * `incontro-ribalta`, che il cutover del 2026-07-29 ha estratto da `FISSI` (dove
-   * erano cablate sui valori del pilota). Se qualcuno le ricablasse, senza queste
-   * colonne il test resterebbe verde. Attesi ricavati da `artech-geometrie.ts`
-   * (supporto forbice) e da `artech-incontri.ts` (DSS e ribalta, via `chiave()`:
-   * MC e Peruzzi hanno aria 4 asse 9 → mano SINISTRA della famiglia A48012/A514SX;
-   * Fosca ha aria 12 sede 24 → 13x24, ambidestro).
+   * Le colonne coprono TUTTE E SETTE le righe geometria-dipendenti del modulo:
+   * `squadra-angolare`, `supporto-cerniera`, `supporto-forbice` e `forbice-braccio`
+   * (codici e `braccioMid` da `artech-geometrie.ts`) più `incontro-dss`,
+   * `incontro-ribalta` e `incontri-nottolino` (da `artech-incontri.ts`, via
+   * `chiave()`: MC e Peruzzi hanno aria 4 asse 9 → mano SINISTRA della famiglia
+   * A48012/A514SX; Fosca ha aria 12 sede 24 → 13x24, ambidestro). Le altre righe
+   * (cremonese, corpo forbice, coperture, fissi) non dipendono dalla geometria.
+   *
+   * PERCHÉ SETTE E NON CINQUE. Fino al 2026-07-30 mancavano `supporto-cerniera` e
+   * `forbice-braccio`, e nessun altro test le copriva per queste tre geometrie:
+   * cablare il supporto cerniera di MC sul valore del pilota (`A50805.05.SX`) o il
+   * suo `braccioMid` su `"24"` invece di `"22"` passava l'intera suite **e il gate
+   * su catalogo reale** — i cinque supporti cerniera sono tutti a listino a 4,44 €
+   * e tutte e 40 le combinazioni di braccio esistono, quindi «codice a listino con
+   * prezzo» non distingue il pezzo giusto dal vicino sbagliato. Solo un atteso
+   * per-geometria lo fa.
    */
   it.each([
-    // nome · geometry · squadra · supporto forbice · DSS · ribalta · nottolino
+    // nome · geometry · squadra · supporto cerniera · supporto forbice · braccio ·
+    // DSS · ribalta · nottolino
     [
       "MC",
       "A4_I85_B15",
       "A50902.22.02",
+      "A50803.01.02",
       "A50703.01.00",
+      "A51912.22.02",
       "A48012.01.03",
       "A514SX.01.64",
       "A514SX.01.02",
@@ -215,7 +226,9 @@ describe("le tre geometrie dei clienti reali", () => {
       "Peruzzi",
       "A4_I9_B18",
       "A50904.24.02",
+      "A50801.01.02",
       "A50701.01.00",
+      "A51912.24.02",
       "A48012.01.03",
       "A514SX.01.64",
       "A514SX.01.02",
@@ -224,21 +237,35 @@ describe("le tre geometrie dei clienti reali", () => {
       "Fosca",
       "A12_I13_B18",
       "A50904.34.02",
+      "A50804.05.SX",
       "A50701.05.00",
+      "A51912.34.02",
       "A48010.CR.03",
       "A51400.CR.70",
       "A51400.CR.13",
     ],
   ] as const)(
     "%s genera la distinta completa coi SUOI codici: 12 righe / 17 pezzi",
-    (_nome, geometry, squadra, supportoForbice, dss, ribalta, nottolino) => {
+    (
+      _nome,
+      geometry,
+      squadra,
+      supportoCerniera,
+      supportoForbice,
+      braccio,
+      dss,
+      ribalta,
+      nottolino,
+    ) => {
       const lines = artechAntaRibaltaLegno.generate({ ...base, geometry });
       const codeAt = (position: string) => lines.find((l) => l.position === position)?.code;
-      expect(codeAt("squadra-angolare")).toBe(squadra);
-      expect(codeAt("supporto-forbice")).toBe(supportoForbice);
-      expect(codeAt("incontro-dss")).toBe(dss);
-      expect(codeAt("incontro-ribalta")).toBe(ribalta);
-      expect(codeAt("incontri-nottolino")).toBe(nottolino);
+      expect(codeAt("squadra-angolare"), "squadra-angolare").toBe(squadra);
+      expect(codeAt("supporto-cerniera"), "supporto-cerniera").toBe(supportoCerniera);
+      expect(codeAt("supporto-forbice"), "supporto-forbice").toBe(supportoForbice);
+      expect(codeAt("forbice-braccio"), "forbice-braccio").toBe(braccio);
+      expect(codeAt("incontro-dss"), "incontro-dss").toBe(dss);
+      expect(codeAt("incontro-ribalta"), "incontro-ribalta").toBe(ribalta);
+      expect(codeAt("incontri-nottolino"), "incontri-nottolino").toBe(nottolino);
       expect(lines).toHaveLength(12);
       expect(lines.reduce((n, l) => n + l.quantity, 0)).toBe(17);
     },

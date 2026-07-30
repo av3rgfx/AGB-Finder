@@ -722,12 +722,15 @@ function Step3ManoFinitura({
         </div>
       </fieldset>
 
-      {/* SEDE 30: mostrata e GATED, non nascosta. È persistibile (enum a DB) ma il
-          motore la rifiuta sempre — p0473 (471) non pubblica l'incontro DSS per il
-          formato 13x30 — quindi offrirla selezionabile creerebbe bozze che non
-          genereranno mai. Nasconderla sarebbe peggio: chi ha davvero una sede 30
-          ordinerebbe STANDARD e otterrebbe una distinta completa, plausibile e
-          sbagliata. Stesso trattamento di PVC/ALLUMINIO al primo passo. */}
+      {/* SEDE 30 e SEDE 20: mostrate e GATED, non nascoste. La 30 è persistibile
+          (enum a DB) ma il motore la rifiuta sempre — p0473 (471) non pubblica
+          l'incontro DSS per il formato 13x30 — quindi offrirla selezionabile
+          creerebbe bozze che non genereranno mai. La 20 non è nemmeno esprimibile:
+          nessuna delle 7 geometrie la deriva, quindi non c'è nulla da rifiutare e
+          senza questa voce non ci sarebbe NIENTE a schermo a dirlo.
+          Nasconderle sarebbe peggio: chi ha davvero una sede 20 o 30 ordinerebbe
+          STANDARD e otterrebbe una distinta completa, plausibile e sbagliata.
+          Stesso trattamento di PVC/ALLUMINIO al primo passo. */}
       <fieldset>
         <legend className="mb-1 text-sm font-semibold text-ink">Sede degli incontri</legend>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -750,6 +753,14 @@ function Step3ManoFinitura({
             }
             checked={form.seatConfig === "STANDARD"}
             onChange={() => update("seatConfig", "STANDARD")}
+          />
+          <RadioOption
+            name="seatConfig"
+            label="Sede 20 mm"
+            hint="Non ancora coperta: il listino 2026 pubblica il formato 9x20 per gli incontri nottolino e ribalta, ma il generatore copre solo il 9x18 per l'asse 9. Non ordinare questi serramenti come standard."
+            checked={false}
+            onChange={() => {}}
+            disabled
           />
           <RadioOption
             name="seatConfig"

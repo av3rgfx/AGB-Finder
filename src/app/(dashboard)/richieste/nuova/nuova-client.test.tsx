@@ -10,7 +10,9 @@ vi.mock("@/trpc/react", () => ({
   api: {
     kit: {
       create: { useMutation: () => ({ mutateAsync: createMutate, isPending: false }) },
-      generate: { useMutation: () => ({ mutateAsync: generateMutate, isPending: false, error: null }) },
+      generate: {
+        useMutation: () => ({ mutateAsync: generateMutate, isPending: false, error: null }),
+      },
     },
   },
 }));
@@ -38,7 +40,9 @@ describe("NuovaRichiestaClient", () => {
     const materiale = screen.getByRole("group", { name: /materiale/i });
     const legno = within(materiale).getByRole("radio", { name: /legno/i }) as HTMLInputElement;
     const pvc = within(materiale).getByRole("radio", { name: /pvc/i }) as HTMLInputElement;
-    const alluminio = within(materiale).getByRole("radio", { name: /alluminio/i }) as HTMLInputElement;
+    const alluminio = within(materiale).getByRole("radio", {
+      name: /alluminio/i,
+    }) as HTMLInputElement;
 
     expect(legno.checked).toBe(true);
     expect(legno.disabled).toBe(false);
@@ -159,6 +163,28 @@ describe("NuovaRichiestaClient", () => {
     expect(within(sede).getByText(/13x30/i)).toBeTruthy();
   });
 
+  // Stessa ragione della sede 30, un gradino più grave: la sede 20 non è nemmeno
+  // *esprimibile* (nessuna delle 7 geometrie deriva 20, l'enum `seatConfig` non la
+  // ha) quindi il motore non la rifiuta mai, e senza questa voce a schermo nulla
+  // direbbe all'agente che il suo serramento 9x20 non è coperto: sceglierebbe
+  // «Standard» e riceverebbe l'incontro 9x18 (`A51400.05.02`) al posto del 9x20
+  // (`A51400.12.02`). Distinta completa, plausibile, sbagliata.
+  it("sede 20: visibile ma non selezionabile, con la ragione a schermo", () => {
+    render(<NuovaRichiestaClient />);
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
+    const sede = screen.getByRole("group", { name: /sede degli incontri/i });
+    const sede20 = within(sede).getByRole("radio", { name: /20 mm/i }) as HTMLInputElement;
+    expect(sede20.disabled).toBe(true);
+    expect(sede20.checked).toBe(false);
+    expect(within(sede).getByText(/9x20/i)).toBeTruthy();
+    // Mobile-first: il terzo radio non deve introdurre colonne fisse (a 375px le
+    // ragioni sono lunghe e una cella da ~170px le manderebbe a capo cinque volte).
+    const grid = sede.querySelector("div.grid");
+    expect(grid?.className).toContain("grid-cols-1");
+    expect(grid?.className).toContain("sm:grid-cols-2");
+  });
+
   it("il riepilogo mostra la geometria e la sede derivata, non quattro numeri", () => {
     render(<NuovaRichiestaClient />);
     fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
@@ -250,7 +276,9 @@ describe("NuovaRichiestaClient", () => {
     const vasistas = within(tipo).getByRole("radio", {
       name: new RegExp(windowTypeLabel("VASISTAS"), "i"),
     }) as HTMLInputElement;
-    const battente = within(tipo).getByRole("radio", { name: /anta battente/i }) as HTMLInputElement;
+    const battente = within(tipo).getByRole("radio", {
+      name: /anta battente/i,
+    }) as HTMLInputElement;
     const proiettante = within(tipo).getByRole("radio", {
       name: new RegExp(windowTypeLabel("ANTA_PROIETTANTE"), "i"),
     }) as HTMLInputElement;
@@ -301,9 +329,15 @@ describe("NuovaRichiestaClient", () => {
     expect(vasistas.checked).toBe(true);
 
     const mat = screen.getByRole("group", { name: /materiale/i });
-    expect((within(mat).getByRole("radio", { name: /legno/i }) as HTMLInputElement).disabled).toBe(false);
-    expect((within(mat).getByRole("radio", { name: /pvc/i }) as HTMLInputElement).disabled).toBe(true);
-    expect((within(mat).getByRole("radio", { name: /alluminio/i }) as HTMLInputElement).disabled).toBe(true);
+    expect((within(mat).getByRole("radio", { name: /legno/i }) as HTMLInputElement).disabled).toBe(
+      false,
+    );
+    expect((within(mat).getByRole("radio", { name: /pvc/i }) as HTMLInputElement).disabled).toBe(
+      true,
+    );
+    expect(
+      (within(mat).getByRole("radio", { name: /alluminio/i }) as HTMLInputElement).disabled,
+    ).toBe(true);
   });
 
   // Le 7 geometrie sono TUTTE ordinabili solo per l'anta-ribalta. Il modulo

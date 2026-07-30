@@ -1,4 +1,5 @@
 import { geometria, type ArtechGeometryId, type PerMano } from "./artech-geometrie";
+import { KitGenerationError } from "./types";
 
 /**
  * Incontri (nottolino, ribalta, DSS) per geometria e mano.
@@ -13,13 +14,49 @@ import { geometria, type ArtechGeometryId, type PerMano } from "./artech-geometr
 
 type Chiave = "A4_ASSE9" | "A4_ASSE13" | "A12_9x18" | "A12_13x24";
 
-/** Riduce la geometria alla chiave che governa gli incontri: aria + asse. */
+/**
+ * Aria 12: la chiave **è** il token «asse × sede telaio» che la colonna ASSE delle
+ * tabelle incontri pubblica. A listino i formati sono QUATTRO — `9x18`, `9x20`,
+ * `13x24`, `13x30` — e il generatore ne copre due, quindi la mappa è scritta per
+ * esteso e ciò che non c'è viene rifiutato.
+ *
+ * PERCHÉ NON PIÙ UN TERNARIO. Fino al 2026-07-30 la scelta era
+ * `sedeMm === 18 ? "9x18" : "13x24"`: un bivio su un dominio di quattro valori.
+ * Un serramento asse 9 / **sede 20** (formato `9x20`, famiglia `.12`) sarebbe
+ * finito in SILENZIO sul 13x24, cioè sugli incontri di un'altra finestra. Con la
+ * mappa esplicita l'ottava geometria non genera: rifiuta.
+ *
+ * `13x18` NON esiste a listino: è la contraddizione nota del pilota (domanda 3b).
+ * La riga resta perché il golden del 16/11/2021 monta la famiglia `.05`, che **è**
+ * il 9x18 — si conserva il codice verificato invece di sostituire un'assunzione
+ * con un'altra.
+ */
+const A12_PER_FORMATO: Record<string, Chiave> = {
+  "9x18": "A12_9x18",
+  "13x18": "A12_9x18", // pilota A12_I13_B20, vedi sopra
+  "13x24": "A12_13x24",
+};
+
+/** Riduce la geometria alla chiave che governa gli incontri: aria + asse (+ sede). */
 function chiave(id: ArtechGeometryId): Chiave {
   const g = geometria(id);
-  if (g.airGapMm === 4) return g.asse === 9 ? "A4_ASSE9" : "A4_ASSE13";
-  // Aria 12: il pilota (sedeMm 18) resta sul 9x18 verificato dalla distinta 2021;
-  // le altre aria-12 asse 13 usano il 13x24 derivato. Vedi domanda 3b.
-  return g.sedeMm === 18 ? "A12_9x18" : "A12_13x24";
+  // Aria 4: il listino non pubblica una sede ma una fresatura (p0469 (467)),
+  // quindi decide il solo asse.
+  if (g.airGapMm === 4) {
+    if (g.asse === 9) return "A4_ASSE9";
+    if (g.asse === 13) return "A4_ASSE13";
+  } else if (g.airGapMm === 12) {
+    const k = A12_PER_FORMATO[`${g.asse}x${g.sedeMm}`];
+    if (k !== undefined) return k;
+  }
+  throw new KitGenerationError(
+    `Incontri non coperti per la geometria ${id} (aria ${g.airGapMm} · asse ${g.asse} · ` +
+      `sede ${g.sedeMm === null ? "nessuna, fresatura" : `${g.sedeMm} mm`}): il listino 2026 ` +
+      "pubblica gli incontri nei formati 9x18, 9x20, 13x24 e 13x30, e il generatore copre " +
+      "solo 9x18 e 13x24 per l'aria 12 (l'aria 4 va per asse). Serve la trascrizione della " +
+      "tabella incontri di questo formato prima di poter ordinare.",
+    "artech.incontri",
+  );
 }
 
 /**

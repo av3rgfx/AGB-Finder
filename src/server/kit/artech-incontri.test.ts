@@ -5,6 +5,8 @@ import {
   incontroDss,
   formatoIncontro,
 } from "./artech-incontri";
+import { GEOMETRIE, type ArtechGeometryId } from "./artech-geometrie";
+import { KitGenerationError } from "./types";
 
 describe("incontroNottolino", () => {
   it("aria 12 è ambidestro: la mano non cambia il codice", () => {
@@ -80,5 +82,61 @@ describe("formatoIncontro", () => {
     expect(formatoIncontro("A4_I85_B15")).toBe("asse 9 (fresatura)");
     expect(formatoIncontro("A4_I9_B18")).toBe("asse 9 (fresatura)");
     expect(formatoIncontro("A4_I13_B18")).toBe("asse 13 (fresatura)");
+  });
+});
+
+describe("chiave() — mappatura esplicita ed esaustiva dei formati incontro", () => {
+  const TUTTE = Object.keys(GEOMETRIE) as ArtechGeometryId[];
+
+  it("tutte e 7 le geometrie coperte danno un formato valido e tre codici, per entrambe le mani", () => {
+    expect(TUTTE).toHaveLength(7);
+    for (const id of TUTTE) {
+      // Solo i formati che il generatore copre: fresatura per l'aria 4, 9x18 o
+      // 13x24 per l'aria 12. Un «asse 9x20» o «asse 13x30» qui sarebbe un formato
+      // inventato.
+      expect(formatoIncontro(id), id).toMatch(
+        /^asse (9 \(fresatura\)|13 \(fresatura\)|9x18|13x24)$/,
+      );
+      for (const mano of ["DESTRA", "SINISTRA"] as const)
+        for (const incontro of [incontroNottolino, incontroRibalta, incontroDss])
+          expect(incontro(id, mano), `${id} ${mano}`).toMatch(/^A[0-9A-Z]{5}\.[0-9A-Z]{2}\.\d{2}$/);
+    }
+  });
+
+  /**
+   * PERCHÉ UNA MUTAZIONE E NON UN INPUT. L'ottava geometria — asse 9 / **sede 20**,
+   * il formato `9x20` che la spec dichiara fuori perimetro — non è costruibile da
+   * input validati: `ArtechGeometryId` ha sette valori e `GEOMETRIE` sette righe,
+   * tutte coperte, quindi il ramo di rifiuto è oggi irraggiungibile dalla UI e dal
+   * router. Si esegue simulando quella riga (`sedeMm` 18 → 20) e ripristinandola in
+   * `finally`: è l'unico modo di provare che il `throw` c'è e morde. Senza questa
+   * prova il vecchio ternario `sedeMm === 18 ? "9x18" : "13x24"` avrebbe risposto
+   * `13x24` — gli incontri di un'altra finestra — in perfetto silenzio.
+   */
+  it("una sede fuori mappa (9x20) viene RIFIUTATA, non instradata al 13x24", () => {
+    const riga = GEOMETRIE.A12_I9_B18;
+    const sedeOriginale = riga.sedeMm;
+    riga.sedeMm = 20;
+    try {
+      for (const chiamata of [
+        () => incontroNottolino("A12_I9_B18", "DESTRA"),
+        () => incontroRibalta("A12_I9_B18", "SINISTRA"),
+        () => incontroDss("A12_I9_B18", "DESTRA"),
+        () => formatoIncontro("A12_I9_B18"),
+      ]) {
+        expect(chiamata).toThrow(KitGenerationError);
+        expect(chiamata).toThrow(/aria 12 · asse 9 · sede 20 mm/);
+      }
+      try {
+        formatoIncontro("A12_I9_B18");
+        expect.unreachable("atteso rifiuto del formato 9x20");
+      } catch (err) {
+        expect((err as KitGenerationError).ruleId).toBe("artech.incontri");
+      }
+    } finally {
+      riga.sedeMm = sedeOriginale;
+    }
+    // Ripristino verificato: gli altri test del file leggono la stessa riga.
+    expect(formatoIncontro("A12_I9_B18")).toBe("asse 9x18");
   });
 });
