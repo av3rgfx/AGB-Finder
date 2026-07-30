@@ -89,11 +89,17 @@ perché una distinta emessa non cambi sotto i piedi.
 Quindi: `Customer.discount` è il **default che precompila**; `KitRequest.discountPercent` è il
 valore **davvero applicato**, timbrato alla creazione e da lì in poi indipendente.
 
-### 3.2 Cambiare cliente su una richiesta esistente
+### 3.2 Il cliente si sceglie alla creazione, e non si cambia dopo
 
-Cambiare il cliente **non ri-timbra** una percentuale già modificata a mano: sovrascriverla
-butterebbe via una trattativa. Il valore del cliente precompila **solo** quando
-`discountPercent` è ancora `NULL`.
+Non esiste una rotta per cambiare il cliente di una richiesta già creata, ed è deliberato: il
+solo momento in cui `discountPercent` viene timbrato è la creazione, quindi **non può esistere**
+il caso «il cliente sovrascrive uno sconto ritoccato a mano». È un'impossibilità strutturale,
+non una guardia da ricordarsi.
+
+Se l'agente sbaglia cliente, oggi la strada è rifare la richiesta. Se in futuro servirà un
+`kit.setCustomer`, quella rotta dovrà **esplicitamente** decidere se ri-timbrare lo sconto — e
+la risposta giusta sarà «solo se `discountPercent` è ancora `NULL`», per non buttare via una
+trattativa. Va scritto qui perché è la trappola che quella rotta si porterà dietro.
 
 ### 3.3 Perché il netto non si salva (D8)
 
@@ -234,8 +240,8 @@ Il riepilogo è una **lista verticale**, non una tabella. L'editor della percent
 - **Puri** su `discount.ts`: arrotondamento al centesimo (inclusi i casi che cadono sul mezzo centesimo), `null`, `0`, `100`, soglia sopra/sotto/uguale.
 - **Router `customer`**: paletto sulla cancellazione, ricerca, validazione.
 - **`kit.create`** con e senza `customerId`; `setDiscount` ammessa a distinta generata.
-- **`no-silent-fields`**: `discountPercent` e `customerId` mutati devono cambiare l'output — altrimenti sono campi muti come lo era `openingDir`.
-- **Regressione dura**: golden anta-ribalta **16 righe / 21 pezzi / 90,20 € di lordo** e gemello entrata 7,5 **96,29 €** invariati. Lo sconto non entra nel motore deterministico, quindi non li **può** toccare: il test lo dimostra invece di prometterlo.
+- **Confine col motore**: `kitInputSchema` deve **scartare** `customerId` e `discountPercent`, e nessuno dei due deve comparire fra le chiavi dei due rami dell'unione. Non è un caso per `no-silent-fields.test.ts` — quel test copre i campi *dentro* lo schema, e questi ci stanno fuori di proposito: qui si prova che ci restino.
+- **Regressione dura**: golden anta-ribalta **16 righe / 21 pezzi / 90,20 € di lordo** e gemello entrata 7,5 **96,29 €** invariati. Sono **già asseriti** in `rules-artech-legno.test.ts`: non vanno duplicati, vanno lasciati verdi. Restano verdi *perché* lo sconto non entra nel motore, che è quanto il punto precedente dimostra.
 - **Browser**: desktop 1440×900 e **375px**.
 
 ## 9. Fuori scope, esplicitamente
