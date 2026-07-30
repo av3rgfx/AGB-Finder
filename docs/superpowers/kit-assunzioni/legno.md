@@ -1,5 +1,5 @@
 > 📋 **L'indice delle domande vive in [`DOMANDE-APERTE.md`](./DOMANDE-APERTE.md)**, che è il
-> documento unico e aggiornato (1-26, con priorità e testi pronti da inviare). **La numerazione
+> documento unico e aggiornato (1-27, con priorità e testi pronti da inviare). **La numerazione
 > è globale e condivisa**: i commenti nel codice rimandano per numero, quindi il numero deve
 > risolvere lì. Questa scheda conserva il *merito tecnico* delle domande che riguardano
 > l'anta-ribalta, non l'elenco.
@@ -102,6 +102,17 @@ regexp: `listino-images.ts`, route `/api/product-image`).
 > re-importato, `A50805.05.DX/.SX` **non esiste a catalogo**: la riga del supporto cerniera
 > esce **senza prezzo** (con warning) e il totale del golden scende da **90,20 €** a
 > **85,76 €** (−4,44 €).
+
+---
+
+## Cosa è stato corretto il 2026-07-30
+
+**Entrata maniglia — RISOLTA il 2026-07-30.** Era una costante del motore
+(`A50122.15.NN`), scelta senza chiedere: un serramento a entrata 7,5 riceveva in
+silenzio il codice della 15. Ora è un campo dell'input, obbligatorio e senza
+default, e il modulo copre entrambe le famiglie pubblicate a `p0424 (422)` — nove
+bande identiche, cambia il codice e cambia il prezzo (GR07: 16,03 € contro
+22,12 €). Resta aperta la **domanda 27** sull'asimmetria del GR03.
 
 ---
 

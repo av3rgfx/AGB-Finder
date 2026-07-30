@@ -135,6 +135,11 @@ trascritte, e il modulo rifiuta sotto i 540 mm. Sblocca le finestre piccole.
 
 ## Assunzioni dichiarate residue (non bloccanti, nessuna domanda numerata)
 
+- **Entrata maniglia: solo 15.** Le `A50111.08.*` esistono, ma le due NB di
+  `p0426 (424)` dichiarano le forbici vasistas `A50545.00.00` «non applicabili» sui
+  GR 1-2-3 a entrata 7,5 e limitate ai GR 5-6, senza indicare il sostituto; il GR00
+  è pubblicato solo per l'entrata 15. Il modulo **rifiuta** l'entrata 7,5 invece di
+  emettere una distinta a cui manca un pezzo. Si riapre con una risposta dell'esperto.
 - **Movimenti angolari = 2** e **limitatori di corsa = n. movimenti angolari** (come nei
   moduli gemelli); lo schema non pubblica la quantità.
 - **Coperture/finitura**: la vasistas non emette coperture; `finish` non seleziona nulla.
