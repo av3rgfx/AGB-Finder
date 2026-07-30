@@ -9,16 +9,16 @@
 
 | Campo | Valore |
 |-------|--------|
-| **Data** | 2026-07-30 — **SCONTISTICA CLIENTE** implementata. PR da aprire. |
+| **Data** | 2026-07-30 — **SCONTISTICA CLIENTE** fatta (PR #42). Prossima: **schemi cliente + composer** o **varianti componenti** |
 | **Fase in corso** | Fase 1 — MVP Gestionale |
-| **Sotto-fase** | Kit engine: **tre tipologie attive e live** — anta-ribalta LEGNO, vasistas LEGNO, bilico TOUR LEGNO. Input = **unione discriminata su `series`**. |
-| **Branch git** | `claude/kit-listino-distinte-r1zn22`, da `main` @ `b2d8fcd` (merge #40). |
-| **Stato deploy** | **LIVE**, Neon allineato fino alla #40 (run `30572337032`). **Al merge serve UNA migrazione**: `20260730201437_kit_discount_percent`. |
-| **Aperto** | verifica funzionale in produzione · **mail ad AGB** · **domande all'agente** · audit `kit_requests` · fix `dedupeRows` |
+| **Sotto-fase** | Kit engine: tre tipologie attive (anta-ribalta LEGNO su **7 geometrie × 2 entrate**, vasistas LEGNO, bilico TOUR LEGNO) |
+| **Branch git** | `claude/kit-listino-distinte-r1zn22`, da `main` @ `b2d8fcd` (merge #40), poi mergiato `origin/main` @ `94784fd` (merge #41) |
+| **Stato deploy** | **LIVE.** #40 e #41 mergiate, ops #40 eseguite (run `30572337032`). **Al merge della #42 serve UNA migrazione**: `20260730201437_kit_discount_percent` |
+| **Aperto** | le **tre distinte reali** · mail ad AGB · domande all'agente · audit `kit_requests` · fix `dedupeRows` |
 
 ---
 
-> **▶ RIPRENDI DA QUI — dopo la SCONTISTICA CLIENTE**
+> **▶ RIPRENDI DA QUI**
 >
 > ### Cosa è stato fatto (2026-07-30)
 >
@@ -61,32 +61,223 @@
 >    uno **screenshot**, non da un'asserzione (che leggeva `innerText`, il quale include ciò che è
 >    fuori vista). I totali ora vivono nel riepilogo. **Guardare le immagini, non solo i verdi.**
 >
-> ### Le tre strade che restano (invariate, meno la scontistica che è fatta)
+> ### Prima di scegliere cosa fare: due domande
 >
-> 1. **Schemi cliente + composer chiusure** — `CustomerKitProfile` per non richiedere ogni volta le
->    stesse quote, e il composer della catena di chiusura. ⚠️ **Dipende dalle tre distinte reali**:
->    la formula della corsa (`altezza − 420`) è tarata sul **solo** golden a H 1820, «una retta
->    tirata per un punto». Senza altezze diverse dal golden non discrimina nulla.
-> 2. **Varianti componenti** (nottolini antieffrazione, 11 finiture coperture, 4 squadre angolari).
->    La spec del 2026-07-29 le mette **dopo** il divario dello schema `p0406` (22 voci a schema
->    contro 16 emesse): impilare varianti su una distinta incompleta è già stato bocciato una volta.
-> 3. **Divario schema `p0406`** — le sei voci senza corrispondenza. È il prerequisito della 2.
+> **1. ~~La PR #40 è mergiata e le ops eseguite?~~ FATTO.** PR #40 mergiata (`b2d8fcd`), ops
+> eseguite col run `30572337032` (2026-07-30 19:11Z, 12/12 verdi). Verifica solo che la
+> generazione di una richiesta funzioni in produzione.
 >
-> ### Cosa NON dipende dal codice, e vale più di tutto
+> **⚠️ LA LEZIONE, però, va tenuta**, perché è costata un disservizio vero. Fra il merge
+> (18:33Z) e la migrazione (18:53Z) la produzione è rimasta **rotta per venti minuti**:
+> `kit.get` fa `findFirst` senza `select`, quindi Prisma seleziona anche la colonna nuova e
+> **falliscono le letture, non solo le creazioni** — l'utente ha incontrato l'errore provando
+> a creare una richiesta. Alla prossima migrazione: **il run ops parte nella stessa finestra
+> del merge**, non «quando capita». Non basta scriverlo nella PR: va lanciato.
 >
-> 1. **Le tre distinte reali di MC, Peruzzi e Fosca.** Aperta da tre sessioni. Senza, i tre clienti
->    principali ricevono distinte **mai confrontate con un ordine vero** e la corsa delle chiusure
->    resta una retta per un punto. Basta una foto dell'ordine.
-> 2. **Domande all'agente e ad AGB** → `docs/superpowers/kit-assunzioni/DOMANDE-APERTE.md`
->    (ora **28** domande). Le più preziose restano la **23** (secondo golden) e la **4**+**3b**
->    (sede 18 o 30). La **28** si può girare all'ufficio commerciale, non serve AGB.
-> 3. **Audit `kit_requests`** — query pronta in `DA-FARE-audit-e-domande-agb.md`.
+> **2. Sono arrivate le tre distinte reali di MC, Peruzzi e Fosca?** È la domanda che vale
+> più di tutte le altre messe insieme, ed è aperta da due sessioni. Senza, i tre clienti
+> principali ricevono distinte che il motore genera ma che **nessuno ha mai confrontato con
+> un ordine vero**: l'unico riscontro reale che questo progetto possiede resta la distinta
+> AGB del 16/11/2021 (il golden a 90,20 €). Con anche una sola di quelle tre, e con
+> un'altezza diversa dal golden, si calibra la formula della corsa delle chiusure — che oggi
+> è **una retta tirata per un punto, con la pendenza assunta a 1**.
 >
-> ### Difetti noti e non corretti (dichiarati, non dimenticati)
+> ### Le tre strade rimaste
 >
-> - `dedupeRows` last-wins in `map-product.ts` (segnalato dalla bonifica 2026-07-25).
-> - `openingDir` raccolto, validato, persistito e **letto da nessun modulo** (domanda 16).
-> - `Customer.priceList` e `paymentTerms` restano colonne inutilizzate: non si finge di gestirle.
+> A inizio sessione le strade erano quattro; l'**entrata cablata** e la **scontistica** sono fatte. Restano:
+>
+> | Strada | Dipende dalle distinte mancanti? | Nota |
+> |---|---|---|
+> | ~~**Scontistica cliente**~~ | — | **FATTA 2026-07-30, PR #42.** Nota per la stima: `Customer` era un modello **fantasma** — tabella a schema, zero router, zero CRUD, `customerId` sempre NULL. Le colonne a schema hanno risparmiato *una migrazione*, non metà del lavoro |
+> | **Schemi cliente + composer** | in parte | Il profilo geometria per cliente (§3.5 spec 2026-07-29) no; il composer delle chiusure sì — la sua calibrazione resta su un punto solo finché non arrivano le distinte |
+> | **Varianti componenti** | sì, e non solo | La spec le mette fuori scope: «non si impilano varianti su una distinta che sappiamo ancora incompleta». Bloccate anche dalle domande 2, 20, 22, 26 |
+>
+> Se l'entrata dovesse diventare un campo del **profilo cliente**, il posto è già preparato:
+> è tipicamente costante per cliente, ed è un candidato naturale per `CustomerKitProfile`.
+>
+> ### Debito noto, piccolo e già circoscritto
+>
+> - **Il gate su catalogo reale fissa `widthMm: 550`**, quindi esercita **1 banda su 5** di
+>   `FORBICI` e **1 su 4** di `BRACCI_GRUPPI` — lo stesso limite che la cremonese aveva prima
+>   di questa sessione. La chiusura è **la stessa forma** del test appena scritto per le nove
+>   bande d'altezza: ~15 righe, un `it` che spazza 5 larghezze rappresentative. *(`CHIUSURE_VERTICALI`
+>   è un'altra cosa: non è copertura mancante ma una formula su un punto solo → è la domanda 21.)*
+> - **`no-silent-fields.test.ts`: `CASI` non è legato a `RULE_MODULES`.** Copre i tre moduli
+>   attivi, ma il giorno che battente o PVC si riaccendono la garanzia non li segue e **nulla
+>   lo dice**. Chiusura: asserire che ogni voce del registry sia in `CASI` o in un elenco
+>   `INATTIVI` esplicito, i cui moduli sollevano su qualunque input.
+> - **`dedupeRows` last-wins** in `map-product.ts` (`T18001.02.93` ha `listinoPage` 561 invece
+>   di 551 → «Visualizza nel listino» apre la pagina sbagliata; prezzo non affetto).
+>
+> ### Cose che NON dipendono dal codice
+>
+> 1. **Le tre distinte reali** (vedi sopra). 2. **Domande all'agente** →
+> `docs/superpowers/kit-assunzioni/DOMANDE-APERTE.md`, ora **27**, con i testi già pronti da
+> inviare. 3. **Mail ad AGB** → `DA-FARE-audit-e-domande-agb.md`. 4. **Audit `kit_requests`**,
+> query pronta — e ora c'è una ragione in più: dopo il backfill dell'entrata, una riga storica
+> di un serramento davvero a 7,5 è **indistinguibile** da una scelta deliberata. Se un ordine
+> passato era a entrata 7,5, la cremonese spedita era il pezzo sbagliato.
+>
+> ### Lezioni operative da non riscoprire
+>
+> - **Pagina fisica = stampata + 2.** Citare sempre «fisica (stampata)».
+> - **Le legende degli schemi sono immagini**: `pdftoppm -r 150 -png` e guardarle, non grepparle.
+> - **Verificare i codici con la firma di riga del parser reale**, non con un grep.
+> - **I suffissi dei codici codificano la geometria.** E l'handoff può sbagliarli: questa
+>   sessione ha scoperto che «entrata 0, 8 e 15» erano in realtà **7,5 e 15**, più una famiglia
+>   di prodotto diversa (la versione ad asta). Implementare ciò che c'era scritto avrebbe
+>   prodotto un enum a tre valori di cui uno inesistente. **Rileggere sempre la pagina.**
+> - **Un test verde non è un test che verifica.** Tre difetti di questa sessione erano test
+>   verdi: uno non raggiungeva più la schermata che dichiarava di controllare (passava per una
+>   coincidenza di testo), uno copriva 1 codice su 9, uno non esisteva affatto proprio sul
+>   campo centrale del lavoro. Il criterio non è «è rosso?», è **«raggiunge lo stato che dice
+>   di verificare?»**.
+> - **Dopo un `--amend`, leggere il commit e non il disco**: `git show --stat HEAD`, non `cat`.
+>   Meglio ancora: mettere `test -z "$(git status --porcelain)"` come **prima** asserzione del
+>   gate di fine task — un amend fatto prima dello staging sporca il tree per costruzione.
+> - **Ambiente**: `bash scripts/dev-bootstrap.sh`, poi riempire `.env`. Catalogo:
+>   `pnpm import:agb <listino.pdf>` (~15 min, 7.488 prodotti; serve `poppler-utils`). DB locale
+>   `utpistoia`. Integration gated: `INTEGRATION_DATABASE_URL="$DATABASE_URL" pnpm test <file>`
+>   — **senza quella variabile i gate passano a vuoto**. Chromium:
+>   `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`.
+>
+> ### Prompt di apertura (copiabile)
+>
+> ```
+> Nuova sessione. Riparti leggendo handoff.md (§«RIPRENDI DA QUI») e CLAUDE.md.
+> Segui il workflow: /using-superpowers → brainstorming → /llm-council per dubbi o
+> incongruenze sulle regole di distinta → /impeccable se tocchiamo UI (SEMPRE mobile
+> ≤375px + desktop) → /writing-plans → esecuzione TDD; /ponytail per il codice.
+> Vincoli CLAUDE.md: TS strict, API via tRPC/Prisma, UI in italiano, codici in mono,
+> mobile-first, e soprattutto: il KIT È UN ENGINE DETERMINISTICO TypeScript, MAI un LLM.
+> A fine lavoro: gate verdi (typecheck·lint·test·build) + verifica browser se c'è UI +
+> PR (chiedi il mio ok prima di aprirla) + indica le AZIONI OPS.
+>
+> Il PDF del listino AGB 2026 NON è nel container: scaricalo dal link in CLAUDE.md
+> (§FILE ESTERNI). Estrai il testo con pdftotext -layout e splittalo pagina per pagina.
+> ATTENZIONE: pagina fisica = stampata + 2. E le legende degli schemi stanno DENTRO il
+> disegno: nel testo estratto NON compaiono, vanno renderizzate in immagine e guardate.
+>
+> Prima di propormi qualsiasi cosa, rispondi a UNA domanda: sono arrivate le tre
+> distinte reali di MC, Peruzzi e Fosca? È aperta da due sessioni ed è la cosa che
+> vale di più: senza, i tre clienti principali ricevono distinte che il motore
+> genera ma che nessuno ha mai confrontato con un ordine vero, e la formula della
+> corsa delle chiusure resta una retta tirata per un punto solo.
+>
+> (La PR #40 è mergiata e le ops eseguite — run 30572337032. Non serve richiederlo.
+> Ma se in produzione dovesse ricomparire un errore «column ... does not exist»,
+> la causa è sempre la stessa: una migrazione non ancora applicata a Neon.)
+>
+> Poi si sceglie fra le tre strade rimaste: scontistica cliente (la consigliata: i
+> totali oggi sono il lordo di listino, non quello che il cliente paga, e metà del
+> lavoro è già a schema) · schemi cliente + composer chiusure · varianti componenti.
+>
+> NON rompere il golden: 16 righe / 21 pezzi / 90,20 €, e il suo gemello a entrata
+> 7,5 a 96,29 €. Sono gli unici due riscontri numerici che abbiamo.
+> ```
+>
+> ---
+>
+> **▶ STORICO — sessione 2026-07-30: ENTRATA MANIGLIA ✅ — PR #40 MERGIATA, ops eseguite.**
+>
+> **Il difetto.** Il motore sceglieva la cremonese in **entrata 15** (`A50122.15.NN`) dalla Fase
+> 1d, **cablata**, senza guardia — perché il campo **non esisteva nell'input**. Un serramento a
+> entrata 7,5 riceveva **in silenzio** il codice della 15: esiste, ha un prezzo, nessun warning.
+> Sul GR07 del golden vale **6,09 € su 90,20 €** (+38 % sulla riga).
+>
+> **L'handoff descriveva l'asse sbagliato.** Diceva «entrata 0, 8 e 15». A `p0424 (422)` la
+> colonna ENTRATA è etichettata `1) 7,5` · `2) 15` · `3) Asta*`: `.08` è l'entrata **7,5**, e
+> `.00` **non è un'entrata** ma la versione ad asta, «*senza DSS né monoblocco martellina*».
+> Conferma trovata **nei dati** in revisione: il nome a catalogo di `A50122.08.07` è «per schema
+> A **1) 7,5**».
+>
+> **Cosa c'è.** `entrata: "E75" | "E15"` sul ramo ARTECH, **ortogonale** a `geometry` (provato da
+> un test: cambia SOLO la riga della cremonese) · **nessun valore preselezionato**, il passo 3
+> non avanza senza · tabelle di **codici interi** per entrata · colonna `kit_requests.entrata`
+> nullable + backfill `E15` sulle sole righe ARTECH · trasporto da **entrambe** le mutation
+> (`create` **e** `ricalcola`) · rilettura **senza fallback** in `from-request` · **vasistas
+> rifiuta** l'entrata 7,5 citando le due NB di `p0426 (424)` (le forbici spariscono su 4 GR su 6
+> e il listino non dice cosa metterci), e il wizard **la disabilita** invece di lasciarla
+> scegliere e fallire dopo · battente: `p0429 (427)` pubblica una sola entrata, quindi lì l'asse
+> non esiste (solo un commento, nessuna guardia: `generate` solleva già).
+>
+> **Il buco che aveva lasciato passare il bug è chiuso.** `no-silent-fields.test.ts` mutava ogni
+> campo, ma le liste `mutazioni`/`inerti` erano **scritte a mano** e nulla verificava che
+> coprissero lo schema. Ora un campo non dichiarato fa fallire il test **col proprio nome**. Ha
+> pagato subito: ha scovato che il modulo vasistas ignora `supplementaryClosures` (legittimo,
+> ora dichiarato con la ragione).
+>
+> **Gate:** typecheck · lint puliti · **748 test** (erano 709) · build verde · **gate su catalogo
+> reale 29 casi** (28 combinazioni geometria × mano × entrata + 18 codici cremonese su 9 bande) ·
+> **browser 375 px e desktop**, 16 screenshot.
+>
+> **Distinte reali** (catalogo importato, 7.488 prodotti), 550×1820 SX ARGENTO chiusure ON:
+> entrata 15 → **16 righe / 21 pezzi / 90,20 €** (golden invariato) · entrata 7,5 → **16 / 21 /
+> 96,29 €**, cremonese `A50122.08.07`, zero warning.
+>
+> **Cinque difetti intercettati dalle review**, che sarebbero arrivati in produzione:
+> (1) `kit.ricalcola` non copiava `entrata` → ogni ricalcolo avrebbe prodotto una riga rifiutata;
+> (2) un test verde che **non raggiungeva più la schermata** che dichiarava di verificare, salvato
+> da una coincidenza di testo; (3) il gate esercitava **1 codice nuovo su 9**; (4) mancava del
+> tutto il test sul trasporto in `kit.create` (cancellando la riga del router la suite restava
+> verde); (5) la domanda 17 conservava la premessa **smontata da questa stessa sessione**, proprio
+> nella frase destinata all'agente esperto. **Tre erano lacune del piano, non degli implementer.**
+>
+> **AZIONI OPS — ESEGUITE** (run `30572337032`, 19:11Z, 12/12 verdi): migrate
+> `20260730160444_kit_entrata` + import + seed + embed.
+>
+> ⚠️ **Ma con venti minuti di disservizio.** Il merge è delle 18:33Z, la migrazione delle 18:53Z:
+> in mezzo la produzione ha risposto **500 su ogni scheda richiesta e su ogni creazione**, perché
+> `kit.get` fa `findFirst` senza `select` e Prisma selezionava una colonna che a Neon non c'era.
+> L'ho previsto e scritto nella PR, nell'handoff e nel messaggio di chiusura — e non è servito a
+> niente, perché **scriverlo non è lanciarlo**. È stato l'utente a scoprirlo provando l'app.
+> Regola per la prossima volta: la migrazione parte **nella stessa finestra del merge**, e chi
+> mergia lo sa perché gliel'ha detto qualcuno, non perché è scritto in un documento.
+>
+> Spec/piano: `docs/superpowers/{specs,plans}/2026-07-30-kit-entrata*`.
+>
+> ---
+>
+> **▶ STORICO — sessione 2026-07-29: SETTE GEOMETRIE REALI ✅ — PR #38 + #39 MERGIATE.**
+>
+> *(Sessione che non aveva aggiornato l'handoff; ricostruita dal corpo della PR #39.)*
+>
+> Un agente, intervistato, disse che il generatore **non era funzionale**: verificato eseguendo il
+> codice, i suoi **tre clienti principali venivano tutti rifiutati** — MC (aria 4 · interasse
+> **8,5** · battuta 15, respinto da zod perché 8,5 non è intero), Peruzzi (aria 4 · interasse 9 ·
+> battuta 18) e Fosca (aria 12 · interasse 13 · battuta **18**). Il motore copriva una **quarta**
+> combinazione che nessuno dei tre ordina.
+>
+> **Causa radice: due quote, un nome.** A `p0474 (472)` AGB pubblica due tabelle adiacenti, stessa
+> pagina, stesse famiglie, intitolate «sede telaio 18/24/30» e «BATTUTA 18/20/24/30». Sono la
+> stessa quota. Quindi «battuta» a listino indica **due grandezze diverse**: la battuta dell'anta
+> (15/18/20 → famiglie `.22`/`.24`/`.26`/`.34`/`.36`) e la sede telaio (18/20/24/30 → `.05`/`.12`/
+> `.CR`/`.MN`). L'agente dice «battuta 15 o 18» e intende la prima; non nomina mai la sede perché
+> nelle tabelle che consulta non si chiama così.
+>
+> **Cosa entrò:** `geometry: ArtechGeometry` (7 valori) + `seatConfig` al posto di quattro campi
+> numerici liberi · la **sede derivata** e mostrata, non più chiesta · tabelle di **codici interi**
+> (`A50904.22` **non esiste**: comporlo avrebbe prodotto un codice plausibile e inesistente) ·
+> **ricalcolo versionato** (una distinta emessa non si riscrive: se ne crea una nuova versione,
+> garantito nel **router**) · un **gate su catalogo reale** (14 combinazioni, 63 codici).
+> `SEDE_30` e `SEDE_20` mostrate e **disabilitate** con la ragione. Test **709**.
+>
+> ---
+>
+> **▶ STORICO — sessioni 2026-07-27 e precedenti: perfezionamento anta-ribalta (PR #37).**
+>
+> La PR #37 corresse il campo «Sede»: un agente esperto non aveva saputo dire cosa fosse, perché
+> il listino chiama la stessa quota «sede telaio» nei titoli degli schemi e **secondo numero del
+> token ASSE** (`9x18`, `13x24`, `13x30`) nelle tabelle degli incontri. Fix: etichetta «Sede
+> telaio» + hint col formato, e `seatMm` da max 22 a **max 30** (il 22 tagliava fuori la sede 30,
+> quella di *tutti* gli schemi base 2026).
+>
+> Il piano che seguì — «perfezionare l'anta-ribalta» — è stato **completato dalle due sessioni
+> successive**: la copertura di battuta 18 / sede 30 e delle altre geometrie dalla PR #39,
+> l'**entrata** (il «quinto parametro mai notato») dalla PR #40. Resta di quel piano il confronto
+> voce-per-voce fra lo schema `p0406 (404)` — **22 voci** — e le **16 posizioni** emesse: sei senza
+> corrispondenza (2 DSS · 9 doppio nottolino a fungo · 17 microventilazione · 19-20 spessori di
+> sollevamento · 22 copertura incontro). È la **domanda 20** in `DOMANDE-APERTE.md`.
 >
 > ---
 >
