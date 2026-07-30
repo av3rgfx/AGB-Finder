@@ -189,6 +189,11 @@ describe("NuovaRichiestaClient", () => {
     render(<NuovaRichiestaClient />);
     fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
     fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
+    fireEvent.click(
+      within(screen.getByRole("group", { name: /entrata maniglia/i })).getByRole("radio", {
+        name: /7,5 mm/i,
+      }),
+    );
     fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // → riepilogo
     expect(screen.getByText(geometriaLabel("A12_I13_B20"))).toBeTruthy();
     expect(screen.getByText(/18 mm — derivata/i)).toBeTruthy();
@@ -201,6 +206,11 @@ describe("NuovaRichiestaClient", () => {
     const { container } = render(<NuovaRichiestaClient />);
     fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
     fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
+    fireEvent.click(
+      within(screen.getByRole("group", { name: /entrata maniglia/i })).getByRole("radio", {
+        name: /7,5 mm/i,
+      }),
+    );
     fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // → riepilogo
     const dl = container.querySelector("dl");
     expect(dl?.className).toContain("grid-cols-1");
@@ -213,8 +223,17 @@ describe("NuovaRichiestaClient", () => {
     fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
     const geometria = screen.getByRole("group", { name: /geometria/i });
     fireEvent.click(within(geometria).getByLabelText(geometriaLabel("A4_I9_B18")));
+    fireEvent.click(
+      within(screen.getByRole("group", { name: /entrata maniglia/i })).getByRole("radio", {
+        name: /7,5 mm/i,
+      }),
+    );
     fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // → riepilogo
-    expect(screen.getByText(/fresatura/i)).toBeTruthy();
+    // Stringa esatta prodotta da sedeIncontriLabel(null): esiste SOLO nel
+    // riepilogo (Step4Riepilogo), a differenza della regex /fresatura/i usata
+    // prima, che matchava anche l'hint del passo 3 — il test passava per
+    // coincidenza di testo anche quando il passo non avanzava davvero.
+    expect(screen.getByText("Fresatura (aria 4)")).toBeTruthy();
   });
 
   it("la geometria scelta finisce nell'input di create", async () => {
@@ -225,6 +244,11 @@ describe("NuovaRichiestaClient", () => {
     fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
     const geometria = screen.getByRole("group", { name: /geometria/i });
     fireEvent.click(within(geometria).getByLabelText(geometriaLabel("A12_I13_B18")));
+    fireEvent.click(
+      within(screen.getByRole("group", { name: /entrata maniglia/i })).getByRole("radio", {
+        name: /7,5 mm/i,
+      }),
+    );
     fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
     fireEvent.click(screen.getByRole("button", { name: /genera kit/i }));
     await vi.waitFor(() => expect(push).toHaveBeenCalledWith("/richieste/k11"));
@@ -249,6 +273,11 @@ describe("NuovaRichiestaClient", () => {
     render(<NuovaRichiestaClient />);
     fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
     fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // default validi
+    fireEvent.click(
+      within(screen.getByRole("group", { name: /entrata maniglia/i })).getByRole("radio", {
+        name: /7,5 mm/i,
+      }),
+    );
     fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
     fireEvent.click(screen.getByRole("button", { name: /genera kit/i }));
     await vi.waitFor(() => expect(push).toHaveBeenCalledWith("/richieste/k9"));
@@ -309,6 +338,11 @@ describe("NuovaRichiestaClient", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // step 2
     fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // step 3
+    fireEvent.click(
+      within(screen.getByRole("group", { name: /entrata maniglia/i })).getByRole("radio", {
+        name: /7,5 mm/i,
+      }),
+    );
     fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // step 4
     fireEvent.click(screen.getByRole("button", { name: /genera kit/i }));
 
@@ -382,6 +416,48 @@ describe("NuovaRichiestaClient", () => {
     fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // step 2
     fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // step 3
     expect(screen.queryByLabelText(/chiusure supplementari/i)).toBeNull();
+  });
+});
+
+describe("NuovaRichiestaClient — entrata maniglia", () => {
+  const vai = () => {
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // 1 → 2
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // 2 → 3
+  };
+
+  it("non preseleziona nessuna entrata", () => {
+    render(<NuovaRichiestaClient />);
+    vai();
+    const gruppo = screen.getByRole("group", { name: /entrata maniglia/i });
+    const opzioni = within(gruppo).getAllByRole("radio") as HTMLInputElement[];
+    expect(opzioni).toHaveLength(2);
+    for (const o of opzioni) expect(o.checked).toBe(false);
+  });
+
+  it("blocca il passo finché non se ne sceglie una, con un messaggio italiano", () => {
+    render(<NuovaRichiestaClient />);
+    vai();
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
+    expect(screen.getByText("Scegli l'entrata maniglia (7,5 o 15 mm).")).toBeTruthy();
+  });
+
+  it("scelta l'entrata, il passo avanza", () => {
+    render(<NuovaRichiestaClient />);
+    vai();
+    const gruppo = screen.getByRole("group", { name: /entrata maniglia/i });
+    fireEvent.click(within(gruppo).getByRole("radio", { name: /7,5 mm/i }));
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
+    expect(screen.queryByText("Scegli l'entrata maniglia (7,5 o 15 mm).")).toBeNull();
+    expect(screen.getByRole("button", { name: /genera kit/i })).toBeTruthy();
+  });
+
+  // Regola inviolabile «mobile-first», come già per materiale e geometria.
+  it("entrata: griglia a una colonna sotto sm", () => {
+    render(<NuovaRichiestaClient />);
+    vai();
+    const grid = screen.getByRole("group", { name: /entrata maniglia/i }).querySelector("div.grid");
+    expect(grid?.className).toContain("grid-cols-1");
+    expect(grid?.className).toContain("sm:grid-cols-2");
   });
 });
 

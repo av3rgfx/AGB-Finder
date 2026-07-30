@@ -7,9 +7,12 @@ import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { api } from "@/trpc/react";
 import {
   artechInputSchema,
+  entrataLabel,
   kitInputSchema,
   tourInputSchema,
+  ENTRATE,
   type ArtechKitInput,
+  type Entrata,
   type KitInput,
   type TourKitInput,
 } from "@/server/kit/types";
@@ -32,7 +35,16 @@ import {
   windowTypeLabel,
 } from "@/lib/kit-labels";
 
-const ARTECH_DEFAULT: ArtechKitInput = {
+/**
+ * Lo stato del form NON è un `ArtechKitInput`: l'entrata deve nascere **non
+ * valorizzata**, perché sceglierla è il punto di questo campo. È l'unico prezzo
+ * della decisione «nessun default», e si paga solo qui — la validazione vera
+ * resta quella dello schema, all'avanzamento del passo e al submit.
+ */
+type ArtechFormValues = Omit<ArtechKitInput, "entrata"> & { entrata?: Entrata };
+type FormValues = ArtechFormValues | TourKitInput;
+
+const ARTECH_DEFAULT: ArtechFormValues = {
   windowType: "ANTA_RIBALTA",
   series: "ARTECH",
   material: "LEGNO",
@@ -41,9 +53,6 @@ const ARTECH_DEFAULT: ArtechKitInput = {
   // Il pilota storico (distinta reale AGB 16/11/2021): aria 12 · interasse 13 ·
   // battuta 20. È la geometria del golden 16 righe / 21 pezzi / 90,20 €.
   geometry: "A12_I13_B20",
-  // TEMPORANEO (Task 1 → rimosso dal Task 6): tiene il build verde finché il
-  // wizard non chiede l'entrata. Il valore definitivo è «nessun valore».
-  entrata: "E15",
   seatConfig: "STANDARD",
   openingSide: "SINISTRA",
   openingDir: "TIRARE",
@@ -66,9 +75,9 @@ const TOUR_DEFAULT: TourKitInput = {
  * ARTECH non deve sopravvivere in un form bilico (e viceversa). Si conservano le
  * sole quote, che sono comuni e che l'agente ha appena misurato.
  */
-function defaultForWindowType(wt: KitInput["windowType"], prev: KitInput): KitInput {
+function defaultForWindowType(wt: KitInput["windowType"], prev: FormValues): FormValues {
   const base = wt === "BILICO" ? TOUR_DEFAULT : ARTECH_DEFAULT;
-  return { ...base, windowType: wt, widthMm: prev.widthMm, heightMm: prev.heightMm } as KitInput;
+  return { ...base, windowType: wt, widthMm: prev.widthMm, heightMm: prev.heightMm } as FormValues;
 }
 
 /** Tipologie coperte dal generatore: radio selezionabili. */
@@ -188,6 +197,7 @@ const STEP_SCHEMAS = {
     artechInputSchema.pick({ widthMm: true, heightMm: true, sashWeightKg: true }),
     artechInputSchema.pick({
       geometry: true,
+      entrata: true,
       openingSide: true,
       openingDir: true,
       finish: true,
@@ -215,14 +225,14 @@ function firstIssueMessage(result: {
  */
 type Update<T> = <K extends keyof T>(key: K, value: T[K]) => void;
 
-function makeUpdate<T>(setForm: Dispatch<SetStateAction<KitInput>>): Update<T> {
-  return (key, value) => setForm((prev) => ({ ...prev, [key]: value }) as KitInput);
+function makeUpdate<T>(setForm: Dispatch<SetStateAction<FormValues>>): Update<T> {
+  return (key, value) => setForm((prev) => ({ ...prev, [key]: value }) as FormValues);
 }
 
 export function NuovaRichiestaClient() {
   const router = useRouter();
   const [step, setStep] = useState(1);
-  const [form, setForm] = useState<KitInput>(ARTECH_DEFAULT);
+  const [form, setForm] = useState<FormValues>(ARTECH_DEFAULT);
   const [stepError, setStepError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -348,13 +358,13 @@ export function NuovaRichiestaClient() {
           (form.series === "TOUR" ? (
             <Step2DimensioniTour form={form} update={makeUpdate<TourKitInput>(setForm)} />
           ) : (
-            <Step2DimensioniArtech form={form} update={makeUpdate<ArtechKitInput>(setForm)} />
+            <Step2DimensioniArtech form={form} update={makeUpdate<ArtechFormValues>(setForm)} />
           ))}
         {step === 3 &&
           (form.series === "TOUR" ? (
             <Step3SchemaFinitura form={form} update={makeUpdate<TourKitInput>(setForm)} />
           ) : (
-            <Step3ManoFinitura form={form} update={makeUpdate<ArtechKitInput>(setForm)} />
+            <Step3ManoFinitura form={form} update={makeUpdate<ArtechFormValues>(setForm)} />
           ))}
         {step === 4 && <Step4Riepilogo form={form} />}
       </div>
@@ -433,15 +443,15 @@ function Step1Tipologia({
   form,
   setForm,
 }: {
-  form: KitInput;
-  setForm: Dispatch<SetStateAction<KitInput>>;
+  form: FormValues;
+  setForm: Dispatch<SetStateAction<FormValues>>;
 }) {
   const materials = MATERIAL_AVAILABILITY[form.windowType];
 
   function selectWindowType(wt: KitInput["windowType"]) {
     setForm((prev) => {
       const next = defaultForWindowType(wt, prev);
-      return { ...next, material: materialForWindowType(wt, prev.material) } as KitInput;
+      return { ...next, material: materialForWindowType(wt, prev.material) } as FormValues;
     });
   }
 
@@ -605,8 +615,8 @@ function Step2DimensioniArtech({
   form,
   update,
 }: {
-  form: ArtechKitInput;
-  update: Update<ArtechKitInput>;
+  form: ArtechFormValues;
+  update: Update<ArtechFormValues>;
 }) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -693,8 +703,8 @@ function Step3ManoFinitura({
   form,
   update,
 }: {
-  form: ArtechKitInput;
-  update: Update<ArtechKitInput>;
+  form: ArtechFormValues;
+  update: Update<ArtechFormValues>;
 }) {
   const sedeMm = GEOMETRIE[form.geometry].sedeMm;
   return (
@@ -722,6 +732,37 @@ function Step3ManoFinitura({
               />
             );
           })}
+        </div>
+      </fieldset>
+
+      {/* L'entrata è ORTOGONALE alla geometria: sceglie la famiglia della
+          cremonese e nient'altro. Nessuna opzione è preselezionata, di
+          proposito: è la decisione del 2026-07-30.
+          L'hint segue il modello del fix «sede» (PR #37) — prima dove si legge
+          la quota sul listino, poi come si scrive nel codice — perché un agente
+          esperto non riconosce il nome di una quota che il listino chiama in due
+          modi. */}
+      <fieldset>
+        <legend className="mb-1 text-sm font-semibold text-ink">Entrata maniglia</legend>
+        <p className="mb-2 text-xs text-ink-subtle">
+          È il secondo numero del codice della cremonese —{" "}
+          <span className="font-mono">
+            A50122.<b>15</b>.07
+          </span>{" "}
+          — e sul listino è la colonna ENTRATA delle tabelle «Cremonesi».
+        </p>
+        {/* Mobile-first: una colonna sotto sm, come gli altri gruppi. */}
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {ENTRATE.map((valore) => (
+            <RadioOption
+              key={valore}
+              name="entrata"
+              label={`Entrata ${entrataLabel(valore)}`}
+              hint={`Codice A50122.${valore === "E75" ? "08" : "15"}.NN`}
+              checked={form.entrata === valore}
+              onChange={() => update("entrata", valore)}
+            />
+          ))}
         </div>
       </fieldset>
 
@@ -935,7 +976,7 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Step4Riepilogo({ form }: { form: KitInput }) {
+function Step4Riepilogo({ form }: { form: FormValues }) {
   const comuni = (
     <>
       <SummaryItem label="Tipologia" value={windowTypeLabel(form.windowType)} />
