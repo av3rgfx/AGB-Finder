@@ -478,6 +478,33 @@ model Customer {
   paymentTerms String?  @map("payment_terms")
   discount     Decimal? @db.Decimal(5, 2)
 
+  /// Profilo serramento del cliente — SOLO serie ARTECH.
+  ///
+  /// Sono le due quote che NON cambiano da un ordine all'altro dello stesso
+  /// cliente: la geometria (aria/interasse/battuta) e l'entrata della maniglia.
+  /// Servono a non farle ri-scegliere a memoria fra 14 combinazioni a ogni
+  /// richiesta, quando sbagliarle non produce alcun errore visibile — i codici
+  /// della combinazione sbagliata esistono a listino e hanno un prezzo.
+  ///
+  /// NON precompilano il wizard: l'agente le applica con un clic esplicito
+  /// («Usa il profilo»). Un valore preselezionato sarebbe lo stesso silenzio in
+  /// un posto più visibile — è la decisione della #40, qui rispettata alla lettera.
+  ///
+  /// Il nome dice «kit», ma la cosa è del **serramento**, non del cliente: Fosca
+  /// non *ha* una geometria, ha avuto quella negli infissi ordinati finora. È il
+  /// motivo per cui il valore resta modificabile a ogni richiesta invece di
+  /// essere imposto.
+  ///
+  /// NULL = nessun profilo dichiarato, che è lo stato di OGNI cliente prima di
+  /// questa migrazione: nessun backfill, a differenza di `kit_requests.entrata`.
+  ///
+  /// Lo snapshot è altrove e già garantito: `kit.create` scrive geometria ed
+  /// entrata sulla riga di `kit_requests`, quindi correggere un profilo domani
+  /// non tocca una distinta di ieri. Stessa proprietà per cui `discountPercent`
+  /// vive sulla richiesta e non solo sul cliente.
+  kitGeometry ArtechGeometry? @map("kit_geometry")
+  kitEntrata  Entrata?        @map("kit_entrata")
+
   kitRequests KitRequest[]
 
   createdAt DateTime @default(now()) @map("created_at")
