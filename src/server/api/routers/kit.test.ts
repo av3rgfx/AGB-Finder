@@ -265,3 +265,125 @@ describe("kit.list / kit.get", () => {
     expect(result.totalPrice).toBe(99.99);
   });
 });
+
+describe("kit.ricalcola", () => {
+  beforeEach(() => {
+    requestCount.mockResolvedValue(7);
+  });
+
+  it("richiesta altrui → NOT_FOUND", async () => {
+    requestFindFirst.mockResolvedValue(null);
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await expect(caller.kit.ricalcola({ kitRequestId: "altrui" })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+  });
+
+  it("su una richiesta COMPLETED crea una NUOVA riga e marca l'originale", async () => {
+    requestFindFirst.mockResolvedValue({
+      ...validInput,
+      id: "req1",
+      requestNumber: "KIT-2026-0001",
+      status: "COMPLETED",
+      supersededById: null,
+      customerId: null,
+      tourSchema: null,
+      sashWeightKg: null,
+      notes: null,
+    });
+    requestCreate.mockResolvedValue({ id: "req2", requestNumber: "KIT-2026-0008" });
+
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    const nuova = await caller.kit.ricalcola({ kitRequestId: "req1" });
+
+    expect(nuova.id).toBe("req2");
+    expect(requestCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: "DRAFT", geometry: validInput.geometry }),
+      }),
+    );
+    expect(requestUpdate).toHaveBeenCalledWith({
+      where: { id: "req1" },
+      data: { supersededById: "req2" },
+    });
+  });
+
+  it("copia tutti i campi necessari a rigenerare (nessun campo dimenticato)", async () => {
+    // Rete di sicurezza per il monito del task: un campo dimenticato qui non fa
+    // fallire il typecheck (è un campo Prisma opzionale semplicemente omesso, non
+    // un nome storpiato) — solo un'asserzione sul valore lo scopre. Valori tutti
+    // diversi dai default/null così un omissione si vede subito.
+    requestFindFirst.mockResolvedValue({
+      id: "req1",
+      requestNumber: "KIT-2026-0001",
+      status: "COMPLETED",
+      supersededById: null,
+      windowType: "VASISTAS",
+      widthMm: 700,
+      heightMm: 900,
+      material: "LEGNO",
+      finish: "BRONZO",
+      series: "ARTECH",
+      geometry: "A4_I9_B18",
+      seatConfig: "SEDE_30",
+      openingSide: "DESTRA",
+      openingDir: "SPINGERE",
+      supplementaryClosures: true,
+      sashWeightKg: 42,
+      tourSchema: null,
+      notes: "nota di prova",
+      customerId: "cust1",
+    });
+    requestCreate.mockResolvedValue({ id: "req2", requestNumber: "KIT-2026-0008" });
+
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await caller.kit.ricalcola({ kitRequestId: "req1" });
+
+    expect(requestCreate.mock.calls[0]![0].data).toMatchObject({
+      windowType: "VASISTAS",
+      widthMm: 700,
+      heightMm: 900,
+      material: "LEGNO",
+      finish: "BRONZO",
+      series: "ARTECH",
+      geometry: "A4_I9_B18",
+      seatConfig: "SEDE_30",
+      openingSide: "DESTRA",
+      openingDir: "SPINGERE",
+      supplementaryClosures: true,
+      sashWeightKg: 42,
+      tourSchema: null,
+      notes: "nota di prova",
+      customerId: "cust1",
+      status: "DRAFT",
+      agentId: "agent1",
+    });
+  });
+
+  it("su una richiesta DRAFT rigenera in loco: nessuna riga nuova", async () => {
+    requestFindFirst.mockResolvedValue({
+      id: "req1",
+      requestNumber: "KIT-2026-0001",
+      status: "DRAFT",
+      supersededById: null,
+    });
+
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    const esito = await caller.kit.ricalcola({ kitRequestId: "req1" });
+
+    expect(esito.id).toBe("req1");
+    expect(requestCreate).not.toHaveBeenCalled();
+  });
+
+  it("una richiesta già ricalcolata rifiuta con CONFLICT", async () => {
+    requestFindFirst.mockResolvedValue({
+      id: "req1",
+      requestNumber: "KIT-2026-0001",
+      status: "COMPLETED",
+      supersededById: "req2",
+    });
+
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await expect(caller.kit.ricalcola({ kitRequestId: "req1" })).rejects.toThrow(/già.*ricalcolata/i);
+  });
+});

@@ -126,6 +126,75 @@ export const kitRouter = createTRPCRouter({
       return output;
     }),
 
+  /**
+   * Ricalcolo versionato. Rigenerare riesegue il codice-regole *corrente* e
+   * riscrive `kit_components`: su una richiesta `DRAFT` va benissimo (non è
+   * ancora stata emessa a nessuno), ma su una richiesta già generata/inviata
+   * cambierebbe sotto i piedi una distinta che il cliente ha già in mano.
+   *
+   * Sintesi: `DRAFT` → rigenera in loco (nessuna riga nuova, il chiamante fa
+   * poi `kit.generate` sullo stesso id). Qualunque altro stato → **crea una
+   * nuova versione** copiando tutto ciò che serve a rigenerare (vedi
+   * `PersistedKitRequest` in `kit/from-request.ts`) e marca la vecchia riga
+   * con `supersededById`, lasciandola intatta. Una riga già ricalcolata non
+   * può esserlo di nuovo: si ricalcola sempre la versione più recente.
+   */
+  ricalcola: agentProcedure
+    .input(z.object({ kitRequestId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const request = await ctx.db.kitRequest.findFirst({
+        where: { id: input.kitRequestId, agentId: ctx.session.user.id },
+      });
+      if (!request)
+        throw new TRPCError({ code: "NOT_FOUND", message: "Richiesta kit non trovata." });
+
+      if (request.status === "DRAFT")
+        return { id: request.id, requestNumber: request.requestNumber };
+
+      if (request.supersededById)
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Questa richiesta è già stata ricalcolata: aprire la versione più recente.",
+        });
+
+      const year = new Date().getFullYear();
+      const inYear = await ctx.db.kitRequest.count({
+        where: { createdAt: { gte: new Date(`${year}-01-01T00:00:00Z`) } },
+      });
+      const requestNumber = `KIT-${year}-${String(inYear + 1).padStart(4, "0")}`;
+
+      // Copia campo per campo (niente spread): la nuova riga è l'input della
+      // sua prima generazione, e un campo dimenticato qui produrrebbe una
+      // distinta diversa in silenzio quando il chiamante fa `kit.generate`.
+      const nuova = await ctx.db.kitRequest.create({
+        data: {
+          windowType: request.windowType,
+          widthMm: request.widthMm,
+          heightMm: request.heightMm,
+          material: request.material,
+          finish: request.finish,
+          series: request.series,
+          sashWeightKg: request.sashWeightKg,
+          geometry: request.geometry,
+          seatConfig: request.seatConfig,
+          openingSide: request.openingSide,
+          openingDir: request.openingDir,
+          supplementaryClosures: request.supplementaryClosures,
+          tourSchema: request.tourSchema,
+          notes: request.notes,
+          customerId: request.customerId,
+          requestNumber,
+          status: "DRAFT",
+          agentId: ctx.session.user.id,
+        },
+      });
+      await ctx.db.kitRequest.update({
+        where: { id: request.id },
+        data: { supersededById: nuova.id },
+      });
+      return { id: nuova.id, requestNumber };
+    }),
+
   get: agentProcedure.input(z.object({ id: z.string().min(1) })).query(async ({ ctx, input }) => {
     const request = await ctx.db.kitRequest.findFirst({
       where: { id: input.id, agentId: ctx.session.user.id },
