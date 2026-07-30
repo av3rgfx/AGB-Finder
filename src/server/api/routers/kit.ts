@@ -70,6 +70,30 @@ export const kitRouter = createTRPCRouter({
       if (!request)
         throw new TRPCError({ code: "NOT_FOUND", message: "Richiesta kit non trovata." });
 
+      // GUARDIA DEL VERSIONAMENTO. `generate` cancella e riscrive
+      // `kit_components` in loco, e dei componenti non esiste storico: su una
+      // riga già emessa riscriverebbe in silenzio la distinta che il cliente ha
+      // in mano, e su una riga superata corromperebbe lo storico che
+      // `ricalcola` aveva congelato. Sono i due casi che il ricalcolo versionato
+      // esiste per impedire, quindi la guardia sta QUI e non solo nella UI: una
+      // scheda aperta in un'altra tab, il tasto Indietro o un secondo
+      // dispositivo aggirano qualunque pulsante nascosto.
+      // Rigenerare resta lecito solo su `DRAFT` — è ciò che fa il wizard subito
+      // dopo `create`, ed è lo stato in cui `ricalcola` deposita ogni nuova
+      // versione.
+      if (request.supersededById)
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Questa richiesta è già stata ricalcolata: aprire la versione più recente.",
+        });
+      if (request.status !== "DRAFT")
+        throw new TRPCError({
+          code: "CONFLICT",
+          message:
+            "Questa distinta è già stata emessa e non si riscrive: usare «Ricalcola» per " +
+            "generarne una nuova versione.",
+        });
+
       // La riga È l'input: si ricostruisce per ramo e si ri-valida, invece di
       // spalmare le colonne (vedi kit/from-request.ts).
       const engineInput = (() => {

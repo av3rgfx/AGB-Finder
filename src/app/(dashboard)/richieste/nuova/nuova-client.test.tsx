@@ -168,6 +168,19 @@ describe("NuovaRichiestaClient", () => {
     expect(screen.getByText(/18 mm — derivata/i)).toBeTruthy();
   });
 
+  // Regola inviolabile «mobile-first», stessa ragione della griglia geometria:
+  // il riepilogo ospita il valore più lungo del progetto («Aria 12 · interasse
+  // 13 · battuta 20») e a due colonne fisse andava a capo tre volte a 375px.
+  it("riepilogo: una colonna sotto sm (mobile-first)", () => {
+    const { container } = render(<NuovaRichiestaClient />);
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // → riepilogo
+    const dl = container.querySelector("dl");
+    expect(dl?.className).toContain("grid-cols-1");
+    expect(dl?.className).toContain("sm:grid-cols-3");
+  });
+
   it("aria 4: la sede non esiste, il riepilogo dice «fresatura»", () => {
     render(<NuovaRichiestaClient />);
     fireEvent.click(screen.getByRole("button", { name: /avanti/i }));

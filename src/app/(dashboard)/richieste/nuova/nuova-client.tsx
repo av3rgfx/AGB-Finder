@@ -15,7 +15,12 @@ import {
 } from "@/server/kit/types";
 import { SCHEMI_TOUR, FINITURE_TOUR } from "@/server/kit/rules-tour-bilico-legno";
 import { GEOMETRIA_COPERTA } from "@/server/kit/rules-artech-vasistas-legno";
-import { GEOMETRIE, geometriaLabel, type ArtechGeometryId } from "@/server/kit/artech-geometrie";
+import {
+  GEOMETRIE,
+  geometriaLabel,
+  mm,
+  type ArtechGeometryId,
+} from "@/server/kit/artech-geometrie";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -733,7 +738,16 @@ function Step3ManoFinitura({
           <RadioOption
             name="seatConfig"
             label="Standard"
-            hint={`Sede per questa geometria: ${sedeIncontriLabel(sedeMm)}.`}
+            // Qui è una FRASE, non un'etichetta di valore: «per questa geometria»
+            // dice già che la quota è derivata, e ripeterlo col suffisso del
+            // formattatore condiviso (`sedeIncontriLabel`, che resta giusto nel
+            // riepilogo e nella scheda) stonava. Per l'aria 4 il listino non
+            // parla di sede ma di fresatura (p0469 (467)).
+            hint={
+              sedeMm === null
+                ? "Per questa geometria (aria 4) il listino prevede una fresatura, non una sede."
+                : `Sede per questa geometria: ${sedeMm} mm.`
+            }
             checked={form.seatConfig === "STANDARD"}
             onChange={() => update("seatConfig", "STANDARD")}
           />
@@ -824,11 +838,6 @@ function Step3ManoFinitura({
 }
 
 const SCHEMA_NUMBERS = [1, 2, 3, 4, 5] as const;
-
-/** «17,5» in italiano; 15 resta «15». */
-function mm(value: number): string {
-  return Number.isInteger(value) ? String(value) : String(value).replace(".", ",");
-}
 
 /**
  * Lo schema di montaggio è il campo più pericoloso di tutto il wizard: sbagliarlo
@@ -926,7 +935,10 @@ function Step4Riepilogo({ form }: { form: KitInput }) {
     const s = SCHEMI_TOUR[form.tourSchema as keyof typeof SCHEMI_TOUR];
     const quattroLati = form.widthMm * form.heightMm >= 2_000_000;
     return (
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm sm:grid-cols-3">
+      // Mobile-first: UNA colonna sotto sm, come il riepilogo della scheda. La
+      // riga «Listello 30 · asse 15 · battuta 13» non sta in mezza larghezza a
+      // 375px. Il desktop resta a tre colonne.
+      <dl className="grid grid-cols-1 gap-x-6 gap-y-4 text-sm sm:grid-cols-3">
         {comuni}
         <SummaryItem label="Schema" value={`Schema ${form.tourSchema}`} />
         {s && (
@@ -949,7 +961,8 @@ function Step4Riepilogo({ form }: { form: KitInput }) {
   }
 
   return (
-    <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm sm:grid-cols-3">
+    // Vedi sopra: «Aria 12 · interasse 13 · battuta 20» a 375px vuole la riga intera.
+    <dl className="grid grid-cols-1 gap-x-6 gap-y-4 text-sm sm:grid-cols-3">
       {comuni}
       <SummaryItem label="Geometria" value={geometriaLabel(form.geometry)} />
       {/* La sede è l'unica quota DERIVATA che finisce nella distinta: mostrarla

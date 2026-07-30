@@ -188,6 +188,37 @@ describe("kit.generate", () => {
     expect(activityCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ type: "KIT_GENERATED" }) });
   });
 
+  // GUARDIA DEL VERSIONAMENTO. `generate` fa deleteMany + createMany su
+  // `kit_components`, e dei componenti non esiste storico: su una riga già
+  // emessa riscriverebbe la distinta che il cliente ha in mano, su una riga
+  // superata corromperebbe lo storico congelato da `ricalcola`. La UI non basta
+  // — una scheda aperta in un'altra tab, il tasto Indietro o un secondo
+  // dispositivo la aggirano — quindi l'invariante va provata QUI.
+  it("richiesta non-DRAFT (già emessa) → CONFLICT, nessuna scrittura", async () => {
+    requestFindFirst.mockResolvedValue({
+      id: "k1", agentId: "agent1", ...validInput, status: "COMPLETED", supersededById: null,
+    });
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await expect(caller.kit.generate({ kitRequestId: "k1" })).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: expect.stringContaining("Ricalcola"),
+    });
+    expect(componentDeleteMany).not.toHaveBeenCalled();
+    expect(requestUpdate).not.toHaveBeenCalled();
+  });
+
+  it("richiesta superata (supersededById) → CONFLICT, nessuna scrittura", async () => {
+    requestFindFirst.mockResolvedValue({
+      id: "k1", agentId: "agent1", ...validInput, status: "DRAFT", supersededById: "k2",
+    });
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await expect(caller.kit.generate({ kitRequestId: "k1" })).rejects.toMatchObject({
+      code: "CONFLICT",
+    });
+    expect(componentDeleteMany).not.toHaveBeenCalled();
+    expect(requestUpdate).not.toHaveBeenCalled();
+  });
+
   it("rilegge sashWeightKg dalla richiesta e lo passa alle regole (vasistas)", async () => {
     // L 600 → 1 forbice → portata 40 kg: un'anta da 50 kg va rifiutata in
     // italiano. Se il router non inoltrasse il peso, la generazione riuscirebbe.

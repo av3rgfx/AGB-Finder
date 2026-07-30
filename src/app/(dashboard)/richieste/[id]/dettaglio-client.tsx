@@ -88,6 +88,47 @@ export function DettaglioClient({ id }: { id: string }) {
   const warnings = getWarnings(r.generatedKit);
   const hasDistinta = r.components.length > 0;
 
+  // I due pulsanti sono MUTUAMENTE ESCLUSIVI, e non per ordine: «Rigenera»
+  // riscrive la distinta in loco (nessuno storico dei componenti), quindi è
+  // lecito solo su una bozza che nessuno ha ancora visto. Su tutto il resto
+  // l'unica strada è «Ricalcola», che congela questa versione e ne crea una
+  // nuova — la stessa invariante è imposta dal router (`kit.generate` risponde
+  // CONFLICT), qui si evita di offrire un pulsante che verrebbe rifiutato.
+  const puoRigenerare = r.status === "DRAFT";
+  const puoRicalcolare = !puoRigenerare && r.supersededById === null;
+
+  const distintaVuotaMsg = puoRigenerare
+    ? "Distinta non ancora generata. Usa «Rigenera» per calcolare i componenti dal catalogo."
+    : puoRicalcolare
+      ? "Nessun componente di questa distinta è a catalogo. Usa «Ricalcola» per rifarla su una nuova versione."
+      : "Nessun componente di questa distinta è a catalogo.";
+
+  /**
+   * «Ricalcola» ricalcola davvero: crea la nuova versione `DRAFT`, **ne genera
+   * la distinta** e solo dopo ci naviga. Senza la generazione l'agente
+   * atterrerebbe su «Distinta non ancora generata» con un pulsante da premere, e
+   * il nome del pulsante sarebbe una bugia. Stessa forma di `handleGenera` nel
+   * wizard: l'errore di generazione non blocca la navigazione (la riga esiste,
+   * è `DRAFT`, e la sua scheda offre «Rigenera» e mostra il messaggio).
+   */
+  async function handleRicalcola() {
+    let nuovaId: string;
+    try {
+      const nuova = await ricalcola.mutateAsync({ kitRequestId: r.id });
+      nuovaId = nuova.id;
+    } catch {
+      // il messaggio lo mostra `ricalcola.isError` qui sotto
+      return;
+    }
+    try {
+      await generate.mutateAsync({ kitRequestId: nuovaId });
+    } catch {
+      /* vedi sopra: si naviga comunque, l'errore è visibile sulla nuova scheda */
+    } finally {
+      router.push(`/richieste/${nuovaId}`);
+    }
+  }
+
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-6">
       <Link
@@ -118,7 +159,10 @@ export function DettaglioClient({ id }: { id: string }) {
         <h2 id="specifiche-heading" className="text-sm font-semibold text-ink">
           Specifiche
         </h2>
-        <dl className="grid grid-cols-2 gap-x-6 gap-y-3 rounded-md border border-line bg-surface p-6 text-sm sm:grid-cols-3">
+        {/* Mobile-first: UNA colonna sotto sm. Il valore più lungo del progetto
+            vive qui — «Aria 12 · interasse 13 · battuta 20» — e in mezza
+            larghezza a 375px andava a capo tre volte. Il desktop non cambia. */}
+        <dl className="grid grid-cols-1 gap-x-6 gap-y-3 rounded-md border border-line bg-surface p-6 text-sm sm:grid-cols-3">
           <Spec label="Dimensioni" value={`${r.widthMm} × ${r.heightMm} mm`} />
           <Spec label="Materiale" value={materialLabel(r.material)} />
           <Spec label="Serie" value={r.series} />
@@ -187,35 +231,31 @@ export function DettaglioClient({ id }: { id: string }) {
           <h2 id="distinta-heading" className="text-sm font-semibold text-ink">
             Distinta componenti
           </h2>
-          {/* Mobile-first: i due pulsanti vanno a capo insieme sotto il titolo a
-              375px, invece di stringersi in colonna. */}
+          {/* Mobile-first: il pulsante va a capo sotto il titolo a 375px invece
+              di stringersi accanto. Ne compare sempre al massimo uno — vedi
+              `puoRigenerare`/`puoRicalcolare`. */}
           <div className="flex flex-wrap items-center gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              loading={generate.isPending}
-              onClick={() => generate.mutate({ kitRequestId: id })}
-            >
-              <RefreshCw className="size-4" aria-hidden />
-              Rigenera
-            </Button>
-            {/* «Ricalcola» compare solo dove serve e dove è lecito: su una bozza
-                basta «Rigenera» (nessuno l'ha ancora vista), e su una riga già
-                superata il ricalcolo va fatto sulla versione più recente — il
-                router lo rifiuta con CONFLICT. */}
-            {r.status !== "DRAFT" && r.supersededById === null && (
+            {/* Su una bozza basta «Rigenera»: nessuno l'ha ancora vista. */}
+            {puoRigenerare && (
               <Button
                 variant="secondary"
                 size="sm"
-                loading={ricalcola.isPending}
-                onClick={() =>
-                  void ricalcola
-                    .mutateAsync({ kitRequestId: r.id })
-                    .then((nuova) => router.push(`/richieste/${nuova.id}`))
-                    .catch(() => {
-                      /* il messaggio lo mostra `ricalcola.isError` qui sotto */
-                    })
-                }
+                loading={generate.isPending}
+                onClick={() => generate.mutate({ kitRequestId: id })}
+              >
+                <RefreshCw className="size-4" aria-hidden />
+                Rigenera
+              </Button>
+            )}
+            {/* Su una riga già superata non compare nessuno dei due: il ricalcolo
+                va fatto sulla versione più recente, linkata qui sotto (e il
+                router lo rifiuta comunque con CONFLICT). */}
+            {puoRicalcolare && (
+              <Button
+                variant="secondary"
+                size="sm"
+                loading={ricalcola.isPending || generate.isPending}
+                onClick={() => void handleRicalcola()}
               >
                 <Calculator className="size-4" aria-hidden />
                 Ricalcola
@@ -279,7 +319,7 @@ export function DettaglioClient({ id }: { id: string }) {
           />
         ) : (
           <div className="rounded-md border border-dashed border-line-strong bg-surface p-6 text-center text-sm text-ink-subtle">
-            Distinta non ancora generata. Usa «Rigenera» per calcolare i componenti dal catalogo.
+            {distintaVuotaMsg}
           </div>
         )}
       </section>
