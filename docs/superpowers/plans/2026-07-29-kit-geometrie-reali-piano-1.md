@@ -926,8 +926,12 @@ con:
   // Un discriminatore unico al posto dei quattro numerici. Le vecchie colonne
   // restano nullable come LEGACY: nessun modulo le legge (dichiarato in
   // no-silent-fields.test.ts), servono solo a non perdere lo storico.
-  geometry   ArtechGeometry? 
-  seatConfig SeatConfig?     @default(STANDARD) @map("seat_config")
+  geometry   ArtechGeometry?
+  // NIENTE @default: è la colonna di UN ramo. Un default a livello DB valorizzerebbe
+  // anche le righe TOUR (violando «i campi dell'altro ramo sono NULL per costruzione»)
+  // e trasformerebbe in silenzio una riga legacy sede 30 in STANDARD, scavalcando
+  // assertSeatConfigSupportata. Lo zod ha già il proprio default. — corretto in review
+  seatConfig SeatConfig?     @map("seat_config")
 
   openingSide HingeSide?        @map("opening_side")
   openingDir  OpeningDirection? @map("opening_direction")
@@ -943,7 +947,9 @@ con:
 
   /// Versione del motore che ha prodotto la distinta.
   engineVersion String? @map("engine_version")
-  /// Ricalcolo versionato: la nuova versione punta a quella che sostituisce.
+  /// Ricalcolo versionato: la riga VECCHIA punta alla nuova che la sostituisce
+  /// (`update({ where: { id: vecchia }, data: { supersededById: nuova } })`).
+  /// — direzione corretta in review: la prima stesura diceva l'opposto.
   supersededById String?      @unique @map("superseded_by_id")
   supersededBy   KitRequest?  @relation("KitRequestVersione", fields: [supersededById], references: [id])
   supersedes     KitRequest?  @relation("KitRequestVersione")
@@ -959,14 +965,21 @@ npx prisma migrate dev --name kit_geometria --create-only
 Aprire il file generato e **aggiungere in coda** il backfill (senza, le righe esistenti
 diventano non rigenerabili):
 
-```sql
--- Le righe esistenti sono tutte del pilota: aria 12 / interasse 13 / battuta 20.
-UPDATE "kit_requests"
-SET "geometry" = 'A12_I13_B20', "seat_config" = 'STANDARD'
-WHERE "series" = 'ARTECH' AND "geometry" IS NULL;
-
--- Le righe TOUR non hanno geometria ARTECH: restano NULL per costruzione.
-```
+> ⚠️ **CORRETTO IN REVIEW — non usare la versione «tutte le righe sono del pilota».**
+> Quella premessa era sbagliata: la vecchia guardia `assertPilotGeometry` rifiutava le
+> geometrie non-pilota **alla generazione, non alla creazione**, e il wizard esponeva quattro
+> campi numerici liberi. In produzione possono quindi esistere bozze con aria 4 o sede 30
+> (la PR #37 alzò `seatMm` a 30 proprio perché gli agenti hanno serramenti sede 30).
+> Assegnarle a `A12_I13_B20` produrrebbe una distinta plausibile e sbagliata — il difetto che
+> `no-silent-fields.test.ts` esiste per impedire.
+>
+> **Il backfill deve RICAVARE la geometria dalle colonne legacy, non assumerla**, con un
+> `CASE` sulle combinazioni di `GEOMETRIE`, mappare `seat_config` da `seat_mm` (30 →
+> `SEDE_30`), e **lasciare NULL ciò che non riconosce** → rifiuto esplicito di
+> `kitInputFromRequest`, cioè lo stesso comportamento di prima per righe che non erano
+> comunque generabili. `A4_I85_B15` è irraggiungibile (l'interasse 8,5 non stava in un `Int`).
+>
+> Il SQL effettivamente applicato è in `prisma/migrations/20260730084816_kit_geometria/migration.sql`.
 
 - [ ] **Step 3: Applicare e rigenerare il client**
 
