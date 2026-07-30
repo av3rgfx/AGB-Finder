@@ -56,6 +56,41 @@ type GeometrieMancanti = AssertNever<Exclude<ArtechGeometryId, (typeof GEOMETRY_
  * `z.discriminatedUnion(...)` non espone `.pick()`, ma i singoli rami sì — è ciò
  * che tiene in piedi gli step del wizard.
  */
+
+/**
+ * Entrata maniglia. **Due valori**, non tre: a `p0424 (422)` la colonna ENTRATA
+ * è etichettata `1) 7,5` · `2) 15` · `3) Asta*`, e la terza NON è un'entrata ma
+ * la versione ad asta — «nella versione asta non sono presenti il DSS e il
+ * monoblocco martellina». Che la quota sia quella della maniglia lo dice la NB
+ * della stessa pagina: «monoblocco martellina sostituibile per variare
+ * l'entrata maniglia».
+ *
+ * `E75` è l'entrata **7,5**, non 75: stessa convenzione di `I85` = interasse 8,5
+ * in `ArtechGeometryId`.
+ */
+export const ENTRATE = ["E75", "E15"] as const;
+export type Entrata = (typeof ENTRATE)[number];
+
+// Mappa esaustiva, non un ternario binario: `ENTRATE` ha oggi due valori, ma un
+// terzo aggiunto all'enum finirebbe etichettato «15 mm» in silenzio con un
+// `value === "E75" ? … : …` — la stessa classe di difetto per cui esiste questo
+// intero branch (l'entrata cablata). `Record<Entrata, string>` non compila se
+// manca una chiave: lo stesso trattamento di `GEOMETRIE`/`AssertNever` sopra.
+const ENTRATA_LABEL: Record<Entrata, string> = { E75: "7,5 mm", E15: "15 mm" };
+
+/**
+ * Etichetta unica dell'entrata: la leggono la `ruleDescription` della riga
+ * cremonese, il wizard, il riepilogo e la scheda richiesta, e **devono dire la
+ * stessa cosa**. Sta qui, accanto ai valori che etichetta, per lo stesso motivo
+ * per cui `geometriaLabel` sta accanto a `GEOMETRIE`.
+ *
+ * Quota all'italiana, con la virgola: la UI del progetto è in italiano e «7.5»
+ * stona (stessa ragione della funzione `mm()` in `artech-geometrie.ts`).
+ */
+export function entrataLabel(value: Entrata): string {
+  return ENTRATA_LABEL[value];
+}
+
 const COMMON = {
   widthMm: z.number().int().min(300).max(3000),
   heightMm: z.number().int().min(300).max(3000),
@@ -93,6 +128,22 @@ export const artechInputSchema = z.object({
    * versi, id in più e id mancanti.
    */
   geometry: z.enum(GEOMETRY_IDS),
+  /**
+   * Asse ORTOGONALE alla geometria: seleziona la famiglia della cremonese e
+   * nient'altro, identicamente in tutte e sette le geometrie. Per questo è un
+   * campo e non un valore di `geometry` — dentro il discriminatore avrebbe
+   * raddoppiato le righe di `GEOMETRIE` da 7 a 14 per cambiare un codice.
+   *
+   * NESSUN `.default()`, di proposito. Fino al 2026-07-30 l'entrata era una
+   * costante del motore (`A50122.15.NN`) e un serramento a entrata 7,5 riceveva
+   * in silenzio il codice sbagliato — che esiste, ha un prezzo e non produce
+   * warning. Un default preselezionato sarebbe lo stesso silenzio spostato in un
+   * posto più visibile.
+   */
+  entrata: z.enum(ENTRATE, {
+    required_error: "Scegli l'entrata maniglia (7,5 o 15 mm).",
+    invalid_type_error: "Scegli l'entrata maniglia (7,5 o 15 mm).",
+  }),
   /**
    * Famiglia di schemi AGB. La NB «per tipologia di serramento con sede incontri da
    * 30 mm riferirsi agli schemi "sede 30 mm"» compare su 22 pagine: è AGB stessa a

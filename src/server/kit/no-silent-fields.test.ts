@@ -2,7 +2,15 @@ import { describe, it, expect } from "vitest";
 import { artechAntaRibaltaLegno } from "./rules-artech-legno";
 import { artechVasistasLegno } from "./rules-artech-vasistas-legno";
 import { tourBilicoLegno } from "./rules-tour-bilico-legno";
+import { artechInputSchema, tourInputSchema } from "./types";
 import type { KitInput, KitLine, RuleModule } from "./types";
+
+/**
+ * `series` e `windowType` sono i DISCRIMINATORI: mutarli non significa «un'altra
+ * distinta», significa «un altro modulo». Sono gli unici campi legittimamente
+ * fuori dalle due liste.
+ */
+const CAMPI_STRUTTURALI = new Set(["series", "windowType"]);
 
 /**
  * IL BUG CHE QUESTO FILE ESISTE PER IMPEDIRE.
@@ -32,6 +40,8 @@ interface Caso {
   mutazioni: { campo: string; valore: unknown }[];
   /** Campi che NON devono spostare la distinta, con la ragione. */
   inerti: { campo: string; valore: unknown; perche: string }[];
+  /** Campi dello schema del ramo, per il controllo di esaustività. */
+  campi: readonly string[];
 }
 
 const artechBase: KitInput = {
@@ -41,6 +51,7 @@ const artechBase: KitInput = {
   widthMm: 550,
   heightMm: 1820,
   geometry: "A12_I13_B20",
+  entrata: "E15",
   seatConfig: "STANDARD",
   openingSide: "SINISTRA",
   openingDir: "TIRARE",
@@ -55,6 +66,7 @@ const vasistasBase: KitInput = {
   widthMm: 600,
   heightMm: 1000,
   geometry: "A12_I13_B20",
+  entrata: "E15",
   seatConfig: "STANDARD",
   openingSide: "SINISTRA",
   openingDir: "TIRARE",
@@ -85,7 +97,9 @@ const CASI: Caso[] = [
       { campo: "openingSide", valore: "DESTRA" },
       { campo: "finish", valore: "BRONZO" },
       { campo: "supplementaryClosures", valore: false },
+      { campo: "entrata", valore: "E75" },
     ],
+    campi: Object.keys(artechInputSchema.shape),
     inerti: [
       {
         campo: "openingDir",
@@ -116,7 +130,11 @@ const CASI: Caso[] = [
       { campo: "geometry", valore: "A4_I9_B18" },
       { campo: "seatConfig", valore: "SEDE_30" },
       { campo: "sashWeightKg", valore: 75 },
+      // Sulla vasistas la mutazione produce un RIFIUTO, che `esito()` codifica
+      // come "__RIFIUTO__" ≠ riferimento: è la forma corretta di «non ignorato».
+      { campo: "entrata", valore: "E75" },
     ],
+    campi: Object.keys(artechInputSchema.shape),
     inerti: [
       {
         campo: "openingSide",
@@ -132,6 +150,14 @@ const CASI: Caso[] = [
         valore: "BRONZO",
         perche: "La vasistas non emette il blocco coperture, l'unico che dipende dalla finitura.",
       },
+      {
+        campo: "supplementaryClosures",
+        valore: true,
+        perche:
+          "Voce 7 (terminale sui montanti) omessa di proposito: il modulo IGNORA il flag " +
+          "perché non ha righe da accendere per questa tipologia — coerente col wizard, che " +
+          "per VASISTAS non mostra la casella e forza il campo a false.",
+      },
     ],
   },
   {
@@ -146,6 +172,7 @@ const CASI: Caso[] = [
       { campo: "tourSchema", valore: 3 },
       { campo: "sashWeightKg", valore: 201 },
     ],
+    campi: Object.keys(tourInputSchema.shape),
     inerti: [
       { campo: "notes", valore: "nota libera", perche: "Testo per l'ordine, non un parametro." },
     ],
@@ -167,6 +194,17 @@ function esito(modulo: RuleModule, input: KitInput): string {
 
 describe.each(CASI)("nessun campo ignorato in silenzio — $nome", (caso) => {
   const riferimento = esito(caso.modulo, caso.base);
+
+  it("ogni campo dello schema è dichiarato — mutazione o inerte, mai dimenticato", () => {
+    const dichiarati = new Set([
+      ...caso.mutazioni.map((m) => m.campo),
+      ...caso.inerti.map((i) => i.campo),
+    ]);
+    const dimenticati = caso.campi.filter(
+      (campo) => !CAMPI_STRUTTURALI.has(campo) && !dichiarati.has(campo),
+    );
+    expect(dimenticati).toEqual([]);
+  });
 
   it("l'input di riferimento genera una distinta", () => {
     expect(riferimento).not.toBe("__RIFIUTO__");

@@ -9,6 +9,7 @@ const base: KitInput = {
   heightMm: 1820,
   material: "ALLUMINIO",
   geometry: "A12_I13_B20",
+  entrata: "E15",
   seatConfig: "STANDARD",
   openingSide: "SINISTRA",
   openingDir: "TIRARE",

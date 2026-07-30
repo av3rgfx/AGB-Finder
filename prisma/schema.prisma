@@ -262,6 +262,15 @@ enum SeatConfig {
   SEDE_30
 }
 
+/// Entrata maniglia. Due soli valori pubblicati: p0424 (422) etichetta la colonna
+/// ENTRATA come `1) 7,5` e `2) 15`; la terza voce («Asta») è un'altra famiglia,
+/// senza DSS né monoblocco martellina, e resta fuori perimetro.
+/// E75 = entrata 7,5 (convenzione di ArtechGeometry, dove I85 = interasse 8,5).
+enum Entrata {
+  E75
+  E15
+}
+
 enum OpeningDirection {
   TIRARE
   SPINGERE
@@ -293,6 +302,12 @@ model KitRequest {
   // migrazione, dove è *derivato* da `seat_mm`.
   geometry   ArtechGeometry?
   seatConfig SeatConfig?     @map("seat_config")
+
+  /// SOLO serie ARTECH — NULL sulle righe TOUR (il bilico ha entrata 30 come
+  /// proprietà costruttiva del kit, non come scelta). Nessun `@default` a
+  /// livello DB, stesso criterio di `seatConfig`: un default DB valorizzerebbe
+  /// anche le righe che non devono averlo. Il backfill è nella migrazione.
+  entrata Entrata?
 
   openingSide HingeSide?        @map("opening_side")
   openingDir  OpeningDirection? @map("opening_direction")

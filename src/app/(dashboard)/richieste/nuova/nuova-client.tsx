@@ -1,15 +1,18 @@
 "use client";
 
-import { useId, useState, type Dispatch, type SetStateAction } from "react";
+import { useId, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { api } from "@/trpc/react";
 import {
   artechInputSchema,
+  entrataLabel,
   kitInputSchema,
   tourInputSchema,
+  ENTRATE,
   type ArtechKitInput,
+  type Entrata,
   type KitInput,
   type TourKitInput,
 } from "@/server/kit/types";
@@ -32,7 +35,16 @@ import {
   windowTypeLabel,
 } from "@/lib/kit-labels";
 
-const ARTECH_DEFAULT: ArtechKitInput = {
+/**
+ * Lo stato del form NON è un `ArtechKitInput`: l'entrata deve nascere **non
+ * valorizzata**, perché sceglierla è il punto di questo campo. È l'unico prezzo
+ * della decisione «nessun default», e si paga solo qui — la validazione vera
+ * resta quella dello schema, all'avanzamento del passo e al submit.
+ */
+type ArtechFormValues = Omit<ArtechKitInput, "entrata"> & { entrata?: Entrata };
+type FormValues = ArtechFormValues | TourKitInput;
+
+const ARTECH_DEFAULT: ArtechFormValues = {
   windowType: "ANTA_RIBALTA",
   series: "ARTECH",
   material: "LEGNO",
@@ -63,9 +75,9 @@ const TOUR_DEFAULT: TourKitInput = {
  * ARTECH non deve sopravvivere in un form bilico (e viceversa). Si conservano le
  * sole quote, che sono comuni e che l'agente ha appena misurato.
  */
-function defaultForWindowType(wt: KitInput["windowType"], prev: KitInput): KitInput {
+function defaultForWindowType(wt: KitInput["windowType"], prev: FormValues): FormValues {
   const base = wt === "BILICO" ? TOUR_DEFAULT : ARTECH_DEFAULT;
-  return { ...base, windowType: wt, widthMm: prev.widthMm, heightMm: prev.heightMm } as KitInput;
+  return { ...base, windowType: wt, widthMm: prev.widthMm, heightMm: prev.heightMm } as FormValues;
 }
 
 /** Tipologie coperte dal generatore: radio selezionabili. */
@@ -152,6 +164,18 @@ function geometriaAmmessa(wt: KitInput["windowType"], id: ArtechGeometryId): boo
 }
 
 /**
+ * Stessa logica di `geometriaAmmessa`, per l'entrata: il modulo vasistas
+ * rifiuta E75 (`rules-artech-vasistas-legno.ts`, guardia sull'entrata) perché
+ * il listino dichiara le forbici vasistas «non applicabili» su metà dei gruppi
+ * senza indicare il componente sostitutivo. Offrirla selezionabile creerebbe
+ * bozze DRAFT che consumano un numero di richiesta e non genereranno mai — lo
+ * stesso motivo per cui la sede 30 è gated invece che nascosta.
+ */
+function entrataAmmessa(wt: KitInput["windowType"], valore: Entrata): boolean {
+  return !(wt === "VASISTAS" && valore === "E75");
+}
+
+/**
  * Finiture coperte dal generatore ARTECH legno: chiavi della tabella
  * COPERTURE_KIT in `src/server/kit/rules-artech-legno.ts` (kit copertura
  * A51301.*). Aggiornare qui in coppia con quella tabella.
@@ -185,6 +209,7 @@ const STEP_SCHEMAS = {
     artechInputSchema.pick({ widthMm: true, heightMm: true, sashWeightKg: true }),
     artechInputSchema.pick({
       geometry: true,
+      entrata: true,
       openingSide: true,
       openingDir: true,
       finish: true,
@@ -212,14 +237,14 @@ function firstIssueMessage(result: {
  */
 type Update<T> = <K extends keyof T>(key: K, value: T[K]) => void;
 
-function makeUpdate<T>(setForm: Dispatch<SetStateAction<KitInput>>): Update<T> {
-  return (key, value) => setForm((prev) => ({ ...prev, [key]: value }) as KitInput);
+function makeUpdate<T>(setForm: Dispatch<SetStateAction<FormValues>>): Update<T> {
+  return (key, value) => setForm((prev) => ({ ...prev, [key]: value }) as FormValues);
 }
 
 export function NuovaRichiestaClient() {
   const router = useRouter();
   const [step, setStep] = useState(1);
-  const [form, setForm] = useState<KitInput>(ARTECH_DEFAULT);
+  const [form, setForm] = useState<FormValues>(ARTECH_DEFAULT);
   const [stepError, setStepError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -345,13 +370,13 @@ export function NuovaRichiestaClient() {
           (form.series === "TOUR" ? (
             <Step2DimensioniTour form={form} update={makeUpdate<TourKitInput>(setForm)} />
           ) : (
-            <Step2DimensioniArtech form={form} update={makeUpdate<ArtechKitInput>(setForm)} />
+            <Step2DimensioniArtech form={form} update={makeUpdate<ArtechFormValues>(setForm)} />
           ))}
         {step === 3 &&
           (form.series === "TOUR" ? (
             <Step3SchemaFinitura form={form} update={makeUpdate<TourKitInput>(setForm)} />
           ) : (
-            <Step3ManoFinitura form={form} update={makeUpdate<ArtechKitInput>(setForm)} />
+            <Step3ManoFinitura form={form} update={makeUpdate<ArtechFormValues>(setForm)} />
           ))}
         {step === 4 && <Step4Riepilogo form={form} />}
       </div>
@@ -385,7 +410,11 @@ function RadioOption({
 }: {
   name: string;
   label: string;
-  hint?: string;
+  // ReactNode e non string: gli hint dell'entrata citano codici prodotto, e la
+  // regola inviolabile «codici in font monospace» richiede di avvolgerli in uno
+  // <span> — impossibile dentro una stringa semplice. Tutti i chiamanti esistenti
+  // passano stringhe, che sono già ReactNode: nessuno si rompe.
+  hint?: ReactNode;
   checked: boolean;
   onChange: () => void;
   disabled?: boolean;
@@ -430,15 +459,15 @@ function Step1Tipologia({
   form,
   setForm,
 }: {
-  form: KitInput;
-  setForm: Dispatch<SetStateAction<KitInput>>;
+  form: FormValues;
+  setForm: Dispatch<SetStateAction<FormValues>>;
 }) {
   const materials = MATERIAL_AVAILABILITY[form.windowType];
 
   function selectWindowType(wt: KitInput["windowType"]) {
     setForm((prev) => {
       const next = defaultForWindowType(wt, prev);
-      return { ...next, material: materialForWindowType(wt, prev.material) } as KitInput;
+      return { ...next, material: materialForWindowType(wt, prev.material) } as FormValues;
     });
   }
 
@@ -602,8 +631,8 @@ function Step2DimensioniArtech({
   form,
   update,
 }: {
-  form: ArtechKitInput;
-  update: Update<ArtechKitInput>;
+  form: ArtechFormValues;
+  update: Update<ArtechFormValues>;
 }) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -690,8 +719,8 @@ function Step3ManoFinitura({
   form,
   update,
 }: {
-  form: ArtechKitInput;
-  update: Update<ArtechKitInput>;
+  form: ArtechFormValues;
+  update: Update<ArtechFormValues>;
 }) {
   const sedeMm = GEOMETRIE[form.geometry].sedeMm;
   return (
@@ -715,6 +744,68 @@ function Step3ManoFinitura({
                 hint={ammessa ? undefined : "Disponibile solo per l'anta-ribalta"}
                 checked={form.geometry === id}
                 onChange={ammessa ? () => update("geometry", id) : () => {}}
+                disabled={!ammessa}
+              />
+            );
+          })}
+        </div>
+      </fieldset>
+
+      {/* L'entrata è ORTOGONALE alla geometria: sceglie la famiglia della
+          cremonese e nient'altro. Nessuna opzione è preselezionata, di
+          proposito: è la decisione del 2026-07-30.
+          L'hint segue il modello del fix «sede» (PR #37) — prima dove si legge
+          la quota sul listino, poi come si scrive nel codice — perché un agente
+          esperto non riconosce il nome di una quota che il listino chiama in due
+          modi. */}
+      <fieldset>
+        <legend className="mb-1 text-sm font-semibold text-ink">Entrata maniglia</legend>
+        <p className="mb-2 text-xs text-ink-subtle">
+          È il secondo numero del codice della cremonese —{" "}
+          {/* L'esempio segue la famiglia della cremonese davvero coinvolta: su
+              VASISTAS è A50111.* (rules-artech-vasistas-legno.ts), non A50122.* —
+              quel codice non comparirebbe mai in quella distinta. */}
+          <span className="font-mono">
+            {form.windowType === "VASISTAS" ? (
+              <>
+                A50111.<b>15</b>.13
+              </>
+            ) : (
+              <>
+                A50122.<b>15</b>.07
+              </>
+            )}
+          </span>{" "}
+          — e sul listino è la colonna ENTRATA delle tabelle «Cremonesi».
+        </p>
+        {/* Mobile-first: una colonna sotto sm, come gli altri gruppi. */}
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {ENTRATE.map((valore) => {
+            // La vasistas rifiuta E75 (guardia in rules-artech-vasistas-legno.ts):
+            // senza questo gate l'agente sceglie l'opzione, il passo avanza,
+            // `kit.create` consuma un numero di richiesta e solo `kit.generate`
+            // fallisce — una bozza morta, come la sede 30 mostrata sotto.
+            const ammessa = entrataAmmessa(form.windowType, valore);
+            return (
+              <RadioOption
+                key={valore}
+                name="entrata"
+                label={`Entrata ${entrataLabel(valore)}`}
+                hint={
+                  ammessa ? (
+                    <>
+                      Codice{" "}
+                      <span className="font-mono">
+                        A50122.{valore === "E75" ? "08" : "15"}.NN
+                      </span>
+                    </>
+                  ) : (
+                    "Non coperta per la vasistas: a entrata 7,5 il listino dichiara le forbici " +
+                    "vasistas non applicabili (p0426 (424))."
+                  )
+                }
+                checked={form.entrata === valore}
+                onChange={ammessa ? () => update("entrata", valore) : () => {}}
                 disabled={!ammessa}
               />
             );
@@ -932,7 +1023,7 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Step4Riepilogo({ form }: { form: KitInput }) {
+function Step4Riepilogo({ form }: { form: FormValues }) {
   const comuni = (
     <>
       <SummaryItem label="Tipologia" value={windowTypeLabel(form.windowType)} />
@@ -976,6 +1067,11 @@ function Step4Riepilogo({ form }: { form: KitInput }) {
     <dl className="grid grid-cols-1 gap-x-6 gap-y-4 text-sm sm:grid-cols-3">
       {comuni}
       <SummaryItem label="Geometria" value={geometriaLabel(form.geometry)} />
+      {/* `form.entrata` è opzionale nello stato ma qui è sempre valorizzata: al
+          passo 4 si arriva solo dopo la validazione del passo 3. */}
+      {form.entrata && (
+        <SummaryItem label="Entrata maniglia" value={entrataLabel(form.entrata)} />
+      )}
       {/* La sede è l'unica quota DERIVATA che finisce nella distinta: mostrarla
           qui è ciò che permette all'agente di accorgersi di una geometria scelta
           male, ed è la ragione per cui il campo può sparire dall'input. */}

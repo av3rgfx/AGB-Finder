@@ -14,7 +14,7 @@ import { PrismaClient } from "@prisma/client";
 import { GEOMETRIE } from "./artech-geometrie";
 import { artechAntaRibaltaLegno } from "./rules-artech-legno";
 import type { ArtechGeometryId } from "./artech-geometrie";
-import type { KitInput } from "./types";
+import { ENTRATE, type KitInput } from "./types";
 
 const url = process.env.INTEGRATION_DATABASE_URL;
 
@@ -45,20 +45,24 @@ describe.runIf(Boolean(url))("ogni codice emettibile esiste a catalogo con prezz
     supplementaryClosures: true,
   } as const;
 
-  // Prodotto cartesiano 7 geometrie × 2 mani = 14 combinazioni: sono TUTTE le
-  // distinte ordinabili dal modulo (la geometria e la mano sono gli unici due
-  // discriminatori che cambiano i codici emessi, a parità di dimensioni/finitura).
+  // 7 geometrie × 2 mani × 2 ENTRATE = 28 combinazioni: tutte le distinte
+  // ordinabili dal modulo. L'entrata è il terzo discriminatore che cambia i
+  // codici emessi — e i nove A50122.08.* non erano mai passati per il catalogo
+  // reale prima di questo gate.
   const combinazioni = (Object.keys(GEOMETRIE) as ArtechGeometryId[]).flatMap((geometry) =>
-    (["DESTRA", "SINISTRA"] as const).map((openingSide) => ({ geometry, openingSide })),
+    (["DESTRA", "SINISTRA"] as const).flatMap((openingSide) =>
+      ENTRATE.map((entrata) => ({ geometry, openingSide, entrata })),
+    ),
   );
 
   it.each(combinazioni)(
-    "$geometry / $openingSide — nessun codice orfano",
-    async ({ geometry, openingSide }) => {
+    "$geometry / $openingSide / entrata $entrata — nessun codice orfano",
+    async ({ geometry, openingSide, entrata }) => {
       const lines = artechAntaRibaltaLegno.generate({
         ...base,
         geometry,
         openingSide,
+        entrata,
       } as KitInput);
 
       const codici = [...new Set(lines.map((l) => l.code))];
@@ -87,4 +91,55 @@ describe.runIf(Boolean(url))("ogni codice emettibile esiste a catalogo con prezz
       expect(orfani, `codici assenti o senza prezzo: ${orfani.join(", ")}`).toEqual([]);
     },
   );
+
+  // Le 28 combinazioni sopra fissano `heightMm: 1820`: l'unica riga che dipende
+  // dall'altezza — la cremonese — non varia mai, quindi il gate esercita un solo
+  // codice per entrata (`.07`) sui nove pubblicati (`A50122.08.02`…`.10` per
+  // entrata 7,5, `A50122.15.02`…`.10` per entrata 15). Allargare le 28 alle
+  // altezze (28×9 = 252 casi) verificherebbe una riga sola per un costo
+  // sproporzionato. Qui si isola quella riga: le stesse 9 altezze rappresentative
+  // di `rules-artech-legno.test.ts` (tabella `BANDE`) — ciascuna cade in UNA sola
+  // banda HBB, vedi il commento lì sulla sovrapposizione a hbb 2100 — × le 2
+  // entrate = 18 cremonesi, tutte e nove le bande di entrambe le famiglie.
+  it("le 9 bande HBB × 2 entrate: 18 cremonesi, tutte a catalogo con prezzo", async () => {
+    const HBB = [700, 900, 1100, 1300, 1500, 1700, 1900, 2150, 2400];
+
+    const cremonesi = HBB.flatMap((hbb) =>
+      ENTRATE.map((entrata) => {
+        const lines = artechAntaRibaltaLegno.generate({
+          ...base,
+          geometry: "A12_I13_B20",
+          openingSide: "DESTRA",
+          heightMm: hbb + 10,
+          entrata,
+          // OFF, a differenza di `base`: le chiusure verticali sono un'altra
+          // tabella con la propria banda d'altezza (1520-2120, vedi
+          // `CHIUSURE_VERTICALI`) — con `true` alcune delle 9 altezze
+          // rappresentative (fuori da quella banda, dentro le bande HBB della
+          // cremonese) farebbero fallire `generate()` per un motivo estraneo a
+          // ciò che questo test verifica.
+          supplementaryClosures: false,
+        } as KitInput);
+        return lines.find((l) => l.position === "cremonese")!.code;
+      }),
+    );
+
+    const codici = [...new Set(cremonesi)];
+    // 9 bande × 2 entrate devono restare 18 codici DISTINTI: se due bande
+    // collassassero sullo stesso codice (o l'entrata smettesse di cambiarlo), il
+    // controllo sotto verificherebbe meno di 18 codici in silenzio.
+    expect(codici.length, "attese 18 cremonesi distinte (9 bande × 2 entrate)").toBe(18);
+
+    const trovati = await db.product.findMany({
+      where: { agbCode: { in: codici } },
+      select: { agbCode: true, basePrice: true },
+    });
+    const prezzati = new Set(
+      trovati
+        .filter((p) => p.basePrice !== null && Number(p.basePrice) > 0)
+        .map((p) => p.agbCode),
+    );
+    const orfani = codici.filter((c) => !prezzati.has(c));
+    expect(orfani, `codici assenti o senza prezzo: ${orfani.join(", ")}`).toEqual([]);
+  });
 });

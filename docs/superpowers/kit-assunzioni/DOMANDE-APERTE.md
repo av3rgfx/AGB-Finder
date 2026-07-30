@@ -3,7 +3,7 @@
 > Sostituisce le due liste separate (AGB da una parte, agente dall'altra). La **numerazione è
 > globale e va conservata**: i commenti nel codice rimandano per numero («domanda 4 per
 > l'esperto»). Le 1-16 esistevano già; le **17-23** nascono dalla verifica del 2026-07-27; le
-> **24-26** dal lavoro sulle sette geometrie del 2026-07-29.
+> **24-26** dal lavoro sulle sette geometrie del 2026-07-29; la **27** dal lavoro sull'entrata maniglia del 2026-07-30.
 >
 > ⚠️ Questo è l'**unico** indice della numerazione globale: le schede per tipologia
 > (`legno.md`, `tour.md`, …) discutono le domande nel merito ma **non** ricopiano l'elenco —
@@ -18,7 +18,6 @@
 | # | Domanda | Chiedere a | Sblocca |
 |---|---|---|---|
 | **1** | **Battente: quali cerniere per l'anta singola?** | agente o AGB | 🔴 una tipologia intera, oggi spenta |
-| **17** | **L'entrata: quale usate?** | agente | 🔴 oggi il cremonese è scelto in silenzio |
 | **10** | **L'altezza è dell'anta o della maniglia?** | agente | 🔴 il cremonese su *ogni* distinta |
 | **4** | **Sede 18 o sede 30?** | AGB | 🔴 se il pilota è sulla configurazione giusta |
 | **3b** | **Incontri: il formato `13x18` non esiste** | AGB | 🔴 un dato falso su ogni richiesta |
@@ -33,6 +32,8 @@
 | 26 | Il nottolino di Fosca vuole una copertura | agente o AGB | 🟡 una riga mancante sulle geometrie nuove |
 | 25 | Confezioni: si applica il +20% fuori confezione? | AGB o ufficio | 🟡 **i totali di ogni distinta** |
 | 24 | Interasse 8,5: quali incontri? | agente o AGB | 🟡 la famiglia incontri del cliente «MC» |
+| 17 | **L'entrata: quale usate?** | agente | 🟡 quale sia il caso frequente |
+| 27 | GR03: l'entrata 7,5 dichiara zero nottolini | agente o AGB | ⚪ asimmetria fra le due entrate |
 | 18 | Dove leggete le quote | agente | ⚪ come impostare il wizard |
 | 21 | Chiusure supplementari: da quale altezza | agente | ⚪ una banda oggi assunta |
 | 5 · 8 · 9 | Vasistas: cerniere, terminali, GR00 | agente o AGB | ⚪ la vasistas è provvisoria |
@@ -41,7 +42,7 @@
 
 ---
 
-# 🔴 Le sei bloccanti
+# 🔴 Le cinque bloccanti
 
 ## 1 — Battente: quali cerniere?
 
@@ -54,18 +55,6 @@ punto di sospensione in alto, cioè con l'anta non appesa. Una risposta, una rig
 tipologia torna disponibile.
 
 *Riferimento tecnico: schema `p0416 (414)`, 21 voci, schema composito.*
-
-## 17 — L'entrata: quale usate?
-
-**In parole semplici:** la cremonese esiste in **entrata 0, 8 e 15**. Voi quale usate di solito? E
-da cosa dipende quando cambia? Ve la dice il cliente o la deducete dal serramento?
-
-**Perché blocca:** il programma usa **sempre l'entrata 15**, cablata, e **non ve la chiede
-nemmeno**. Un serramento con entrata 8 riceve oggi **in silenzio** la cremonese sbagliata: non
-compare nessun errore, il codice esiste e ha un prezzo. È lo stesso difetto che abbiamo corretto
-per aria, asse, battuta e sede, sopravvissuto su un parametro che nessuno aveva notato.
-
-*Riferimento tecnico: `A50122.`**`00`**`/`**`08`**`/`**`15`**`.NN`, `p0424 (422)`.*
 
 ## 10 — L'altezza è dell'anta o della maniglia?
 
@@ -112,6 +101,19 @@ una domanda: è un documento da farsi mandare.
 ---
 
 # 🟡 Importanti — spostano prezzi o allargano la copertura
+
+## 17 — L'entrata: quale usate?
+
+**In parole semplici:** la cremonese esiste in **entrata 7,5** e **entrata 15**
+(più una versione ad **asta**, senza maniglia). Voi quale usate di solito? E da
+cosa dipende quando cambia? Ve la dice il cliente o la deducete dal serramento?
+
+**Perché conta (non blocca più):** dal 2026-07-30 il programma **ve la chiede** e
+copre entrambe le entrate pubblicate. La risposta non serve più a sbloccare il
+codice: serve a sapere quale sia il caso frequente — per il default del profilo
+cliente, quando lo faremo, e per capire se l'entrata 7,5 vi capita davvero.
+
+*Riferimento tecnico: `A50122.`**`08`**`/`**`15`**`.NN`, `p0424 (422)`.*
 
 ## 3a — Numero di incontri lungo il perimetro
 Come lo decidete? C'è una regola pratica (uno ogni tot centimetri) o si legge da una tabella?
@@ -240,6 +242,24 @@ altri suoi codici (cerniera, forbice, supporto), che sono verificati a listino.
 ---
 
 # ⚪ Da chiarire
+
+## 27 — Al gruppo 03, l'entrata 7,5 non ha nottolini
+
+**In parole semplici:** nella tabella delle cremonesi, al gruppo **GR03** (altezza
+maniglia 794-1010 mm) l'entrata **7,5** dichiara **nessun nottolino** dove l'entrata
+15 ne dichiara **uno**. Sotto c'è una nota: «*il cremonese entrata 7,5 GR3 nelle due
+ante deve essere usato con asta a leva `A51504.19.13`*».
+
+**Domanda:** su una finestra a **una sola anta** con entrata 7,5 e altezza maniglia
+in quella fascia, il serramento resta senza quel punto di chiusura, o si ordina
+qualcos'altro?
+
+**Perché non blocca:** il generatore fa anta singola e non usa la colonna NOT.
+dell'anta-ribalta (il numero di incontri viene dalla formula della domanda 3a),
+quindi oggi nessun codice cambia. È l'unico gruppo, su nove, in cui il listino
+tratta le due entrate diversamente: va scritto invece che lasciato implicito.
+
+*Riferimento tecnico: `p0424 (422)`, righe `A50122.08.03` e `A50122.15.03`.*
 
 ## 18 — Dove leggete le quote
 Quando un cliente vi chiede un kit, dove leggete **aria, asse, battuta, sede ed entrata**? Sul

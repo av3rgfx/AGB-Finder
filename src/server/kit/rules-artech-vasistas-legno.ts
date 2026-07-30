@@ -191,6 +191,25 @@ export const artechVasistasLegno: RuleModule = {
     // questo modulo sono cablate, non tabellate — fuori da quella riga il modulo
     // emetterebbe la ferramenta di un'altra finestra.
     assertSeatConfigSupportata(input.seatConfig);
+
+    // L'entrata 7,5 NON è uno scambio di codice come sull'anta-ribalta. Le
+    // A50111.08.* esistono, ma due NB di p0426 (424) dicono: «GR 1-2-3 E.15
+    // richiede una forb. vasistas A50545.00.00. Su E.7,5 forbici vasistas non
+    // applicabili» e «GR 4-5-6 E.15 richiede due forb. vasistas A50545.00.00. Su
+    // E.7,5 forb. vasistas solo su GR 5 e 6». A entrata 7,5 un componente che
+    // questo modulo emette sparisce su quattro gruppi su sei, e il listino non
+    // dice cosa vada al suo posto. In più il GR00 (A50111.15.10) esiste solo per
+    // l'entrata 15.
+    // Inferire il pezzo mancante è ciò che ha prodotto le distinte non
+    // ordinabili di PVC e battente: si rifiuta, e la tabella resta E15-only.
+    if (input.entrata !== "E15")
+      throw new KitGenerationError(
+        "Vasistas a entrata 7,5 non coperta: il listino 2026 dichiara le forbici vasistas " +
+          "«non applicabili» sui gruppi 1-2-3 e limitate ai gruppi 5-6, senza indicare il " +
+          "componente sostitutivo (p0426 (424)). Usare l'entrata 15.",
+        "artech.entrata",
+      );
+
     const geo = geometria(input.geometry);
     if (input.geometry !== GEOMETRIA_COPERTA)
       throw new KitGenerationError(

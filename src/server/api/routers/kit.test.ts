@@ -39,7 +39,7 @@ const agent = { user: { id: "agent1", role: "AGENT", status: "ACTIVE" } };
 // regole reale copre solo material "LEGNO" — vedi rules-artech.ts.
 const validInput = {
   windowType: "ANTA_RIBALTA", widthMm: 550, heightMm: 1820, material: "LEGNO",
-  geometry: "A12_I13_B20", seatConfig: "STANDARD",
+  geometry: "A12_I13_B20", entrata: "E15", seatConfig: "STANDARD",
   openingSide: "SINISTRA", openingDir: "TIRARE", finish: "ARGENTO", series: "ARTECH",
 } as const;
 
@@ -129,6 +129,19 @@ describe("kit.create", () => {
     const caller = createCallerFactory(appRouter)(makeCtx(agent));
     await caller.kit.create({ ...validInput, sashWeightKg: 75 });
     expect(requestCreate.mock.calls[0]![0].data).toMatchObject({ sashWeightKg: 75 });
+  });
+
+  it("inoltra entrata nel payload create (colonna KitRequest)", async () => {
+    // Stessa ragione degli altri tre test di inoltro: `entrata` è l'ultimo
+    // parametro che il motore decideva da sé (costante E15 cablata) — senza
+    // questa asserzione si poteva cancellare `entrata` dal `branch` del router e
+    // la suite restava verde, mentre ogni richiesta a entrata 7,5 sarebbe
+    // silenziosamente tornata 15 mm in produzione.
+    requestCount.mockResolvedValue(0);
+    requestCreate.mockImplementation(({ data }) => Promise.resolve({ id: "k1", ...data }));
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await caller.kit.create({ ...validInput, entrata: "E75" });
+    expect(requestCreate.mock.calls[0]![0].data).toMatchObject({ entrata: "E75" });
   });
 
   it("input invalido → BAD_REQUEST", async () => {
@@ -404,6 +417,7 @@ describe("kit.ricalcola", () => {
       finish: "BRONZO",
       series: "ARTECH",
       geometry: "A4_I9_B18",
+      entrata: "E75",
       seatConfig: "SEDE_30",
       openingSide: "DESTRA",
       openingDir: "SPINGERE",
@@ -426,6 +440,7 @@ describe("kit.ricalcola", () => {
       finish: "BRONZO",
       series: "ARTECH",
       geometry: "A4_I9_B18",
+      entrata: "E75",
       seatConfig: "SEDE_30",
       openingSide: "DESTRA",
       openingDir: "SPINGERE",

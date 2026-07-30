@@ -19,6 +19,7 @@ const golden = {
   heightMm: 1000, // → GR03 (820-1220): 1 nottolino
   material: "LEGNO",
   geometry: "A12_I13_B20",
+  entrata: "E15",
   seatConfig: "STANDARD",
   openingSide: "DESTRA",
   openingDir: "TIRARE",
@@ -296,6 +297,18 @@ describe("artechVasistasLegno — guardia di geometria cablata nel modulo", () =
       expect((err as KitGenerationError).ruleId).toBe("artech.sede");
       expect((err as Error).message).toMatch(/sede 30/i);
     }
+  });
+});
+
+describe("artechVasistasLegno — entrata maniglia", () => {
+  it("genera con l'entrata 15, l'unica trascritta", () => {
+    expect(() => artechVasistasLegno.generate({ ...golden, entrata: "E15" })).not.toThrow();
+  });
+
+  it("rifiuta l'entrata 7,5 citando le forbici non applicabili", () => {
+    expect(() => artechVasistasLegno.generate({ ...golden, entrata: "E75" })).toThrow(
+      /forbici/i,
+    );
   });
 });
 

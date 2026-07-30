@@ -29,6 +29,12 @@ import { KitGenerationError, type KitInput, type KitLine, type RuleModule } from
  * VERIFICATA contro il listino p0429 (427), tabella «Cremonesi · Anta a battente
  * - Mod. 502 per finestra e porta finestra a 1 anta», entrata 15: bande e codici
  * identici. La colonna NOT. del listino vale 2/2/2/3/3/3/3/4/4/4.
+ *
+ * QUI NON ESISTE UN ASSE ENTRATA. A differenza dell'anta-ribalta (p0424 (422))
+ * e della vasistas (p0426 (424)), la colonna ENTRATA di questa tabella ha **un
+ * solo valore, 15**: l'entrata 7,5 non è problematica, non è proprio pubblicata
+ * per questa famiglia. Nessuna guardia nel codice sarebbe raggiungibile —
+ * `generate` rifiuta già ogni input — ma chi riaccenderà il modulo deve saperlo.
  */
 export const BATTENTE_CREMONESI = [
   { minH: 360, maxH: 610, code: "A50200.15.01" },

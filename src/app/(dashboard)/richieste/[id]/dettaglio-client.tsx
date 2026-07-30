@@ -14,6 +14,7 @@ import {
 } from "@/lib/kit-labels";
 import { SCHEMI_TOUR } from "@/server/kit/rules-tour-bilico-legno";
 import { GEOMETRIE, geometriaLabel } from "@/server/kit/artech-geometrie";
+import { entrataLabel } from "@/server/kit/types";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { DistintaTable } from "@/components/kit/distinta-table";
 import { Button } from "@/components/ui/button";
@@ -204,6 +205,9 @@ export function DettaglioClient({ id }: { id: string }) {
               {r.geometry !== null ? (
                 <>
                   <Spec label="Geometria" value={geometriaLabel(r.geometry)} />
+                  {r.entrata !== null && (
+                    <Spec label="Entrata maniglia" value={entrataLabel(r.entrata)} />
+                  )}
                   <Spec
                     label="Sede incontri"
                     value={sedeIncontriLabel(GEOMETRIE[r.geometry].sedeMm)}
