@@ -92,6 +92,81 @@ describe.runIf(Boolean(url))("ogni codice emettibile esiste a catalogo con prezz
     },
   );
 
+  // Le 28 combinazioni sopra fissano anche `widthMm: 550`, quindi esercitano UNA
+  // banda su 5 di `FORBICI` e UNA su 4 di `BRACCI_GRUPPI`. Il codice del braccio
+  // è `A5191{1=DX,2=SX}.{mid}.0{gruppo}`: con 5 `mid` distinti fra le 7 geometrie
+  // fanno 40 codici, di cui il gate ne verificava **10**. Più 4 dei 5 codici
+  // forbice mai passati per il catalogo reale — la stessa lacuna che fece
+  // disattivare PVC e battente.
+  //
+  // Ogni larghezza cade nell'INTERNO NON SOVRAPPOSTO della sua banda: le bande si
+  // accavallano (476-490 sta sia nella prima sia nella seconda), e un valore
+  // nella sovrapposizione verificherebbe la banda che `pick()` trova per prima
+  // invece di quella voluta.
+  //
+  // `entrata` resta fissa: cambia SOLO la riga della cremonese, già coperta dal
+  // test delle 9 bande HBB qui sotto. Stesso criterio con cui quello fissa la
+  // geometria.
+  const LARGHEZZE = [400, 550, 700, 900, 1100];
+
+  const perLarghezza = LARGHEZZE.flatMap((widthMm) =>
+    (Object.keys(GEOMETRIE) as ArtechGeometryId[]).flatMap((geometry) =>
+      (["DESTRA", "SINISTRA"] as const).map((openingSide) => ({ widthMm, geometry, openingSide })),
+    ),
+  );
+
+  it.each(perLarghezza)(
+    "larghezza $widthMm / $geometry / $openingSide — nessun codice orfano",
+    async ({ widthMm, geometry, openingSide }) => {
+      const lines = artechAntaRibaltaLegno.generate({
+        ...base,
+        widthMm,
+        geometry,
+        openingSide,
+        entrata: "E15",
+      } as KitInput);
+
+      const codici = [...new Set(lines.map((l) => l.code))];
+      expect(codici.length, "distinta vuota: il gate non avrebbe verificato nulla").toBeGreaterThanOrEqual(16);
+
+      const trovati = await db.product.findMany({
+        where: { agbCode: { in: codici } },
+        select: { agbCode: true, basePrice: true },
+      });
+      const prezzati = new Set(
+        trovati
+          .filter((p) => p.basePrice !== null && Number(p.basePrice) > 0)
+          .map((p) => p.agbCode),
+      );
+      const orfani = codici.filter((c) => !prezzati.has(c));
+      expect(orfani, `codici assenti o senza prezzo: ${orfani.join(", ")}`).toEqual([]);
+    },
+  );
+
+  // Guardia del test precedente. Se un domani le bande di FORBICI o
+  // BRACCI_GRUPPI cambiano, `LARGHEZZE` va rifatta — e questo lo DICE, invece di
+  // lasciare il gate a coprire silenziosamente di meno. È lo stesso difetto che
+  // questo task chiude: una copertura che cala senza che nulla protesti.
+  it("le 5 larghezze coprono tutti i codici forbice e tutti i gruppi braccio", () => {
+    const forbici = new Set<string>();
+    const gruppi = new Set<string>();
+    for (const widthMm of LARGHEZZE) {
+      const lines = artechAntaRibaltaLegno.generate({
+        ...base,
+        widthMm,
+        geometry: "A12_I13_B20",
+        openingSide: "DESTRA",
+        entrata: "E15",
+      } as KitInput);
+      for (const l of lines) {
+        if (l.code.startsWith("A50510.")) forbici.add(l.code);
+        if (/^A5191[12]\./.test(l.code)) gruppi.add(l.code.slice(-2));
+      }
+    }
+    expect(forbici.size, `forbici coperte: ${[...forbici].sort().join(", ")}`).toBe(5);
+    expect(gruppi.size, `gruppi braccio coperti: ${[...gruppi].sort().join(", ")}`).toBe(4);
+  });
+
   // Le 28 combinazioni sopra fissano `heightMm: 1820`: l'unica riga che dipende
   // dall'altezza — la cremonese — non varia mai, quindi il gate esercita un solo
   // codice per entrata (`.07`) sui nove pubblicati (`A50122.08.02`…`.10` per
