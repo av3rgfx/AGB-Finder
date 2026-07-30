@@ -1,13 +1,15 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
+import { ArtechGeometry, Entrata } from "@prisma/client";
 import { agentProcedure, createTRPCRouter } from "@/server/api/trpc";
 import { scontoPercentSchema } from "@/server/pricing/discount";
 
 /**
- * Anagrafica cliente **minima**: ragione sociale e sconto, che è tutto ciò che
- * serve alla scontistica. Gli altri campi del modello (P.IVA, indirizzo,
- * referente, `priceList`, `paymentTerms`) restano a schema e inutilizzati: non
- * si finge di gestirli finché nessuno li chiede.
+ * Anagrafica cliente **minima**: ragione sociale, sconto e profilo serramento —
+ * ciò che serve alla scontistica e a non far ri-scegliere a memoria la geometria
+ * a ogni richiesta. Gli altri campi del modello (P.IVA, indirizzo, referente,
+ * `priceList`, `paymentTerms`) restano a schema e inutilizzati: non si finge di
+ * gestirli finché nessuno li chiede.
  *
  * L'anagrafica è CONDIVISA fra gli agenti — `Customer` non ha un proprietario e
  * non glielo si aggiunge: i clienti sono dell'azienda.
@@ -20,16 +22,38 @@ const companyNameSchema = z
   .min(1, "La ragione sociale è obbligatoria.")
   .max(200, "La ragione sociale non può superare 200 caratteri.");
 
+/**
+ * Profilo serramento: enum di Prisma e non `z.string()`. Una geometria inventata
+ * va rifiutata al confine — a DB la colonna è un enum e l'insert fallirebbe
+ * comunque, ma con un errore di Postgres invece che con un messaggio.
+ */
+const kitGeometrySchema = z.nativeEnum(ArtechGeometry);
+const kitEntrataSchema = z.nativeEnum(Entrata);
+
 /** Prisma restituisce `Decimal`: al client arriva un numero, o niente. */
-function toDto(row: { id: string; companyName: string; discount: unknown }) {
+function toDto(row: {
+  id: string;
+  companyName: string;
+  discount: unknown;
+  kitGeometry: ArtechGeometry | null;
+  kitEntrata: Entrata | null;
+}) {
   return {
     id: row.id,
     companyName: row.companyName,
     discount: row.discount === null || row.discount === undefined ? null : Number(row.discount),
+    kitGeometry: row.kitGeometry,
+    kitEntrata: row.kitEntrata,
   };
 }
 
-const SELECT = { id: true, companyName: true, discount: true } as const;
+const SELECT = {
+  id: true,
+  companyName: true,
+  discount: true,
+  kitGeometry: true,
+  kitEntrata: true,
+} as const;
 
 export const customerRouter = createTRPCRouter({
   list: agentProcedure
@@ -45,10 +69,22 @@ export const customerRouter = createTRPCRouter({
     }),
 
   create: agentProcedure
-    .input(z.object({ companyName: companyNameSchema, discount: scontoPercentSchema.optional() }))
+    .input(
+      z.object({
+        companyName: companyNameSchema,
+        discount: scontoPercentSchema.optional(),
+        kitGeometry: kitGeometrySchema.optional(),
+        kitEntrata: kitEntrataSchema.optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const row = await ctx.db.customer.create({
-        data: { companyName: input.companyName, discount: input.discount ?? null },
+        data: {
+          companyName: input.companyName,
+          discount: input.discount ?? null,
+          kitGeometry: input.kitGeometry ?? null,
+          kitEntrata: input.kitEntrata ?? null,
+        },
         select: SELECT,
       });
       return toDto(row);
@@ -60,8 +96,12 @@ export const customerRouter = createTRPCRouter({
         id: z.string().min(1),
         companyName: companyNameSchema.optional(),
         // `nullable` e non solo `optional`: azzerare lo sconto di un cliente
-        // deve essere possibile, ed è diverso dal non toccarlo.
+        // deve essere possibile, ed è diverso dal non toccarlo. Idem per il
+        // profilo: un cliente che cambia linea di serramento deve poterlo
+        // svuotare, e «svuotato» non è «non specificato».
         discount: scontoPercentSchema.nullable().optional(),
+        kitGeometry: kitGeometrySchema.nullable().optional(),
+        kitEntrata: kitEntrataSchema.nullable().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -70,6 +110,8 @@ export const customerRouter = createTRPCRouter({
         data: {
           ...(input.companyName === undefined ? {} : { companyName: input.companyName }),
           ...(input.discount === undefined ? {} : { discount: input.discount }),
+          ...(input.kitGeometry === undefined ? {} : { kitGeometry: input.kitGeometry }),
+          ...(input.kitEntrata === undefined ? {} : { kitEntrata: input.kitEntrata }),
         },
         select: SELECT,
       });
