@@ -27,10 +27,8 @@ export const kitRouter = createTRPCRouter({
       specs.series === "TOUR"
         ? { tourSchema: specs.tourSchema }
         : {
-            airGapMm: specs.airGapMm,
-            axisOffsetMm: specs.axisOffsetMm,
-            rebateMm: specs.rebateMm,
-            seatMm: specs.seatMm,
+            geometry: specs.geometry,
+            seatConfig: specs.seatConfig,
             openingSide: specs.openingSide,
             openingDir: specs.openingDir,
             supplementaryClosures: specs.supplementaryClosures ?? false,
@@ -72,6 +70,30 @@ export const kitRouter = createTRPCRouter({
       if (!request)
         throw new TRPCError({ code: "NOT_FOUND", message: "Richiesta kit non trovata." });
 
+      // GUARDIA DEL VERSIONAMENTO. `generate` cancella e riscrive
+      // `kit_components` in loco, e dei componenti non esiste storico: su una
+      // riga già emessa riscriverebbe in silenzio la distinta che il cliente ha
+      // in mano, e su una riga superata corromperebbe lo storico che
+      // `ricalcola` aveva congelato. Sono i due casi che il ricalcolo versionato
+      // esiste per impedire, quindi la guardia sta QUI e non solo nella UI: una
+      // scheda aperta in un'altra tab, il tasto Indietro o un secondo
+      // dispositivo aggirano qualunque pulsante nascosto.
+      // Rigenerare resta lecito solo su `DRAFT` — è ciò che fa il wizard subito
+      // dopo `create`, ed è lo stato in cui `ricalcola` deposita ogni nuova
+      // versione.
+      if (request.supersededById)
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Questa richiesta è già stata ricalcolata: aprire la versione più recente.",
+        });
+      if (request.status !== "DRAFT")
+        throw new TRPCError({
+          code: "CONFLICT",
+          message:
+            "Questa distinta è già stata emessa e non si riscrive: usare «Ricalcola» per " +
+            "generarne una nuova versione.",
+        });
+
       // La riga È l'input: si ricostruisce per ramo e si ri-valida, invece di
       // spalmare le colonne (vedi kit/from-request.ts).
       const engineInput = (() => {
@@ -110,6 +132,7 @@ export const kitRouter = createTRPCRouter({
             generatedKit: JSON.parse(JSON.stringify(output)),
             totalComponents: output.totalComponents,
             totalPrice: output.totalPrice,
+            engineVersion: output.engineVersion,
             status: "COMPLETED",
             generatedAt: new Date(),
           },
@@ -125,6 +148,109 @@ export const kitRouter = createTRPCRouter({
         },
       });
       return output;
+    }),
+
+  /**
+   * Ricalcolo versionato. Rigenerare riesegue il codice-regole *corrente* e
+   * riscrive `kit_components`: su una richiesta `DRAFT` va benissimo (non è
+   * ancora stata emessa a nessuno), ma su una richiesta già generata/inviata
+   * cambierebbe sotto i piedi una distinta che il cliente ha già in mano.
+   *
+   * Sintesi: `DRAFT` → rigenera in loco (nessuna riga nuova, il chiamante fa
+   * poi `kit.generate` sullo stesso id). Qualunque altro stato → **crea una
+   * nuova versione** copiando tutto ciò che serve a rigenerare (vedi
+   * `PersistedKitRequest` in `kit/from-request.ts`) e marca la vecchia riga
+   * con `supersededById`, lasciandola intatta. Una riga già ricalcolata non
+   * può esserlo di nuovo: si ricalcola sempre la versione più recente.
+   */
+  ricalcola: agentProcedure
+    .input(z.object({ kitRequestId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const request = await ctx.db.kitRequest.findFirst({
+        where: { id: input.kitRequestId, agentId: ctx.session.user.id },
+      });
+      if (!request)
+        throw new TRPCError({ code: "NOT_FOUND", message: "Richiesta kit non trovata." });
+
+      if (request.status === "DRAFT")
+        return { id: request.id, requestNumber: request.requestNumber };
+
+      if (request.supersededById)
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Questa richiesta è già stata ricalcolata: aprire la versione più recente.",
+        });
+
+      const year = new Date().getFullYear();
+      const inYear = await ctx.db.kitRequest.count({
+        where: { createdAt: { gte: new Date(`${year}-01-01T00:00:00Z`) } },
+      });
+      const requestNumber = `KIT-${year}-${String(inYear + 1).padStart(4, "0")}`;
+
+      // Le due scritture (nuova riga + marcatura della vecchia) devono riuscire
+      // o fallire insieme: senza transazione, un fallimento della seconda
+      // lascerebbe una riga DRAFT orfana (non collegata dalla vecchia, mai
+      // restituita al chiamante). `generate` sopra usa già `$transaction` per
+      // lo stesso motivo — qui va nella forma a callback perché la seconda
+      // scrittura dipende dall'id appena creato dalla prima.
+      const nuova = await ctx.db.$transaction(async (tx) => {
+        // Copia campo per campo (niente spread): la nuova riga è l'input della
+        // sua prima generazione, e un campo dimenticato qui produrrebbe una
+        // distinta diversa in silenzio quando il chiamante fa `kit.generate`.
+        const creata = await tx.kitRequest.create({
+          data: {
+            windowType: request.windowType,
+            widthMm: request.widthMm,
+            heightMm: request.heightMm,
+            material: request.material,
+            finish: request.finish,
+            series: request.series,
+            sashWeightKg: request.sashWeightKg,
+            geometry: request.geometry,
+            seatConfig: request.seatConfig,
+            openingSide: request.openingSide,
+            openingDir: request.openingDir,
+            supplementaryClosures: request.supplementaryClosures,
+            tourSchema: request.tourSchema,
+            notes: request.notes,
+            customerId: request.customerId,
+            requestNumber,
+            status: "DRAFT",
+            agentId: ctx.session.user.id,
+          },
+        });
+
+        // `updateMany` condizionato invece di `update`: il check fail-fast sopra
+        // (`if (request.supersededById) throw …`) è un check-then-act — due
+        // `ricalcola` concorrenti sulla stessa riga possono superarlo entrambi.
+        // Condizionando la scrittura a `supersededById: null` la seconda
+        // chiamata trova `count === 0` (la prima ha già marcato la riga) e fa
+        // fallire l'intera transazione, scartando anche la riga appena creata:
+        // nessun orfano.
+        const marcate = await tx.kitRequest.updateMany({
+          where: { id: request.id, supersededById: null },
+          data: { supersededById: creata.id },
+        });
+        if (marcate.count === 0)
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Questa richiesta è già stata ricalcolata: aprire la versione più recente.",
+          });
+
+        return creata;
+      });
+
+      await ctx.db.activityLog.create({
+        data: {
+          userId: ctx.session.user.id,
+          type: "KIT_REQUEST_CREATED",
+          description: `Richiesta kit ${nuova.requestNumber} (nuova versione di ${request.requestNumber})`,
+          resourceType: "kit_request",
+          resourceId: nuova.id,
+        },
+      });
+
+      return { id: nuova.id, requestNumber: nuova.requestNumber };
     }),
 
   get: agentProcedure.input(z.object({ id: z.string().min(1) })).query(async ({ ctx, input }) => {

@@ -12,10 +12,12 @@ export interface PersistedKitRequest {
   material: string;
   finish: string;
   series: string;
-  airGapMm: number | null;
-  axisOffsetMm: number | null;
-  rebateMm: number | null;
-  seatMm: number | null;
+  // I quattro numerici legacy (`air_gap_mm`, `axis_offset_mm`, `rebate_mm`,
+  // `seat_mm`) restano a DB per non perdere lo storico ma NON sono dichiarati
+  // qui: nessun modulo li legge più, e tenerli nell'interfaccia inviterebbe a
+  // rimetterli nell'input. La geometria è una colonna sola.
+  geometry: string | null;
+  seatConfig: string | null;
   openingSide: string | null;
   openingDir: string | null;
   supplementaryClosures: boolean;
@@ -54,12 +56,16 @@ export function kitInputFromRequest(row: PersistedKitRequest): KitInput {
       : {
           ...common,
           series: row.series,
-          airGapMm: row.airGapMm,
-          axisOffsetMm: row.axisOffsetMm,
-          rebateMm: row.rebateMm,
-          seatMm: row.seatMm,
+          geometry: row.geometry,
+          // Le due colonne hanno un default nello schema **zod** (non a DB: a DB
+          // sono nullable senza default, di proposito), e una riga scritta prima
+          // della migrazione può averle a NULL: qui si applica lo stesso default
+          // zod invece di far fallire il parse su un dato che ha una lettura sola.
+          // `geometry`, che di default non ne ha, resta NULL e viene rifiutata —
+          // è giusto: nessuno può indovinarla.
+          seatConfig: row.seatConfig ?? "STANDARD",
           openingSide: row.openingSide,
-          openingDir: row.openingDir,
+          openingDir: row.openingDir ?? "TIRARE",
           supplementaryClosures: row.supplementaryClosures,
         };
 

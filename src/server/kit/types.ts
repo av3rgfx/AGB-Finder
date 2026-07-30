@@ -1,4 +1,37 @@
 import { z } from "zod";
+// SOLO IL TIPO: `artech-geometrie.ts` importa da qui `KitGenerationError` (un
+// valore), quindi importarne i valori chiuderebbe un ciclo a runtime. Un
+// `import type` viene cancellato in compilazione — il ciclo non esiste — e basta
+// a vincolare la lista sotto.
+import type { ArtechGeometryId } from "./artech-geometrie";
+
+/**
+ * Le 7 geometrie di `artech-geometrie.ts`, replicate qui (vedi l'import sopra) e
+ * **vincolate nei due versi**, perché una lista scritta a mano si disallinea:
+ *
+ * - `satisfies readonly ArtechGeometryId[]` respinge un id **in più** o storpiato;
+ * - `GeometrieMancanti` sotto è `never` solo se la lista le copre **tutte**.
+ *   Senza quel secondo controllo, PERDERE un valore compilerebbe in silenzio
+ *   (l'unione più stretta è assegnabile ovunque) e quella geometria diventerebbe
+ *   muta: la tabella la conosce e la sa costruire, ma lo schema la rifiuta e
+ *   nessun agente potrebbe più ordinarla.
+ */
+const GEOMETRY_IDS = [
+  "A4_I85_B15",
+  "A4_I9_B18",
+  "A4_I13_B18",
+  "A12_I9_B18",
+  "A12_I9_B20",
+  "A12_I13_B18",
+  "A12_I13_B20",
+] as const satisfies readonly ArtechGeometryId[];
+
+/**
+ * Vincolo di esaustività, non un tipo da usare: se una geometria resta fuori da
+ * `GEOMETRY_IDS`, `Exclude` non è più `never` e questa riga non compila.
+ */
+type AssertNever<T extends never> = T;
+type GeometrieMancanti = AssertNever<Exclude<ArtechGeometryId, (typeof GEOMETRY_IDS)[number]>>;
 
 /**
  * Input del Kit Engine. **Unione discriminata su `series`**, non un oggetto piatto.
@@ -38,25 +71,37 @@ const COMMON = {
   sashWeightKg: z.number().int().min(1).max(200).optional(),
 };
 
-/** Ramo ARTECH: la forma storica, invariata (Fasi 1d/1g/1h/1i). */
+/** Ramo ARTECH. La geometria è UN discriminatore, non quattro numeri liberi. */
 export const artechInputSchema = z.object({
   ...COMMON,
   series: z.literal("ARTECH"),
   windowType: z.enum(["ANTA_RIBALTA", "ANTA_BATTENTE", "VASISTAS"]),
-  airGapMm: z.number().int().min(4).max(20),
-  axisOffsetMm: z.number().int().min(9).max(20),
-  rebateMm: z.number().int().min(15).max(30),
-  // Le sedi telaio che il listino 2026 pubblica davvero sono 18, 20, 24 e 30
-  // (per l'alluminio anche 22/35 e 24/37). Il massimo era 22 e tagliava fuori la
-  // **sede 30**, che è quella di TUTTI gli schemi di montaggio base ARTECH del
-  // 2026: chi ha un serramento sede 30 non riusciva nemmeno a scriverlo, e si
-  // prendeva un errore di range invece del messaggio del motore, che spiega
-  // quale configurazione è coperta. Il generatore continua a coprire la sola
-  // sede 18 (PILOT_GEOMETRY): qui si allarga solo ciò che è *scrivibile*, non
-  // ciò che è generabile.
-  seatMm: z.number().int().min(12).max(30),
+  /**
+   * Geometria del serramento: una delle 7 combinazioni (aria, interasse, battuta)
+   * pubblicate dal listino 2026. Sostituisce i quattro campi numerici liberi.
+   *
+   * PERCHÉ UN DISCRIMINATORE. (a) l'interasse 8,5 non sta in un `Int` e non è una
+   * misura su cui si fa aritmetica: è un selettore categoriale, come tutti e tre;
+   * (b) le combinazioni valide sono un insieme chiuso di 7 — tre campi liberi ne
+   * permettono centinaia di inesistenti; (c) una sola fonte di verità: aria,
+   * interasse e battuta si DERIVANO dalla tabella per la UI, quindi non possono
+   * divergere dai codici emessi. È lo stesso schema di `tourSchema` per il bilico.
+   *
+   * I valori replicano `ArtechGeometryId` di `artech-geometrie.ts`: qui non se ne
+   * possono importare i VALORI (`types.ts` è la dipendenza di quel modulo, non il
+   * contrario), ma il tipo sì — ed è ciò che vincola `GEOMETRY_IDS` sopra nei due
+   * versi, id in più e id mancanti.
+   */
+  geometry: z.enum(GEOMETRY_IDS),
+  /**
+   * Famiglia di schemi AGB. La NB «per tipologia di serramento con sede incontri da
+   * 30 mm riferirsi agli schemi "sede 30 mm"» compare su 22 pagine: è AGB stessa a
+   * trattare la sede come discriminante fra famiglie. `SEDE_30` è accettata dallo
+   * schema ma RIFIUTATA dai moduli finché manca l'incontro DSS 13x30 a listino.
+   */
+  seatConfig: z.enum(["STANDARD", "SEDE_30"]).default("STANDARD"),
   openingSide: z.enum(["DESTRA", "SINISTRA"]),
-  openingDir: z.enum(["TIRARE", "SPINGERE"]),
+  openingDir: z.enum(["TIRARE", "SPINGERE"]).default("TIRARE"),
   // Gate del blocco «chiusure supplementari» LEGNO (Fase 1g, CHIUSURE_VERTICALI
   // in rules-artech-legno.ts). Solo `.optional()`, per la stessa ragione di
   // sashWeightKg; il gate a valle tratta già `undefined` come "OFF".
@@ -68,9 +113,9 @@ export const artechInputSchema = z.object({
  * **schema di montaggio 1-5** implica da solo listello, asse, battuta, modello di
  * cerniera e guarnizione (tabella `SCHEMI` nel modulo regole).
  *
- * NON ha i quattro campi geometria ARTECH — sarebbero privi di significato, e due
- * valori del bilico non ci entrerebbero nemmeno: l'asse dello schema 3 è **17,5**
- * (i campi sono interi) e la battuta dello schema 1 è **11** (sotto il `.min(15)`).
+ * NON ha la `geometry` ARTECH — sarebbe priva di significato: le 7 combinazioni
+ * sono quelle degli schemi di montaggio ARTECH legno, e la geometria del bilico
+ * (asse 17,5 sullo schema 3, battuta 11 sullo schema 1) non è nessuna di quelle.
  *
  * NON ha `openingSide`/`openingDir`: sul bilico la mano è **derivata**, non
  * scelta. La legenda di p0537 (535) pubblica per i 3 lati la sola configurazione

@@ -14,10 +14,23 @@ import {
   type TourKitInput,
 } from "@/server/kit/types";
 import { SCHEMI_TOUR, FINITURE_TOUR } from "@/server/kit/rules-tour-bilico-legno";
+import { GEOMETRIA_COPERTA } from "@/server/kit/rules-artech-vasistas-legno";
+import {
+  GEOMETRIE,
+  geometriaLabel,
+  mm,
+  type ArtechGeometryId,
+} from "@/server/kit/artech-geometrie";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { hingeSideLabel, materialLabel, openingDirLabel, windowTypeLabel } from "@/lib/kit-labels";
+import {
+  hingeSideLabel,
+  materialLabel,
+  openingDirLabel,
+  sedeIncontriLabel,
+  windowTypeLabel,
+} from "@/lib/kit-labels";
 
 const ARTECH_DEFAULT: ArtechKitInput = {
   windowType: "ANTA_RIBALTA",
@@ -25,10 +38,10 @@ const ARTECH_DEFAULT: ArtechKitInput = {
   material: "LEGNO",
   widthMm: 550,
   heightMm: 1820,
-  airGapMm: 12,
-  axisOffsetMm: 13,
-  rebateMm: 20,
-  seatMm: 18,
+  // Il pilota storico (distinta reale AGB 16/11/2021): aria 12 · interasse 13 ·
+  // battuta 20. È la geometria del golden 16 righe / 21 pezzi / 90,20 €.
+  geometry: "A12_I13_B20",
+  seatConfig: "STANDARD",
   openingSide: "SINISTRA",
   openingDir: "TIRARE",
   finish: "ARGENTO",
@@ -123,6 +136,22 @@ export function materialForWindowType(
 }
 
 /**
+ * Le 7 geometrie sono ordinabili tutte solo per l'**anta-ribalta**: è l'unica
+ * tipologia le cui voci geometria-dipendenti sono TABELLATE per geometria
+ * (`GEOMETRIE` in `artech-geometrie.ts`). Il vasistas le ha cablate sullo schema
+ * p0418 (416) e **rifiuta** le altre sei (`GEOMETRIA_COPERTA` nel suo modulo, che
+ * importiamo per non ricopiarne il valore): renderle cliccabili creerebbe bozze
+ * che non genereranno mai, come una sede 30. Gated con la ragione, non nascoste.
+ *
+ * Non serve un reset del valore al cambio di tipologia (come per il materiale):
+ * `defaultForWindowType` riparte da `ARTECH_DEFAULT.geometry`, che è appunto la
+ * geometria coperta anche dal vasistas.
+ */
+function geometriaAmmessa(wt: KitInput["windowType"], id: ArtechGeometryId): boolean {
+  return wt === "VASISTAS" ? id === GEOMETRIA_COPERTA : true;
+}
+
+/**
  * Finiture coperte dal generatore ARTECH legno: chiavi della tabella
  * COPERTURE_KIT in `src/server/kit/rules-artech-legno.ts` (kit copertura
  * A51301.*). Aggiornare qui in coppia con quella tabella.
@@ -130,12 +159,16 @@ export function materialForWindowType(
  */
 const FINISH_OPTIONS = ["ARGENTO"] as const;
 
-/** Il terzo step cambia nome: il bilico non ha una mano da scegliere. */
+/**
+ * Il terzo step cambia nome: il bilico non ha una mano da scegliere. Su ARTECH
+ * si chiama «Geometria e mano» da quando aria/interasse/battuta hanno lasciato
+ * il passo delle quote — il campo più consequenziale del passo va nel nome.
+ */
 function stepLabels(series: KitInput["series"]) {
   return [
     "Tipologia",
     "Dimensioni",
-    series === "TOUR" ? "Schema e finitura" : "Mano e finitura",
+    series === "TOUR" ? "Schema e finitura" : "Geometria e mano",
     "Riepilogo",
   ] as const;
 }
@@ -149,16 +182,13 @@ function stepLabels(series: KitInput["series"]) {
 const STEP_SCHEMAS = {
   ARTECH: [
     artechInputSchema.pick({ windowType: true, series: true, material: true }),
+    artechInputSchema.pick({ widthMm: true, heightMm: true, sashWeightKg: true }),
     artechInputSchema.pick({
-      widthMm: true,
-      heightMm: true,
-      airGapMm: true,
-      axisOffsetMm: true,
-      rebateMm: true,
-      seatMm: true,
-      sashWeightKg: true,
+      geometry: true,
+      openingSide: true,
+      openingDir: true,
+      finish: true,
     }),
-    artechInputSchema.pick({ openingSide: true, openingDir: true, finish: true }),
   ],
   TOUR: [
     tourInputSchema.pick({ windowType: true, series: true, material: true }),
@@ -472,46 +502,28 @@ function Step1Tipologia({
   );
 }
 
-type DimensionKey = "widthMm" | "heightMm" | "airGapMm" | "axisOffsetMm" | "rebateMm" | "seatMm";
-
 /** Un solo punto di verità per label + range: gli stessi min/max finiscono sia
  * nel testo del label sia negli attributi nativi min/max dell'input, così
  * l'indicazione visiva non può disallinearsi dal vincolo reale. I range
  * ricalcano kitInputSchema in `src/server/kit/types.ts`. */
 /**
- * «Asse» e «Sede» sono le due metà dello stesso formato, e il listino le scrive
- * in DUE modi diversi: nelle tabelle degli incontri come token unico nella
- * colonna ASSE (`9x18`, `13x24`, `13x30`), e solo nei titoli degli schemi e nel
- * Galileo Pro alluminio come «sede telaio». Un agente che ordina guardando le
- * tabelle **non incontra mai la parola «sede»** — ed è esattamente il motivo per
- * cui alcuni la conoscono e altri no. Gli hint riportano il formato del listino
- * così il campo si riconosce, invece di essere una quota da indovinare.
+ * QUOTE: solo larghezza e altezza. Aria, interasse e battuta non sono più numeri
+ * da digitare — sono UNA scelta fra le 7 combinazioni del listino, al passo dopo
+ * (`GEOMETRIE`) — e la sede telaio **non si chiede più**: la determina la
+ * geometria. Era il campo che un agente esperto, intervistato, non ha saputo
+ * riconoscere: il listino la chiama «sede telaio» solo nei titoli degli schemi,
+ * mentre nelle tabelle degli incontri — quelle che si guardano per ordinare — è
+ * il secondo numero del token nella colonna ASSE (`9x18`, `13x24`). Con gli
+ * hint di PR #37 sono spariti anche i due campi che li giustificavano.
  */
 const DIMENSION_FIELDS: Array<{
-  key: DimensionKey;
+  key: "widthMm" | "heightMm";
   label: string;
   min: number;
   max: number;
-  hint?: string;
 }> = [
   { key: "widthMm", label: "Larghezza", min: 300, max: 3000 },
   { key: "heightMm", label: "Altezza", min: 300, max: 3000 },
-  { key: "airGapMm", label: "Aria", min: 4, max: 20 },
-  {
-    key: "axisOffsetMm",
-    label: "Asse",
-    min: 9,
-    max: 20,
-    hint: "Interasse dei fori dell'incontro. Sul listino è il primo numero del formato asse × sede.",
-  },
-  { key: "rebateMm", label: "Battuta", min: 15, max: 30 },
-  {
-    key: "seatMm",
-    label: "Sede telaio",
-    min: 12,
-    max: 30,
-    hint: "Alloggiamento dell'incontro sul telaio. Sul listino è il secondo numero del formato asse × sede: 9x18, 13x24, 13x30.",
-  },
 ];
 
 function NumberField({
@@ -520,7 +532,6 @@ function NumberField({
   min,
   max,
   value,
-  hint,
   onChange,
 }: {
   id: string;
@@ -528,7 +539,6 @@ function NumberField({
   min: number;
   max: number;
   value: number;
-  hint?: string;
   onChange: (value: number) => void;
 }) {
   return (
@@ -545,14 +555,8 @@ function NumberField({
         min={min}
         max={max}
         value={Number.isNaN(value) ? "" : value}
-        aria-describedby={hint ? `${id}-hint` : undefined}
         onChange={(e) => onChange(e.target.value === "" ? Number.NaN : Number(e.target.value))}
       />
-      {hint && (
-        <p id={`${id}-hint`} className="text-xs text-ink-subtle">
-          {hint}
-        </p>
-      )}
     </div>
   );
 }
@@ -610,7 +614,6 @@ function Step2DimensioniArtech({
           label={field.label}
           min={field.min}
           max={field.max}
-          hint={field.hint}
           value={form[field.key]}
           onChange={(v) => update(field.key, v)}
         />
@@ -690,8 +693,86 @@ function Step3ManoFinitura({
   form: ArtechKitInput;
   update: Update<ArtechKitInput>;
 }) {
+  const sedeMm = GEOMETRIE[form.geometry].sedeMm;
   return (
     <div className="flex flex-col gap-6">
+      <fieldset>
+        <legend className="mb-1 text-sm font-semibold text-ink">Geometria del serramento</legend>
+        <p className="mb-2 text-xs text-ink-subtle">
+          Aria, interasse e battuta si leggono sul disegno del serramento. La sede degli incontri la
+          determina questa scelta: non va indicata.
+        </p>
+        {/* Mobile-first: una colonna sotto sm — le etichette sono lunghe e a 375px
+            devono avere la riga intera. */}
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {(Object.keys(GEOMETRIE) as ArtechGeometryId[]).map((id) => {
+            const ammessa = geometriaAmmessa(form.windowType, id);
+            return (
+              <RadioOption
+                key={id}
+                name="geometry"
+                label={geometriaLabel(id)}
+                hint={ammessa ? undefined : "Disponibile solo per l'anta-ribalta"}
+                checked={form.geometry === id}
+                onChange={ammessa ? () => update("geometry", id) : () => {}}
+                disabled={!ammessa}
+              />
+            );
+          })}
+        </div>
+      </fieldset>
+
+      {/* SEDE 30 e SEDE 20: mostrate e GATED, non nascoste. La 30 è persistibile
+          (enum a DB) ma il motore la rifiuta sempre — p0473 (471) non pubblica
+          l'incontro DSS per il formato 13x30 — quindi offrirla selezionabile
+          creerebbe bozze che non genereranno mai. La 20 non è nemmeno esprimibile:
+          nessuna delle 7 geometrie la deriva, quindi non c'è nulla da rifiutare e
+          senza questa voce non ci sarebbe NIENTE a schermo a dirlo.
+          Nasconderle sarebbe peggio: chi ha davvero una sede 20 o 30 ordinerebbe
+          STANDARD e otterrebbe una distinta completa, plausibile e sbagliata.
+          Stesso trattamento di PVC/ALLUMINIO al primo passo. */}
+      <fieldset>
+        <legend className="mb-1 text-sm font-semibold text-ink">Sede degli incontri</legend>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {/* L'hint echeggia la sede DERIVATA dalla geometria scelta sopra: è
+              l'unica quota che finisce nei codici senza essere stata digitata, e
+              vederla qui è ciò che permette di accorgersi di una geometria
+              sbagliata prima di generare. */}
+          <RadioOption
+            name="seatConfig"
+            label="Standard"
+            // Qui è una FRASE, non un'etichetta di valore: «per questa geometria»
+            // dice già che la quota è derivata, e ripeterlo col suffisso del
+            // formattatore condiviso (`sedeIncontriLabel`, che resta giusto nel
+            // riepilogo e nella scheda) stonava. Per l'aria 4 il listino non
+            // parla di sede ma di fresatura (p0469 (467)).
+            hint={
+              sedeMm === null
+                ? "Per questa geometria (aria 4) il listino prevede una fresatura, non una sede."
+                : `Sede per questa geometria: ${sedeMm} mm.`
+            }
+            checked={form.seatConfig === "STANDARD"}
+            onChange={() => update("seatConfig", "STANDARD")}
+          />
+          <RadioOption
+            name="seatConfig"
+            label="Sede 20 mm"
+            hint="Non ancora coperta: il listino 2026 pubblica il formato 9x20 per gli incontri nottolino e ribalta, ma il generatore copre solo il 9x18 per l'asse 9. Non ordinare questi serramenti come standard."
+            checked={false}
+            onChange={() => {}}
+            disabled
+          />
+          <RadioOption
+            name="seatConfig"
+            label="Sede 30 mm"
+            hint="Non ancora coperta: il listino 2026 non pubblica un incontro DSS per il formato 13x30. Non ordinare questi serramenti come standard."
+            checked={false}
+            onChange={() => {}}
+            disabled
+          />
+        </div>
+      </fieldset>
+
       <fieldset>
         <legend className="mb-2 text-sm font-semibold text-ink">Mano</legend>
         <div className="grid grid-cols-2 gap-2">
@@ -768,11 +849,6 @@ function Step3ManoFinitura({
 }
 
 const SCHEMA_NUMBERS = [1, 2, 3, 4, 5] as const;
-
-/** «17,5» in italiano; 15 resta «15». */
-function mm(value: number): string {
-  return Number.isInteger(value) ? String(value) : String(value).replace(".", ",");
-}
 
 /**
  * Lo schema di montaggio è il campo più pericoloso di tutto il wizard: sbagliarlo
@@ -870,7 +946,10 @@ function Step4Riepilogo({ form }: { form: KitInput }) {
     const s = SCHEMI_TOUR[form.tourSchema as keyof typeof SCHEMI_TOUR];
     const quattroLati = form.widthMm * form.heightMm >= 2_000_000;
     return (
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm sm:grid-cols-3">
+      // Mobile-first: UNA colonna sotto sm, come il riepilogo della scheda. La
+      // riga «Listello 30 · asse 15 · battuta 13» non sta in mezza larghezza a
+      // 375px. Il desktop resta a tre colonne.
+      <dl className="grid grid-cols-1 gap-x-6 gap-y-4 text-sm sm:grid-cols-3">
         {comuni}
         <SummaryItem label="Schema" value={`Schema ${form.tourSchema}`} />
         {s && (
@@ -893,12 +972,17 @@ function Step4Riepilogo({ form }: { form: KitInput }) {
   }
 
   return (
-    <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm sm:grid-cols-3">
+    // Vedi sopra: «Aria 12 · interasse 13 · battuta 20» a 375px vuole la riga intera.
+    <dl className="grid grid-cols-1 gap-x-6 gap-y-4 text-sm sm:grid-cols-3">
       {comuni}
-      <SummaryItem label="Aria" value={`${form.airGapMm} mm`} />
-      <SummaryItem label="Asse" value={`${form.axisOffsetMm} mm`} />
-      <SummaryItem label="Battuta" value={`${form.rebateMm} mm`} />
-      <SummaryItem label="Sede telaio" value={`${form.seatMm} mm`} />
+      <SummaryItem label="Geometria" value={geometriaLabel(form.geometry)} />
+      {/* La sede è l'unica quota DERIVATA che finisce nella distinta: mostrarla
+          qui è ciò che permette all'agente di accorgersi di una geometria scelta
+          male, ed è la ragione per cui il campo può sparire dall'input. */}
+      <SummaryItem
+        label="Sede incontri"
+        value={sedeIncontriLabel(GEOMETRIE[form.geometry].sedeMm)}
+      />
       <SummaryItem label="Mano" value={hingeSideLabel(form.openingSide)} />
       <SummaryItem label="Apertura" value={openingDirLabel(form.openingDir)} />
       <SummaryItem label="Finitura" value={form.finish} />

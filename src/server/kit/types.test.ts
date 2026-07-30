@@ -6,10 +6,8 @@ const valid = {
   widthMm: 550,
   heightMm: 1820,
   material: "ALLUMINIO",
-  airGapMm: 12,
-  axisOffsetMm: 13,
-  rebateMm: 20,
-  seatMm: 18,
+  geometry: "A12_I13_B20",
+  seatConfig: "STANDARD",
   openingSide: "SINISTRA",
   openingDir: "TIRARE",
   finish: "ARGENTO",
@@ -35,23 +33,49 @@ describe("kitInputSchema", () => {
     expect(kitInputSchema.safeParse({ ...valid, series: "PLANA" }).success).toBe(false);
   });
 
-  it("rifiuta dimensioni fuori 300-3000 e parametri fuori range", () => {
+  it("rifiuta dimensioni fuori 300-3000 e valori fuori dagli enum", () => {
     expect(kitInputSchema.safeParse({ ...valid, widthMm: 200 }).success).toBe(false);
-    expect(kitInputSchema.safeParse({ ...valid, airGapMm: 3 }).success).toBe(false);
-    expect(kitInputSchema.safeParse({ ...valid, seatMm: 35 }).success).toBe(false);
+    expect(kitInputSchema.safeParse({ ...valid, geometry: "A9_I11_B17" }).success).toBe(false);
+    expect(kitInputSchema.safeParse({ ...valid, seatConfig: "SEDE_22" }).success).toBe(false);
   });
 
   /**
-   * La sede 30 è quella di TUTTI gli schemi di montaggio base ARTECH del listino
-   * 2026 (22 pagine rimandano agli «schemi sede 30 mm»). Deve essere
-   * *scrivibile*: chi ha quel serramento deve arrivare al messaggio del motore,
-   * che gli dice quale configurazione è coperta, invece di sbattere contro un
-   * errore di range che non spiega niente. Restare generabile è un altro
-   * discorso — se ne occupa assertPilotGeometry.
+   * Le 7 geometrie del listino 2026. Prima erano tre numeri liberi che ne
+   * permettevano centinaia di inesistenti — e non permettevano l'interasse 8,5,
+   * che in un `Int` non ci sta: i clienti che lo ordinano erano tutti rifiutati.
    */
-  it("accetta le sedi telaio che il listino pubblica davvero (18, 20, 24, 30)", () => {
-    for (const seatMm of [18, 20, 24, 30])
-      expect(kitInputSchema.safeParse({ ...valid, seatMm }).success).toBe(true);
+  it("accetta tutte e 7 le geometrie, interasse 8,5 compreso", () => {
+    for (const geometry of [
+      "A4_I85_B15",
+      "A4_I9_B18",
+      "A4_I13_B18",
+      "A12_I9_B18",
+      "A12_I9_B20",
+      "A12_I13_B18",
+      "A12_I13_B20",
+    ])
+      expect(kitInputSchema.safeParse({ ...valid, geometry }).success, geometry).toBe(true);
+  });
+
+  /**
+   * `SEDE_30` è *scrivibile* ma non *generabile*: chi ha quel serramento deve
+   * arrivare al messaggio del motore, che gli dice cosa manca (l'incontro DSS
+   * 13x30 non è a listino), invece di sbattere contro un errore di validazione
+   * che non spiega niente. Il rifiuto è in `assertSeatConfigSupportata`.
+   */
+  it("seatConfig accetta SEDE_30 e vale STANDARD quando non è indicata", () => {
+    expect(kitInputSchema.safeParse({ ...valid, seatConfig: "SEDE_30" }).success).toBe(true);
+    const { seatConfig: _s, ...senza } = valid;
+    expect(kitInputSchema.parse(senza)).toMatchObject({ seatConfig: "STANDARD" });
+  });
+
+  /**
+   * L'agente dice che l'apertura è «quasi sempre a tirare»: il default evita di
+   * chiedere ogni volta un dato che nessun modulo legge ancora (domanda 16).
+   */
+  it("openingDir vale TIRARE quando non è indicata", () => {
+    const { openingDir: _o, ...senza } = valid;
+    expect(kitInputSchema.parse(senza)).toMatchObject({ openingDir: "TIRARE" });
   });
 
   it("sashWeightKg è opzionale e non rompe gli input esistenti", () => {
@@ -65,8 +89,8 @@ describe("kitInputSchema", () => {
   });
 
   it("il ramo ARTECH esige la geometria: senza, rifiuta", () => {
-    const { airGapMm: _a, ...senzaAria } = valid;
-    expect(kitInputSchema.safeParse(senzaAria).success).toBe(false);
+    const { geometry: _g, ...senzaGeometria } = valid;
+    expect(kitInputSchema.safeParse(senzaGeometria).success).toBe(false);
   });
 
   it("il ramo ARTECH non accetta le tipologie di un'altra serie", () => {
@@ -104,18 +128,14 @@ describe("kitInputSchema — ramo TOUR", () => {
   it("scarta la geometria ARTECH da un input TOUR invece di persistirla", () => {
     const parsed = kitInputSchema.parse({
       ...validTour,
-      airGapMm: 12,
-      axisOffsetMm: 13,
-      rebateMm: 20,
-      seatMm: 18,
+      geometry: "A12_I13_B20",
+      seatConfig: "STANDARD",
       openingSide: "SINISTRA",
       openingDir: "TIRARE",
       supplementaryClosures: true,
     });
-    expect(parsed).not.toHaveProperty("airGapMm");
-    expect(parsed).not.toHaveProperty("axisOffsetMm");
-    expect(parsed).not.toHaveProperty("rebateMm");
-    expect(parsed).not.toHaveProperty("seatMm");
+    expect(parsed).not.toHaveProperty("geometry");
+    expect(parsed).not.toHaveProperty("seatConfig");
     expect(parsed).not.toHaveProperty("openingSide");
     expect(parsed).not.toHaveProperty("openingDir");
     expect(parsed).not.toHaveProperty("supplementaryClosures");
@@ -129,7 +149,7 @@ describe("kitInputSchema — ramo TOUR", () => {
 describe("restringimenti asArtech / asTour", () => {
   it("asArtech passa un input ARTECH e rifiuta un TOUR", () => {
     const artech = kitInputSchema.parse(valid);
-    expect(asArtech(artech).airGapMm).toBe(12);
+    expect(asArtech(artech).geometry).toBe("A12_I13_B20");
     expect(() => asArtech(kitInputSchema.parse(validTour))).toThrow(KitGenerationError);
   });
 

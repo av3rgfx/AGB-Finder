@@ -173,7 +173,7 @@ model Product {
   listinoPage Int? @map("listino_page")
 
   // Search & AI. Indexes are created manually in the migration (GIN / HNSW).
-  searchVector Unsupported("tsvector")?     @map("search_vector")
+  searchVector Unsupported("tsvector")?    @map("search_vector")
   embedding    Unsupported("vector(768)")? // gemini-embedding-001 @ 768 dims
 
   kitComponents        KitComponent[]
@@ -242,6 +242,26 @@ enum HingeSide {
   SINISTRA
 }
 
+// Le 7 combinazioni (aria, interasse, battuta) degli schemi di montaggio ARTECH
+// legno 2026 — vedi `src/server/kit/artech-geometrie.ts` (fonte di verità dei
+// VALORI; qui solo l'enum DB, vincolato da `GEOMETRY_IDS` in `kit/types.ts`).
+enum ArtechGeometry {
+  A4_I85_B15
+  A4_I9_B18
+  A4_I13_B18
+  A12_I9_B18
+  A12_I9_B20
+  A12_I13_B18
+  A12_I13_B20
+}
+
+// SEDE_30 è accettata dallo schema zod ma rifiutata dai moduli regole finché
+// manca l'incontro DSS 13x30 a listino (vedi kit/types.ts).
+enum SeatConfig {
+  STANDARD
+  SEDE_30
+}
+
 enum OpeningDirection {
   TIRARE
   SPINGERE
@@ -258,30 +278,56 @@ model KitRequest {
   finish     String
   series     String
 
-  // ── Geometria e mano: SOLO serie ARTECH ──────────────────────────────────
-  // Nullable dal 2026-07-26 (ingresso della serie TOUR). NON sono campi
-  // "facoltativi": sono campi di UN RAMO. `kitInputSchema` è un'unione
-  // discriminata su `series` e scarta i campi estranei al ramo, quindi una riga
-  // TOUR li ha tutti NULL per costruzione. Conta perché `kit.generate`
-  // ricostruisce l'input del motore rileggendo queste colonne: la riga È
-  // l'input di ogni rigenerazione.
-  airGapMm     Int?              @map("air_gap_mm")
-  axisOffsetMm Int?              @map("axis_offset_mm")
-  rebateMm     Int?              @map("rebate_mm")
-  seatMm       Int?              @map("seat_mm")
-  openingSide  HingeSide?        @map("opening_side")
-  openingDir   OpeningDirection? @map("opening_direction")
+  // ── Geometria: SOLO serie ARTECH ─────────────────────────────────────────
+  // Un discriminatore unico al posto dei quattro numerici. Le vecchie colonne
+  // restano nullable come LEGACY: la garanzia che nessun modulo le legga è
+  // `PersistedKitRequest` in `src/server/kit/from-request.ts`, che le ESCLUDE
+  // deliberatamente dalla forma della riga usata per rigenerare — quindi non
+  // c'è modo di leggerle. Servono solo a non perdere lo storico.
+  //
+  // NESSUN `@default` a livello DB su `seatConfig`: un default DB valorizzerebbe
+  // TUTTE le righe pre-esistenti (comprese le TOUR, che non hanno sede) e
+  // tradurrebbe in silenzio una riga legacy `seat_mm = 30` in `STANDARD`,
+  // scavalcando `assertSeatConfigSupportata`. Il default sta nello schema zod
+  // (`kit/types.ts`), dove è un default *dell'input*, e nel backfill della
+  // migrazione, dove è *derivato* da `seat_mm`.
+  geometry   ArtechGeometry?
+  seatConfig SeatConfig?     @map("seat_config")
+
+  openingSide HingeSide?        @map("opening_side")
+  openingDir  OpeningDirection? @map("opening_direction")
+
+  /// LEGACY — non letto da alcun modulo dal 2026-07-29.
+  airGapMm     Int? @map("air_gap_mm")
+  /// LEGACY
+  axisOffsetMm Int? @map("axis_offset_mm")
+  /// LEGACY
+  rebateMm     Int? @map("rebate_mm")
+  /// LEGACY
+  seatMm       Int? @map("seat_mm")
+
+  /// Versione del motore che ha prodotto la distinta.
+  engineVersion  String?     @map("engine_version")
+  /// Ricalcolo versionato (Task 5): la riga VECCHIA punta alla nuova che la
+  /// sostituisce. Il verso è quello del nome del campo — «superseded BY» — ed è
+  /// quello che scrive il ricalcolo: `update(where: vecchia, { supersededById: nuova })`.
+  /// Così la riga emessa al cliente resta intatta e sa dove sta la revisione.
+  supersededById String?     @unique @map("superseded_by_id")
+  /// Sulla riga vecchia: la versione che l'ha sostituita (più recente).
+  supersededBy   KitRequest? @relation("KitRequestVersione", fields: [supersededById], references: [id])
+  /// Sulla riga nuova: la versione che questa sostituisce (più vecchia).
+  supersedes     KitRequest? @relation("KitRequestVersione")
 
   // ── Serie TOUR (bilico) ──────────────────────────────────────────────────
   // Schema di montaggio 1-5 del listino. Da solo implica listello, asse,
   // battuta, modello di cerniera e guarnizione: quei valori NON si persistono
   // (sarebbero una seconda fonte di verità), si derivano in codice. In
   // particolare l'asse dello schema 3 è 17,5 e non è un intero.
-  tourSchema Int? @map("tour_schema")
+  tourSchema            Int?    @map("tour_schema")
   supplementaryClosures Boolean @default(false) @map("supplementary_closures")
   // Peso dell'anta in kg — FACOLTATIVO (nullable, nessun default): le due NB
   // dello schema vasistas p0418 (416) valgono solo se l'agente lo indica.
-  sashWeightKg Int? @map("sash_weight_kg")
+  sashWeightKg          Int?    @map("sash_weight_kg")
 
   notes         String? @db.Text
   customerNotes String? @map("customer_notes") @db.Text
@@ -332,10 +378,10 @@ model KitComponent {
   unitPrice     Decimal @map("unit_price") @db.Decimal(12, 2)
   totalPrice    Decimal @map("total_price") @db.Decimal(12, 2)
 
-  ruleId          String?  @map("rule_id")
-  ruleDescription String?  @map("rule_description") @db.Text
-  isOptional      Boolean  @default(false) @map("is_optional")
-  isAlternative   Boolean  @default(false) @map("is_alternative")
+  ruleId          String? @map("rule_id")
+  ruleDescription String? @map("rule_description") @db.Text
+  isOptional      Boolean @default(false) @map("is_optional")
+  isAlternative   Boolean @default(false) @map("is_alternative")
 
   sortOrder Int @default(0) @map("sort_order")
 

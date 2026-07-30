@@ -1,6 +1,8 @@
-> 📋 Le domande 1-10 citate qui sono raccolte, con priorità e testi pronti da inviare, in
-> [`DOMANDE-APERTE.md`](./DOMANDE-APERTE.md). **La numerazione è la stessa**: i commenti nel
-> codice rimandano per numero.
+> 📋 **L'indice delle domande vive in [`DOMANDE-APERTE.md`](./DOMANDE-APERTE.md)**, che è il
+> documento unico e aggiornato (1-26, con priorità e testi pronti da inviare). **La numerazione
+> è globale e condivisa**: i commenti nel codice rimandano per numero, quindi il numero deve
+> risolvere lì. Questa scheda conserva il *merito tecnico* delle domande che riguardano
+> l'anta-ribalta, non l'elenco.
 
 # Anta-ribalta ARTECH LEGNO — esito della verifica e domande residue
 
@@ -18,31 +20,66 @@
 
 ## Numerazione delle domande — leggere prima
 
-Le domande per l'esperto AGB hanno una **numerazione GLOBALE**, unica per tutte le schede
-di `kit-assunzioni/`: i commenti nel codice rimandano **per numero** («domanda 2 per
-l'esperto in …/legno.md»), quindi il numero deve identificare la domanda ovunque, non la
-sua posizione dentro una scheda.
+Le domande hanno una **numerazione GLOBALE**, unica per tutte le schede di `kit-assunzioni/`:
+i commenti nel codice rimandano **per numero**, quindi il numero deve identificare la domanda
+ovunque. **L'elenco completo e ordinato per priorità è in
+[`DOMANDE-APERTE.md`](./DOMANDE-APERTE.md)** — non è duplicato qui, perché due indici della
+stessa numerazione divergono al primo aggiornamento (è già successo: la tabella che stava qui
+saltava le domande 17-23, aggiunte da un altro lavoro in parallelo).
 
-| # | Domanda | Scheda | Sblocca |
-|---|---|---|---|
-| 1 | Battente: quale terna di cerniere nello schema p0416 (414)? | `battente.md` | riattivazione della tipologia |
-| 2 | Squadra angolare: quale delle **quattro** varianti a listino? | qui | codice già scritto (`PER_MANO`) |
-| 3 | Incontri: quantità (formula vs somma colonna NOT.) e formato (asse 9 vs 13) | qui | quantità e codice degli incontri |
-| 4 | Sede 30 (schemi 2026) vs sede 18 (distinta 2021) | qui | campo di applicazione del generatore |
-| 5 | Vasistas: variante base o alternativa per le tre cerniere? Servono entrambi i terminali? | `vasistas.md` | codice già scritto |
-| 6 | Il «listino PVC e ALLUMINIO» citato a p0849 (847) | `pvc.md` (e `alu.md`) | PVC **e** alluminio insieme |
-| 7 | Anta-ribalta: l'intervallo **HBB 357-609** resta scoperto | qui | finestre basse |
-| 8 | Vasistas: voce 7, terminali delle chiusure supplementari sui montanti | `vasistas.md` | 13ª voce dello schema |
-| 9 | Vasistas: GR00 (HBB 274-662) | `vasistas.md` | finestre piccole |
-| 10 | Offset altezza → HBB: −10 (anta-ribalta) o 0 (vasistas)? | qui | scelta del cremonese in entrambi i moduli |
+Le domande discusse **nel merito** in questa scheda: **2** (squadra angolare), **3** (incontri),
+**4** (sede 18 vs 30), **7** (finestre basse), **10** (offset altezza→HBB), **24** (interasse
+8,5), **25** (confezioni).
 
-⚠️ `alu.md` conserva una propria lista numerata 1-13 della Fase 1g: quella è **locale a
-quella scheda** e non va confusa con questa. Nella numerazione globale l'alluminio è
+⚠️ `alu.md` conserva una propria lista numerata 1-13 della Fase 1g: quella è **locale a quella
+scheda** e non va confusa con la numerazione globale. Nell'indice globale l'alluminio è
 interamente dentro la **domanda 6**.
 
 ---
 
+## Domanda 24 — interasse 8,5: quale asse per gli incontri?
+
+Il cliente «MC» lavora ad **aria 4 · interasse 8,5 · battuta 15** (geometria `A4_I85_B15`).
+Le cerniere, i bracci forbice e i supporti per quella combinazione esistono a listino ed è
+la famiglia `.22`. Ma gli **incontri** aria 4 sono pubblicati **solo per asse 9 e asse 13**
+(`p0469 (467)`, `p0471 (469)`, `p0473 (471)`): un asse 8,5 **non esiste**.
+
+Il generatore assume che l'interasse 8,5 usi gli incontri **asse 9** (famiglia `.01`).
+È un'inferenza, non un dato stampato.
+
+**Domanda:** su un serramento aria 4 / interasse 8,5 / battuta 15, quali incontri si
+ordinano? Gli asse 9 come assumiamo noi, o esiste una regola diversa?
+
+*(Se l'assunzione cade cambia la famiglia incontri di MC — non i suoi codici di cerniera,
+forbice e supporto, che sono `.22` verificati a listino.)*
+
+---
+
+## Domanda 25 — confezioni: si applica il +20% fuori confezione?
+
+L'art. 4 delle condizioni generali (`p0006 (4)`) dice: «*per ordini di quantità inferiori
+alla confezione, la Alban Giacomo SpA si riserva … di aumentare l'ordine stesso fino al
+quantitativo della confezione, oppure di applicare una maggiorazione di prezzo del 20%*».
+
+Le nostre distinte emettono quantità **1, 2, 5** contro confezioni da **50, 20, 10**
+(colonna CS del listino): ogni riga è formalmente «fuori confezione». Il software AGB 4K
+ha per questo una funzione dedicata («ottimizzazione pezzi singoli o confezioni»).
+
+Plausibilmente non ricade sul cliente finale, perché UFPtrade è **distributore** e rompe le
+confezioni. Ma se ricadesse, **tutti i totali che mostriamo sono sottostimati**.
+
+**Domanda:** il prezzo unitario di listino è quello che paga il serramentista anche per
+quantità sotto la confezione, o c'è una maggiorazione?
+
+---
+
 ## Cosa è stato corretto il 2026-07-25 (tutto con evidenza diretta a listino)
+
+> **Nota di lettura (2026-07-29).** La tabella qui sotto è **storica** e cita `PER_MANO`, la
+> costante che teneva squadra angolare e supporto cerniera del solo pilota. Il cutover della
+> geometria l'ha **rimossa**: quei codici vivono ora riga per riga in
+> `src/server/kit/artech-geometrie.ts` (`GEOMETRIE`), una riga per ciascuna delle 7
+> geometrie. Le correzioni descritte restano valide, cambia solo dove abitano i codici.
 
 | Rilievo | Evidenza | Correzione |
 |---|---|---|

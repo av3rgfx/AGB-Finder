@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createTRPCRouter, createCallerFactory, type TRPCContext } from "@/server/api/trpc";
+import { ENGINE_VERSION } from "@/server/kit/engine";
 import { kitRouter } from "./kit";
 
 const appRouter = createTRPCRouter({ kit: kitRouter });
@@ -8,6 +9,7 @@ const requestCreate = vi.fn();
 const requestFindFirst = vi.fn();
 const requestFindMany = vi.fn();
 const requestUpdate = vi.fn();
+const requestUpdateMany = vi.fn();
 const requestCount = vi.fn();
 const componentDeleteMany = vi.fn();
 const componentCreateMany = vi.fn();
@@ -17,7 +19,7 @@ const activityCreate = vi.fn();
 const transaction = vi.fn();
 
 const dbStub = {
-  kitRequest: { create: requestCreate, findFirst: requestFindFirst, findMany: requestFindMany, update: requestUpdate, count: requestCount },
+  kitRequest: { create: requestCreate, findFirst: requestFindFirst, findMany: requestFindMany, update: requestUpdate, updateMany: requestUpdateMany, count: requestCount },
   kitComponent: { deleteMany: componentDeleteMany, createMany: componentCreateMany },
   kitTemplate: { findFirst: templateFindFirst },
   product: { findMany: productFindMany },
@@ -37,16 +39,28 @@ const agent = { user: { id: "agent1", role: "AGENT", status: "ACTIVE" } };
 // regole reale copre solo material "LEGNO" — vedi rules-artech.ts.
 const validInput = {
   windowType: "ANTA_RIBALTA", widthMm: 550, heightMm: 1820, material: "LEGNO",
-  airGapMm: 12, axisOffsetMm: 13, rebateMm: 20, seatMm: 18,
+  geometry: "A12_I13_B20", seatConfig: "STANDARD",
   openingSide: "SINISTRA", openingDir: "TIRARE", finish: "ARGENTO", series: "ARTECH",
 } as const;
 
 beforeEach(() => {
-  for (const fn of [requestCreate, requestFindFirst, requestFindMany, requestUpdate, requestCount, componentDeleteMany, componentCreateMany, templateFindFirst, productFindMany, activityCreate, transaction]) {
+  for (const fn of [requestCreate, requestFindFirst, requestFindMany, requestUpdate, requestUpdateMany, requestCount, componentDeleteMany, componentCreateMany, templateFindFirst, productFindMany, activityCreate, transaction]) {
     fn.mockReset();
   }
   activityCreate.mockResolvedValue({});
-  transaction.mockImplementation((ops: unknown[]) => Promise.all(ops as Promise<unknown>[]));
+  requestUpdateMany.mockResolvedValue({ count: 1 });
+  // Il mock supporta entrambe le forme di `$transaction` usate nel router:
+  // l'array (`generate`, batch indipendente) e la callback interattiva
+  // (`ricalcola`, dove la seconda scrittura dipende dall'id creato dalla
+  // prima). Se l'argomento è una funzione la si invoca passandole lo stub
+  // del db (stessi mock condivisi, quindi le asserzioni sui singoli metodi
+  // restano valide dentro o fuori dalla transazione); altrimenti si
+  // comporta come prima.
+  transaction.mockImplementation((arg: unknown) =>
+    typeof arg === "function"
+      ? (arg as (tx: typeof dbStub) => Promise<unknown>)(dbStub)
+      : Promise.all(arg as Promise<unknown>[]),
+  );
 });
 
 describe("kit.create", () => {
@@ -68,6 +82,33 @@ describe("kit.create", () => {
     expect(activityCreate).toHaveBeenCalledWith({
       data: expect.objectContaining({ type: "KIT_REQUEST_CREATED" }),
     });
+  });
+
+  it("inoltra geometry e seatConfig nel payload create (colonne KitRequest)", async () => {
+    // Stessa ragione degli altri due test di inoltro: la riga È l'input di ogni
+    // rigenerazione, e senza la colonna Prisma risponde «Unknown argument» solo a
+    // runtime (il typecheck non lo vede). Senza questa asserzione si potevano
+    // cancellare `geometry`/`seatConfig` dal `branch` del router e la suite
+    // restava verde: `kitInputFromRequest` avrebbe poi rifiutato ogni riga ARTECH.
+    requestCount.mockResolvedValue(0);
+    requestCreate.mockImplementation(({ data }) => Promise.resolve({ id: "k1", ...data }));
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await caller.kit.create({ ...validInput, geometry: "A12_I9_B18", seatConfig: "SEDE_30" });
+    expect(requestCreate.mock.calls[0]![0].data).toMatchObject({
+      geometry: "A12_I9_B18",
+      seatConfig: "SEDE_30",
+    });
+  });
+
+  it("seatConfig omesso → il default zod STANDARD finisce a DB (nessun default a DB)", async () => {
+    // La colonna non ha `@default` a schema Prisma (un default DB valorizzerebbe
+    // anche le righe TOUR e mascherebbe una sede 30 legacy): l'unico default è
+    // quello di zod, e deve arrivare fino alla riga.
+    requestCount.mockResolvedValue(0);
+    requestCreate.mockImplementation(({ data }) => Promise.resolve({ id: "k1", ...data }));
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await caller.kit.create({ ...validInput, seatConfig: undefined });
+    expect(requestCreate.mock.calls[0]![0].data).toMatchObject({ seatConfig: "STANDARD" });
   });
 
   it("inoltra supplementaryClosures nel payload create (persistito su colonna KitRequest)", async () => {
@@ -130,10 +171,52 @@ describe("kit.generate", () => {
     expect(componentCreateMany).toHaveBeenCalled();
     const rows = componentCreateMany.mock.calls[0]![0].data;
     expect(rows[0]).toMatchObject({ kitRequestId: "k1", componentCode: expect.any(String), ruleId: expect.any(String) });
+    // `engineVersion` è timbrata sulla riga (colonna, non più solo dentro il JSON):
+    // è ciò che permetterà al ricalcolo versionato di dire quali distinte le ha
+    // prodotte il motore vecchio. Senza questa asserzione si poteva cancellare la
+    // riga dal router e la suite restava verde, con la colonna sempre NULL.
     expect(requestUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ status: "COMPLETED", totalComponents: 12 }) }),
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "COMPLETED",
+          totalComponents: 12,
+          engineVersion: ENGINE_VERSION,
+        }),
+      }),
     );
+    expect(output.engineVersion).toBe(ENGINE_VERSION);
     expect(activityCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ type: "KIT_GENERATED" }) });
+  });
+
+  // GUARDIA DEL VERSIONAMENTO. `generate` fa deleteMany + createMany su
+  // `kit_components`, e dei componenti non esiste storico: su una riga già
+  // emessa riscriverebbe la distinta che il cliente ha in mano, su una riga
+  // superata corromperebbe lo storico congelato da `ricalcola`. La UI non basta
+  // — una scheda aperta in un'altra tab, il tasto Indietro o un secondo
+  // dispositivo la aggirano — quindi l'invariante va provata QUI.
+  it("richiesta non-DRAFT (già emessa) → CONFLICT, nessuna scrittura", async () => {
+    requestFindFirst.mockResolvedValue({
+      id: "k1", agentId: "agent1", ...validInput, status: "COMPLETED", supersededById: null,
+    });
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await expect(caller.kit.generate({ kitRequestId: "k1" })).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: expect.stringContaining("Ricalcola"),
+    });
+    expect(componentDeleteMany).not.toHaveBeenCalled();
+    expect(requestUpdate).not.toHaveBeenCalled();
+  });
+
+  it("richiesta superata (supersededById) → CONFLICT, nessuna scrittura", async () => {
+    requestFindFirst.mockResolvedValue({
+      id: "k1", agentId: "agent1", ...validInput, status: "DRAFT", supersededById: "k2",
+    });
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await expect(caller.kit.generate({ kitRequestId: "k1" })).rejects.toMatchObject({
+      code: "CONFLICT",
+    });
+    expect(componentDeleteMany).not.toHaveBeenCalled();
+    expect(requestUpdate).not.toHaveBeenCalled();
   });
 
   it("rilegge sashWeightKg dalla richiesta e lo passa alle regole (vasistas)", async () => {
@@ -224,5 +307,162 @@ describe("kit.list / kit.get", () => {
       totalPrice: 99.99,
     });
     expect(result.totalPrice).toBe(99.99);
+  });
+});
+
+describe("kit.ricalcola", () => {
+  beforeEach(() => {
+    requestCount.mockResolvedValue(7);
+  });
+
+  it("richiesta altrui → NOT_FOUND", async () => {
+    requestFindFirst.mockResolvedValue(null);
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await expect(caller.kit.ricalcola({ kitRequestId: "altrui" })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+  });
+
+  it("su una richiesta COMPLETED crea una NUOVA riga e marca l'originale", async () => {
+    requestFindFirst.mockResolvedValue({
+      ...validInput,
+      id: "req1",
+      requestNumber: "KIT-2026-0001",
+      status: "COMPLETED",
+      supersededById: null,
+      customerId: null,
+      tourSchema: null,
+      sashWeightKg: null,
+      notes: null,
+    });
+    requestCreate.mockResolvedValue({ id: "req2", requestNumber: "KIT-2026-0008" });
+
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    const nuova = await caller.kit.ricalcola({ kitRequestId: "req1" });
+
+    expect(nuova.id).toBe("req2");
+    expect(requestCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: "DRAFT", geometry: validInput.geometry }),
+      }),
+    );
+    expect(requestUpdateMany).toHaveBeenCalledWith({
+      where: { id: "req1", supersededById: null },
+      data: { supersededById: "req2" },
+    });
+    expect(activityCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        type: "KIT_REQUEST_CREATED",
+        resourceId: "req2",
+      }),
+    });
+  });
+
+  it("marcatura concorrente (count 0) → CONFLICT, nessun orfano", async () => {
+    // Simula due `ricalcola` concorrenti sulla stessa riga: il check fail-fast
+    // in cima (`if (request.supersededById)`) è check-then-act e può essere
+    // superato da entrambe. La garanzia vera è la `updateMany` condizionata
+    // dentro la transazione — qui la si fa fallire (count 0, come se un'altra
+    // chiamata avesse già marcato la riga) e si verifica che l'intera
+    // transazione (quindi anche la `create`) venga rigettata: nessuna riga
+    // orfana, nessun log d'audit per una versione mai davvero creata.
+    requestFindFirst.mockResolvedValue({
+      ...validInput,
+      id: "req1",
+      requestNumber: "KIT-2026-0001",
+      status: "COMPLETED",
+      supersededById: null,
+      customerId: null,
+      tourSchema: null,
+      sashWeightKg: null,
+      notes: null,
+    });
+    requestCreate.mockResolvedValue({ id: "req2", requestNumber: "KIT-2026-0008" });
+    requestUpdateMany.mockResolvedValue({ count: 0 });
+
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await expect(caller.kit.ricalcola({ kitRequestId: "req1" })).rejects.toMatchObject({
+      code: "CONFLICT",
+    });
+    expect(activityCreate).not.toHaveBeenCalled();
+  });
+
+  it("copia tutti i campi necessari a rigenerare (nessun campo dimenticato)", async () => {
+    // Rete di sicurezza per il monito del task: un campo dimenticato qui non fa
+    // fallire il typecheck (è un campo Prisma opzionale semplicemente omesso, non
+    // un nome storpiato) — solo un'asserzione sul valore lo scopre. Valori tutti
+    // diversi dai default/null così un omissione si vede subito.
+    requestFindFirst.mockResolvedValue({
+      id: "req1",
+      requestNumber: "KIT-2026-0001",
+      status: "COMPLETED",
+      supersededById: null,
+      windowType: "VASISTAS",
+      widthMm: 700,
+      heightMm: 900,
+      material: "LEGNO",
+      finish: "BRONZO",
+      series: "ARTECH",
+      geometry: "A4_I9_B18",
+      seatConfig: "SEDE_30",
+      openingSide: "DESTRA",
+      openingDir: "SPINGERE",
+      supplementaryClosures: true,
+      sashWeightKg: 42,
+      tourSchema: null,
+      notes: "nota di prova",
+      customerId: "cust1",
+    });
+    requestCreate.mockResolvedValue({ id: "req2", requestNumber: "KIT-2026-0008" });
+
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await caller.kit.ricalcola({ kitRequestId: "req1" });
+
+    expect(requestCreate.mock.calls[0]![0].data).toMatchObject({
+      windowType: "VASISTAS",
+      widthMm: 700,
+      heightMm: 900,
+      material: "LEGNO",
+      finish: "BRONZO",
+      series: "ARTECH",
+      geometry: "A4_I9_B18",
+      seatConfig: "SEDE_30",
+      openingSide: "DESTRA",
+      openingDir: "SPINGERE",
+      supplementaryClosures: true,
+      sashWeightKg: 42,
+      tourSchema: null,
+      notes: "nota di prova",
+      customerId: "cust1",
+      status: "DRAFT",
+      agentId: "agent1",
+    });
+  });
+
+  it("su una richiesta DRAFT rigenera in loco: nessuna riga nuova", async () => {
+    requestFindFirst.mockResolvedValue({
+      id: "req1",
+      requestNumber: "KIT-2026-0001",
+      status: "DRAFT",
+      supersededById: null,
+    });
+
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    const esito = await caller.kit.ricalcola({ kitRequestId: "req1" });
+
+    expect(esito.id).toBe("req1");
+    expect(requestCreate).not.toHaveBeenCalled();
+  });
+
+  it("una richiesta già ricalcolata rifiuta con CONFLICT", async () => {
+    requestFindFirst.mockResolvedValue({
+      id: "req1",
+      requestNumber: "KIT-2026-0001",
+      status: "COMPLETED",
+      supersededById: "req2",
+    });
+
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await expect(caller.kit.ricalcola({ kitRequestId: "req1" })).rejects.toThrow(/già.*ricalcolata/i);
   });
 });

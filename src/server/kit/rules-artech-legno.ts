@@ -7,6 +7,18 @@
 // scratchpad/artech-varianti.txt per il dettaglio completo dell'estrazione.
 // Le voci marcate ASSUNZIONE non sono derivabili con certezza dai dati/dalla
 // distinta e si correggono alla prossima distinta reale o al listino cartaceo.
+//
+// 2026-07-29 — CUTOVER DELLA GEOMETRIA. Il modulo non è più cablato su una sola
+// combinazione (aria 12 / interasse 13 / battuta 20): la geometria arriva come
+// discriminatore `input.geometry` e i codici che ne dipendono vengono da
+// `artech-geometrie.ts` (squadra, supporto cerniera, supporto forbice, mid del
+// braccio) e da `artech-incontri.ts` (nottolino, ribalta, DSS). Restano qui solo
+// le tabelle che il listino NON pubblica per geometria: cremonesi per HBB, corpo
+// forbice e gruppi braccio per LBB (selezione dimensionale) e le coperture kit,
+// la cui tabella p0488 (486) ha per sole colonne finitura e mano — non sono
+// «cablate sul pilota», sono indipendenti dalla geometria per costruzione del
+// listino (vedi COPERTURE_KIT). Il golden del pilota (`A12_I13_B20`) è invariato:
+// 12 righe / 17 pezzi, 16 / 21 con le chiusure supplementari.
 import { pick, linesFromParts, requireKey } from "./kit-shared";
 import {
   KitGenerationError,
@@ -17,12 +29,14 @@ import {
   type KitLine,
   type RuleModule,
 } from "./types";
+import { MOVIMENTO_ANGOLARE, incontriNottolino } from "./artech-legno-shared";
+import { geometria, assertSeatConfigSupportata, mm } from "./artech-geometrie";
 import {
-  PER_MANO,
-  MOVIMENTO_ANGOLARE,
-  incontriNottolino,
-  assertPilotGeometry,
-} from "./artech-legno-shared";
+  incontroNottolino,
+  incontroRibalta,
+  incontroDss,
+  formatoIncontro,
+} from "./artech-incontri";
 
 type Side = ArtechKitInput["openingSide"];
 
@@ -63,10 +77,12 @@ const FORBICI = [
 ] as const;
 
 /**
- * Gruppo braccio forbice legno per range larghezza (colonne.lbb della
- * famiglia A5191{1=DX,2=SX}.36.0N — interasse 13/battuta 20, l'unica
- * combinazione validata dal golden I13/B20). Tabella indipendente da FORBICI:
- * i bracci hanno 4 gruppi (277-1204 senza buchi) contro i 5 di FORBICI.
+ * Gruppo braccio forbice legno per range larghezza (colonne.lbb della famiglia
+ * A5191{1=DX,2=SX}.{mid}.0N). Il `mid` — il 2° segmento, che codifica interasse e
+ * battuta — NON è qui: lo dà la riga di geometria (`braccioMid`). Questa tabella
+ * dichiara solo il GRUPPO di larghezza, che il listino pubblica identico per
+ * tutti i mid. Tabella indipendente da FORBICI: i bracci hanno 4 gruppi
+ * (277-1204 senza buchi) contro i 5 di FORBICI.
  */
 const BRACCI_GRUPPI = [
   { minL: 277, maxL: 490, gruppo: "01" },
@@ -75,43 +91,42 @@ const BRACCI_GRUPPI = [
   { minL: 794, maxL: 1204, gruppo: "04" },
 ] as const;
 
-// Il supporto cerniera non è più un'ASSUNZIONE: la variante «Aria 12 -
-// Interasse 9/13 - Parte telaio» battuta 20 esiste a listino, p0451 (449), ed è
-// A50805.05.DX/.SX — vedi il commento di PER_MANO in artech-legno-shared.ts.
-
-/** Coperture kit per finitura + mano (golden: ARGENTO). */
+/**
+ * Coperture kit per finitura + mano.
+ *
+ * PERCHÉ NON C'È LA GEOMETRIA, benché il kit copra due pezzi che la geometria
+ * cambia (supporto forbice e supporto cerniera). Non è una svista né un residuo
+ * del pilota: **il listino non pubblica un asse di geometria per le coperture**.
+ * A p0488 (486) la tabella «Kit supporto forbice + supporto cerniera doppia
+ * tazza» ha come sole colonne FINITURA e MANO, e l'intera famiglia A51301 ha due
+ * soli secondi segmenti in tutte le 959 pagine — `.01` (dx) e `.02` (sx). La
+ * stessa copertura veste quindi i supporti di tutte e 7 le righe di
+ * `artech-geometrie.ts`, ed è corretto che esca identica su ognuna.
+ *
+ * ASSUNZIONE residua (questa sì): sono trascritte le sole finiture **ARGENTO**,
+ * quella del golden. Le altre non sono indovinate — `requireKey` le rifiuta.
+ */
 const COPERTURE_KIT: Record<string, Record<Side, string>> = {
   ARGENTO: { SINISTRA: "A51301.02.21", DESTRA: "A51301.01.21" },
 };
 
-/** Componenti fissi del sistema (indipendenti da dimensioni e mano). */
+/**
+ * Componenti davvero indipendenti da geometria, dimensioni e mano.
+ *
+ * Ne sono usciti (2026-07-29) supporto forbice, incontro DSS e incontro ribalta:
+ * dipendono tutti e tre dalla geometria e stavano qui cablati sui valori del
+ * pilota (A50702.05.00 = aria 12 battuta 20; A51400.05.03 e A51400.05.70 = aria
+ * 12 asse 9). Ora sono righe esplicite, prese da `artech-geometrie.ts` e
+ * `artech-incontri.ts`. Restare in FISSI significava che un serramento aria 4
+ * riceveva in silenzio la ferramenta dell'aria 12.
+ */
 const FISSI = [
   MOVIMENTO_ANGOLARE,
-  {
-    position: "supporto-forbice",
-    code: "A50702.05.00",
-    quantity: 1,
-    descr: "Supporto forbice legno aria 12 - interasse 9/13, battuta 20",
-  },
   {
     position: "perno-supporto-forbice",
     code: "A50790.00.00",
     quantity: 1,
     descr: "Perno per supporto forbice",
-  },
-  { position: "incontro-dss", code: "A51400.05.03", quantity: 1, descr: "Incontro DSS aria 12" },
-  // ASSUNZIONE (emendamento): l'incontro ribalta 2026 non ha più varianti
-  // DX/SX (unica riga in DB), a differenza del vecchio A514SX/DX.05.65 del 2021.
-  // A51400.05.70 = «Incontri Ribalta · Aria 12 · ZAMA · 9x18 viti dritte», p0471
-  // (469). La descrizione diceva «13x24»: era il formato di A51400.CR.70, stesso
-  // prezzo. Il kit è oggi tutto su asse 9 per gli incontri e interasse 13 per
-  // bracci/squadre/cerniere: domanda 3 (punto b) per l'esperto in
-  // docs/superpowers/kit-assunzioni/legno.md.
-  {
-    position: "incontro-ribalta",
-    code: "A51400.05.70",
-    quantity: 1,
-    descr: "Incontro ribalta aria 12 (9x18 viti dritte, ambidestro)",
   },
 ] as const;
 
@@ -159,7 +174,8 @@ const CHIUSURE_VERTICALI = [
 export const artechAntaRibaltaLegno: RuleModule = {
   engineId: "artech-ar-legno",
   generate(rawInput: KitInput): KitLine[] {
-    // Restringe al ramo ARTECH dell'unione: il corpo sotto è invariato.
+    // Restringe al ramo ARTECH dell'unione: senza, il modulo vedrebbe l'unione
+    // intera e `input.geometry` non esisterebbe.
     const input = asArtech(rawInput);
     // Guardia materiale (emendamento): kitInputSchema resta con enum a 3
     // materiali (Task 1 invariato), ma questo generatore copre solo LEGNO —
@@ -171,10 +187,12 @@ export const artechAntaRibaltaLegno: RuleModule = {
         "artech.materiale",
       );
 
-    // Guardia geometria: le tabelle sotto sono cablate su aria 12 / interasse 13
-    // / battuta 20 / sede 18. Senza questa riga un'altra combinazione riceveva
-    // in silenzio i codici del pilota.
-    assertPilotGeometry(input);
+    // La geometria non è più una guardia ma una TABELLA: `geo` porta i codici
+    // interi (squadra, supporto cerniera, supporto forbice, mid del braccio) e le
+    // quote da stampare in distinta. L'unica combinazione ancora non coperta è la
+    // famiglia di schemi «sede 30 mm», che manca dell'incontro DSS 13x30.
+    assertSeatConfigSupportata(input.seatConfig);
+    const geo = geometria(input.geometry);
 
     const lines: KitLine[] = [];
     const finish = input.finish.toUpperCase();
@@ -211,30 +229,32 @@ export const artechAntaRibaltaLegno: RuleModule = {
       "artech.forbice",
       "braccio forbice",
     );
+    // UNICA eccezione ammessa alla regola «nessun codice composto per
+    // concatenazione» (Global Constraint del piano): il `mid` non è un suffisso
+    // inventato, viene dalla riga di geometria, e il gruppo dalla tabella sopra.
     const braccioPrefix = input.openingSide === "DESTRA" ? "A51911" : "A51912";
     lines.push({
       position: "forbice-braccio",
-      code: `${braccioPrefix}.36.${braccioGruppo.gruppo}`,
+      code: `${braccioPrefix}.${geo.braccioMid}.${braccioGruppo.gruppo}`,
       quantity: 1,
       ruleId: "artech.mano",
-      ruleDescription: `Braccio forbice legno battuta 20 interasse 13 ${input.openingSide.toLowerCase()} per larghezza ${input.widthMm} mm`,
+      ruleDescription: `Braccio forbice legno battuta ${geo.rebateMm} interasse ${mm(geo.axisOffsetMm)} ${input.openingSide.toLowerCase()} per larghezza ${input.widthMm} mm`,
     });
 
-    const mano = PER_MANO[input.openingSide];
     lines.push(
       {
         position: "squadra-angolare",
-        code: mano.squadraAngolare,
+        code: geo.squadraAngolare[input.openingSide],
         quantity: 1,
         ruleId: "artech.mano",
-        ruleDescription: `Squadra angolare legno aria ${input.airGapMm} interasse ${input.axisOffsetMm} battuta ${input.rebateMm} ${input.openingSide}`,
+        ruleDescription: `Squadra angolare legno aria ${geo.airGapMm} interasse ${mm(geo.axisOffsetMm)} battuta ${geo.rebateMm} ${input.openingSide}`,
       },
       {
         position: "supporto-cerniera",
-        code: mano.supportoCerniera,
+        code: geo.supportoCerniera[input.openingSide],
         quantity: 1,
         ruleId: "artech.mano",
-        ruleDescription: `Supporto cerniera parte telaio aria ${input.airGapMm} interasse 9/13 battuta ${input.rebateMm} ${input.openingSide}`,
+        ruleDescription: `Supporto cerniera parte telaio aria ${geo.airGapMm} battuta ${geo.rebateMm} ${input.openingSide}`,
       },
       {
         position: "coperture-kit",
@@ -247,12 +267,41 @@ export const artechAntaRibaltaLegno: RuleModule = {
 
     lines.push(...linesFromParts(FISSI, "artech.fissi"));
 
+    lines.push(
+      {
+        position: "supporto-forbice",
+        code: geo.supportoForbice,
+        quantity: 1,
+        ruleId: "artech.geometria",
+        ruleDescription: `Supporto forbice legno aria ${geo.airGapMm} battuta ${geo.rebateMm}`,
+      },
+      {
+        position: "incontro-dss",
+        code: incontroDss(input.geometry, input.openingSide),
+        quantity: 1,
+        ruleId: "artech.incontri",
+        // Il formato viene da formatoIncontro(), cioè dalla STESSA chiave() che
+        // sceglie il codice: la riga d'ordine non può dichiarare un formato
+        // diverso da quello della famiglia emessa. Vedi artech-incontri.ts.
+        ruleDescription: `Incontro DSS aria ${geo.airGapMm} ${formatoIncontro(input.geometry)}`,
+      },
+      {
+        position: "incontro-ribalta",
+        code: incontroRibalta(input.geometry, input.openingSide),
+        quantity: 1,
+        ruleId: "artech.incontri",
+        ruleDescription: `Incontro ribalta aria ${geo.airGapMm} ${formatoIncontro(input.geometry)}`,
+      },
+    );
+
     lines.push({
       position: "incontri-nottolino",
-      code: "A51400.05.02",
+      code: incontroNottolino(input.geometry, input.openingSide),
       quantity: incontriNottolino(input.widthMm, input.heightMm),
       ruleId: "artech.incontri",
-      ruleDescription: `Incontri nottolino sede ${input.seatMm} aria ${input.airGapMm} (passo ${PILOT.passoVerticaleMm} mm)`,
+      ruleDescription:
+        `Incontri nottolino aria ${geo.airGapMm} ${formatoIncontro(input.geometry)}` +
+        ` · passo ${PILOT.passoVerticaleMm} mm`,
     });
 
     // Task 1 (Fase 1g): chiusure supplementari opzionali, default OFF. Il set
