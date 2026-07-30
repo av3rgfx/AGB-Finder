@@ -300,6 +300,18 @@ describe("artechVasistasLegno — guardia di geometria cablata nel modulo", () =
   });
 });
 
+describe("artechVasistasLegno — entrata maniglia", () => {
+  it("genera con l'entrata 15, l'unica trascritta", () => {
+    expect(() => artechVasistasLegno.generate({ ...golden, entrata: "E15" })).not.toThrow();
+  });
+
+  it("rifiuta l'entrata 7,5 citando le forbici non applicabili", () => {
+    expect(() => artechVasistasLegno.generate({ ...golden, entrata: "E75" })).toThrow(
+      /forbici/i,
+    );
+  });
+});
+
 describe("artechVasistasLegno — peso dell'anta (NB dello schema p0418 (416))", () => {
   /**
    * Le due NB sul peso si incrociano: la portata è di 40 kg PER FORBICE, e il
