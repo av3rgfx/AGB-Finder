@@ -131,6 +131,19 @@ describe("kit.create", () => {
     expect(requestCreate.mock.calls[0]![0].data).toMatchObject({ sashWeightKg: 75 });
   });
 
+  it("inoltra entrata nel payload create (colonna KitRequest)", async () => {
+    // Stessa ragione degli altri tre test di inoltro: `entrata` è l'ultimo
+    // parametro che il motore decideva da sé (costante E15 cablata) — senza
+    // questa asserzione si poteva cancellare `entrata` dal `branch` del router e
+    // la suite restava verde, mentre ogni richiesta a entrata 7,5 sarebbe
+    // silenziosamente tornata 15 mm in produzione.
+    requestCount.mockResolvedValue(0);
+    requestCreate.mockImplementation(({ data }) => Promise.resolve({ id: "k1", ...data }));
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await caller.kit.create({ ...validInput, entrata: "E75" });
+    expect(requestCreate.mock.calls[0]![0].data).toMatchObject({ entrata: "E75" });
+  });
+
   it("input invalido → BAD_REQUEST", async () => {
     const caller = createCallerFactory(appRouter)(makeCtx(agent));
     await expect(caller.kit.create({ ...validInput, widthMm: 10 })).rejects.toMatchObject({ code: "BAD_REQUEST" });

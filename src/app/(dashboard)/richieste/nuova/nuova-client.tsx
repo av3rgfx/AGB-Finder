@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, type Dispatch, type SetStateAction } from "react";
+import { useId, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
@@ -161,6 +161,18 @@ export function materialForWindowType(
  */
 function geometriaAmmessa(wt: KitInput["windowType"], id: ArtechGeometryId): boolean {
   return wt === "VASISTAS" ? id === GEOMETRIA_COPERTA : true;
+}
+
+/**
+ * Stessa logica di `geometriaAmmessa`, per l'entrata: il modulo vasistas
+ * rifiuta E75 (`rules-artech-vasistas-legno.ts`, guardia sull'entrata) perché
+ * il listino dichiara le forbici vasistas «non applicabili» su metà dei gruppi
+ * senza indicare il componente sostitutivo. Offrirla selezionabile creerebbe
+ * bozze DRAFT che consumano un numero di richiesta e non genereranno mai — lo
+ * stesso motivo per cui la sede 30 è gated invece che nascosta.
+ */
+function entrataAmmessa(wt: KitInput["windowType"], valore: Entrata): boolean {
+  return !(wt === "VASISTAS" && valore === "E75");
 }
 
 /**
@@ -398,7 +410,11 @@ function RadioOption({
 }: {
   name: string;
   label: string;
-  hint?: string;
+  // ReactNode e non string: gli hint dell'entrata citano codici prodotto, e la
+  // regola inviolabile «codici in font monospace» richiede di avvolgerli in uno
+  // <span> — impossibile dentro una stringa semplice. Tutti i chiamanti esistenti
+  // passano stringhe, che sono già ReactNode: nessuno si rompe.
+  hint?: ReactNode;
   checked: boolean;
   onChange: () => void;
   disabled?: boolean;
@@ -746,23 +762,54 @@ function Step3ManoFinitura({
         <legend className="mb-1 text-sm font-semibold text-ink">Entrata maniglia</legend>
         <p className="mb-2 text-xs text-ink-subtle">
           È il secondo numero del codice della cremonese —{" "}
+          {/* L'esempio segue la famiglia della cremonese davvero coinvolta: su
+              VASISTAS è A50111.* (rules-artech-vasistas-legno.ts), non A50122.* —
+              quel codice non comparirebbe mai in quella distinta. */}
           <span className="font-mono">
-            A50122.<b>15</b>.07
+            {form.windowType === "VASISTAS" ? (
+              <>
+                A50111.<b>15</b>.13
+              </>
+            ) : (
+              <>
+                A50122.<b>15</b>.07
+              </>
+            )}
           </span>{" "}
           — e sul listino è la colonna ENTRATA delle tabelle «Cremonesi».
         </p>
         {/* Mobile-first: una colonna sotto sm, come gli altri gruppi. */}
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {ENTRATE.map((valore) => (
-            <RadioOption
-              key={valore}
-              name="entrata"
-              label={`Entrata ${entrataLabel(valore)}`}
-              hint={`Codice A50122.${valore === "E75" ? "08" : "15"}.NN`}
-              checked={form.entrata === valore}
-              onChange={() => update("entrata", valore)}
-            />
-          ))}
+          {ENTRATE.map((valore) => {
+            // La vasistas rifiuta E75 (guardia in rules-artech-vasistas-legno.ts):
+            // senza questo gate l'agente sceglie l'opzione, il passo avanza,
+            // `kit.create` consuma un numero di richiesta e solo `kit.generate`
+            // fallisce — una bozza morta, come la sede 30 mostrata sotto.
+            const ammessa = entrataAmmessa(form.windowType, valore);
+            return (
+              <RadioOption
+                key={valore}
+                name="entrata"
+                label={`Entrata ${entrataLabel(valore)}`}
+                hint={
+                  ammessa ? (
+                    <>
+                      Codice{" "}
+                      <span className="font-mono">
+                        A50122.{valore === "E75" ? "08" : "15"}.NN
+                      </span>
+                    </>
+                  ) : (
+                    "Non coperta per la vasistas: a entrata 7,5 il listino dichiara le forbici " +
+                    "vasistas non applicabili (p0426 (424))."
+                  )
+                }
+                checked={form.entrata === valore}
+                onChange={ammessa ? () => update("entrata", valore) : () => {}}
+                disabled={!ammessa}
+              />
+            );
+          })}
         </div>
       </fieldset>
 

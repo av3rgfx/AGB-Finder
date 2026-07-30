@@ -248,8 +248,9 @@ validazione vera resta quella dello schema, all'avanzamento del passo e al
 submit. Nessun altro punto della catena si allenta.
 
 Compare inoltre: nel **riepilogo** (passo 4) e nella **scheda richiesta**, accanto
-a Geometria e Sede; e nella `ruleDescription` della riga cremonese, così la
-distinta stampata dice a quale entrata si riferisce.
+a Geometria e Sede; e nella `ruleDescription` della riga cremonese, persistita ed
+esposta come tooltip `title` nella tabella distinta (`DistintaTable`) — non
+stampata.
 
 **Mobile-first**: verifica a ≤ 375 px. Il gruppo sta su una colonna sotto `sm`,
 come gli altri (`grid-cols-1 sm:grid-cols-2`); la griglia dei materiali ha già

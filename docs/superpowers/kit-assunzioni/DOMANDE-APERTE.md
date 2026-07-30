@@ -104,15 +104,16 @@ una domanda: è un documento da farsi mandare.
 
 ## 17 — L'entrata: quale usate?
 
-**In parole semplici:** la cremonese esiste in **entrata 0, 8 e 15**. Voi quale usate di solito? E
-da cosa dipende quando cambia? Ve la dice il cliente o la deducete dal serramento?
+**In parole semplici:** la cremonese esiste in **entrata 7,5** e **entrata 15**
+(più una versione ad **asta**, senza maniglia). Voi quale usate di solito? E da
+cosa dipende quando cambia? Ve la dice il cliente o la deducete dal serramento?
 
 **Perché conta (non blocca più):** dal 2026-07-30 il programma **ve la chiede** e
 copre entrambe le entrate pubblicate. La risposta non serve più a sbloccare il
 codice: serve a sapere quale sia il caso frequente — per il default del profilo
 cliente, quando lo faremo, e per capire se l'entrata 7,5 vi capita davvero.
 
-*Riferimento tecnico: `A50122.`**`00`**`/`**`08`**`/`**`15`**`.NN`, `p0424 (422)`.*
+*Riferimento tecnico: `A50122.`**`08`**`/`**`15`**`.NN`, `p0424 (422)`.*
 
 ## 3a — Numero di incontri lungo il perimetro
 Come lo decidete? C'è una regola pratica (uno ogni tot centimetri) o si legge da una tabella?

@@ -253,7 +253,9 @@ describe("NuovaRichiestaClient", () => {
     fireEvent.click(screen.getByRole("button", { name: /genera kit/i }));
     await vi.waitFor(() => expect(push).toHaveBeenCalledWith("/richieste/k11"));
     expect(createMutate).toHaveBeenCalledWith(
-      expect.objectContaining({ geometry: "A12_I13_B18", seatConfig: "STANDARD" }),
+      // entrata: il test clicca «7,5 mm» sopra — verifica che il valore scelto
+      // arrivi davvero nell'input di create, non solo che il passo avanzi.
+      expect.objectContaining({ geometry: "A12_I13_B18", seatConfig: "STANDARD", entrata: "E75" }),
     );
   });
 
@@ -287,6 +289,9 @@ describe("NuovaRichiestaClient", () => {
         supplementaryClosures: false,
         geometry: "A12_I13_B20",
         seatConfig: "STANDARD",
+        // entrata: il test clicca «7,5 mm» sopra — verifica che il valore scelto
+        // arrivi davvero nell'input di create, non solo che il passo avanzi.
+        entrata: "E75",
       }),
     );
     expect(generateMutate).toHaveBeenCalledWith({ kitRequestId: "k9" });
@@ -338,9 +343,11 @@ describe("NuovaRichiestaClient", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // step 2
     fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // step 3
+    // 15 mm, non 7,5: I2 (revisione finale) disabilita l'entrata 7,5 sulla
+    // VASISTAS (il motore la rifiuta), quindi non è più cliccabile qui.
     fireEvent.click(
       within(screen.getByRole("group", { name: /entrata maniglia/i })).getByRole("radio", {
-        name: /7,5 mm/i,
+        name: /15 mm/i,
       }),
     );
     fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // step 4
@@ -405,6 +412,37 @@ describe("NuovaRichiestaClient", () => {
       .getAllByRole("radio")
       .filter((radio) => (radio as HTMLInputElement).disabled);
     expect(disabilitate).toHaveLength(0);
+  });
+
+  // I2 (revisione finale 2026-07-30): il motore rifiuta E75 sulla vasistas
+  // (rules-artech-vasistas-legno.ts:205), ma l'opzione era selezionabile — un
+  // agente la sceglieva, il passo avanzava, `kit.create` consumava un numero di
+  // richiesta e solo `kit.generate` falliva. Specchia `geometriaAmmessa`.
+  it("VASISTAS: l'entrata 7,5 è disabilitata (gated), con l'hint del perché", () => {
+    render(<NuovaRichiestaClient />);
+    const tipo = screen.getByRole("group", { name: /tipologia/i });
+    fireEvent.click(
+      within(tipo).getByRole("radio", { name: new RegExp(windowTypeLabel("VASISTAS"), "i") }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // step 2
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // step 3
+    const entrata = screen.getByRole("group", { name: /entrata maniglia/i });
+    const settantacinque = within(entrata).getByRole("radio", {
+      name: /7,5 mm/i,
+    }) as HTMLInputElement;
+    expect(settantacinque.disabled).toBe(true);
+    expect(within(entrata).getByText(/non coperta per la vasistas/i)).toBeTruthy();
+  });
+
+  it("ANTA_RIBALTA: l'entrata 7,5 resta selezionabile (non gated)", () => {
+    render(<NuovaRichiestaClient />);
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // step 2
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // step 3
+    const entrata = screen.getByRole("group", { name: /entrata maniglia/i });
+    const settantacinque = within(entrata).getByRole("radio", {
+      name: /7,5 mm/i,
+    }) as HTMLInputElement;
+    expect(settantacinque.disabled).toBe(false);
   });
 
   it("VASISTAS: niente toggle chiusure supplementari (ribalta-only)", () => {

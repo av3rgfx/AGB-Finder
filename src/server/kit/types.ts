@@ -71,6 +71,13 @@ type GeometrieMancanti = AssertNever<Exclude<ArtechGeometryId, (typeof GEOMETRY_
 export const ENTRATE = ["E75", "E15"] as const;
 export type Entrata = (typeof ENTRATE)[number];
 
+// Mappa esaustiva, non un ternario binario: `ENTRATE` ha oggi due valori, ma un
+// terzo aggiunto all'enum finirebbe etichettato «15 mm» in silenzio con un
+// `value === "E75" ? … : …` — la stessa classe di difetto per cui esiste questo
+// intero branch (l'entrata cablata). `Record<Entrata, string>` non compila se
+// manca una chiave: lo stesso trattamento di `GEOMETRIE`/`AssertNever` sopra.
+const ENTRATA_LABEL: Record<Entrata, string> = { E75: "7,5 mm", E15: "15 mm" };
+
 /**
  * Etichetta unica dell'entrata: la leggono la `ruleDescription` della riga
  * cremonese, il wizard, il riepilogo e la scheda richiesta, e **devono dire la
@@ -81,7 +88,7 @@ export type Entrata = (typeof ENTRATE)[number];
  * stona (stessa ragione della funzione `mm()` in `artech-geometrie.ts`).
  */
 export function entrataLabel(value: Entrata): string {
-  return value === "E75" ? "7,5 mm" : "15 mm";
+  return ENTRATA_LABEL[value];
 }
 
 const COMMON = {

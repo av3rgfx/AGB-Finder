@@ -11,4 +11,4 @@ ALTER TABLE "kit_requests" ADD COLUMN     "entrata" "Entrata";
 -- dove le colonne legacy potevano dire aria 4 o sede 30 e assumere il pilota
 -- avrebbe falsificato dati di produzione.
 -- Le righe TOUR restano NULL: quel ramo non ha questo campo.
-UPDATE "kit_requests" SET "entrata" = 'E15' WHERE "series" = 'ARTECH';
+UPDATE "kit_requests" SET "entrata" = 'E15' WHERE "series" = 'ARTECH' AND "entrata" IS NULL;
