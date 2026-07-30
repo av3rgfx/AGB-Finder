@@ -265,7 +265,12 @@ function EditClienteForm({
   onSaved: () => void;
 }) {
   const [nome, setNome] = useState(cliente.companyName);
-  const [sconto, setSconto] = useState(cliente.discount === null ? "" : String(cliente.discount));
+  // Virgola, non punto: `String(42.5)` dà «42.5» in una UI italiana che due
+  // righe sopra, nella tabella, scrive «−42,5%». Il parse accetta entrambi
+  // (`replace(",", ".")`), quindi qui si sceglie la forma che l'agente legge.
+  const [sconto, setSconto] = useState(
+    cliente.discount === null ? "" : String(cliente.discount).replace(".", ","),
+  );
   const [geometria, setGeometria] = useState<ArtechGeometryId | "">(cliente.kitGeometry ?? "");
   const [entrata, setEntrata] = useState<Entrata | "">(cliente.kitEntrata ?? "");
   const [errore, setErrore] = useState<string | null>(null);

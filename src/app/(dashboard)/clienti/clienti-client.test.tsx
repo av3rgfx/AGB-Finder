@@ -83,6 +83,24 @@ describe("ClientiClient", () => {
     );
   });
 
+  // La UI e` in italiano: `String(42.5)` darebbe «42.5» col punto, in un form
+  // che due righe sopra scrive «−42,5%». Trovato guardando uno screenshot, non
+  // da un'asserzione.
+  it("il campo sconto precompila con la virgola, non col punto", async () => {
+    render(<ClientiClient />);
+    await azione(0, /modifica/i);
+    expect((screen.getByLabelText(/sconto/i) as HTMLInputElement).value).toBe("42,5");
+  });
+
+  it("la virgola arriva al server come numero", async () => {
+    render(<ClientiClient />);
+    await azione(0, /modifica/i);
+    await userEvent.clear(screen.getByLabelText(/sconto/i));
+    await userEvent.type(screen.getByLabelText(/sconto/i), "40,55");
+    await userEvent.click(screen.getByRole("button", { name: /salva/i }));
+    expect(updateMutate).toHaveBeenCalledWith(expect.objectContaining({ discount: 40.55 }));
+  });
+
   // `null` e non `undefined`: azzerare un profilo non e` lasciarlo stare, ed e`
   // la distinzione che il router gia` rispetta.
   it("azzerare il profilo manda null, non undefined", async () => {
