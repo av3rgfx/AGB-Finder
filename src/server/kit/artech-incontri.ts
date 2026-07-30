@@ -22,6 +22,26 @@ function chiave(id: ArtechGeometryId): Chiave {
   return g.sedeMm === 18 ? "A12_9x18" : "A12_13x24";
 }
 
+/**
+ * Il formato dell'incontro **come lo legge l'agente sul listino**, da stampare in
+ * distinta. Per l'aria 12 la colonna ASSE delle tabelle incontri non porta un
+ * numero ma il token «asse × sede telaio» (`9x18`, `13x24`); per l'aria 4 il
+ * listino non pubblica una sede ma una fresatura (p0469 (467)).
+ *
+ * Deriva dalla STESSA `chiave()` che sceglie i codici: descrizione e codice non
+ * possono divergere per costruzione. Prima, la descrizione leggeva `asse` e
+ * `sedeMm` dalla riga di geometria e il pilota stampava «asse 13 sede 18» mentre
+ * emetteva la famiglia `.05`, che **è** il 9x18: cioè il formato `13x18`, che a
+ * listino non esiste (contraddizione nota, domanda 3b in
+ * docs/superpowers/kit-assunzioni/legno.md).
+ */
+export function formatoIncontro(id: ArtechGeometryId): string {
+  const k = chiave(id);
+  if (k === "A4_ASSE9") return "asse 9 (fresatura)";
+  if (k === "A4_ASSE13") return "asse 13 (fresatura)";
+  return k === "A12_9x18" ? "asse 9x18" : "asse 13x24";
+}
+
 const ambidestro = (code: string): PerMano => ({ DESTRA: code, SINISTRA: code });
 
 const NOTTOLINO: Record<Chiave, PerMano> = {

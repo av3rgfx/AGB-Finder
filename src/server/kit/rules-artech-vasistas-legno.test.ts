@@ -286,9 +286,16 @@ describe("artechVasistasLegno — guardia di geometria cablata nel modulo", () =
   });
 
   it("SEDE_30 viene rifiutata come nell'anta-ribalta", () => {
-    expect(() => artechVasistasLegno.generate({ ...golden, seatConfig: "SEDE_30" })).toThrow(
-      /sede 30/i,
-    );
+    // Ancorato al ruleId oltre che al messaggio: il modulo ha DUE rifiuti vicini
+    // (geometria e sede) e il solo `/sede 30/i` non distingue quale sia scattato.
+    try {
+      artechVasistasLegno.generate({ ...golden, seatConfig: "SEDE_30" });
+      expect.unreachable("atteso rifiuto della configurazione sede 30");
+    } catch (err) {
+      expect(err).toBeInstanceOf(KitGenerationError);
+      expect((err as KitGenerationError).ruleId).toBe("artech.sede");
+      expect((err as Error).message).toMatch(/sede 30/i);
+    }
   });
 });
 

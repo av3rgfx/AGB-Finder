@@ -108,8 +108,13 @@ export function geometria(id: ArtechGeometryId): Geometria {
   return GEOMETRIE[id];
 }
 
-/** «17,5» all'italiana; 15 resta «15». */
-function mm(value: number): string {
+/**
+ * Quota in millimetri all'italiana: «8,5» con la virgola, «15» senza decimali.
+ * Esportata perché l'interasse 8,5 finisce anche nelle `ruleDescription` delle
+ * righe di distinta (`rules-artech-legno.ts`), e la UI del progetto è in
+ * italiano: interpolare il numero grezzo ci stampava «8.5».
+ */
+export function mm(value: number): string {
   return Number.isInteger(value) ? String(value) : String(value).replace(".", ",");
 }
 

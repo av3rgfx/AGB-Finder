@@ -190,16 +190,59 @@ describe("artechAntaRibaltaLegno — banda cremonese GR02", () => {
  * ordinano davvero (MC, Peruzzi, Fosca), tutte rifiutate dal vecchio motore.
  */
 describe("le tre geometrie dei clienti reali", () => {
+  /**
+   * Le colonne coprono TUTTE le righe geometria-dipendenti, non solo due: oltre a
+   * squadra e nottolino ci sono `supporto-forbice`, `incontro-dss` e
+   * `incontro-ribalta`, che il cutover del 2026-07-29 ha estratto da `FISSI` (dove
+   * erano cablate sui valori del pilota). Se qualcuno le ricablasse, senza queste
+   * colonne il test resterebbe verde. Attesi ricavati da `artech-geometrie.ts`
+   * (supporto forbice) e da `artech-incontri.ts` (DSS e ribalta, via `chiave()`:
+   * MC e Peruzzi hanno aria 4 asse 9 → mano SINISTRA della famiglia A48012/A514SX;
+   * Fosca ha aria 12 sede 24 → 13x24, ambidestro).
+   */
   it.each([
-    ["MC", "A4_I85_B15", "A50902.22.02", "A514SX.01.02"],
-    ["Peruzzi", "A4_I9_B18", "A50904.24.02", "A514SX.01.02"],
-    ["Fosca", "A12_I13_B18", "A50904.34.02", "A51400.CR.13"],
-  ] as const)("%s genera una distinta completa", (_nome, geometry, squadra, nottolino) => {
-    const lines = artechAntaRibaltaLegno.generate({ ...base, geometry });
-    expect(lines.length).toBeGreaterThan(0);
-    expect(lines.find((l) => l.position === "squadra-angolare")?.code).toBe(squadra);
-    expect(lines.find((l) => l.position === "incontri-nottolino")?.code).toBe(nottolino);
-  });
+    // nome · geometry · squadra · supporto forbice · DSS · ribalta · nottolino
+    [
+      "MC",
+      "A4_I85_B15",
+      "A50902.22.02",
+      "A50703.01.00",
+      "A48012.01.03",
+      "A514SX.01.64",
+      "A514SX.01.02",
+    ],
+    [
+      "Peruzzi",
+      "A4_I9_B18",
+      "A50904.24.02",
+      "A50701.01.00",
+      "A48012.01.03",
+      "A514SX.01.64",
+      "A514SX.01.02",
+    ],
+    [
+      "Fosca",
+      "A12_I13_B18",
+      "A50904.34.02",
+      "A50701.05.00",
+      "A48010.CR.03",
+      "A51400.CR.70",
+      "A51400.CR.13",
+    ],
+  ] as const)(
+    "%s genera la distinta completa coi SUOI codici: 12 righe / 17 pezzi",
+    (_nome, geometry, squadra, supportoForbice, dss, ribalta, nottolino) => {
+      const lines = artechAntaRibaltaLegno.generate({ ...base, geometry });
+      const codeAt = (position: string) => lines.find((l) => l.position === position)?.code;
+      expect(codeAt("squadra-angolare")).toBe(squadra);
+      expect(codeAt("supporto-forbice")).toBe(supportoForbice);
+      expect(codeAt("incontro-dss")).toBe(dss);
+      expect(codeAt("incontro-ribalta")).toBe(ribalta);
+      expect(codeAt("incontri-nottolino")).toBe(nottolino);
+      expect(lines).toHaveLength(12);
+      expect(lines.reduce((n, l) => n + l.quantity, 0)).toBe(17);
+    },
+  );
 
   it("il golden del pilota non si muove: 12 righe / 17 pezzi senza chiusure", () => {
     const lines = artechAntaRibaltaLegno.generate(base);
@@ -214,8 +257,16 @@ describe("le tre geometrie dei clienti reali", () => {
   });
 
   it("SEDE_30 viene rifiutata finché manca l'incontro DSS 13x30", () => {
-    expect(() => artechAntaRibaltaLegno.generate({ ...base, seatConfig: "SEDE_30" })).toThrow(
-      /sede 30/i,
-    );
+    // Ancorato anche al ruleId, per la ragione già scritta sopra sulla cremonese:
+    // col solo messaggio il test resterebbe verde per qualunque altro rifiuto che
+    // per caso nominasse la sede 30.
+    try {
+      artechAntaRibaltaLegno.generate({ ...base, seatConfig: "SEDE_30" });
+      expect.unreachable("atteso rifiuto della configurazione sede 30");
+    } catch (err) {
+      expect(err).toBeInstanceOf(KitGenerationError);
+      expect((err as KitGenerationError).ruleId).toBe("artech.sede");
+      expect((err as Error).message).toMatch(/sede 30/i);
+    }
   });
 });

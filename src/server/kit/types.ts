@@ -1,4 +1,37 @@
 import { z } from "zod";
+// SOLO IL TIPO: `artech-geometrie.ts` importa da qui `KitGenerationError` (un
+// valore), quindi importarne i valori chiuderebbe un ciclo a runtime. Un
+// `import type` viene cancellato in compilazione — il ciclo non esiste — e basta
+// a vincolare la lista sotto.
+import type { ArtechGeometryId } from "./artech-geometrie";
+
+/**
+ * Le 7 geometrie di `artech-geometrie.ts`, replicate qui (vedi l'import sopra) e
+ * **vincolate nei due versi**, perché una lista scritta a mano si disallinea:
+ *
+ * - `satisfies readonly ArtechGeometryId[]` respinge un id **in più** o storpiato;
+ * - `GeometrieMancanti` sotto è `never` solo se la lista le copre **tutte**.
+ *   Senza quel secondo controllo, PERDERE un valore compilerebbe in silenzio
+ *   (l'unione più stretta è assegnabile ovunque) e quella geometria diventerebbe
+ *   muta: la tabella la conosce e la sa costruire, ma lo schema la rifiuta e
+ *   nessun agente potrebbe più ordinarla.
+ */
+const GEOMETRY_IDS = [
+  "A4_I85_B15",
+  "A4_I9_B18",
+  "A4_I13_B18",
+  "A12_I9_B18",
+  "A12_I9_B20",
+  "A12_I13_B18",
+  "A12_I13_B20",
+] as const satisfies readonly ArtechGeometryId[];
+
+/**
+ * Vincolo di esaustività, non un tipo da usare: se una geometria resta fuori da
+ * `GEOMETRY_IDS`, `Exclude` non è più `never` e questa riga non compila.
+ */
+type AssertNever<T extends never> = T;
+type GeometrieMancanti = AssertNever<Exclude<ArtechGeometryId, (typeof GEOMETRY_IDS)[number]>>;
 
 /**
  * Input del Kit Engine. **Unione discriminata su `series`**, non un oggetto piatto.
@@ -54,20 +87,12 @@ export const artechInputSchema = z.object({
    * interasse e battuta si DERIVANO dalla tabella per la UI, quindi non possono
    * divergere dai codici emessi. È lo stesso schema di `tourSchema` per il bilico.
    *
-   * I valori replicano `ArtechGeometryId` di `artech-geometrie.ts`: qui non si
-   * può importare quel modulo (`types.ts` è il suo dipendente, non il contrario)
-   * e il disallineamento è impedito dai moduli regole, che indicizzano `GEOMETRIE`
-   * con questo enum e non compilerebbero se le due liste divergessero.
+   * I valori replicano `ArtechGeometryId` di `artech-geometrie.ts`: qui non se ne
+   * possono importare i VALORI (`types.ts` è la dipendenza di quel modulo, non il
+   * contrario), ma il tipo sì — ed è ciò che vincola `GEOMETRY_IDS` sopra nei due
+   * versi, id in più e id mancanti.
    */
-  geometry: z.enum([
-    "A4_I85_B15",
-    "A4_I9_B18",
-    "A4_I13_B18",
-    "A12_I9_B18",
-    "A12_I9_B20",
-    "A12_I13_B18",
-    "A12_I13_B20",
-  ]),
+  geometry: z.enum(GEOMETRY_IDS),
   /**
    * Famiglia di schemi AGB. La NB «per tipologia di serramento con sede incontri da
    * 30 mm riferirsi agli schemi "sede 30 mm"» compare su 22 pagine: è AGB stessa a

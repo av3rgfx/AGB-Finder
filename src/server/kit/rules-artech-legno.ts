@@ -12,11 +12,13 @@
 // combinazione (aria 12 / interasse 13 / battuta 20): la geometria arriva come
 // discriminatore `input.geometry` e i codici che ne dipendono vengono da
 // `artech-geometrie.ts` (squadra, supporto cerniera, supporto forbice, mid del
-// braccio) e da `artech-incontri.ts` (nottolino, ribalta, DSS). Restano cablate
-// solo le tabelle che il listino pubblica UNA volta per tutte le geometrie —
-// cremonesi per HBB, corpo forbice e gruppi braccio per LBB, coperture per
-// finitura. Il golden del pilota (`A12_I13_B20`) è invariato: 12 righe / 17 pezzi,
-// 16 / 21 con le chiusure supplementari.
+// braccio) e da `artech-incontri.ts` (nottolino, ribalta, DSS). Restano qui solo
+// le tabelle che il listino NON pubblica per geometria: cremonesi per HBB, corpo
+// forbice e gruppi braccio per LBB (selezione dimensionale) e le coperture kit,
+// la cui tabella p0488 (486) ha per sole colonne finitura e mano — non sono
+// «cablate sul pilota», sono indipendenti dalla geometria per costruzione del
+// listino (vedi COPERTURE_KIT). Il golden del pilota (`A12_I13_B20`) è invariato:
+// 12 righe / 17 pezzi, 16 / 21 con le chiusure supplementari.
 import { pick, linesFromParts, requireKey } from "./kit-shared";
 import {
   KitGenerationError,
@@ -28,8 +30,13 @@ import {
   type RuleModule,
 } from "./types";
 import { MOVIMENTO_ANGOLARE, incontriNottolino } from "./artech-legno-shared";
-import { geometria, assertSeatConfigSupportata } from "./artech-geometrie";
-import { incontroNottolino, incontroRibalta, incontroDss } from "./artech-incontri";
+import { geometria, assertSeatConfigSupportata, mm } from "./artech-geometrie";
+import {
+  incontroNottolino,
+  incontroRibalta,
+  incontroDss,
+  formatoIncontro,
+} from "./artech-incontri";
 
 type Side = ArtechKitInput["openingSide"];
 
@@ -84,7 +91,21 @@ const BRACCI_GRUPPI = [
   { minL: 794, maxL: 1204, gruppo: "04" },
 ] as const;
 
-/** Coperture kit per finitura + mano (golden: ARGENTO). */
+/**
+ * Coperture kit per finitura + mano.
+ *
+ * PERCHÉ NON C'È LA GEOMETRIA, benché il kit copra due pezzi che la geometria
+ * cambia (supporto forbice e supporto cerniera). Non è una svista né un residuo
+ * del pilota: **il listino non pubblica un asse di geometria per le coperture**.
+ * A p0488 (486) la tabella «Kit supporto forbice + supporto cerniera doppia
+ * tazza» ha come sole colonne FINITURA e MANO, e l'intera famiglia A51301 ha due
+ * soli secondi segmenti in tutte le 959 pagine — `.01` (dx) e `.02` (sx). La
+ * stessa copertura veste quindi i supporti di tutte e 7 le righe di
+ * `artech-geometrie.ts`, ed è corretto che esca identica su ognuna.
+ *
+ * ASSUNZIONE residua (questa sì): sono trascritte le sole finiture **ARGENTO**,
+ * quella del golden. Le altre non sono indovinate — `requireKey` le rifiuta.
+ */
 const COPERTURE_KIT: Record<string, Record<Side, string>> = {
   ARGENTO: { SINISTRA: "A51301.02.21", DESTRA: "A51301.01.21" },
 };
@@ -217,7 +238,7 @@ export const artechAntaRibaltaLegno: RuleModule = {
       code: `${braccioPrefix}.${geo.braccioMid}.${braccioGruppo.gruppo}`,
       quantity: 1,
       ruleId: "artech.mano",
-      ruleDescription: `Braccio forbice legno battuta ${geo.rebateMm} interasse ${geo.axisOffsetMm} ${input.openingSide.toLowerCase()} per larghezza ${input.widthMm} mm`,
+      ruleDescription: `Braccio forbice legno battuta ${geo.rebateMm} interasse ${mm(geo.axisOffsetMm)} ${input.openingSide.toLowerCase()} per larghezza ${input.widthMm} mm`,
     });
 
     lines.push(
@@ -226,7 +247,7 @@ export const artechAntaRibaltaLegno: RuleModule = {
         code: geo.squadraAngolare[input.openingSide],
         quantity: 1,
         ruleId: "artech.mano",
-        ruleDescription: `Squadra angolare legno aria ${geo.airGapMm} interasse ${geo.axisOffsetMm} battuta ${geo.rebateMm} ${input.openingSide}`,
+        ruleDescription: `Squadra angolare legno aria ${geo.airGapMm} interasse ${mm(geo.axisOffsetMm)} battuta ${geo.rebateMm} ${input.openingSide}`,
       },
       {
         position: "supporto-cerniera",
@@ -259,14 +280,17 @@ export const artechAntaRibaltaLegno: RuleModule = {
         code: incontroDss(input.geometry, input.openingSide),
         quantity: 1,
         ruleId: "artech.incontri",
-        ruleDescription: `Incontro DSS aria ${geo.airGapMm} asse ${geo.asse}`,
+        // Il formato viene da formatoIncontro(), cioè dalla STESSA chiave() che
+        // sceglie il codice: la riga d'ordine non può dichiarare un formato
+        // diverso da quello della famiglia emessa. Vedi artech-incontri.ts.
+        ruleDescription: `Incontro DSS aria ${geo.airGapMm} ${formatoIncontro(input.geometry)}`,
       },
       {
         position: "incontro-ribalta",
         code: incontroRibalta(input.geometry, input.openingSide),
         quantity: 1,
         ruleId: "artech.incontri",
-        ruleDescription: `Incontro ribalta aria ${geo.airGapMm} asse ${geo.asse}`,
+        ruleDescription: `Incontro ribalta aria ${geo.airGapMm} ${formatoIncontro(input.geometry)}`,
       },
     );
 
@@ -276,11 +300,8 @@ export const artechAntaRibaltaLegno: RuleModule = {
       quantity: incontriNottolino(input.widthMm, input.heightMm),
       ruleId: "artech.incontri",
       ruleDescription:
-        `Incontri nottolino aria ${geo.airGapMm} asse ${geo.asse}` +
-        // Per l'aria 4 il listino non parla di sede ma di «Fresatura» (p0469 (467)):
-        // stampare «sede null» su una distinta d'ordine sarebbe un dato inventato.
-        (geo.sedeMm === null ? " (fresatura)" : ` sede ${geo.sedeMm}`) +
-        ` (passo ${PILOT.passoVerticaleMm} mm)`,
+        `Incontri nottolino aria ${geo.airGapMm} ${formatoIncontro(input.geometry)}` +
+        ` · passo ${PILOT.passoVerticaleMm} mm`,
     });
 
     // Task 1 (Fase 1g): chiusure supplementari opzionali, default OFF. Il set

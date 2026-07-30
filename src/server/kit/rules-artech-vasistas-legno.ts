@@ -27,7 +27,7 @@
 // superiori dei due angoli inferiori, speculari → 1 DX + 1 SX (vedi sotto).
 import { pick } from "./kit-shared";
 import { MOVIMENTO_ANGOLARE } from "./artech-legno-shared";
-import { geometria, assertSeatConfigSupportata } from "./artech-geometrie";
+import { geometria, assertSeatConfigSupportata, mm } from "./artech-geometrie";
 import {
   KitGenerationError,
   asArtech,
@@ -194,7 +194,7 @@ export const artechVasistasLegno: RuleModule = {
     const geo = geometria(input.geometry);
     if (input.geometry !== GEOMETRIA_COPERTA)
       throw new KitGenerationError(
-        `Geometria «aria ${geo.airGapMm} / interasse ${geo.axisOffsetMm} / battuta ${geo.rebateMm}» ` +
+        `Geometria «aria ${geo.airGapMm} / interasse ${mm(geo.axisOffsetMm)} / battuta ${geo.rebateMm}» ` +
           `non coperta per la vasistas: lo schema p0418 (416) è trascritto per la sola aria 12 / ` +
           `interasse 13 / battuta 20, e le cerniere del vasistas non sono ancora tabellate per ` +
           `geometria. L'anta-ribalta le copre tutte e sette.`,
