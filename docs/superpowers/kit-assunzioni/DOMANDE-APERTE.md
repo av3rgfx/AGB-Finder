@@ -25,6 +25,8 @@
 | 22 | Quali finiture vendete davvero | agente | 🟡 oggi solo argento |
 | 19 | Quali combinazioni ordinate più spesso | agente | 🟡 ordine di priorità del lavoro |
 | 23 | La finestra 700×1400 battuta 18 sede 30 | agente | 🟡 **secondo golden**, se esiste |
+| 25 | Confezioni: si applica il +20% fuori confezione? | AGB o ufficio | 🟡 **i totali di ogni distinta** |
+| 24 | Interasse 8,5: quali incontri? | agente o AGB | 🟡 la famiglia incontri del cliente «MC» |
 | 18 | Dove leggete le quote | agente | ⚪ come impostare il wizard |
 | 21 | Chiusure supplementari: da quale altezza | agente | ⚪ una banda oggi assunta |
 | 5 · 8 · 9 | Vasistas: cerniere, terminali, GR00 | agente o AGB | ⚪ la vasistas è provvisoria |
@@ -145,6 +147,38 @@ ordinata**? Va bene anche una foto dell'ordine.
 > configurazione diventa il **secondo esempio di riferimento**, e possiamo *verificare* quello che
 > costruiamo invece di fidarci della nostra lettura del listino. È esattamente così che è nato il
 > generatore attuale: da una distinta reale del 16/11/2021.
+
+## 25 — Confezioni: si applica il «+20% fuori confezione»?
+
+**In parole semplici:** il listino AGB vende in confezioni (50, 20, 10 pezzi a seconda
+dell'articolo — è la colonna **CS**). Una distinta ne usa **1, 2, 5**. L'art. 4 delle condizioni
+generali (`p0006 (4)`) dice che sotto la confezione AGB può *«aumentare l'ordine fino al
+quantitativo della confezione, oppure applicare una maggiorazione di prezzo del 20%»*.
+
+Quando vendiamo un kit a un serramentista, il prezzo unitario che gli facciamo è quello di listino
+liscio, o c'è una maggiorazione perché sono pezzi sciolti?
+
+**Perché conta:** se una maggiorazione esiste e non la calcoliamo, **tutti i totali che mostriamo
+sono sottostimati** — su ogni distinta, non su un caso limite. Il software AGB 4K ha una funzione
+dedicata a questo («ottimizzazione pezzi singoli o confezioni»), quindi per AGB il problema esiste.
+Plausibilmente non ci riguarda, perché noi siamo distributori e le confezioni le rompiamo: ma è
+un'assunzione che vale l'intero prezzario, e non l'abbiamo mai verificata con nessuno.
+
+*Riferimento tecnico: colonna CS del listino, art. 4 delle condizioni generali `p0006 (4)`.*
+
+## 24 — Interasse 8,5: quali incontri si ordinano?
+
+**In parole semplici:** il cliente «MC» lavora ad aria 4 · interasse **8,5** · battuta 15. Per
+quella combinazione cerniere, bracci e supporti esistono a listino. Gli **incontri** invece sono
+pubblicati solo per **asse 9** e **asse 13**: un asse 8,5 non c'è. Noi diamo per scontato che si
+usino quelli **asse 9**. È giusto?
+
+**Perché conta:** è un'inferenza nostra, non un dato stampato. Se è sbagliata, le distinte di MC
+escono con la famiglia di incontri sbagliata — e MC è uno dei tre clienti principali. Non tocca gli
+altri suoi codici (cerniera, forbice, supporto), che sono verificati a listino.
+
+*Riferimento tecnico: famiglia `.01` (asse 9) contro `.DC` (asse 13); `p0469 (467)`, `p0471 (469)`,
+`p0473 (471)`. Il generatore assume `.01`, dichiarato in `artech-geometrie.ts`.*
 
 ---
 

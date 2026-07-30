@@ -31,7 +31,7 @@ export interface Geometria {
   axisOffsetMm: number;
   rebateMm: number;
   /** Asse degli incontri. L'interasse 8,5 delle cerniere usa gli incontri asse 9
-   *  (a listino non esiste un asse 8,5) — ASSUNZIONE, domanda 17. */
+   *  (a listino non esiste un asse 8,5) — ASSUNZIONE, domanda 24. */
   asse: 9 | 13;
   /** Sede telaio derivata. `null` per aria 4: lì il listino parla di «Fresatura», non
    *  di sede (p0469 (467)). */

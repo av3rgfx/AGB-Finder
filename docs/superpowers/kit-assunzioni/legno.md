@@ -41,8 +41,8 @@ sua posizione dentro una scheda.
 | 14 | Bilico: quantità del kit spessori sullo schema 3 | `tour.md` | 5,46 € |
 | 15 | Bilico: sovrapposizione LBB 640-650 | `tour.md` | 3,73 € |
 | 16 | `openingDir` non è letto da nessun modulo | `tour.md` | rilievo **interno**, non una domanda per AGB |
-| 17 | Interasse **8,5**: quale asse per gli incontri? | qui | famiglia incontri del cliente «MC» |
-| 18 | Confezioni: si applica il **+20% fuori confezione**? | qui | correttezza dei totali di ogni distinta |
+| 24 | Interasse **8,5**: quale asse per gli incontri? | qui | famiglia incontri del cliente «MC» |
+| 25 | Confezioni: si applica il **+20% fuori confezione**? | qui | correttezza dei totali di ogni distinta |
 
 ⚠️ `alu.md` conserva una propria lista numerata 1-13 della Fase 1g: quella è **locale a
 quella scheda** e non va confusa con questa. Nella numerazione globale l'alluminio è
@@ -50,7 +50,7 @@ interamente dentro la **domanda 6**.
 
 ---
 
-## Domanda 17 — interasse 8,5: quale asse per gli incontri?
+## Domanda 24 — interasse 8,5: quale asse per gli incontri?
 
 Il cliente «MC» lavora ad **aria 4 · interasse 8,5 · battuta 15** (geometria `A4_I85_B15`).
 Le cerniere, i bracci forbice e i supporti per quella combinazione esistono a listino ed è
@@ -68,7 +68,7 @@ forbice e supporto, che sono `.22` verificati a listino.)*
 
 ---
 
-## Domanda 18 — confezioni: si applica il +20% fuori confezione?
+## Domanda 25 — confezioni: si applica il +20% fuori confezione?
 
 L'art. 4 delle condizioni generali (`p0006 (4)`) dice: «*per ordini di quantità inferiori
 alla confezione, la Alban Giacomo SpA si riserva … di aumentare l'ordine stesso fino al
