@@ -4,6 +4,13 @@ import { agentProcedure, createTRPCRouter } from "@/server/api/trpc";
 import { KitEngine } from "@/server/kit/engine";
 import { KitGenerationError, kitInputSchema } from "@/server/kit/types";
 import { kitInputFromRequest } from "@/server/kit/from-request";
+import {
+  applicaSconto,
+  centToEuro,
+  euroToCent,
+  scontoPercentSchema,
+} from "@/server/pricing/discount";
+import { getDiscountThreshold } from "@/server/settings/discount-threshold";
 
 function toTRPC(error: unknown): never {
   if (error instanceof KitGenerationError)
@@ -12,55 +19,79 @@ function toTRPC(error: unknown): never {
 }
 
 export const kitRouter = createTRPCRouter({
-  create: agentProcedure.input(kitInputSchema).mutation(async ({ ctx, input }) => {
-    const year = new Date().getFullYear();
-    const inYear = await ctx.db.kitRequest.count({
-      where: { createdAt: { gte: new Date(`${year}-01-01T00:00:00Z`) } },
-    });
-    const requestNumber = `KIT-${year}-${String(inYear + 1).padStart(4, "0")}`;
-    const { notes, ...specs } = input;
-    // Le colonne del ramo NON scelto restano NULL. Sono esplicitate una per una
-    // invece di essere spalmate: la riga è l'input di ogni rigenerazione, e uno
-    // spread di un'unione lascerebbe passare in silenzio i campi dell'altro ramo
-    // il giorno in cui l'unione cambia.
-    const branch =
-      specs.series === "TOUR"
-        ? { tourSchema: specs.tourSchema }
-        : {
-            geometry: specs.geometry,
-            entrata: specs.entrata,
-            seatConfig: specs.seatConfig,
-            openingSide: specs.openingSide,
-            openingDir: specs.openingDir,
-            supplementaryClosures: specs.supplementaryClosures ?? false,
-          };
-    const request = await ctx.db.kitRequest.create({
-      data: {
-        windowType: specs.windowType,
-        widthMm: specs.widthMm,
-        heightMm: specs.heightMm,
-        material: specs.material,
-        finish: specs.finish,
-        series: specs.series,
-        sashWeightKg: specs.sashWeightKg ?? null,
-        ...branch,
-        notes: notes ?? null,
-        requestNumber,
-        status: "DRAFT",
-        agentId: ctx.session.user.id,
-      },
-    });
-    await ctx.db.activityLog.create({
-      data: {
-        userId: ctx.session.user.id,
-        type: "KIT_REQUEST_CREATED",
-        description: `Richiesta kit ${requestNumber}`,
-        resourceType: "kit_request",
-        resourceId: request.id,
-      },
-    });
-    return { id: request.id, requestNumber };
-  }),
+  /**
+   * L'input NON è `kitInputSchema` nudo: il cliente è un dato commerciale e non
+   * deve entrare nell'input del motore. `kit.generate` ricostruisce l'input
+   * rileggendo le colonne (`from-request.ts`), quindi ogni campo che finisce
+   * nell'unione diventa qualcosa che qualcuno deve decidere se ricostruire.
+   * Le specifiche stanno in `specs`, il commerciale fuori.
+   */
+  create: agentProcedure
+    .input(z.object({ specs: kitInputSchema, customerId: z.string().min(1).optional() }))
+    .mutation(async ({ ctx, input }) => {
+      // Lo sconto si TIMBRA alla creazione, non si rilegge dal cliente ogni volta:
+      // se vivesse solo su `Customer`, ritoccarlo cambierebbe in silenzio il
+      // totale di ogni distinta già mandata. Stessa ragione del ricalcolo
+      // versionato.
+      const cliente = input.customerId
+        ? await ctx.db.customer.findUnique({
+            where: { id: input.customerId },
+            select: { id: true, discount: true },
+          })
+        : null;
+      if (input.customerId && !cliente)
+        throw new TRPCError({ code: "NOT_FOUND", message: "Cliente non trovato." });
+
+      const year = new Date().getFullYear();
+      const inYear = await ctx.db.kitRequest.count({
+        where: { createdAt: { gte: new Date(`${year}-01-01T00:00:00Z`) } },
+      });
+      const requestNumber = `KIT-${year}-${String(inYear + 1).padStart(4, "0")}`;
+      const { notes, ...specs } = input.specs;
+      // Le colonne del ramo NON scelto restano NULL. Sono esplicitate una per una
+      // invece di essere spalmate: la riga è l'input di ogni rigenerazione, e uno
+      // spread di un'unione lascerebbe passare in silenzio i campi dell'altro ramo
+      // il giorno in cui l'unione cambia.
+      const branch =
+        specs.series === "TOUR"
+          ? { tourSchema: specs.tourSchema }
+          : {
+              geometry: specs.geometry,
+              entrata: specs.entrata,
+              seatConfig: specs.seatConfig,
+              openingSide: specs.openingSide,
+              openingDir: specs.openingDir,
+              supplementaryClosures: specs.supplementaryClosures ?? false,
+            };
+      const request = await ctx.db.kitRequest.create({
+        data: {
+          windowType: specs.windowType,
+          widthMm: specs.widthMm,
+          heightMm: specs.heightMm,
+          material: specs.material,
+          finish: specs.finish,
+          series: specs.series,
+          sashWeightKg: specs.sashWeightKg ?? null,
+          ...branch,
+          customerId: cliente?.id ?? null,
+          discountPercent: cliente?.discount ?? null,
+          notes: notes ?? null,
+          requestNumber,
+          status: "DRAFT",
+          agentId: ctx.session.user.id,
+        },
+      });
+      await ctx.db.activityLog.create({
+        data: {
+          userId: ctx.session.user.id,
+          type: "KIT_REQUEST_CREATED",
+          description: `Richiesta kit ${requestNumber}`,
+          resourceType: "kit_request",
+          resourceId: request.id,
+        },
+      });
+      return { id: request.id, requestNumber };
+    }),
 
   generate: agentProcedure
     .input(z.object({ kitRequestId: z.string().min(1) }))
@@ -216,6 +247,9 @@ export const kitRouter = createTRPCRouter({
             tourSchema: request.tourSchema,
             notes: request.notes,
             customerId: request.customerId,
+            // La nuova versione eredita lo sconto: ricalcolare la distinta non
+            // è rinegoziare il prezzo.
+            discountPercent: request.discountPercent,
             requestNumber,
             status: "DRAFT",
             agentId: ctx.session.user.id,
@@ -255,25 +289,83 @@ export const kitRouter = createTRPCRouter({
       return { id: nuova.id, requestNumber: nuova.requestNumber };
     }),
 
+  /**
+   * Cambia lo sconto applicato a una richiesta. **Ammessa in qualunque stato**,
+   * a differenza di `generate`: non riscrive nessun componente e non tocca la
+   * distinta, cambia una condizione commerciale — che si rinegozia anche dopo
+   * aver mandato il preventivo. È il requisito da cui nasce la colonna.
+   *
+   * L'unico rifiuto è sulla riga **superata**: lì lo sconto va messo sulla
+   * versione più recente, altrimenti si modifica una copia che nessuno guarda.
+   */
+  setDiscount: agentProcedure
+    .input(z.object({ id: z.string().min(1), discountPercent: scontoPercentSchema.nullable() }))
+    .mutation(async ({ ctx, input }) => {
+      const request = await ctx.db.kitRequest.findFirst({
+        where: { id: input.id, agentId: ctx.session.user.id },
+        select: { id: true, supersededById: true },
+      });
+      if (!request)
+        throw new TRPCError({ code: "NOT_FOUND", message: "Richiesta kit non trovata." });
+      if (request.supersededById)
+        throw new TRPCError({
+          code: "CONFLICT",
+          message:
+            "Questa richiesta è stata ricalcolata: applica lo sconto alla versione più recente.",
+        });
+
+      const updated = await ctx.db.kitRequest.update({
+        where: { id: request.id },
+        data: { discountPercent: input.discountPercent },
+        select: { id: true, discountPercent: true },
+      });
+      return {
+        id: updated.id,
+        discountPercent: updated.discountPercent === null ? null : Number(updated.discountPercent),
+      };
+    }),
+
   get: agentProcedure.input(z.object({ id: z.string().min(1) })).query(async ({ ctx, input }) => {
-    const request = await ctx.db.kitRequest.findFirst({
-      where: { id: input.id, agentId: ctx.session.user.id },
-      include: {
-        components: {
-          orderBy: { sortOrder: "asc" },
-          include: {
-            product: {
-              select: { id: true, agbCode: true, name: true, isAvailable: true, listinoPage: true },
+    const [request, soglia] = await Promise.all([
+      ctx.db.kitRequest.findFirst({
+        where: { id: input.id, agentId: ctx.session.user.id },
+        include: {
+          customer: { select: { id: true, companyName: true } },
+          components: {
+            orderBy: { sortOrder: "asc" },
+            include: {
+              product: {
+                select: {
+                  id: true,
+                  agbCode: true,
+                  name: true,
+                  isAvailable: true,
+                  listinoPage: true,
+                },
+              },
             },
           },
         },
-      },
-    });
-    if (!request)
-      throw new TRPCError({ code: "NOT_FOUND", message: "Richiesta kit non trovata." });
+      }),
+      getDiscountThreshold(ctx.db),
+    ]);
+    if (!request) throw new TRPCError({ code: "NOT_FOUND", message: "Richiesta kit non trovata." });
+
+    // Il netto è DERIVATO, mai salvato: due totali a DB divergono al primo bug.
+    // `totalPrice` resta il lordo di listino, quindi nessuna riga storica si
+    // muove. Vedi la spec §3.3.
+    const lordo = request.totalPrice === null ? null : Number(request.totalPrice);
+    const percent = request.discountPercent === null ? null : Number(request.discountPercent);
+    const conto =
+      lordo === null || percent === null ? null : applicaSconto(euroToCent(lordo), percent);
+
     return {
       ...request,
-      totalPrice: request.totalPrice === null ? null : Number(request.totalPrice),
+      totalPrice: lordo,
+      discountPercent: percent,
+      discountAmount: conto === null ? null : centToEuro(conto.scontoCent),
+      netPrice: conto === null ? lordo : centToEuro(conto.nettoCent),
+      soglia,
       components: request.components.map((component) => ({
         ...component,
         unitPrice: Number(component.unitPrice),
@@ -300,9 +392,17 @@ export const kitRouter = createTRPCRouter({
           take: input.limit ?? 20,
           skip: input.offset ?? 0,
           select: {
-            id: true, requestNumber: true, windowType: true, series: true, material: true,
-            widthMm: true, heightMm: true, status: true, totalComponents: true,
-            totalPrice: true, createdAt: true,
+            id: true,
+            requestNumber: true,
+            windowType: true,
+            series: true,
+            material: true,
+            widthMm: true,
+            heightMm: true,
+            status: true,
+            totalComponents: true,
+            totalPrice: true,
+            createdAt: true,
           },
         }),
         ctx.db.kitRequest.count({ where: { agentId: ctx.session.user.id } }),

@@ -283,7 +283,7 @@ export function NuovaRichiestaClient() {
 
     let id: string;
     try {
-      const created = await create.mutateAsync(result.data);
+      const created = await create.mutateAsync({ specs: result.data });
       id = created.id;
     } catch (error) {
       setSubmitError(

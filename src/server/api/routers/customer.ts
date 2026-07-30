@@ -36,9 +36,7 @@ export const customerRouter = createTRPCRouter({
     .input(z.object({ search: z.string().trim().optional() }).default({}))
     .query(async ({ ctx, input }) => {
       const rows = await ctx.db.customer.findMany({
-        where: input.search
-          ? { companyName: { contains: input.search, mode: "insensitive" } }
-          : {},
+        where: input.search ? { companyName: { contains: input.search, mode: "insensitive" } } : {},
         orderBy: { companyName: "asc" },
         take: 50,
         select: SELECT,

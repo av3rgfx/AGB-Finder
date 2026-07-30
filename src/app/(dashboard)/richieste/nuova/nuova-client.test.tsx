@@ -252,7 +252,10 @@ describe("NuovaRichiestaClient", () => {
     fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
     fireEvent.click(screen.getByRole("button", { name: /genera kit/i }));
     await vi.waitFor(() => expect(push).toHaveBeenCalledWith("/richieste/k11"));
-    expect(createMutate).toHaveBeenCalledWith(
+    // `create` riceve ora { specs, customerId? }: il cliente e` un dato
+    // commerciale e viaggia ACCANTO alle specifiche, non dentro l'input del
+    // motore. Si asserisce su `.specs`, che e` cio` che il motore vede.
+    expect(createMutate.mock.calls[0]![0].specs).toEqual(
       // entrata: il test clicca «7,5 mm» sopra — verifica che il valore scelto
       // arrivi davvero nell'input di create, non solo che il passo avanzi.
       expect.objectContaining({ geometry: "A12_I13_B18", seatConfig: "STANDARD", entrata: "E75" }),
@@ -283,7 +286,10 @@ describe("NuovaRichiestaClient", () => {
     fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
     fireEvent.click(screen.getByRole("button", { name: /genera kit/i }));
     await vi.waitFor(() => expect(push).toHaveBeenCalledWith("/richieste/k9"));
-    expect(createMutate).toHaveBeenCalledWith(
+    // `create` riceve ora { specs, customerId? }: il cliente e` un dato
+    // commerciale e viaggia ACCANTO alle specifiche, non dentro l'input
+    // del motore. Si asserisce su `.specs`, che e` cio` che il motore vede.
+    expect(createMutate.mock.calls[0]![0].specs).toEqual(
       expect.objectContaining({
         material: "LEGNO",
         supplementaryClosures: false,
@@ -354,7 +360,10 @@ describe("NuovaRichiestaClient", () => {
     fireEvent.click(screen.getByRole("button", { name: /genera kit/i }));
 
     await vi.waitFor(() => expect(push).toHaveBeenCalledWith("/richieste/k10"));
-    expect(createMutate).toHaveBeenCalledWith(
+    // `create` riceve ora { specs, customerId? }: il cliente e` un dato
+    // commerciale e viaggia ACCANTO alle specifiche, non dentro l'input
+    // del motore. Si asserisce su `.specs`, che e` cio` che il motore vede.
+    expect(createMutate.mock.calls[0]![0].specs).toEqual(
       expect.objectContaining({ supplementaryClosures: false }),
     );
   });
