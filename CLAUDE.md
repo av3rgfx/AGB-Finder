@@ -350,3 +350,47 @@ corrispondenza (2 DSS · 9 doppio nottolino a fungo · 17 microventilazione · 1
 per un agente esperto: `docs/superpowers/kit-assunzioni/DOMANDE-APERTE.md` (la **16** — se esiste una
 distinta reale per battuta 18/sede 30 diventa il **secondo golden**). Prompt di apertura, tabelle e lezioni
 operative: `handoff.md` §RIPRENDI DA QUI.
+
++ **ANTA-RIBALTA: da 1 a 7 GEOMETRIE ✅ (PR #39 APERTA, migrazione GIÀ SU NEON)**, branch
+`claude/ante-ribalte-legno-params-2rnn9y`, 21 commit. **Origine: un agente di vendita ha detto che il
+generatore non è funzionale** — verificato eseguendo il codice, i suoi **tre clienti principali erano
+tutti rifiutati** (MC aria 4/interasse **8,5**/battuta 15 addirittura **da zod**, perché 8,5 non è un
+intero; Fosca 12/13/**18** e Peruzzi **4**/**9**/18 dalla guardia `assertPilotGeometry`). Il motore
+copriva una **quarta** combinazione che nessuno dei tre ordina. Verdetto **`/llm-council`** (5 advisor +
+3 peer review): **evolvere, non riscrivere**. **CAUSA RADICE a `p0474 (472)`**: AGB pubblica due tabelle
+adiacenti, stessa pagina, stessi codici e stessi numeri, intitolate **«sede telaio»** e **«BATTUTA»** —
+nel listino «battuta» indica **due grandezze diverse**, la battuta **anta** (15/18/20 → famiglie
+`.22`/`.24`/`.26`/`.34`/`.36`) e la **sede telaio** (18/20/24/30 → `.05`/`.12`/`.CR`/`.MN`). L'agente
+nomina la prima e non la seconda perché nelle tabelle d'ordine non si chiama «sede»: **non era una sua
+lacuna**, e chiude la questione che la PR #37 aveva trattato come sintomo. **FATTO**: la geometria
+diventa un **discriminatore unico** `geometry: ArtechGeometry` (7 valori) + `seatConfig`, come
+`tourSchema` fa per il bilico (l'interasse 8,5 non sta in un `Int` ed è un **selettore**, non una
+misura) · **sede derivata e mostrata**, non più chiesta · tabelle con **CODICI INTERI MAI COMPOSTI** —
+`A50904.22` **non esiste** (zero occorrenze in 959 pagine), comporlo per MC avrebbe dato un codice
+plausibile e inesistente, il difetto che ha disattivato PVC e battente · **ricalcolo versionato**
+(`kit.ricalcola`: su `DRAFT` rigenera, su una emessa **crea una nuova versione**; guardia `CONFLICT` in
+`kit.generate`) · `ENGINE_VERSION` "1d.1"→**"1d.2"** promossa a colonna · **gate su catalogo reale**
+(`codici-a-listino.integration.test.ts`). **TRE DIFETTI INTERCETTATI DALLE REVIEW**, tutti diretti in
+produzione: (1) il **gate aveva un buco cieco** — `supporto-cerniera` e `forbice-braccio` senza copertura
+per-geometria e tutti i «vicini sbagliati» a listino con prezzo: sabotando MC, **un solo test su 709** se
+ne accorge; (2) il **backfill falsificava dati di produzione** (assegnava il pilota a bozze con aria 4 o
+sede 30, create quando la guardia rifiutava alla *generazione* e non alla *creazione*) → ora **ricava**
+dalle colonne legacy con un `CASE` e lascia **NULL** ciò che non riconosce; (3) **«Rigenera» annullava il
+versionamento**, riscrivendo anche versioni archiviate. Gate: typecheck·lint·**test 709**·build 17 route ·
+**gate 14/14, 63 codici, zero orfani** · golden **12/17** e **16/21 / 90,20 €** invariato (conferma
+aritmetica end-to-end: 72,10 + 18,10 = 90,20 €) · browser 375px+desktop. Distinte reali: **Fosca**
+(`A12_I13_B18`) → 16 righe / **90,62 €**. **OPS ESEGUITE**: run `30540792672` (12/12 verdi) — migrazione
+`20260730084816_kit_geometria` applicata a Neon **prima** del merge, così il deploy non trova colonne
+mancanti (è come si ruppe il login alla #17). **Studiato AGB 4K** (fonti ufficiali): conferma wizard
+«guidato» e rasabilità; divergenza deliberata — 4K àncora la geometria a una *configurazione salvata*,
+noi **al cliente**, perché il nostro utente è l'agente di un distributore con molti clienti. **⚠️ RESTA
+IL PUNTO PIÙ IMPORTANTE**: i 7 moduli sono trascritti dal listino ma **verificati contro una distinta
+realmente ordinata ce n'è ancora UNO** (il pilota, 2021) — è la condizione in cui nacquero PVC e
+battente. Servono **le tre distinte reali** di MC/Fosca/Peruzzi, con **altezze diverse** dai 1820 mm del
+golden. Domande nuove/riscritte in `kit-assunzioni/DOMANDE-APERTE.md` (indice **unico**, 1-26): **2**
+(MC riceve la squadra base 5,77 € e Peruzzi la completa 9,83 € — due serramenti tutto-legno aria 4, due
+varianti dello stesso pezzo), **24** (interasse 8,5 → incontri asse 9? è un'inferenza), **25** (**+20%
+fuori confezione**: se ricade sul cliente, **ogni totale è sottostimato**), **26** (il nottolino di Fosca
+vuole una copertura che non emettiamo). Spec/piano:
+`docs/superpowers/{specs,plans}/2026-07-29-kit-geometrie-*`. Prossimi passi e prompt: `handoff.md`
+§RIPRENDI DA QUI.
