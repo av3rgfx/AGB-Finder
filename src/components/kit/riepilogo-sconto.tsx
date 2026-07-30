@@ -9,13 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 /**
- * Riepilogo commerciale sotto la distinta: quanto sconto, e quanto paga il
- * cliente.
+ * Riepilogo commerciale sotto la distinta: da quanto si parte, quanto sconto,
+ * quanto paga il cliente.
  *
- * NON ripete il lordo. Il piè della tabella lo mostra già («Totale listino
- * AGB»), e la stessa cifra due volte di fila a due centimetri di distanza è
- * rumore che fa dubitare di aver letto male. Qui compare solo ciò che la
- * tabella non sa: lo sconto e il netto.
+ * È l'UNICO posto in cui compaiono i totali. Prima il lordo stava nel piè della
+ * tabella, ma quella tabella scorre in orizzontale a 375px: sul telefono il
+ * numero più importante della pagina finiva fuori schermo, e con lo sconto
+ * accanto si leggeva un «Totale cliente» senza sapere da quale base venisse.
+ * Un posto solo, sempre visibile, nessuna cifra ripetuta.
  *
  * Le righe della distinta restano al lordo (scelta dell'utente): questo è
  * l'unico posto in cui lo sconto lavora. Il netto arriva già calcolato dal
@@ -24,6 +25,7 @@ import { Input } from "@/components/ui/input";
  */
 export function RiepilogoSconto({
   requestId,
+  lordo,
   discountPercent,
   netto,
   scontoImporto,
@@ -31,6 +33,7 @@ export function RiepilogoSconto({
   readOnly = false,
 }: {
   requestId: string;
+  lordo: number;
   discountPercent: number | null;
   netto: number;
   scontoImporto: number | null;
@@ -71,24 +74,36 @@ export function RiepilogoSconto({
       aria-label="Prezzo per il cliente"
       className="flex flex-col gap-3 rounded-md border border-line bg-surface p-4 shadow-card"
     >
-      {haSconto && (
-        // Mobile-first: lista verticale, non una tabella. A 375px due colonne
-        // con gli importi a destra si stringono fino a spezzare le cifre.
-        <div className="flex flex-col gap-2">
-          <div className="flex items-baseline justify-between gap-3 text-sm">
-            <span className="text-ink-subtle">Sconto cliente {formatPercent(discountPercent)}</span>
-            <span className="text-ink">−{formatPrice(scontoImporto)}</span>
-          </div>
-          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-t border-line-strong pt-2">
-            <span className="text-sm font-semibold text-ink">Totale cliente</span>
-            {/* È il numero per cui esiste questa schermata: pesa più degli altri
-                invece di essere una terza riga identica. */}
-            <span className="text-2xl font-semibold tabular-nums text-ink">
-              {formatPrice(netto)}
-            </span>
-          </div>
+      {/* Mobile-first: lista verticale, non una tabella. A 375px due colonne
+          con gli importi a destra si stringono fino a spezzare le cifre. */}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-baseline justify-between gap-3 text-sm">
+          <span className={haSconto ? "text-ink-subtle" : "font-semibold text-ink"}>
+            Totale listino AGB
+          </span>
+          <span className={haSconto ? "text-ink" : "text-lg font-semibold tabular-nums text-ink"}>
+            {formatPrice(lordo)}
+          </span>
         </div>
-      )}
+        {haSconto && (
+          <>
+            <div className="flex items-baseline justify-between gap-3 text-sm">
+              <span className="text-ink-subtle">
+                Sconto cliente {formatPercent(discountPercent)}
+              </span>
+              <span className="text-ink">−{formatPrice(scontoImporto)}</span>
+            </div>
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-t border-line-strong pt-2">
+              <span className="text-sm font-semibold text-ink">Totale cliente</span>
+              {/* È il numero per cui esiste questa schermata: pesa più degli altri
+                invece di essere una terza riga identica. */}
+              <span className="text-2xl font-semibold tabular-nums text-ink">
+                {formatPrice(netto)}
+              </span>
+            </div>
+          </>
+        )}
+      </div>
 
       {fuoriSoglia && (
         <p
@@ -151,10 +166,7 @@ export function RiepilogoSconto({
             )}
           </div>
         ) : (
-          <div className={haSconto ? "" : "flex flex-col gap-2"}>
-            {!haSconto && (
-              <p className="text-sm text-ink-subtle">La distinta è al lordo di listino AGB.</p>
-            )}
+          <div>
             <Button
               size="sm"
               variant="secondary"

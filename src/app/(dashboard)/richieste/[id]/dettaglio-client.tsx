@@ -321,7 +321,6 @@ export function DettaglioClient({ id }: { id: string }) {
                 ...c,
                 listinoPage: c.product?.listinoPage ?? null,
               }))}
-              totalPrice={r.totalPrice ?? 0}
               warnings={warnings}
             />
             {/* Su una riga superata il riepilogo e` in sola lettura: lo sconto va
@@ -329,6 +328,7 @@ export function DettaglioClient({ id }: { id: string }) {
                 comunque con CONFLICT. */}
             <RiepilogoSconto
               requestId={r.id}
+              lordo={r.totalPrice ?? 0}
               discountPercent={r.discountPercent}
               netto={r.netPrice ?? r.totalPrice ?? 0}
               scontoImporto={r.discountAmount}

@@ -14,13 +14,17 @@ export interface DistintaComponent {
   listinoPage: number | null;
 }
 
+/**
+ * Le sole RIGHE della distinta. I totali stanno nel riepilogo sotto
+ * (`RiepilogoSconto`) e non qui: questa tabella scorre in orizzontale a 375px,
+ * e un piè di tabella dentro l'area a scorrimento e` un numero che sul telefono
+ * non si vede — mentre e` il numero per cui si apre la pagina.
+ */
 export function DistintaTable({
   components,
-  totalPrice,
   warnings = [],
 }: {
   components: DistintaComponent[];
-  totalPrice: number;
   warnings?: string[];
 }) {
   return (
@@ -61,21 +65,15 @@ export function DistintaTable({
                   {component.componentName}
                 </td>
                 <td className="px-4 py-2 text-right font-medium text-ink">{component.quantity}</td>
-                <td className="px-4 py-2 text-right text-ink">{formatPrice(component.unitPrice)}</td>
+                <td className="px-4 py-2 text-right text-ink">
+                  {formatPrice(component.unitPrice)}
+                </td>
                 <td className="px-4 py-2 text-right font-medium text-ink">
                   {formatPrice(component.totalPrice)}
                 </td>
               </tr>
             ))}
           </tbody>
-          <tfoot>
-            <tr className="border-t border-line-strong bg-surface-sunken font-semibold text-ink">
-              <td colSpan={5} className="px-4 py-2.5 text-right">
-                Totale listino AGB
-              </td>
-              <td className="px-4 py-2.5 text-right">{formatPrice(totalPrice)}</td>
-            </tr>
-          </tfoot>
         </table>
       </div>
     </div>

@@ -9,186 +9,84 @@
 
 | Campo | Valore |
 |-------|--------|
-| **Data** | 2026-07-27 — sessione **CONCLUSA**. Prossima: **perfezionamento dell'ANTA-RIBALTA** |
+| **Data** | 2026-07-30 — **SCONTISTICA CLIENTE** implementata. PR da aprire. |
 | **Fase in corso** | Fase 1 — MVP Gestionale |
 | **Sotto-fase** | Kit engine: **tre tipologie attive e live** — anta-ribalta LEGNO, vasistas LEGNO, bilico TOUR LEGNO. Input = **unione discriminata su `series`**. |
-| **Branch git** | `claude/kit-engine-continuation-v42wnl`, ripartito da `main` @ `c0e5a98` (merge #37). |
-| **Stato deploy** | **LIVE**, **Neon allineato**, **nessuna azione ops residua** (run `30207287069`, 12/12 verdi). |
+| **Branch git** | `claude/kit-listino-distinte-r1zn22`, da `main` @ `b2d8fcd` (merge #40). |
+| **Stato deploy** | **LIVE**, Neon allineato fino alla #40 (run `30572337032`). **Al merge serve UNA migrazione**: `20260730201437_kit_discount_percent`. |
 | **Aperto** | verifica funzionale in produzione · **mail ad AGB** · **domande all'agente** · audit `kit_requests` · fix `dedupeRows` |
 
 ---
 
-> **▶ RIPRENDI DA QUI — PERFEZIONARE L'ANTA-RIBALTA**
+> **▶ RIPRENDI DA QUI — dopo la SCONTISTICA CLIENTE**
 >
-> ### Il fatto che ha aperto la sessione
+> ### Cosa è stato fatto (2026-07-30)
 >
-> Un agente ha provato in produzione una finestra **700 × 1400, aria 12, asse 13, battuta 18,
-> sede telaio 30** e si è visto **rifiutare** la generazione: *«Configurazione non coperta
-> (battuta 18, sede 30): il generatore ARTECH copre aria 12 / interasse 13 / battuta 20 /
-> sede 18»*.
+> I totali mostravano il **lordo di listino AGB** — quello che paghiamo al fornitore — non quello
+> che il cliente paga. Ora la distinta dice entrambi. Dettaglio completo in `CLAUDE.md` §STATO e
+> in `docs/superpowers/specs/2026-07-30-scontistica-cliente-design.md`.
 >
-> Il rifiuto è **corretto** (è la guardia della bonifica che lavora), ma la configurazione
-> dell'agente **è legittima e a listino**. Anzi: è più coerente della nostra. `asse 13 + sede 30`
-> è il formato **`13x30`**, che esiste; `asse 13 + sede 18` — quello che dichiara il pilota —
-> **non esiste** in tutte le 959 pagine. E lo schema `p0406 (404)` è intitolato proprio «sede
-> 30 mm»: per la configurazione dell'agente esiste una **pagina-schema stampata**, per la nostra
-> no.
+> **Gate**: typecheck ✅ · lint ✅ · **test 843** (erano 660) ✅ · build 17 route ✅ ·
+> **browser 40/40** (desktop 1440×900 + **375px**, 18 screenshot) · **integration gated 38/38 sul
+> catalogo reale** (7.488 prodotti importati in locale).
 >
-> ### La mappa delle dipendenze — è il risultato più utile della sessione
+> **I due riscontri sono intatti, verificati esplicitamente sul catalogo vero:**
+> anta-ribalta entrata 15 → **16 righe / 21 pezzi / 90,20 €**, zero warning ·
+> gemello entrata 7,5 → **16 / 21 / 96,29 €**, zero warning.
 >
-> Ricostruita dal listino, voce per voce. Dice **cosa cambia quando cambia un parametro**, ed è
-> ciò che rende il lavoro pianificabile invece che esplorativo:
+> ### 🔴 AZIONE OPS AL MERGE — una sola, e nient'altro
 >
-> | Pezzo | Codice oggi | Dipende da |
-> |---|---|---|
-> | Cremonese | `A50122.`**`15`**`.NN` | **entrata** (0 / 8 / 15) × HBB |
-> | Braccio forbice | `A51911.`**`36`**`.0N` | **battuta × interasse** × LBB × mano |
-> | Squadra angolare | `A50904.`**`36`**`.0N` | **aria × battuta** × interasse × mano |
-> | Supporto cerniera | `A50805.`**`05`**`.DX` | **aria × interasse × battuta** × mano |
-> | Incontri (nottolino, ribalta, DSS) | `A51400.`**`05`**`.xx` | **aria × (asse × sede)** |
-> | Fusto forbice | `A50510.00.0N` | LBB |
-> | Movimento angolare · supporto forbice · perno | fissi | niente |
-> | Coperture | `A51301.0N.21` | finitura × mano |
-> | Chiusure supplementari | `A50330` · `A50401` · `A51801` · `A51803` | lunghezza |
+> `prisma migrate deploy` per **`20260730201437_kit_discount_percent`**
+> (`ALTER TABLE "kit_requests" ADD COLUMN "discount_percent" DECIMAL(5,2);`).
+> **Niente re-import del catalogo, niente `db:seed`, niente `db:seed:kit`, niente `embed:products`.**
+> Un run completo di «Ops — Neon» li farebbe comunque senza danno, ma non servono.
 >
-> Il suffisso centrale del **braccio forbice** codifica **(battuta, interasse)**, verificato a
-> `p0439 (437)`: battuta 15/interasse 8,5 = `.22` · battuta 18/interasse 9 = `.24` ·
-> **battuta 18/interasse 13 = `.34`** · battuta 20/interasse 9 = `.26` · battuta 20/interasse 13 =
-> `.36` (quello in uso).
+> Dopo il deploy la scontistica è **inerte finché non si crea un cliente**: `customers` è vuota, e
+> senza cliente selezionato nulla cambia rispetto a oggi. Non c'è nessun rischio di distinte
+> scontate per sbaglio.
 >
-> ### 🔴 SCOPERTA: c'è un QUINTO parametro che il wizard non chiede — l'ENTRATA
+> ### Le tre cose che questa sessione ha scoperto e vanno ricordate
 >
-> Il cremonese esiste in **entrata 0, 8 e 15** (`A50122.`**`00`**`/`**`08`**`/`**`15`**`.NN`,
-> `p0424 (422)` e seguenti) e il motore usa **sempre la 15, cablata**. Non c'è nessuna guardia,
-> perché il campo **non esiste proprio nell'input**: `assertPilotGeometry` controlla
-> aria/asse/battuta/sede e basta.
+> 1. **Il listino ha 34 classi di sconto**, e i nostri codici ne toccano due: ARTECH tutto **F3**,
+>    TOUR tutto **T1**. Una percentuale unica per cliente li tratta uguali. È la scelta fatta
+>    consapevolmente (**domanda 28**), non una svista: se lo sconto vero cambia per classe, il
+>    totale di un **bilico** (433-766 €) è sbagliato di 20-38 € a serramento. La percentuale sta su
+>    una colonna propria della richiesta, quindi passare a una tabella cliente × classe cambierebbe
+>    *come si calcola* quel numero, non le distinte già emesse.
+> 2. **`Customer` era un modello fantasma**: tabella a schema dal primo giorno, nessun router,
+>    nessuna CRUD, `customerId` **sempre NULL** in produzione. Le colonne a schema fanno risparmiare
+>    una migrazione, non metà del lavoro — vale la pena ricordarlo prima di stimare in base allo schema.
+> 3. **A 375px la tabella della distinta scorre in orizzontale**, e ci finiva dentro anche il piè
+>    con i totali: sul telefono il numero per cui si apre la pagina era fuori schermo. Trovato da
+>    uno **screenshot**, non da un'asserzione (che leggeva `innerText`, il quale include ciò che è
+>    fuori vista). I totali ora vivono nel riepilogo. **Guardare le immagini, non solo i verdi.**
 >
-> Un serramento con entrata 8 oggi riceve **in silenzio il cremonese dell'entrata 15**. È
-> esattamente la classe di bug che la bonifica ha chiuso, **sopravvissuta su un parametro che
-> nessuno aveva notato**. Va affrontato per primo: o si aggiunge il campo con la sua tabella, o
-> almeno si dichiara l'assunzione e si rifiuta il resto.
+> ### Le tre strade che restano (invariate, meno la scontistica che è fatta)
 >
-> ### Coprire la configurazione dell'agente: si può, SENZA aspettare AGB
+> 1. **Schemi cliente + composer chiusure** — `CustomerKitProfile` per non richiedere ogni volta le
+>    stesse quote, e il composer della catena di chiusura. ⚠️ **Dipende dalle tre distinte reali**:
+>    la formula della corsa (`altezza − 420`) è tarata sul **solo** golden a H 1820, «una retta
+>    tirata per un punto». Senza altezze diverse dal golden non discrimina nulla.
+> 2. **Varianti componenti** (nottolini antieffrazione, 11 finiture coperture, 4 squadre angolari).
+>    La spec del 2026-07-29 le mette **dopo** il divario dello schema `p0406` (22 voci a schema
+>    contro 16 emesse): impilare varianti su una distinta incompleta è già stato bocciato una volta.
+> 3. **Divario schema `p0406`** — le sei voci senza corrispondenza. È il prerequisito della 2.
 >
-> Per **battuta 18 + sede 30** cambiano **cinque codici**, tutti già a listino e prezzati:
+> ### Cosa NON dipende dal codice, e vale più di tutto
 >
-> | Pezzo | Da | A | Nota |
-> |---|---|---|---|
-> | Braccio forbice | `A51911/12.36.0N` | **`.34.0N`** | stessi prezzi, `p0439 (437)` |
-> | Supporto cerniera | `A50805.05.DX/SX` | **`A50804.05.DX/SX`** | stesso prezzo 4,44 €, `p0451 (449)` |
-> | Squadra angolare | `A50904.36.0N` | riga **aria 12 / battuta 18** della tabella interasse 13 | `p0451-0452` |
-> | Incontri nottolino/ribalta/DSS | famiglia `.05` (9x18) | famiglia **`.MN`** (13x30) | `A51400.MN.05/.13/.24/.65/.76` esistono e sono prezzati |
+> 1. **Le tre distinte reali di MC, Peruzzi e Fosca.** Aperta da tre sessioni. Senza, i tre clienti
+>    principali ricevono distinte **mai confrontate con un ordine vero** e la corsa delle chiusure
+>    resta una retta per un punto. Basta una foto dell'ordine.
+> 2. **Domande all'agente e ad AGB** → `docs/superpowers/kit-assunzioni/DOMANDE-APERTE.md`
+>    (ora **28** domande). Le più preziose restano la **23** (secondo golden) e la **4**+**3b**
+>    (sede 18 o 30). La **28** si può girare all'ufficio commerciale, non serve AGB.
+> 3. **Audit `kit_requests`** — query pronta in `DA-FARE-audit-e-domande-agb.md`.
 >
-> **Il listino ha tutto**: non serve una risposta di AGB per scrivere il codice. Manca il
-> **riscontro** — per quella combinazione non abbiamo una distinta reale con cui confrontarci.
-> Si trascriverebbe dallo schema `p0406 (404)`, che però è **più** di quanto abbiamo oggi per la
-> sede 18 (per cui non esiste alcuno schema stampato).
+> ### Difetti noti e non corretti (dichiarati, non dimenticati)
 >
-> ### Il confronto voce-per-voce, ancora da fare
->
-> Lo schema `p0406 (404)` elenca **22 voci numerate**, il modulo emette **16 posizioni**. Sei non
-> trovano corrispondenza evidente: **2** (Cremonesi-Accessori » DSS, distinto dall'*incontro* DSS
-> che il modulo emette), **9** (doppio nottolino a fungo), **17** (incontri microventilazione),
-> **19-20** (spessori di sollevamento), **22** (copertura per incontro nottolino). Alcune sono
-> verosimilmente opzionali — è la domanda di partenza, non una prova di bug. È lo stesso confronto
-> che ha smascherato il battente (21 voci sullo schema, 5 righe generate).
->
-> ### Prompt di apertura (copiabile)
->
-> ```
-> Nuova sessione. Riparti leggendo handoff.md (§«RIPRENDI DA QUI») e CLAUDE.md.
-> Segui il workflow: /using-superpowers → brainstorming → /llm-council per dubbi o
-> incongruenze sulle regole di distinta → /impeccable se tocchiamo UI (SEMPRE mobile
-> ≤375px + desktop) → /writing-plans → esecuzione TDD; /ponytail per il codice.
-> Vincoli CLAUDE.md: TS strict, API via tRPC/Prisma, UI in italiano, codici in mono,
-> mobile-first, e soprattutto: il KIT È UN ENGINE DETERMINISTICO TypeScript, MAI un LLM.
-> A fine lavoro: gate verdi (typecheck·lint·test·build) + verifica browser se c'è UI +
-> PR (chiedi il mio ok prima di aprirla) + indica le AZIONI OPS.
->
-> Il PDF del listino AGB 2026 NON è nel container: scaricalo dal link in CLAUDE.md
-> (§FILE ESTERNI). Estrai il testo con pdftotext -layout e splittalo pagina per pagina.
-> ATTENZIONE: pagina fisica = stampata + 2. E ricorda la lezione che è costata di più:
-> le legende degli schemi stanno DENTRO il disegno e nel testo estratto NON compaiono —
-> le pagine-schema vanno RENDERIZZATE in immagine e guardate, non grepate.
->
-> OBIETTIVO: PERFEZIONARE L'ANTA-RIBALTA, il pilota. Oggi copre UNA SOLA configurazione
-> (aria 12 / interasse 13 / battuta 20 / sede 18) e un agente vero si è già visto
-> rifiutare una finestra legittima (battuta 18, sede 30). L'handoff ha la mappa completa
-> di quale parametro governa quale pezzo della distinta: partiamo da lì.
->
-> Tre fronti, in quest'ordine:
->
-> 1. L'ENTRATA. È un quinto parametro che il wizard non chiede affatto: il cremonese
->    esiste in entrata 0, 8 e 15 e il motore usa sempre la 15 cablata, senza guardia.
->    È la stessa classe di bug della bonifica, su un parametro mai notato. Va chiuso.
->
-> 2. Allargare la copertura a battuta 18 e sede 30 — la configurazione dell'agente.
->    Sono cinque codici, tutti già a listino e prezzati (tabella nell'handoff), e NON
->    serve aspettare AGB. Attenzione: non abbiamo una distinta reale di riscontro, si
->    trascrive dallo schema p0406 (404), che è intitolato proprio «sede 30 mm».
->
-> 3. Il confronto voce-per-voce fra lo schema p0406 (404) — 22 voci — e le 16 posizioni
->    che il modulo emette. Per ognuna delle sei che mancano decidi se è obbligatoria,
->    condizionale o accessoria, motivando dal listino.
->
-> NON rompere il golden: 16 righe / 21 pezzi / 90,20 €. È l'unico riscontro con una
-> distinta reale che abbiamo. Se il totale si muove, spiega perché.
->
-> Prima di partire dimmi: AGB ha risposto? E ho le risposte dell'agente alle domande in
-> docs/superpowers/kit-assunzioni/DOMANDE-APERTE.md? La 16 in particolare — se
-> esiste una distinta reale per la finestra 700×1400 battuta 18 sede 30, diventa il
-> secondo golden e cambia tutto il piano.
-> ```
->
-> ### Altri fronti non bloccati
->
-> - **Domanda 16 — `openingDir`**: raccolto dal wizard, validato, persistito e **letto da nessun
->   modulo**. Decisione interna, non serve AGB: o si toglie o si usa. Oggi è dichiarato inerte in
->   `no-silent-fields.test.ts`, con la ragione.
-> - **Coperture oltre ARGENTO**: `COPERTURE_KIT` ha una sola finitura trascritta.
-> - **Domanda 7 — HBB 357-609**: le finestre basse vengono rifiutate pur essendo a listino
->   (famiglia `A50122.15.31`/`.41`, `p0425 (423)`, che si seleziona per HBB **e** LBB).
-> - **Domanda 10 — offset altezza→HBB**: anta-ribalta usa **−10**, vasistas **0**. Una delle due
->   è sbagliata.
-> - **Chiusure supplementari**: una sola banda (H 1520-2120) ricavata dalla distinta 2021.
-> - **Disegno dello schema nel wizard** invece dei numeri: la ferramenta c'è già (`listinoPage`
->   + viewer a pagina singola + estrazione immagini).
->
-> ### Cose che NON dipendono dal codice (ricordale all'utente)
->
-> 1. **Domande all'agente** → `docs/superpowers/kit-assunzioni/DOMANDE-APERTE.md` (16 domande
->    in parole semplici). **La 16 è la più preziosa**: una distinta reale per battuta 18 / sede 30
->    diventerebbe il secondo golden.
-> 2. **Mail ad AGB** → `DA-FARE-audit-e-domande-agb.md`, con le domande 4 e 3b già affilate.
-> 3. **Verifica funzionale in produzione** — bilico 700×900 schema 2 marrone → **7 righe /
->    450,03 €**; anta-ribalta del golden fermo a **16 righe / 90,20 €**.
-> 4. **Audit `kit_requests`** — query pronta nello stesso file.
->
-> ### Lezioni operative da non riscoprire
->
-> - **Pagina fisica = stampata + 2.** Citare sempre «fisica (stampata)».
-> - **Le legende degli schemi sono immagini**: `pdftoppm -r 150 -png` e guardarle.
-> - **Verificare i codici con la firma di riga del parser reale**, non con un grep.
-> - **Il listino usa nomi doppi**: la stessa quota è «sede telaio» nei titoli degli schemi e
->   secondo numero di `asse × sede` (`9x18`, `13x24`, `13x30`) nelle tabelle incontri. Un agente
->   esperto non ha riconosciuto la parola «sede» proprio per questo.
-> - **I suffissi dei codici codificano la geometria**: `.36` = battuta 20 + interasse 13, `.34` =
->   battuta 18 + interasse 13, `.05` = 9x18, `.MN` = 13x30, `.15` = entrata 15. Leggere il
->   suffisso *prima* di assumere che un codice sia fisso.
-> - **Ambiente locale**: `bash scripts/dev-bootstrap.sh`, poi riempire `.env` (`DATABASE_URL`,
->   `DIRECT_URL`, `REDIS_URL`, `NEXTAUTH_URL`, `NEXTAUTH_SECRET`, `IP_HASH_SECRET`,
->   `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`). Se il browser test redirige a `/login`, i
->   container Docker sono giù: `docker compose up -d`.
-> - **Chromium**: `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`.
->
-> ### Se invece si cambia direzione
->
-> **Galileo Pro scorrevole** (pp. 812-883 fisiche) resta il candidato successivo — sblocca
-> SCORREVOLE e l'unica composizione alluminio completa e prezzata del 2026;
-> `SCORREVOLE_TRASLANTE` è già nell'enum, nessuna migrazione. Ricognizione pagina-per-pagina
-> nello storico della sessione 2026-07-26. Alternative: **fix `dedupeRows`** · **battente**
-> (una riga, appena AGB risponde alla domanda 1) · **PVC+alluminio** (serve il listino separato) ·
-> **anta doppia** `p0407 (405)`.
+> - `dedupeRows` last-wins in `map-product.ts` (segnalato dalla bonifica 2026-07-25).
+> - `openingDir` raccolto, validato, persistito e **letto da nessun modulo** (domanda 16).
+> - `Customer.priceList` e `paymentTerms` restano colonne inutilizzate: non si finge di gestirle.
 >
 > ---
 >

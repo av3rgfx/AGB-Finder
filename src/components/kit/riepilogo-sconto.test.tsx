@@ -29,7 +29,7 @@ vi.mock("@/trpc/react", () => ({
   },
 }));
 
-const base = { requestId: "k1", soglia: 40 };
+const base = { requestId: "k1", soglia: 40, lordo: 90.2 };
 
 beforeEach(() => {
   setDiscountMutate.mockReset().mockResolvedValue({ id: "k1", discountPercent: 45 });
@@ -39,10 +39,17 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("RiepilogoSconto", () => {
-  it("senza sconto non ripete nessun totale: lo dice gia` la tabella", () => {
+  it("senza sconto mostra il solo totale di listino", () => {
     render(<RiepilogoSconto {...base} discountPercent={null} netto={90.2} scontoImporto={null} />);
+    expect(screen.getByText(/totale listino agb/i)).toBeDefined();
+    expect(screen.getByText(/90,20/)).toBeDefined();
     expect(screen.queryByText(/totale cliente/i)).toBeNull();
-    expect(screen.queryByText(/90,20/)).toBeNull();
+  });
+
+  it("il lordo si vede SEMPRE: a 375px la tabella scorre e il suo pie` finiva fuori schermo", () => {
+    render(<RiepilogoSconto {...base} discountPercent={40} netto={54.12} scontoImporto={36.08} />);
+    expect(screen.getByText(/totale listino agb/i)).toBeDefined();
+    expect(screen.getByText(/90,20/)).toBeDefined();
   });
 
   it("senza sconto invita ad applicarne uno", () => {
