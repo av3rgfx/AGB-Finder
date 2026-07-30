@@ -9,12 +9,12 @@
 
 | Campo | Valore |
 |-------|--------|
-| **Data** | 2026-07-30 — **SCONTISTICA CLIENTE** fatta (PR #42). Prossima: **schemi cliente + composer** o **varianti componenti** |
+| **Data** | 2026-07-30 — sessione **CONCLUSA**. Prossima: **decisione dell'utente fra due strade** |
 | **Fase in corso** | Fase 1 — MVP Gestionale |
 | **Sotto-fase** | Kit engine: tre tipologie attive (anta-ribalta LEGNO su **7 geometrie × 2 entrate**, vasistas LEGNO, bilico TOUR LEGNO) |
-| **Branch git** | `claude/kit-listino-distinte-r1zn22`, da `main` @ `b2d8fcd` (merge #40), poi mergiato `origin/main` @ `94784fd` (merge #41) |
-| **Stato deploy** | **LIVE.** #40 e #41 mergiate, ops #40 eseguite (run `30572337032`). **Al merge della #42 serve UNA migrazione**: `20260730201437_kit_discount_percent` |
-| **Aperto** | le **tre distinte reali** · mail ad AGB · domande all'agente · audit `kit_requests` · fix `dedupeRows` |
+| **Branch git** | `claude/kit-listino-distinte-r1zn22` — **PR #42 MERGIATA** (`9fc8bfd`). Ripartire da `main`. |
+| **Stato deploy** | **LIVE e ALLINEATO.** #42 mergiata · **ops ESEGUITE** (run `30583325831`, 21:41Z, 4/4 verdi). **Nessuna azione ops residua.** |
+| **Aperto** | le **tre distinte reali** · **preview Vercel rotte** · mail ad AGB · domande all'agente · audit `kit_requests` · fix `dedupeRows` |
 
 ---
 
@@ -34,16 +34,16 @@
 > anta-ribalta entrata 15 → **16 righe / 21 pezzi / 90,20 €**, zero warning ·
 > gemello entrata 7,5 → **16 / 21 / 96,29 €**, zero warning.
 >
-> ### 🔴 AZIONE OPS AL MERGE — una sola, e nient'altro
+> ### Ops: FATTE, nessuna azione residua
 >
-> `prisma migrate deploy` per **`20260730201437_kit_discount_percent`**
-> (`ALTER TABLE "kit_requests" ADD COLUMN "discount_percent" DECIMAL(5,2);`).
-> **Niente re-import del catalogo, niente `db:seed`, niente `db:seed:kit`, niente `embed:products`.**
-> Un run completo di «Ops — Neon» li farebbe comunque senza danno, ma non servono.
+> Run **`30583325831`** (2026-07-30 21:41Z, 4/4 verdi): migrazione
+> **`20260730201437_kit_discount_percent`** applicata, import 7.488 invariato, seed 6 template,
+> embed «niente da fare». Neon è allineato.
 >
-> Dopo il deploy la scontistica è **inerte finché non si crea un cliente**: `customers` è vuota, e
-> senza cliente selezionato nulla cambia rispetto a oggi. Non c'è nessun rischio di distinte
-> scontate per sbaglio.
+> La scontistica è **inerte finché non si crea il primo cliente**: `customers` è vuota, quindi in
+> questo momento nessuna distinta mostra uno sconto e nessun totale storico è cambiato. Per provarla:
+> `/richieste/nuova` → scegli o crea un cliente col suo sconto → genera. Oppure «Applica uno sconto»
+> in fondo a una scheda già esistente.
 >
 > ### Le tre cose che questa sessione ha scoperto e vanno ricordate
 >
@@ -61,30 +61,23 @@
 >    uno **screenshot**, non da un'asserzione (che leggeva `innerText`, il quale include ciò che è
 >    fuori vista). I totali ora vivono nel riepilogo. **Guardare le immagini, non solo i verdi.**
 >
-> ### Prima di scegliere cosa fare: due domande
+> ### Prima di scegliere cosa fare: UNA domanda
 >
-> **1. ~~La PR #40 è mergiata e le ops eseguite?~~ FATTO.** PR #40 mergiata (`b2d8fcd`), ops
-> eseguite col run `30572337032` (2026-07-30 19:11Z, 12/12 verdi). Verifica solo che la
-> generazione di una richiesta funzioni in produzione.
+> **Sono arrivate le tre distinte reali di MC, Peruzzi e Fosca?** È la domanda che vale più di
+> tutte le altre messe insieme, ed è aperta da **tre sessioni**. Senza, i tre clienti principali
+> ricevono distinte che il motore genera ma che **nessuno ha mai confrontato con un ordine vero**:
+> l'unico riscontro reale che questo progetto possiede resta la distinta AGB del 16/11/2021 (il
+> golden a 90,20 €). Con anche una sola di quelle tre, e con un'**altezza diversa dal golden**, si
+> calibra la formula della corsa delle chiusure — che oggi è **una retta tirata per un punto, con
+> la pendenza assunta a 1**. Basta una foto dell'ordine.
 >
-> **⚠️ LA LEZIONE, però, va tenuta**, perché è costata un disservizio vero. Fra il merge
-> (18:33Z) e la migrazione (18:53Z) la produzione è rimasta **rotta per venti minuti**:
-> `kit.get` fa `findFirst` senza `select`, quindi Prisma seleziona anche la colonna nuova e
-> **falliscono le letture, non solo le creazioni** — l'utente ha incontrato l'errore provando
-> a creare una richiesta. Alla prossima migrazione: **il run ops parte nella stessa finestra
-> del merge**, non «quando capita». Non basta scriverlo nella PR: va lanciato.
+> *(La domanda sulle ops della sessione precedente non serve più: run `30583325831`, 4/4 verdi,
+> nessuna azione residua. Ma vedi la regola operativa qui sotto.)*
 >
-> **2. Sono arrivate le tre distinte reali di MC, Peruzzi e Fosca?** È la domanda che vale
-> più di tutte le altre messe insieme, ed è aperta da due sessioni. Senza, i tre clienti
-> principali ricevono distinte che il motore genera ma che **nessuno ha mai confrontato con
-> un ordine vero**: l'unico riscontro reale che questo progetto possiede resta la distinta
-> AGB del 16/11/2021 (il golden a 90,20 €). Con anche una sola di quelle tre, e con
-> un'altezza diversa dal golden, si calibra la formula della corsa delle chiusure — che oggi
-> è **una retta tirata per un punto, con la pendenza assunta a 1**.
+> ### Le due strade rimaste
 >
-> ### Le tre strade rimaste
->
-> A inizio sessione le strade erano quattro; l'**entrata cablata** e la **scontistica** sono fatte. Restano:
+> Erano quattro: l'**entrata cablata** e la **scontistica** sono fatte. Restano queste due, ed
+> entrambe hanno una dipendenza dichiarata:
 >
 > | Strada | Dipende dalle distinte mancanti? | Nota |
 > |---|---|---|
@@ -108,6 +101,14 @@
 >   `INATTIVI` esplicito, i cui moduli sollevano su qualunque input.
 > - **`dedupeRows` last-wins** in `map-product.ts` (`T18001.02.93` ha `listinoPage` 561 invece
 >   di 551 → «Visualizza nel listino» apre la pagina sbagliata; prezzo non affetto).
+> - 🆕 **Le preview di Vercel falliscono su OGNI PR** — verificato su #39, #40, #41, #42: tutte
+>   rosse, tutte mergiate lo stesso, e i deploy di *produzione* su `main` sono invece verdi.
+>   Non è mai stato il codice: la build locale pulita passa (`.next` cancellato, `node_modules`
+>   allineato al lockfile, 17 route). **Ipotesi da verificare**: le variabili d'ambiente su Vercel
+>   sono configurate solo per l'ambiente *Production* e non per *Preview*, e `src/env.ts` valida
+>   con zod e muore al primo `parseEnv`. Costo di tenerselo: **una preview che non parte è un
+>   collaudo che non hai** — ogni PR va provata a mano in locale. Chiusura: aggiungere le env
+>   all'ambiente Preview su Vercel (nessun codice da scrivere).
 >
 > ### Cose che NON dipendono dal codice
 >
@@ -135,11 +136,31 @@
 > - **Dopo un `--amend`, leggere il commit e non il disco**: `git show --stat HEAD`, non `cat`.
 >   Meglio ancora: mettere `test -z "$(git status --porcelain)"` come **prima** asserzione del
 >   gate di fine task — un amend fatto prima dello staging sporca il tree per costruzione.
+> - 🆕 **L'ordine giusto è MIGRARE PRIMA e MERGIARE DOPO.** Ci ha preso due volte di fila (#40:
+>   venti minuti di produzione rotta; #42: qualche minuto, solo perché il run è partito subito).
+>   Una colonna **nuova e nullable** applicata a un DB dove il codice non la usa ancora è del
+>   tutto innocua; l'ordine inverso apre invece una finestra in cui `kit.get` — che fa
+>   `findFirst` **senza `select`** — chiede a Postgres una colonna che non esiste, e falliscono
+>   **le letture**, non solo le creazioni: dashboard e schede in 500. Il workflow «Ops — Neon» si
+>   può lanciare su un **branch**, non solo su `main`: `workflow_dispatch` fa il checkout del ref
+>   che gli indichi, e `DATABASE_URL` punta a Neon comunque. Quindi la migrazione si applica
+>   *prima* del merge, dal branch della PR.
+> - 🆕 **Guardare gli screenshot, non solo i verdi.** Il difetto peggiore di questa sessione (il
+>   totale fuori schermo a 375px) era coperto da un'asserzione **verde**: leggeva `innerText`,
+>   che include anche ciò che sta fuori da un contenitore a scorrimento orizzontale. L'ha trovato
+>   l'occhio su un PNG. Quando la verifica browser produce immagini, **aprirle**.
 > - **Ambiente**: `bash scripts/dev-bootstrap.sh`, poi riempire `.env`. Catalogo:
 >   `pnpm import:agb <listino.pdf>` (~15 min, 7.488 prodotti; serve `poppler-utils`). DB locale
 >   `utpistoia`. Integration gated: `INTEGRATION_DATABASE_URL="$DATABASE_URL" pnpm test <file>`
 >   — **senza quella variabile i gate passano a vuoto**. Chromium:
 >   `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`.
+>   ⚠️ `dev-bootstrap.sh` fa `[ -f .env ] || cp .env.example .env`, ma `setup-prisma-engines.sh`
+>   **crea già** `.env` con le sole var degli engine: il copy viene saltato e mancano
+>   `DATABASE_URL`/`DIRECT_URL`. Va composto a mano (`.env.example` + le var engine), e
+>   `NEXTAUTH_SECRET`/`IP_HASH_SECRET` vogliono valori veri, non i `change-me`: `src/env.ts` li
+>   valida con zod. Playwright non è in `package.json`: per la verifica browser
+>   `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 pnpm add -D playwright`, e **rimuoverlo prima del commit**
+>   (`git checkout package.json pnpm-lock.yaml`).
 >
 > ### Prompt di apertura (copiabile)
 >
@@ -158,19 +179,28 @@
 > ATTENZIONE: pagina fisica = stampata + 2. E le legende degli schemi stanno DENTRO il
 > disegno: nel testo estratto NON compaiono, vanno renderizzate in immagine e guardate.
 >
+> STATO: nessuna azione ops pendente. PR #42 (scontistica cliente) mergiata e
+> migrazione applicata a Neon (run 30583325831, 4/4 verdi). Non serve richiederlo:
+> verificalo e basta, guardando i run di «Ops — Neon», non fidandoti dell'handoff.
+>
 > Prima di propormi qualsiasi cosa, rispondi a UNA domanda: sono arrivate le tre
-> distinte reali di MC, Peruzzi e Fosca? È aperta da due sessioni ed è la cosa che
+> distinte reali di MC, Peruzzi e Fosca? È aperta da TRE sessioni ed è la cosa che
 > vale di più: senza, i tre clienti principali ricevono distinte che il motore
 > genera ma che nessuno ha mai confrontato con un ordine vero, e la formula della
-> corsa delle chiusure resta una retta tirata per un punto solo.
+> corsa delle chiusure (altezza − 420) resta una retta tirata per un punto solo.
+> Se ne è arrivata anche una sola con altezza diversa dal golden, cambia le priorità.
 >
-> (La PR #40 è mergiata e le ops eseguite — run 30572337032. Non serve richiederlo.
-> Ma se in produzione dovesse ricomparire un errore «column ... does not exist»,
-> la causa è sempre la stessa: una migrazione non ancora applicata a Neon.)
+> Poi si sceglie fra le due strade rimaste:
+>  · schemi cliente + composer chiusure (§3.5-3.7 spec 2026-07-29) — il profilo
+>    geometria per cliente non dipende dalle distinte, il composer sì;
+>  · varianti componenti — che la spec mette DOPO il divario dello schema p0406
+>    (22 voci a schema contro 16 emesse), quindi in pratica prima va chiuso quello.
 >
-> Poi si sceglie fra le tre strade rimaste: scontistica cliente (la consigliata: i
-> totali oggi sono il lordo di listino, non quello che il cliente paga, e metà del
-> lavoro è già a schema) · schemi cliente + composer chiusure · varianti componenti.
+> Se non ci sono le distinte e vuoi qualcosa di utile e piccolo, ci sono tre debiti
+> già circoscritti in handoff.md §«Debito noto»: il gate su catalogo reale che fissa
+> widthMm 550, CASI non legato a RULE_MODULES, dedupeRows last-wins. Più uno di
+> ambiente: le preview di Vercel falliscono su OGNI PR (probabile: env solo su
+> Production e non su Preview) — non è codice, ma ci lascia senza collaudo.
 >
 > NON rompere il golden: 16 righe / 21 pezzi / 90,20 €, e il suo gemello a entrata
 > 7,5 a 96,29 €. Sono gli unici due riscontri numerici che abbiamo.

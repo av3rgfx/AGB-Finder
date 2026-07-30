@@ -386,7 +386,7 @@ righe, stessa forma del test appena scritto) · `no-silent-fields` non è legato
 `dedupeRows` last-wins. Dettagli, lezioni operative e prompt di apertura: `handoff.md`
 §RIPRENDI DA QUI.
 
-+ **SCONTISTICA CLIENTE ✅ (PR #42)**: i totali mostravano il
++ **SCONTISTICA CLIENTE ✅ (PR #42 MERGIATA, ops eseguite)**: i totali mostravano il
 **lordo di listino AGB**, cioè quello che paghiamo al fornitore, non quello che il cliente paga. Workflow completo
 (brainstorming → 4 domande all'utente → spec → `/writing-plans` → 10 task TDD → `/impeccable` → verifica browser).
 **Scelte utente**: sconto **unico per cliente** · **modificabile anche a distinta generata** · righe **al lordo**,
@@ -408,8 +408,9 @@ empty-state vero — in produzione l'anagrafica è **vuota**) · riepilogo `Tota
 e a **375px la tabella scorre in orizzontale**, quindi il suo piè con i totali era **fuori schermo** → i totali sono
 migrati nel riepilogo, che è l'unico posto in cui compaiono. Gate verdi (typecheck·lint·**test 843**·build 17 route) ·
 **browser 40/40** (desktop + 375px) · **integration gated 38/38 sul catalogo reale** · golden **16 righe / 21 pezzi /
-90,20 €** e gemello entrata 7,5 **96,29 €** invariati, verificati esplicitamente. **AZIONE OPS: una sola migrazione**
-(`migrate deploy`) — niente re-import, niente seed, niente embed. Nuova **domanda 28** in `DOMANDE-APERTE.md`: il
+90,20 €** e gemello entrata 7,5 **96,29 €** invariati, verificati esplicitamente. **AZIONI OPS ESEGUITE** (run `30583325831`, 2026-07-30 21:41Z, 4/4 verdi: migrate
+`20260730201437_kit_discount_percent` + import 7.488 + seed + embed «niente da fare»). Serviva la sola
+migrazione; il workflow esegue comunque tutti e quattro i passi, idempotenti. Nuova **domanda 28** in `DOMANDE-APERTE.md`: il
 listino ha **34 classi di sconto**, i codici ARTECH sono tutti **F3** e i TOUR tutti **T1** → una percentuale unica li
 tratta uguali (scelta consapevole, da riverificare con l'ufficio commerciale).
 Spec/piano: `docs/superpowers/{specs,plans}/2026-07-30-scontistica-cliente*`.
