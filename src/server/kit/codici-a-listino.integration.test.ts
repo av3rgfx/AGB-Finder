@@ -62,6 +62,18 @@ describe.runIf(Boolean(url))("ogni codice emettibile esiste a catalogo con prezz
       } as KitInput);
 
       const codici = [...new Set(lines.map((l) => l.code))];
+
+      // Non-vuotezza ESPLICITA, prima del confronto. Senza questa riga il gate
+      // passerebbe a vuoto su una distinta vuota: `orfani` sarebbe `[]` e
+      // `toEqual([])` sarebbe verde pur non avendo verificato nulla — il modo
+      // peggiore di fallire per un test che esiste per dare fiducia.
+      // Oggi non può succedere, perché `pick()`/`requireKey()` in kit-shared.ts
+      // SOLLEVANO invece di restituire una riga mancante. Ma quella garanzia vive
+      // in un altro file: se un domani `generate()` tornasse a restituire `[]` per
+      // un caso limite, questo gate ridiventerebbe silenziosamente inutile. La
+      // soglia è il set obbligatorio (12) più le 4 chiusure supplementari.
+      expect(codici.length, "distinta vuota: il gate non avrebbe verificato nulla").toBeGreaterThanOrEqual(16);
+
       const trovati = await db.product.findMany({
         where: { agbCode: { in: codici } },
         select: { agbCode: true, basePrice: true },
