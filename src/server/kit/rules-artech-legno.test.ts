@@ -298,3 +298,52 @@ describe("le tre geometrie dei clienti reali", () => {
     }
   });
 });
+
+describe("artechAntaRibaltaLegno — entrata maniglia", () => {
+  // Le nove bande HBB, i GR e l'altezza maniglia di A50122.08.* e A50122.15.*
+  // coincidono riga per riga a p0424 (422): cambia il codice, non la selezione.
+  // ATTENZIONE ai valori scelti: le bande si SOVRAPPONGONO e `pick()` risolve
+  // prendendo la più stretta, a parità di ampiezza la PRIMA della tabella. Con
+  // hbb 2100 le bande [1794,2110] e [1994,2310] hanno la stessa ampiezza (316) e
+  // vincerebbe la .08, non la .09. Ogni valore qui sotto cade quindi in **una
+  // sola** banda.
+  const BANDE: [hbb: number, e15: string, e75: string][] = [
+    [700, "A50122.15.02", "A50122.08.02"],
+    [900, "A50122.15.03", "A50122.08.03"],
+    [1100, "A50122.15.04", "A50122.08.04"],
+    [1300, "A50122.15.05", "A50122.08.05"],
+    [1500, "A50122.15.06", "A50122.08.06"],
+    [1700, "A50122.15.07", "A50122.08.07"],
+    [1900, "A50122.15.08", "A50122.08.08"],
+    [2150, "A50122.15.09", "A50122.08.09"],
+    [2400, "A50122.15.10", "A50122.08.10"],
+  ];
+
+  it.each(BANDE)("hbb %i → %s con entrata 15, %s con entrata 7,5", (hbb, e15, e75) => {
+    // `base` usa hbb = heightMm - 10 (ASSUNZIONE dichiarata, domanda 10).
+    const perEntrata = (entrata: "E15" | "E75") =>
+      artechAntaRibaltaLegno
+        .generate({ ...base, heightMm: hbb + 10, entrata })
+        .find((l) => l.position === "cremonese")!.code;
+
+    expect(perEntrata("E15")).toBe(e15);
+    expect(perEntrata("E75")).toBe(e75);
+  });
+
+  it("l'entrata cambia SOLO la riga della cremonese", () => {
+    const senzaCremonese = (entrata: "E15" | "E75") =>
+      artechAntaRibaltaLegno
+        .generate({ ...base, entrata })
+        .filter((l) => l.position !== "cremonese")
+        .map((l) => `${l.position}|${l.code}|${l.quantity}`);
+
+    expect(senzaCremonese("E75")).toEqual(senzaCremonese("E15"));
+  });
+
+  it("la ruleDescription dichiara l'entrata, così la distinta stampata la riporta", () => {
+    const riga = artechAntaRibaltaLegno
+      .generate({ ...base, entrata: "E75" })
+      .find((l) => l.position === "cremonese")!;
+    expect(riga.ruleDescription).toContain("entrata 7,5");
+  });
+});

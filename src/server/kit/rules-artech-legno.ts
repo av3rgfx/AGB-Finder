@@ -24,7 +24,9 @@ import {
   KitGenerationError,
   PILOT,
   asArtech,
+  entrataLabel,
   type ArtechKitInput,
+  type Entrata,
   type KitInput,
   type KitLine,
   type RuleModule,
@@ -46,26 +48,49 @@ type Side = ArtechKitInput["openingSide"];
 // catalogo — la risoluzione dei bordi condivisi è nella funzione pick()).
 
 /**
- * Cremonese A/R per range altezza-maniglia. VERIFICATA contro p0424 (422),
- * tabella «Cremonesi · Anta ribalta - altezza maniglia fissa», entrata 15:
- * le 9 bande coincidono con il listino (GR02 parte da 610, non da 650 —
- * corretto il 2026-07-25: le altezze 620-659 venivano rifiutate a torto).
- * Escluse .17 («07bis», HBB 1634-1810 ma altezza maniglia 1050 anziché 500, si
- * sovrappone ambiguamente a .07) e .31/.41 (p0425 (423), GR1: selezione per HBB E per
- * LBB, schema diverso). L'esclusione delle .31/.41 lascia scoperto l'intervallo
- * HBB 357-609: domanda 7 per l'esperto in docs/superpowers/kit-assunzioni/legno.md.
+ * Cremonese A/R per entrata × banda di altezza-maniglia. VERIFICATA contro
+ * `p0424 (422)`, tabella «Cremonesi · Anta ribalta - altezza maniglia fissa»:
+ * le nove bande HBB, i GR e l'altezza maniglia sono **identici** fra le due
+ * entrate — cambia il codice e cambia il prezzo (GR07: 16,03 € contro 22,12 €).
+ *
+ * CODICI INTERI, MAI COMPOSTI. `A50122.${entrata}.${gr}` sarebbe regolarissimo
+ * qui e sbagliato altrove: la cremonese vasistas pubblica 6 gruppi per l'entrata
+ * 7,5 contro i 9 dell'anta-ribalta, quindi la composizione genererebbe
+ * `A50111.08.10`, che non esiste. È la regola della PR #39.
+ *
+ * Escluse per entrambe le entrate, e per le ragioni già note: `.17` («07bis»,
+ * altezza maniglia 1050 che si sovrappone ambiguamente al `.07`) e `.31`/`.41`
+ * di `p0425 (423)`, che si selezionano per HBB E per LBB. L'esclusione delle
+ * `.31`/`.41` lascia scoperto l'intervallo HBB 357-609 (domanda 7).
+ *
+ * ASIMMETRIA DICHIARATA (domanda 27): al GR03 l'entrata 7,5 ha `NOT. −` dove la
+ * 15 ha `1`, con nota che nelle DUE ANTE serve l'asta a leva `A51504.19.13`.
+ * Questo motore genera anta singola, quindi nessun codice cambia.
  */
-const CREMONESI = [
-  { minH: 610, maxH: 810, code: "A50122.15.02" },
-  { minH: 794, maxH: 1010, code: "A50122.15.03" },
-  { minH: 994, maxH: 1210, code: "A50122.15.04" },
-  { minH: 1194, maxH: 1410, code: "A50122.15.05" },
-  { minH: 1394, maxH: 1610, code: "A50122.15.06" },
-  { minH: 1594, maxH: 1810, code: "A50122.15.07" }, // golden
-  { minH: 1794, maxH: 2110, code: "A50122.15.08" },
-  { minH: 1994, maxH: 2310, code: "A50122.15.09" },
-  { minH: 2194, maxH: 2510, code: "A50122.15.10" },
-] as const;
+const CREMONESI: Record<Entrata, readonly { minH: number; maxH: number; code: string }[]> = {
+  E15: [
+    { minH: 610, maxH: 810, code: "A50122.15.02" },
+    { minH: 794, maxH: 1010, code: "A50122.15.03" },
+    { minH: 994, maxH: 1210, code: "A50122.15.04" },
+    { minH: 1194, maxH: 1410, code: "A50122.15.05" },
+    { minH: 1394, maxH: 1610, code: "A50122.15.06" },
+    { minH: 1594, maxH: 1810, code: "A50122.15.07" }, // golden
+    { minH: 1794, maxH: 2110, code: "A50122.15.08" },
+    { minH: 1994, maxH: 2310, code: "A50122.15.09" },
+    { minH: 2194, maxH: 2510, code: "A50122.15.10" },
+  ],
+  E75: [
+    { minH: 610, maxH: 810, code: "A50122.08.02" },
+    { minH: 794, maxH: 1010, code: "A50122.08.03" },
+    { minH: 994, maxH: 1210, code: "A50122.08.04" },
+    { minH: 1194, maxH: 1410, code: "A50122.08.05" },
+    { minH: 1394, maxH: 1610, code: "A50122.08.06" },
+    { minH: 1594, maxH: 1810, code: "A50122.08.07" },
+    { minH: 1794, maxH: 2110, code: "A50122.08.08" },
+    { minH: 1994, maxH: 2310, code: "A50122.08.09" },
+    { minH: 2194, maxH: 2510, code: "A50122.08.10" },
+  ],
+};
 
 /** Corpo forbice (fusto) per range larghezza anta (colonne.lbb di A50510.00.%). */
 const FORBICI = [
@@ -203,14 +228,19 @@ export const artechAntaRibaltaLegno: RuleModule = {
     );
 
     // ASSUNZIONE (emendamento): hbb = heightMm - 10 (golden: 1820-10=1810,
-    // bordo max incluso in A50122.15.07).
-    const cremonese = pick(CREMONESI, input.heightMm - 10, "H", "artech.cremonese", "cremonese");
+    // bordo max incluso in A50122.15.07). Vale per entrambe le entrate: le bande
+    // sono identiche.
+    const cremonese = pick(
+      CREMONESI[input.entrata], input.heightMm - 10, "H", "artech.cremonese", "cremonese",
+    );
     lines.push({
       position: "cremonese",
       code: cremonese.code,
       quantity: 1,
       ruleId: "artech.cremonese",
-      ruleDescription: `Cremonese A/R per altezza anta ${input.heightMm} mm (hbb ${input.heightMm - 10})`,
+      ruleDescription:
+        `Cremonese A/R entrata ${entrataLabel(input.entrata)} per altezza anta ` +
+        `${input.heightMm} mm (hbb ${input.heightMm - 10})`,
     });
 
     const forbice = pick(FORBICI, input.widthMm, "L", "artech.forbice", "corpo forbice");
