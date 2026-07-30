@@ -6,6 +6,10 @@
 >
 > L'audit di `kit_requests` è rimasto in `DA-FARE-audit-e-domande-agb.md`: non è una domanda.
 
+> **Versione Word**, da stampare o inoltrare: [`Domande-aperte-distinte-AGB.docx`](./Domande-aperte-distinte-AGB.docx).
+> È generata da `genera-docx.js` (`npm i docx && node genera-docx.js`) — **non si edita a mano**:
+> quando cambiano le domande si aggiorna lo script e si rigenera, altrimenti le due versioni divergono.
+
 ---
 
 ## In sintesi
