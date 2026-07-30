@@ -13,7 +13,7 @@
 | **Fase in corso** | Fase 1 — MVP Gestionale |
 | **Sotto-fase** | Kit engine: tre tipologie attive (anta-ribalta LEGNO su **7 geometrie × 2 entrate**, vasistas LEGNO, bilico TOUR LEGNO) |
 | **Branch git** | `claude/handoff-workflow-choice-u7hvc9`, da `main` @ `459ba81` (merge #39) |
-| **Stato deploy** | LIVE. **PR #40 APERTA, da mergiare** → poi `migrate deploy` (vedi «Azioni ops» sotto) |
+| **Stato deploy** | **LIVE e allineato.** PR #40 **MERGIATA** (`b2d8fcd`) · **ops ESEGUITE** (run `30572337032`, 2026-07-30 19:11Z, 12/12 verdi) |
 | **Aperto** | le **tre distinte reali** · mail ad AGB · domande all'agente · audit `kit_requests` · fix `dedupeRows` |
 
 ---
@@ -22,11 +22,16 @@
 >
 > ### Prima di scegliere cosa fare: due domande
 >
-> **1. La PR #40 è stata mergiata?** Se sì, sono state eseguite le ops? Servono solo:
-> `migrate deploy` → `20260730160444_kit_entrata`. **Nessun re-import, nessun seed.**
-> ⚠️ La migrazione va lanciata **nella stessa finestra del deploy**: `kit.get` fa `findFirst`
-> senza `select`, quindi fra deploy e migrazione falliscono le **letture**, non solo le
-> creazioni — ogni scheda richiesta andrebbe in 500 finché la colonna non esiste.
+> **1. ~~La PR #40 è mergiata e le ops eseguite?~~ FATTO.** PR #40 mergiata (`b2d8fcd`), ops
+> eseguite col run `30572337032` (2026-07-30 19:11Z, 12/12 verdi). Verifica solo che la
+> generazione di una richiesta funzioni in produzione.
+>
+> **⚠️ LA LEZIONE, però, va tenuta**, perché è costata un disservizio vero. Fra il merge
+> (18:33Z) e la migrazione (18:53Z) la produzione è rimasta **rotta per venti minuti**:
+> `kit.get` fa `findFirst` senza `select`, quindi Prisma seleziona anche la colonna nuova e
+> **falliscono le letture, non solo le creazioni** — l'utente ha incontrato l'errore provando
+> a creare una richiesta. Alla prossima migrazione: **il run ops parte nella stessa finestra
+> del merge**, non «quando capita». Non basta scriverlo nella PR: va lanciato.
 >
 > **2. Sono arrivate le tre distinte reali di MC, Peruzzi e Fosca?** È la domanda che vale
 > più di tutte le altre messe insieme, ed è aperta da due sessioni. Senza, i tre clienti
@@ -112,15 +117,15 @@
 > ATTENZIONE: pagina fisica = stampata + 2. E le legende degli schemi stanno DENTRO il
 > disegno: nel testo estratto NON compaiono, vanno renderizzate in immagine e guardate.
 >
-> Prima di propormi qualsiasi cosa, rispondi a due domande:
-> 1. La PR #40 (entrata maniglia) è stata mergiata? E le ops eseguite? Serve solo
->    `migrate deploy` della migrazione 20260730160444_kit_entrata, ma DEVE partire
->    nella stessa finestra del deploy: `kit.get` seleziona anche la colonna nuova,
->    quindi prima della migrazione vanno in 500 le LETTURE, non solo le creazioni.
-> 2. Sono arrivate le tre distinte reali di MC, Peruzzi e Fosca? È aperta da due
->    sessioni ed è la cosa che vale di più: senza, i tre clienti principali ricevono
->    distinte mai confrontate con un ordine vero, e la formula della corsa delle
->    chiusure resta una retta tirata per un punto solo.
+> Prima di propormi qualsiasi cosa, rispondi a UNA domanda: sono arrivate le tre
+> distinte reali di MC, Peruzzi e Fosca? È aperta da due sessioni ed è la cosa che
+> vale di più: senza, i tre clienti principali ricevono distinte che il motore
+> genera ma che nessuno ha mai confrontato con un ordine vero, e la formula della
+> corsa delle chiusure resta una retta tirata per un punto solo.
+>
+> (La PR #40 è mergiata e le ops eseguite — run 30572337032. Non serve richiederlo.
+> Ma se in produzione dovesse ricomparire un errore «column ... does not exist»,
+> la causa è sempre la stessa: una migrazione non ancora applicata a Neon.)
 >
 > Poi si sceglie fra le tre strade rimaste: scontistica cliente (la consigliata: i
 > totali oggi sono il lordo di listino, non quello che il cliente paga, e metà del
@@ -132,7 +137,7 @@
 >
 > ---
 >
-> **▶ STORICO — sessione 2026-07-30: ENTRATA MANIGLIA ✅ — PR #40 APERTA.**
+> **▶ STORICO — sessione 2026-07-30: ENTRATA MANIGLIA ✅ — PR #40 MERGIATA, ops eseguite.**
 >
 > **Il difetto.** Il motore sceglieva la cremonese in **entrata 15** (`A50122.15.NN`) dalla Fase
 > 1d, **cablata**, senza guardia — perché il campo **non esisteva nell'input**. Un serramento a
@@ -177,8 +182,16 @@
 > verde); (5) la domanda 17 conservava la premessa **smontata da questa stessa sessione**, proprio
 > nella frase destinata all'agente esperto. **Tre erano lacune del piano, non degli implementer.**
 >
-> **AZIONI OPS AL MERGE:** solo **`migrate deploy`** → `20260730160444_kit_entrata`. Niente
-> re-import, niente seed. ⚠️ **stessa finestra del deploy** (vedi §RIPRENDI DA QUI).
+> **AZIONI OPS — ESEGUITE** (run `30572337032`, 19:11Z, 12/12 verdi): migrate
+> `20260730160444_kit_entrata` + import + seed + embed.
+>
+> ⚠️ **Ma con venti minuti di disservizio.** Il merge è delle 18:33Z, la migrazione delle 18:53Z:
+> in mezzo la produzione ha risposto **500 su ogni scheda richiesta e su ogni creazione**, perché
+> `kit.get` fa `findFirst` senza `select` e Prisma selezionava una colonna che a Neon non c'era.
+> L'ho previsto e scritto nella PR, nell'handoff e nel messaggio di chiusura — e non è servito a
+> niente, perché **scriverlo non è lanciarlo**. È stato l'utente a scoprirlo provando l'app.
+> Regola per la prossima volta: la migrazione parte **nella stessa finestra del merge**, e chi
+> mergia lo sa perché gliel'ha detto qualcuno, non perché è scritto in un documento.
 >
 > Spec/piano: `docs/superpowers/{specs,plans}/2026-07-30-kit-entrata*`.
 >

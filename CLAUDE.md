@@ -342,7 +342,7 @@ la battuta dell'anta (15/18/20 → `.22`/`.24`/`.26`/`.34`/`.36`) sia la sede te
 più chiesta · tabelle di **codici interi** (`A50904.22` **non esiste**) · **ricalcolo versionato**
 garantito nel router (una distinta emessa non si riscrive: se ne crea una nuova versione) · **gate
 su catalogo reale**. Test **709**.
-+ **ENTRATA MANIGLIA ✅ (PR #40 APERTA)**, branch `claude/handoff-workflow-choice-u7hvc9`: chiude
++ **ENTRATA MANIGLIA ✅ (PR #40 MERGIATA, ops eseguite)**, branch `claude/handoff-workflow-choice-u7hvc9`: chiude
 l'ultimo parametro che il motore decideva da sé. La cremonese era cablata in **entrata 15**
 (`A50122.15.NN`) dalla Fase 1d, senza guardia, perché il campo **non esisteva nell'input**: un
 serramento a entrata 7,5 riceveva **in silenzio** il codice della 15 — che esiste, ha un prezzo e
@@ -364,18 +364,20 @@ fallire il test col proprio nome (e ha scovato subito che la vasistas ignora
 `supplementaryClosures`, legittimo e ora dichiarato). Gate: typecheck·lint·**test 748**·build ·
 **gate su catalogo reale 29 casi** · **browser 375px e desktop**. Distinte reali su catalogo
 importato (7.488 prodotti): entrata 15 → **16 righe / 21 pezzi / 90,20 €** (golden invariato) ·
-entrata 7,5 → **16 / 21 / 96,29 €**, cremonese `A50122.08.07`, zero warning. **🔴 AZIONI OPS AL
-MERGE**: solo **`migrate deploy`** (`20260730160444_kit_entrata`), niente re-import e niente seed —
-ma **nella stessa finestra del deploy**, perché `kit.get` seleziona anche la colonna nuova e prima
-della migrazione andrebbero in 500 le **letture**, non solo le creazioni.
+entrata 7,5 → **16 / 21 / 96,29 €**, cremonese `A50122.08.07`, zero warning. **AZIONI OPS ESEGUITE**
+(run `30572337032`, 2026-07-30 19:11Z, 12/12 verdi: migrate `20260730160444_kit_entrata` + import
++ seed + embed). ⚠️ **Lezione pagata sul campo**: fra il merge (18:33Z) e la migrazione (18:53Z)
+la produzione è rimasta **rotta venti minuti** — `kit.get` fa `findFirst` senza `select`, quindi
+prima della migrazione fallivano le **letture**, non solo le creazioni. Alla prossima migrazione
+il run ops parte **nella stessa finestra del merge**: scriverlo nella PR non basta.
 Spec/piano: `docs/superpowers/{specs,plans}/2026-07-30-kit-entrata*`.
 
 **▶ PROSSIMA SESSIONE — SCELTA FRA TRE STRADE.** L'entrata era la quarta di quattro ed è fatta.
 Restano: **scontistica cliente** (la consigliata — oggi i totali sono il **lordo di listino AGB**,
 non ciò che il cliente paga, e `Customer` ha già a schema `discount`/`priceList`/`paymentTerms`
 inutilizzati) · **schemi cliente + composer chiusure** (§3.5-3.7 della spec 2026-07-29) · **varianti
-componenti** (la spec le tiene fuori scope finché la distinta è incompleta). **Prima di scegliere,
-due domande**: la PR #40 è mergiata e le ops eseguite? E soprattutto — **sono arrivate le tre
+componenti** (la spec le tiene fuori scope finché la distinta è incompleta). **Prima di scegliere**: la PR #40 è mergiata e le ops sono eseguite, quindi resta una sola
+domanda — **sono arrivate le tre
 distinte reali** di MC, Peruzzi e Fosca? Aperta da due sessioni, è la cosa che vale di più: senza,
 i tre clienti principali ricevono distinte mai confrontate con un ordine vero, e la formula della
 corsa delle chiusure resta una retta tirata per un punto solo. Debito noto e circoscritto: il gate
