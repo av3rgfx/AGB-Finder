@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createTRPCRouter, createCallerFactory, type TRPCContext } from "@/server/api/trpc";
+import { ENGINE_VERSION } from "@/server/kit/engine";
 import { kitRouter } from "./kit";
 
 const appRouter = createTRPCRouter({ kit: kitRouter });
@@ -70,6 +71,33 @@ describe("kit.create", () => {
     });
   });
 
+  it("inoltra geometry e seatConfig nel payload create (colonne KitRequest)", async () => {
+    // Stessa ragione degli altri due test di inoltro: la riga È l'input di ogni
+    // rigenerazione, e senza la colonna Prisma risponde «Unknown argument» solo a
+    // runtime (il typecheck non lo vede). Senza questa asserzione si potevano
+    // cancellare `geometry`/`seatConfig` dal `branch` del router e la suite
+    // restava verde: `kitInputFromRequest` avrebbe poi rifiutato ogni riga ARTECH.
+    requestCount.mockResolvedValue(0);
+    requestCreate.mockImplementation(({ data }) => Promise.resolve({ id: "k1", ...data }));
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await caller.kit.create({ ...validInput, geometry: "A12_I9_B18", seatConfig: "SEDE_30" });
+    expect(requestCreate.mock.calls[0]![0].data).toMatchObject({
+      geometry: "A12_I9_B18",
+      seatConfig: "SEDE_30",
+    });
+  });
+
+  it("seatConfig omesso → il default zod STANDARD finisce a DB (nessun default a DB)", async () => {
+    // La colonna non ha `@default` a schema Prisma (un default DB valorizzerebbe
+    // anche le righe TOUR e mascherebbe una sede 30 legacy): l'unico default è
+    // quello di zod, e deve arrivare fino alla riga.
+    requestCount.mockResolvedValue(0);
+    requestCreate.mockImplementation(({ data }) => Promise.resolve({ id: "k1", ...data }));
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await caller.kit.create({ ...validInput, seatConfig: undefined });
+    expect(requestCreate.mock.calls[0]![0].data).toMatchObject({ seatConfig: "STANDARD" });
+  });
+
   it("inoltra supplementaryClosures nel payload create (persistito su colonna KitRequest)", async () => {
     requestCount.mockResolvedValue(0);
     requestCreate.mockImplementation(({ data }) => Promise.resolve({ id: "k1", ...data }));
@@ -130,9 +158,20 @@ describe("kit.generate", () => {
     expect(componentCreateMany).toHaveBeenCalled();
     const rows = componentCreateMany.mock.calls[0]![0].data;
     expect(rows[0]).toMatchObject({ kitRequestId: "k1", componentCode: expect.any(String), ruleId: expect.any(String) });
+    // `engineVersion` è timbrata sulla riga (colonna, non più solo dentro il JSON):
+    // è ciò che permetterà al ricalcolo versionato di dire quali distinte le ha
+    // prodotte il motore vecchio. Senza questa asserzione si poteva cancellare la
+    // riga dal router e la suite restava verde, con la colonna sempre NULL.
     expect(requestUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ status: "COMPLETED", totalComponents: 12 }) }),
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "COMPLETED",
+          totalComponents: 12,
+          engineVersion: ENGINE_VERSION,
+        }),
+      }),
     );
+    expect(output.engineVersion).toBe(ENGINE_VERSION);
     expect(activityCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ type: "KIT_GENERATED" }) });
   });
 

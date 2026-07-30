@@ -280,10 +280,19 @@ model KitRequest {
 
   // ── Geometria: SOLO serie ARTECH ─────────────────────────────────────────
   // Un discriminatore unico al posto dei quattro numerici. Le vecchie colonne
-  // restano nullable come LEGACY: nessun modulo le legge (dichiarato in
-  // no-silent-fields.test.ts), servono solo a non perdere lo storico.
+  // restano nullable come LEGACY: la garanzia che nessun modulo le legga è
+  // `PersistedKitRequest` in `src/server/kit/from-request.ts`, che le ESCLUDE
+  // deliberatamente dalla forma della riga usata per rigenerare — quindi non
+  // c'è modo di leggerle. Servono solo a non perdere lo storico.
+  //
+  // NESSUN `@default` a livello DB su `seatConfig`: un default DB valorizzerebbe
+  // TUTTE le righe pre-esistenti (comprese le TOUR, che non hanno sede) e
+  // tradurrebbe in silenzio una riga legacy `seat_mm = 30` in `STANDARD`,
+  // scavalcando `assertSeatConfigSupportata`. Il default sta nello schema zod
+  // (`kit/types.ts`), dove è un default *dell'input*, e nel backfill della
+  // migrazione, dove è *derivato* da `seat_mm`.
   geometry   ArtechGeometry?
-  seatConfig SeatConfig?     @default(STANDARD) @map("seat_config")
+  seatConfig SeatConfig?     @map("seat_config")
 
   openingSide HingeSide?        @map("opening_side")
   openingDir  OpeningDirection? @map("opening_direction")
@@ -299,9 +308,14 @@ model KitRequest {
 
   /// Versione del motore che ha prodotto la distinta.
   engineVersion  String?     @map("engine_version")
-  /// Ricalcolo versionato (Task 5): la nuova versione punta a quella che sostituisce.
+  /// Ricalcolo versionato (Task 5): la riga VECCHIA punta alla nuova che la
+  /// sostituisce. Il verso è quello del nome del campo — «superseded BY» — ed è
+  /// quello che scrive il ricalcolo: `update(where: vecchia, { supersededById: nuova })`.
+  /// Così la riga emessa al cliente resta intatta e sa dove sta la revisione.
   supersededById String?     @unique @map("superseded_by_id")
+  /// Sulla riga vecchia: la versione che l'ha sostituita (più recente).
   supersededBy   KitRequest? @relation("KitRequestVersione", fields: [supersededById], references: [id])
+  /// Sulla riga nuova: la versione che questa sostituisce (più vecchia).
   supersedes     KitRequest? @relation("KitRequestVersione")
 
   // ── Serie TOUR (bilico) ──────────────────────────────────────────────────

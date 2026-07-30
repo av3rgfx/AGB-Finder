@@ -3,7 +3,21 @@ import type { PrismaClient } from "@prisma/client";
 import { KitGenerationError, kitInputSchema, type KitLine } from "./types";
 import { resolveRuleModule } from "./registry";
 
-export const ENGINE_VERSION = "1d.1";
+/**
+ * Versione del codice-regole, timbrata su ogni distinta (`kit_requests.engine_version`).
+ *
+ * `1d.2` (2026-07-30) segna il **cutover della geometria**: `geometry` + `seatConfig`
+ * al posto dei quattro campi numerici liberi (aria/interasse/battuta/sede), con i
+ * codici geometria-dipendenti presi dalla tabella `artech-geometrie.ts` invece dei
+ * soli codici del pilota. Va incrementata QUI, in questo cambio, perché è la stessa
+ * migrazione che promuove il valore a colonna interrogabile: il ricalcolo versionato
+ * (Task 5) deve poter rispondere a «quali righe le ha prodotte il motore vecchio»,
+ * e con la stessa stringa prima e dopo non potrebbe.
+ *
+ * Regola: si incrementa ogni volta che il codice-regole può emettere righe diverse
+ * per lo stesso input.
+ */
+export const ENGINE_VERSION = "1d.2";
 
 export interface PricedKitLine extends KitLine {
   productId: string | null;

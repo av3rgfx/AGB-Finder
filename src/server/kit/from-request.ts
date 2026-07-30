@@ -57,11 +57,12 @@ export function kitInputFromRequest(row: PersistedKitRequest): KitInput {
           ...common,
           series: row.series,
           geometry: row.geometry,
-          // Le due colonne hanno un default a schema, ma una riga scritta prima
+          // Le due colonne hanno un default nello schema **zod** (non a DB: a DB
+          // sono nullable senza default, di proposito), e una riga scritta prima
           // della migrazione può averle a NULL: qui si applica lo stesso default
-          // dello schema zod invece di far fallire il parse su un dato che ha una
-          // lettura sola. `geometry`, che di default non ne ha, resta NULL e
-          // viene rifiutata — è giusto: nessuno può indovinarla.
+          // zod invece di far fallire il parse su un dato che ha una lettura sola.
+          // `geometry`, che di default non ne ha, resta NULL e viene rifiutata —
+          // è giusto: nessuno può indovinarla.
           seatConfig: row.seatConfig ?? "STANDARD",
           openingSide: row.openingSide,
           openingDir: row.openingDir ?? "TIRARE",
