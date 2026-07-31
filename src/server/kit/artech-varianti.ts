@@ -44,8 +44,9 @@ export { variantiSchema, VARIANTE_IDS, type Varianti, type VarianteId };
  * assente sono lo stesso caso, "lo standard": è la ragione per cui il golden
  * senza varianti resta carattere per carattere identico a prima di questa
  * feature). Vive QUI, non nel modulo, perché qui vivono i default — alcuni
- * privati (`ribaltaDefault`, "NORMALE", "UN_NOTTOLINO") — e duplicarli nel
- * modulo sarebbe una seconda sorgente che può divergere dalla prima.
+ * funzioni (`squadraAngolareDefault`, `ribaltaDefault`), altri costanti
+ * (`INCONTRO_NOTTOLINO_DEFAULT`, `MOVIMENTO_ANGOLARE_DEFAULT`) — e duplicarli
+ * nel modulo sarebbe una seconda sorgente che può divergere dalla prima.
  */
 function etichettaSeNonStandard<T extends string>(
   scelta: T | undefined,
@@ -240,6 +241,14 @@ export function incontroRibaltaEtichettaSeNonStandard(
 
 export type IncontroNottolinoId = NonNullable<Varianti["incontroNottolino"]>;
 
+/**
+ * Default = il codice che il motore emette oggi senza scelta esplicita. Unica
+ * fonte per codice ED etichetta (Rilievo 1, review Task 5): prima "NORMALE"
+ * era scritto due volte, e cambiarlo in un solo punto avrebbe disallineato in
+ * silenzio la descrizione dal codice emesso.
+ */
+const INCONTRO_NOTTOLINO_DEFAULT: IncontroNottolinoId = "NORMALE";
+
 export const INCONTRO_NOTTOLINO_LABEL: Record<IncontroNottolinoId, string> = {
   NORMALE: "Normale",
   ANTIEFFRAZIONE_INCLINATE: "Antieffrazione, viti inclinate",
@@ -287,7 +296,7 @@ export function incontroNottolinoVariante(
   scelta: IncontroNottolinoId | undefined,
 ): string {
   const k = chiaveIncontri(geometry);
-  const id = scelta ?? "NORMALE";
+  const id = scelta ?? INCONTRO_NOTTOLINO_DEFAULT;
   const perChiave = INCONTRO_NOTTOLINO[id][k];
   if (perChiave === undefined)
     throw new KitGenerationError(
@@ -302,10 +311,18 @@ export function incontroNottolinoVariante(
 export function incontroNottolinoEtichettaSeNonStandard(
   scelta: IncontroNottolinoId | undefined,
 ): string | undefined {
-  return etichettaSeNonStandard(scelta, "NORMALE", INCONTRO_NOTTOLINO_LABEL);
+  return etichettaSeNonStandard(scelta, INCONTRO_NOTTOLINO_DEFAULT, INCONTRO_NOTTOLINO_LABEL);
 }
 
 export type MovimentoAngolareId = NonNullable<Varianti["movimentoAngolare"]>;
+
+/**
+ * Default = il codice che il motore emette oggi senza scelta esplicita. Unica
+ * fonte per codice ED etichetta (Rilievo 1, review Task 5): prima
+ * "UN_NOTTOLINO" era scritto due volte, e cambiarlo in un solo punto avrebbe
+ * disallineato in silenzio la descrizione dal codice emesso.
+ */
+const MOVIMENTO_ANGOLARE_DEFAULT: MovimentoAngolareId = "UN_NOTTOLINO";
 
 export const MOVIMENTO_ANGOLARE_LABEL: Record<MovimentoAngolareId, string> = {
   UN_NOTTOLINO: "Un nottolino",
@@ -323,14 +340,14 @@ const MOVIMENTO_ANGOLARE_CODICI: Record<MovimentoAngolareId, string> = {
 };
 
 export function movimentoAngolareCodice(scelta: MovimentoAngolareId | undefined): string {
-  return MOVIMENTO_ANGOLARE_CODICI[scelta ?? "UN_NOTTOLINO"];
+  return MOVIMENTO_ANGOLARE_CODICI[scelta ?? MOVIMENTO_ANGOLARE_DEFAULT];
 }
 
 /** Etichetta SOLO se la scelta differisce da UN_NOTTOLINO; vedi `etichettaSeNonStandard`. */
 export function movimentoAngolareEtichettaSeNonStandard(
   scelta: MovimentoAngolareId | undefined,
 ): string | undefined {
-  return etichettaSeNonStandard(scelta, "UN_NOTTOLINO", MOVIMENTO_ANGOLARE_LABEL);
+  return etichettaSeNonStandard(scelta, MOVIMENTO_ANGOLARE_DEFAULT, MOVIMENTO_ANGOLARE_LABEL);
 }
 
 /**

@@ -4,14 +4,19 @@ import { KitGenerationError } from "./types";
 import { artechAntaRibaltaLegno } from "./rules-artech-legno";
 
 /**
- * Rilievo 3 (review Task 5): le posizioni la cui `position, code, quantity`
- * differiscono fra due distinte, confrontate per POSIZIONE (non per indice —
- * un riordino non deve poter mascherare un cambio). Usata per provare che una
- * variante cambia SOLO la propria riga: nessun'altra, non solo nel codice ma
- * anche nella quantità.
+ * Rilievo 3 (review Task 5): le posizioni la cui `position, code, quantity,
+ * ruleDescription` differiscono fra due distinte, confrontate per POSIZIONE
+ * (non per indice — un riordino non deve poter mascherare un cambio). Usata
+ * per provare che una variante cambia SOLO la propria riga: nessun'altra, non
+ * solo nel codice ma anche nella quantità e nella descrizione.
+ *
+ * `ruleDescription` in firma è il Rilievo 2 (review Task 5): senza, il test
+ * non si accorgerebbe di una variante che alterasse per errore la descrizione
+ * di UN'ALTRA riga — proprio il territorio aperto dalla decisione sulle
+ * descrizioni (etichetta solo se non-standard).
  */
 function posizioniDiverse(a: KitLine[], b: KitLine[]): string[] {
-  const firma = (l: KitLine) => `${l.code}|${l.quantity}`;
+  const firma = (l: KitLine) => `${l.code}|${l.quantity}|${l.ruleDescription}`;
   const daB = new Map(b.map((l) => [l.position, firma(l)]));
   return a.filter((l) => firma(l) !== daB.get(l.position)).map((l) => l.position);
 }
@@ -519,6 +524,25 @@ describe("varianti componente", () => {
     expect(mod).toHaveLength(16);
     expect(posizioniDiverse(mod, base_)).toEqual(["movimento-angolare"]);
     expect(mod.find((r) => r.position === "movimento-angolare")!.code).toBe("A50302.02.02");
+  });
+
+  // Rilievo 3 (review Task 5): le quattro varianti sopra SOSTITUISCONO un
+  // codice, e ciascuna ha già un test di ortogonalità. Il piastrino invece
+  // AGGIUNGE una riga (`artech-varianti.ts` la chiama l'eccezione dichiarata) e
+  // finora era provato solo cumulativamente insieme ad altre due varianti. Qui
+  // isolato: SOLO una riga in più, e le 16 preesistenti — codice, quantità E
+  // descrizione — restano quelle di `golden`.
+  it("il piastrino aggiunge SOLO una riga, senza toccare le preesistenti", () => {
+    const base_ = artechAntaRibaltaLegno.generate(golden);
+    const mod = artechAntaRibaltaLegno.generate({
+      ...golden,
+      variants: { piastrinoAntieffrazione: true },
+    });
+    expect(mod).toHaveLength(17);
+    expect(posizioniDiverse(mod, base_)).toEqual(["piastrino-antieffrazione"]);
+    const riga = mod.find((r) => r.position === "piastrino-antieffrazione")!;
+    expect(riga.code).toBe("A20050.00.02"); // golden: entrata E15
+    expect(riga.quantity).toBe(1);
   });
 
   it("l'antieffrazione completa: 17 righe / 22 pezzi", () => {
