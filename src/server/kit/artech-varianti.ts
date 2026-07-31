@@ -37,6 +37,25 @@ export { variantiSchema, VARIANTE_IDS, type Varianti, type VarianteId };
  * FONTI: squadra angolare p0451-0452 (449-450).
  */
 
+/**
+ * Vera per tutte e quattro le varianti che sostituiscono un codice — Rilievo 2
+ * (review Task 5): la descrizione di riga deve dichiarare la variante SOLO
+ * quando la scelta differisce dallo standard di questo contesto (esplicita o
+ * assente sono lo stesso caso, "lo standard": è la ragione per cui il golden
+ * senza varianti resta carattere per carattere identico a prima di questa
+ * feature). Vive QUI, non nel modulo, perché qui vivono i default — alcuni
+ * privati (`ribaltaDefault`, "NORMALE", "UN_NOTTOLINO") — e duplicarli nel
+ * modulo sarebbe una seconda sorgente che può divergere dalla prima.
+ */
+function etichettaSeNonStandard<T extends string>(
+  scelta: T | undefined,
+  standard: T,
+  labels: Record<T, string>,
+): string | undefined {
+  const id = scelta ?? standard;
+  return id === standard ? undefined : labels[id];
+}
+
 export type SquadraAngolareId = NonNullable<Varianti["squadraAngolare"]>;
 
 /** Etichette italiane, per la UI. */
@@ -131,6 +150,14 @@ export function squadraAngolare(
   return perGeo[mano];
 }
 
+/** Etichetta SOLO se la scelta differisce dallo standard di questa geometria; vedi `etichettaSeNonStandard`. */
+export function squadraAngolareEtichettaSeNonStandard(
+  geometry: ArtechGeometryId,
+  scelta: SquadraAngolareId | undefined,
+): string | undefined {
+  return etichettaSeNonStandard(scelta, squadraAngolareDefault(geometry), SQUADRA_ANGOLARE_LABEL);
+}
+
 type Mano = "DESTRA" | "SINISTRA";
 const ambidestro = (code: string): PerMano => ({ DESTRA: code, SINISTRA: code });
 
@@ -199,6 +226,18 @@ export function incontroRibaltaVariante(
   return perChiave[mano];
 }
 
+/** Etichetta SOLO se la scelta differisce dallo standard di questo formato; vedi `etichettaSeNonStandard`. */
+export function incontroRibaltaEtichettaSeNonStandard(
+  geometry: ArtechGeometryId,
+  scelta: IncontroRibaltaId | undefined,
+): string | undefined {
+  return etichettaSeNonStandard(
+    scelta,
+    ribaltaDefault(chiaveIncontri(geometry)),
+    INCONTRO_RIBALTA_LABEL,
+  );
+}
+
 export type IncontroNottolinoId = NonNullable<Varianti["incontroNottolino"]>;
 
 export const INCONTRO_NOTTOLINO_LABEL: Record<IncontroNottolinoId, string> = {
@@ -259,6 +298,13 @@ export function incontroNottolinoVariante(
   return perChiave[mano];
 }
 
+/** Etichetta SOLO se la scelta differisce dal NORMALE; vedi `etichettaSeNonStandard`. */
+export function incontroNottolinoEtichettaSeNonStandard(
+  scelta: IncontroNottolinoId | undefined,
+): string | undefined {
+  return etichettaSeNonStandard(scelta, "NORMALE", INCONTRO_NOTTOLINO_LABEL);
+}
+
 export type MovimentoAngolareId = NonNullable<Varianti["movimentoAngolare"]>;
 
 export const MOVIMENTO_ANGOLARE_LABEL: Record<MovimentoAngolareId, string> = {
@@ -278,6 +324,13 @@ const MOVIMENTO_ANGOLARE_CODICI: Record<MovimentoAngolareId, string> = {
 
 export function movimentoAngolareCodice(scelta: MovimentoAngolareId | undefined): string {
   return MOVIMENTO_ANGOLARE_CODICI[scelta ?? "UN_NOTTOLINO"];
+}
+
+/** Etichetta SOLO se la scelta differisce da UN_NOTTOLINO; vedi `etichettaSeNonStandard`. */
+export function movimentoAngolareEtichettaSeNonStandard(
+  scelta: MovimentoAngolareId | undefined,
+): string | undefined {
+  return etichettaSeNonStandard(scelta, "UN_NOTTOLINO", MOVIMENTO_ANGOLARE_LABEL);
 }
 
 /**

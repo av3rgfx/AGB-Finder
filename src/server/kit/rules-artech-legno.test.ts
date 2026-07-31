@@ -1,7 +1,20 @@
 import { describe, it, expect } from "vitest";
-import type { ArtechKitInput } from "./types";
+import type { ArtechKitInput, KitLine } from "./types";
 import { KitGenerationError } from "./types";
 import { artechAntaRibaltaLegno } from "./rules-artech-legno";
+
+/**
+ * Rilievo 3 (review Task 5): le posizioni la cui `position, code, quantity`
+ * differiscono fra due distinte, confrontate per POSIZIONE (non per indice —
+ * un riordino non deve poter mascherare un cambio). Usata per provare che una
+ * variante cambia SOLO la propria riga: nessun'altra, non solo nel codice ma
+ * anche nella quantità.
+ */
+function posizioniDiverse(a: KitLine[], b: KitLine[]): string[] {
+  const firma = (l: KitLine) => `${l.code}|${l.quantity}`;
+  const daB = new Map(b.map((l) => [l.position, firma(l)]));
+  return a.filter((l) => firma(l) !== daB.get(l.position)).map((l) => l.position);
+}
 
 /**
  * Input pilota (ADR 2026-07-04 + emendamento 2026-07-04-fase1d-emendamento-legno):
@@ -357,22 +370,155 @@ describe("artechAntaRibaltaLegno — entrata maniglia", () => {
 describe("varianti componente", () => {
   const golden: ArtechKitInput = { ...base, supplementaryClosures: true };
 
-  it("IL GOLDEN NON SI MUOVE senza varianti: 16 righe / 21 pezzi", () => {
+  it("IL GOLDEN NON SI MUOVE senza varianti: 16 righe / 21 pezzi, nell'ORDINE storico (Rilievo 1)", () => {
     const l = artechAntaRibaltaLegno.generate(golden);
     expect(l).toHaveLength(16);
     expect(l.reduce((s, x) => s + x.quantity, 0)).toBe(21);
+    // Sequenza ASSOLUTA delle posizioni, non solo il conteggio: un riordino di
+    // FISSI o uno spostamento di un `push()` deve far fallire questo test.
+    // Ricavata eseguendo il codice (non indovinata) — vedi task-5-report.md
+    // per le due esecuzioni (rotta col push spostato, verde dopo il ripristino).
+    expect(l.map((r) => r.position)).toEqual([
+      "cremonese",
+      "forbice-corpo",
+      "forbice-braccio",
+      "squadra-angolare",
+      "supporto-cerniera",
+      "coperture-kit",
+      "movimento-angolare",
+      "perno-supporto-forbice",
+      "supporto-forbice",
+      "incontro-dss",
+      "incontro-ribalta",
+      "incontri-nottolino",
+      "chiusura-angolo",
+      "chiusura-prolunga-200",
+      "chiusura-prolunga-600",
+      "chiusura-terminale",
+    ]);
   });
 
-  it("la squadra angolare base cambia SOLO la sua riga", () => {
+  // Rilievo 2 (review Task 5): il vincolo duro deciso dall'utente — la
+  // descrizione dichiara la variante SOLO quando differisce dallo standard.
+  // Senza varianti (o con la scelta esplicita uguale allo standard) le 16
+  // `ruleDescription` restano IDENTICHE, carattere per carattere, a quelle di
+  // prima della feature (catturate eseguendo il codice pre-Rilievo-2).
+  it("le 16 ruleDescription restano IDENTICHE a oggi quando non si sceglie alcuna variante", () => {
+    const l = artechAntaRibaltaLegno.generate(golden);
+    expect(l.map((r) => r.ruleDescription)).toEqual([
+      "Cremonese A/R entrata 15 mm per altezza anta 1820 mm (hbb 1810)",
+      "Corpo forbice legno per larghezza anta 550 mm",
+      "Braccio forbice legno battuta 20 interasse 13 sinistra per larghezza 550 mm",
+      "Squadra angolare legno aria 12 interasse 13 battuta 20 SINISTRA",
+      "Supporto cerniera parte telaio aria 12 battuta 20 SINISTRA",
+      "Kit copertura supporto forbice + supporto cerniera ARGENTO SINISTRA",
+      "Movimento angolare 125x125",
+      "Perno per supporto forbice",
+      "Supporto forbice legno aria 12 battuta 20",
+      "Incontro DSS aria 12 asse 9x18",
+      "Incontro ribalta aria 12 asse 9x18",
+      "Incontri nottolino aria 12 asse 9x18 · passo 600 mm",
+      "Angolare verticale chiusura supplementare",
+      "Prolunga 200",
+      "Prolunga 600",
+      "Terminale non rasabile 600",
+    ]);
+  });
+
+  it("scelta esplicita ma uguale allo standard → le 4 descrizioni restano invariate", () => {
+    const l = artechAntaRibaltaLegno.generate({
+      ...golden,
+      variants: {
+        squadraAngolare: "TRAVERSO_ALU_COMPENSATORE", // standard per A12_I13_B20
+        incontroRibalta: "ZAMA", // standard per il formato 9x18 (aria 12, non asse 9)
+        incontroNottolino: "NORMALE",
+        movimentoAngolare: "UN_NOTTOLINO",
+      },
+    });
+    expect(l.find((r) => r.position === "squadra-angolare")!.ruleDescription).toBe(
+      "Squadra angolare legno aria 12 interasse 13 battuta 20 SINISTRA",
+    );
+    expect(l.find((r) => r.position === "incontro-ribalta")!.ruleDescription).toBe(
+      "Incontro ribalta aria 12 asse 9x18",
+    );
+    expect(l.find((r) => r.position === "incontri-nottolino")!.ruleDescription).toBe(
+      "Incontri nottolino aria 12 asse 9x18 · passo 600 mm",
+    );
+    expect(l.find((r) => r.position === "movimento-angolare")!.ruleDescription).toBe(
+      "Movimento angolare 125x125",
+    );
+  });
+
+  it("scelta NON standard → la descrizione nomina la variante scelta", () => {
+    const l = artechAntaRibaltaLegno.generate({
+      ...golden,
+      variants: {
+        squadraAngolare: "BASE",
+        incontroRibalta: "ACCIAIO_INCLINATE",
+        incontroNottolino: "ANTIEFFRAZIONE_INCLINATE",
+        movimentoAngolare: "DUE_NOTTOLINI",
+      },
+    });
+    expect(l.find((r) => r.position === "squadra-angolare")!.ruleDescription).toBe(
+      "Squadra angolare legno aria 12 interasse 13 battuta 20 SINISTRA · variante: Base",
+    );
+    expect(l.find((r) => r.position === "incontro-ribalta")!.ruleDescription).toBe(
+      "Incontro ribalta aria 12 asse 9x18 · variante: Acciaio, viti inclinate",
+    );
+    expect(l.find((r) => r.position === "incontri-nottolino")!.ruleDescription).toBe(
+      "Incontri nottolino aria 12 asse 9x18 · passo 600 mm · variante: Antieffrazione, viti inclinate",
+    );
+    expect(l.find((r) => r.position === "movimento-angolare")!.ruleDescription).toBe(
+      "Movimento angolare 125x125 · variante: Due nottolini (antieffrazione)",
+    );
+  });
+
+  // Rilievo 3 (review Task 5): estesa alle QUATTRO varianti che sostituiscono
+  // un codice (prima solo la squadra angolare), e confrontata su
+  // position+code+quantity — non solo `code` — così una variante che alterasse
+  // per errore la quantità di un'altra riga farebbe fallire il test.
+  it("la squadra angolare cambia SOLO la sua riga (position, code, quantity)", () => {
     const base_ = artechAntaRibaltaLegno.generate(golden);
     const mod = artechAntaRibaltaLegno.generate({
       ...golden,
       variants: { squadraAngolare: "BASE" },
     });
     expect(mod).toHaveLength(16);
-    const diverse = mod.filter((r, i) => r.code !== base_[i]!.code);
-    expect(diverse.map((r) => r.position)).toEqual(["squadra-angolare"]);
-    expect(diverse[0]!.code).toBe("A50902.36.02"); // golden: mano SINISTRA
+    expect(posizioniDiverse(mod, base_)).toEqual(["squadra-angolare"]);
+    expect(mod.find((r) => r.position === "squadra-angolare")!.code).toBe("A50902.36.02"); // golden: mano SINISTRA
+  });
+
+  it("l'incontro ribalta cambia SOLO la sua riga (position, code, quantity)", () => {
+    const base_ = artechAntaRibaltaLegno.generate(golden);
+    const mod = artechAntaRibaltaLegno.generate({
+      ...golden,
+      variants: { incontroRibalta: "ACCIAIO_INCLINATE" },
+    });
+    expect(mod).toHaveLength(16);
+    expect(posizioniDiverse(mod, base_)).toEqual(["incontro-ribalta"]);
+    expect(mod.find((r) => r.position === "incontro-ribalta")!.code).toBe("A514SX.05.64");
+  });
+
+  it("l'incontro nottolino cambia SOLO la sua riga (position, code, quantity)", () => {
+    const base_ = artechAntaRibaltaLegno.generate(golden);
+    const mod = artechAntaRibaltaLegno.generate({
+      ...golden,
+      variants: { incontroNottolino: "ANTIEFFRAZIONE_INCLINATE" },
+    });
+    expect(mod).toHaveLength(16);
+    expect(posizioniDiverse(mod, base_)).toEqual(["incontri-nottolino"]);
+    expect(mod.find((r) => r.position === "incontri-nottolino")!.code).toBe("A514SX.05.67");
+  });
+
+  it("il movimento angolare cambia SOLO la sua riga (position, code, quantity)", () => {
+    const base_ = artechAntaRibaltaLegno.generate(golden);
+    const mod = artechAntaRibaltaLegno.generate({
+      ...golden,
+      variants: { movimentoAngolare: "DUE_NOTTOLINI" },
+    });
+    expect(mod).toHaveLength(16);
+    expect(posizioniDiverse(mod, base_)).toEqual(["movimento-angolare"]);
+    expect(mod.find((r) => r.position === "movimento-angolare")!.code).toBe("A50302.02.02");
   });
 
   it("l'antieffrazione completa: 17 righe / 22 pezzi", () => {

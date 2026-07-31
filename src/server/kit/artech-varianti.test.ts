@@ -2,12 +2,16 @@ import { describe, it, expect } from "vitest";
 import {
   opzioniSquadraAngolare,
   squadraAngolare,
+  squadraAngolareEtichettaSeNonStandard,
   SQUADRA_ANGOLARE,
   opzioniIncontroRibalta,
   incontroRibaltaVariante,
+  incontroRibaltaEtichettaSeNonStandard,
   opzioniIncontroNottolino,
   incontroNottolinoVariante,
+  incontroNottolinoEtichettaSeNonStandard,
   movimentoAngolareCodice,
+  movimentoAngolareEtichettaSeNonStandard,
   piastrinoCodice,
   avvisiVarianti,
 } from "./artech-varianti";
@@ -166,6 +170,65 @@ describe("antieffrazione", () => {
       }
     },
   );
+});
+
+/**
+ * Rilievo 2 (review Task 5): le `*EtichettaSeNonStandard` — undefined quando
+ * la scelta (esplicita o assente) coincide con lo standard del contesto,
+ * l'etichetta italiana altrimenti. Testate qui a livello di registro, dove
+ * vivono i default; il modulo le usa senza saperne l'implementazione.
+ */
+describe("etichetta se non standard (Rilievo 2)", () => {
+  it("squadra angolare: assente o standard esplicito → undefined", () => {
+    expect(squadraAngolareEtichettaSeNonStandard("A12_I13_B20", undefined)).toBeUndefined();
+    expect(
+      squadraAngolareEtichettaSeNonStandard("A12_I13_B20", "TRAVERSO_ALU_COMPENSATORE"),
+    ).toBeUndefined();
+    // A4_I85_B15 ha uno standard diverso (BASE): stessa scelta, esiti opposti.
+    expect(squadraAngolareEtichettaSeNonStandard("A4_I85_B15", "BASE")).toBeUndefined();
+  });
+
+  it("squadra angolare: scelta diversa dallo standard → l'etichetta italiana", () => {
+    expect(squadraAngolareEtichettaSeNonStandard("A12_I13_B20", "BASE")).toBe("Base");
+    expect(
+      squadraAngolareEtichettaSeNonStandard("A4_I85_B15", "TRAVERSO_ALU"),
+    ).toBe("Per traverso in alluminio");
+  });
+
+  it("incontro ribalta: assente o standard esplicito (ZAMA per aria 12) → undefined", () => {
+    expect(incontroRibaltaEtichettaSeNonStandard("A12_I13_B20", undefined)).toBeUndefined();
+    expect(incontroRibaltaEtichettaSeNonStandard("A12_I13_B20", "ZAMA")).toBeUndefined();
+    // Aria 4 asse 9: lo standard è ACCIAIO_INCLINATE, non ZAMA.
+    expect(incontroRibaltaEtichettaSeNonStandard("A4_I9_B18", "ACCIAIO_INCLINATE")).toBeUndefined();
+  });
+
+  it("incontro ribalta: scelta diversa dallo standard → l'etichetta italiana", () => {
+    expect(incontroRibaltaEtichettaSeNonStandard("A12_I13_B20", "ACCIAIO_INCLINATE")).toBe(
+      "Acciaio, viti inclinate",
+    );
+  });
+
+  it("incontro nottolino: assente o NORMALE esplicito → undefined", () => {
+    expect(incontroNottolinoEtichettaSeNonStandard(undefined)).toBeUndefined();
+    expect(incontroNottolinoEtichettaSeNonStandard("NORMALE")).toBeUndefined();
+  });
+
+  it("incontro nottolino: scelta diversa dal NORMALE → l'etichetta italiana", () => {
+    expect(incontroNottolinoEtichettaSeNonStandard("ANTIEFFRAZIONE_DRITTE")).toBe(
+      "Antieffrazione, viti dritte",
+    );
+  });
+
+  it("movimento angolare: assente o UN_NOTTOLINO esplicito → undefined", () => {
+    expect(movimentoAngolareEtichettaSeNonStandard(undefined)).toBeUndefined();
+    expect(movimentoAngolareEtichettaSeNonStandard("UN_NOTTOLINO")).toBeUndefined();
+  });
+
+  it("movimento angolare: DUE_NOTTOLINI → l'etichetta italiana", () => {
+    expect(movimentoAngolareEtichettaSeNonStandard("DUE_NOTTOLINI")).toBe(
+      "Due nottolini (antieffrazione)",
+    );
+  });
 });
 
 describe("avvisi", () => {

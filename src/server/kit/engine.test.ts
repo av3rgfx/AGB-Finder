@@ -154,6 +154,12 @@ describe("KitEngine.generate", () => {
     } as KitInput;
     const out = await engine.generate(input);
     expect(out.lines.length).toBeGreaterThan(0);
-    expect(out.warnings.some((w) => w.includes("A50302.02.02"))).toBe(true);
+    // Rilievo 4 (review Task 5): `product.findMany` è mockato a lista vuota,
+    // quindi OGNI riga produce un warning «Codice X non a listino» — un
+    // `.includes("A50302.02.02")` sarebbe verde anche se quel warning fosse
+    // il "non a listino" e non l'avviso vero. Si ancora al testo dell'avviso.
+    expect(
+      out.warnings.some((w) => w.includes("per tutte le classi antieffrazione")),
+    ).toBe(true);
   });
 });

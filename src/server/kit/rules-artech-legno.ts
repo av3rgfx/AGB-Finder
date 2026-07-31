@@ -43,13 +43,31 @@ import { incontroDss, formatoIncontro } from "./artech-incontri";
 // funzioni equivalenti di `artech-incontri.ts`/il campo `geo.squadraAngolare`
 // come sorgente del CODICE — con `undefined` restituiscono esattamente lo
 // stesso codice di prima (default = "lo standard del programma").
+// Rilievo 2 (review Task 5): le `*EtichettaSeNonStandard` decidono — dentro il
+// registro, dove vivono i default — se la descrizione deve nominare la
+// variante. Il modulo le chiama e basta: non confronta scelte con default.
 import {
   squadraAngolare,
+  squadraAngolareEtichettaSeNonStandard,
   incontroRibaltaVariante,
+  incontroRibaltaEtichettaSeNonStandard,
   incontroNottolinoVariante,
+  incontroNottolinoEtichettaSeNonStandard,
   movimentoAngolareCodice,
+  movimentoAngolareEtichettaSeNonStandard,
   piastrinoCodice,
 } from "./artech-varianti";
+
+/**
+ * Compone la descrizione base con l'etichetta della variante, SOLO quando
+ * `etichetta` non è `undefined` (cioè quando la scelta differisce dallo
+ * standard). Con `etichetta` sempre `undefined` — nessuna variante scelta, o
+ * scelta uguale allo standard — il risultato è carattere per carattere
+ * `base`: è il vincolo che tiene ferme le 16 `ruleDescription` del golden.
+ */
+function conVariante(base: string, etichetta: string | undefined): string {
+  return etichetta === undefined ? base : `${base} · variante: ${etichetta}`;
+}
 
 type Side = ArtechKitInput["openingSide"];
 
@@ -298,7 +316,10 @@ export const artechAntaRibaltaLegno: RuleModule = {
         code: squadraAngolare(input.geometry, input.openingSide, v.squadraAngolare),
         quantity: 1,
         ruleId: "artech.mano",
-        ruleDescription: `Squadra angolare legno aria ${geo.airGapMm} interasse ${mm(geo.axisOffsetMm)} battuta ${geo.rebateMm} ${input.openingSide}`,
+        ruleDescription: conVariante(
+          `Squadra angolare legno aria ${geo.airGapMm} interasse ${mm(geo.axisOffsetMm)} battuta ${geo.rebateMm} ${input.openingSide}`,
+          squadraAngolareEtichettaSeNonStandard(input.geometry, v.squadraAngolare),
+        ),
       },
       {
         position: "supporto-cerniera",
@@ -324,7 +345,10 @@ export const artechAntaRibaltaLegno: RuleModule = {
       code: movimentoAngolareCodice(v.movimentoAngolare),
       quantity: 2,
       ruleId: "artech.fissi",
-      ruleDescription: "Movimento angolare 125x125",
+      ruleDescription: conVariante(
+        "Movimento angolare 125x125",
+        movimentoAngolareEtichettaSeNonStandard(v.movimentoAngolare),
+      ),
     });
     lines.push(...linesFromParts(FISSI, "artech.fissi"));
 
@@ -351,7 +375,10 @@ export const artechAntaRibaltaLegno: RuleModule = {
         code: incontroRibaltaVariante(input.geometry, input.openingSide, v.incontroRibalta),
         quantity: 1,
         ruleId: "artech.incontri",
-        ruleDescription: `Incontro ribalta aria ${geo.airGapMm} ${formatoIncontro(input.geometry)}`,
+        ruleDescription: conVariante(
+          `Incontro ribalta aria ${geo.airGapMm} ${formatoIncontro(input.geometry)}`,
+          incontroRibaltaEtichettaSeNonStandard(input.geometry, v.incontroRibalta),
+        ),
       },
     );
 
@@ -360,9 +387,11 @@ export const artechAntaRibaltaLegno: RuleModule = {
       code: incontroNottolinoVariante(input.geometry, input.openingSide, v.incontroNottolino),
       quantity: incontriNottolino(input.widthMm, input.heightMm),
       ruleId: "artech.incontri",
-      ruleDescription:
+      ruleDescription: conVariante(
         `Incontri nottolino aria ${geo.airGapMm} ${formatoIncontro(input.geometry)}` +
-        ` · passo ${PILOT.passoVerticaleMm} mm`,
+          ` · passo ${PILOT.passoVerticaleMm} mm`,
+        incontroNottolinoEtichettaSeNonStandard(v.incontroNottolino),
+      ),
     });
 
     // Task 1 (Fase 1g): chiusure supplementari opzionali, default OFF. Il set
