@@ -12,6 +12,13 @@
 > due indici della stessa numerazione divergono al primo aggiornamento.
 >
 > L'audit di `kit_requests` è rimasto in `DA-FARE-audit-e-domande-agb.md`: non è una domanda.
+>
+> 🆕 **2026-07-31 — due domande CHIUSE senza essere state risposte: la 2 e la 30.** Non è un modo
+> di dire. Sono diventate **scelte dell'agente** nel wizard (passo «Componenti»): il programma
+> smette di indovinare, mostra le opzioni che il listino pubblica per quella geometria — col
+> codice, il prezzo e la differenza — e chi ordina decide. Restano qui, con la loro numerazione,
+> perché **la risposta di merito continua a mancare**: sapere quale sia quella giusta permetterebbe
+> di spostare il *default*, che oggi è «ciò che il programma ordina da sempre» e nient'altro.
 
 ---
 
@@ -25,7 +32,7 @@
 | **3b** | **Incontri: il formato `13x18` non esiste** | AGB | 🔴 un dato falso su ogni richiesta |
 | **6** | **Il «listino PVC e ALLUMINIO»** | AGB | 🔴 PVC e alluminio insieme |
 | 3a | Numero di incontri lungo il perimetro | agente o AGB | 🟡 la quantità su ogni distinta |
-| 2 | Squadra angolare: quale delle quattro? | agente | 🟡 4 € a pezzo |
+| ~~2~~ | ~~Squadra angolare: quale delle quattro?~~ | — | ✅ **CHIUSA 31/07**: è una scelta nel wizard |
 | 20 | Cosa è di serie e cosa è opzione | agente | 🟡 sei voci dello schema |
 | 7 | Finestre basse (altezza maniglia < 60 cm) | agente o AGB | 🟡 configurazioni oggi rifiutate |
 | 22 | Quali finiture vendete davvero | agente | 🟡 oggi solo argento |
@@ -33,7 +40,7 @@
 | 23 | La finestra 700×1400 battuta 18 sede 30 | agente | 🟡 **secondo golden**, se esiste |
 | 26 | Il nottolino di Fosca vuole una copertura | agente o AGB | 🟡 una riga mancante sulle geometrie nuove |
 | **29** | **«Incontro nottolino incassato»: quale dei tre assi?** | agente | 🟡 **tre assi che il motore cabla senza chiederli** |
-| **30** | **Antieffrazione: il fungo è per sede 30? viti inclinate o dritte?** | agente | 🔴 **sblocca l'intera feature antieffrazione, codici già pronti** |
+| ~~30~~ | ~~Antieffrazione: il fungo è per sede 30? viti inclinate o dritte?~~ | — | ✅ **CHIUSA 31/07**: sono scelte nel wizard, il fungo è fuori |
 | 25 | Confezioni: si applica il +20% fuori confezione? | AGB o ufficio | 🟡 **i totali di ogni distinta** |
 | 28 | Lo sconto è unico per cliente, o per classe? | AGB o ufficio | 🟡 **il netto di ogni distinta** |
 | 24 | Interasse 8,5: quali incontri? | agente o AGB | 🟡 la famiglia incontri del cliente «MC» |
@@ -124,7 +131,39 @@ cliente, quando lo faremo, e per capire se l'entrata 7,5 vi capita davvero.
 Come lo decidete? C'è una regola pratica (uno ogni tot centimetri) o si legge da una tabella?
 *Oggi è una formula ricavata dal solo esempio che abbiamo, quindi vale su un caso e basta.*
 
-## 2 — Squadra angolare: quale delle quattro?
+## 2 — Squadra angolare: quale delle quattro? — ✅ **CHIUSA il 2026-07-31**
+
+> ### Come è stata chiusa: non rispondendola
+>
+> La domanda non ha ricevuto risposta. **Ha smesso di essere una domanda del programma.**
+>
+> Dal 2026-07-31 la squadra angolare è una **scelta dell'agente** nel passo «Componenti» del
+> wizard. Il programma non indovina più fra le quattro famiglie: mostra **quelle che il listino
+> pubblica per quell'interasse** — con il codice, il nome a catalogo, il prezzo e la differenza
+> rispetto allo standard — e chi ordina sceglie.
+>
+> | Interasse | Opzioni mostrate |
+> |---|---|
+> | **8,5** — il cliente **MC** | **due**: base `A50902.22` 5,77 € · traverso alluminio `A50903.22` 7,54 € |
+> | 9 e 13 — le altre **sei** geometrie | **quattro**: le due sopra + compensatore `A50901.*` 8,05 € · traverso alu + compensatore `A50904.*` 9,83 € |
+>
+> Due e non «quattro di cui due grigie»: `A50901.22` e `A50904.22` **non esistono**, e
+> un'opzione disabilitata sarebbe un'offerta che il listino non fa. **I 36 codici sono scritti
+> per esteso e verificati sul catalogo reale** dal gate `codici-a-listino.integration.test.ts` —
+> nessuna concatenazione, che è precisamente ciò che avrebbe prodotto `A50904.22`.
+>
+> **Il default non si è mosso** (base per `A4_I85_B15`, traverso alu + compensatore per le altre
+> sei): è ciò che il motore emette da sempre, e il golden resta a 90,20 €.
+>
+> ### Cosa resterebbe da sapere
+>
+> La risposta di merito **serve ancora**, e vale meno di prima: non più «quale codice esce», ma
+> «quale opzione deve essere **preselezionata**». Oggi l'etichetta a schermo dice la verità —
+> *«preimpostato su ciò che il programma ordina oggi, mai confrontato con un ordine vero»* — e
+> con una risposta diventerebbe una raccomandazione. La domanda originale resta qui sotto.
+
+---
+
 Il listino ne ha quattro versioni: una base, una «per traverso in alluminio», una «con
 compensatore» e una con tutte e due. Su una finestra **tutta in legno** quale montate?
 *Fra la più economica e quella che usiamo noi ballano 4 € a pezzo.*
@@ -222,7 +261,81 @@ distinta che sappiamo già incompleta.
 cliente una preferenza che il motore applica alla riga sbagliata — cioè un campo raccolto,
 mostrato al cliente, e inerte.*
 
-## 30 — Antieffrazione: due nodi, e la feature è pronta
+> **🆕 2026-07-31 — resta APERTA, ma ora si sa perché è stata rimandata.**
+>
+> Il 31/07 il passo «Componenti» ha reso scelte dell'agente la squadra angolare, l'incontro
+> ribalta e le tre voci antieffrazione. **L'asse (a) — il corpo dell'incontro nottolino `.02` /
+> `.13` — è stato censito ed escluso**, e non per prudenza generica: `A51400.05.13` è marcato
+> `(*)` **«ordinare coperture separatamente»**, quindi offrirlo come opzione significherebbe far
+> scegliere all'agente una distinta che **sappiamo già incompleta** — è la **domanda 20**, ancora
+> aperta. Mostrare una scelta che produce un ordine non ordinabile è peggio del difetto che il
+> passo «Componenti» esiste per chiudere.
+>
+> Anche l'asse **(b)** resta fuori, per una ragione diversa e strutturale: «con perni di
+> posizionamento» tocca **due righe** con una sola scelta (nottolino *e* ribalta), quindi non è
+> una variante nel senso adottato — «una scelta, un codice, una riga».
+>
+> L'asse **(c)**, l'antieffrazione, **è entrato** ed è la domanda 30 qui sotto.
+
+## 30 — Antieffrazione: due nodi — ✅ **CHIUSA il 2026-07-31**
+
+> ### Come è stata chiusa: allo stesso modo della 2, e per esplicita indicazione dell'utente
+>
+> I «due nodi» erano due domande a cui **il listino non risponde**. Messe all'utente, la risposta
+> è stata:
+>
+> > «Non saprei risponderti. Posso solo dirti che secondo me ha senso aggiungere una sezione
+> > finale nel wizard, per decidere e far scegliere in modo semplice e visivo, quando ci sono più
+> > scelte per uno o più componenti che non dipendono dallo schema dello sviluppo del kit ma da
+> > una scelta personale (dell'agente o del cliente).»
+>
+> È un riorientamento, non una richiesta in più: **le due domande smettono di essere un
+> prerequisito**. L'antieffrazione è **tre scelte indipendenti** nel passo «Componenti» —
+> movimento angolare, incontri nottolino, piastrino — più un interruttore «Antieffrazione» che le
+> imposta tutte e tre in un clic e **non viene salvato** (la verità persistita sono le tre
+> scelte: nessuna precedenza da arbitrare).
+>
+> **Nodo 2 — viti inclinate o dritte: il fatto nuovo, e non era noto.** Non si sceglie una volta
+> per tutte: si mostrano **dove esistono**. E per l'**aria 4** il listino pubblica **solo le viti
+> inclinate**, quindi per **MC e Peruzzi le dritte non compaiono affatto** — non disabilitate,
+> proprio assenti. Le due opzioni convivono solo in aria 12.
+>
+> | Chiave incontri | Normale (standard) | Antieffr. viti inclinate | Antieffr. viti dritte |
+> |---|---|---|---|
+> | `A4_ASSE9` — **MC, Peruzzi** | `A514DX/SX.01.02` 0,81 | `A514DX/SX.01.67` 3,03 | **— non pubblicate** |
+> | `A4_ASSE13` | `A48011/A48012.DC.02` 0,87 | `A514DX/SX.DC.67` 3,03 | **— non pubblicate** |
+> | `A12_9x18` — il **golden** | `A51400.05.02` 0,81 | `A514DX/SX.05.67` 3,03 | `A514DX/SX.05.68` 3,03 |
+> | `A12_13x24` — **Fosca** | `A51400.CR.13` 0,89 | `A514DX/SX.CR.67` 3,03 | `A514DX/SX.CR.68` 3,03 |
+>
+> **Nodo 1 — il fungo resta FUORI, e non è una rinuncia.** `A50320.02.01` sta nel capitolo
+> **Movimenti Angolari** con la stessa tabella (DIMENSIONI · LBB · HBB · NOT. · CODICE): *prende
+> il posto* di un movimento angolare, non si aggiunge. E il listino lo lega alla **sede 30 nei due
+> versi**:
+>
+> - `p0435 (433)`, sotto la sua tabella: «*NB: soluzione per serramenti con sede incontri da 30 mm*»;
+> - `p0469 (467)`, nota `(**)` stampata **solo** sulle righe `13x30`: «*necessario utilizzo con
+>   movimenti angolari inferiori doppio nottolino a fungo cod. `A50320.02.01`*».
+>
+> Sede 30 ⟹ fungo **e** fungo ⟹ sede 30. La sede 30 il motore la **rifiuta a monte**
+> (`assertSeatConfigSupportata`: manca l'incontro DSS 13x30 a listino). Il fungo è quindi una
+> **famiglia di schemi diversa**, non una variante: non serviva deciderlo, serviva collocarlo.
+> Il giorno in cui la sede 30 verrà aperta (**domanda 4**), il fungo entra con lei.
+>
+> **Il movimento angolare a due nottolini invece è entrato**, e non era nella richiesta
+> dell'utente: lo impone la **NB stampata** a `p0435 (433)`. L'ha aggiunto il listino.
+>
+> **Effetto sul golden, misurato sul catalogo reale**: standard **16 righe / 21 pezzi / 90,20 €**
+> (invariato) → antieffrazione completa **17 righe / 22 pezzi / 110,13 €**, zero warning. Il
+> «~18 righe / ~112 €» stimato qui sotto era vicino: le righe sono 17 perché il fungo non entra.
+>
+> ### Cosa resterebbe da sapere
+>
+> Come per la 2, la risposta di merito sposterebbe il **default**, non i codici disponibili. In
+> più: se con «nottolino a fungo» l'utente intendeva davvero il movimento angolare a due
+> nottolini, il nodo 1 è già risolto in pieno; se intendeva il pezzo `A50320.02.01`, allora sta
+> ordinando serramenti **sede 30**, e serve la **domanda 4**.
+
+---
 
 **Da dove nasce:** richiesta dell'utente, 2026-07-31 — «*quando si sviluppa un'anta-ribalta bisogna
 chiedere se si vuole il nottolino e l'incontro nottolino antieffrazione o normale*». Alla domanda su
@@ -446,7 +559,9 @@ modulo**. Va tolto dall'input o usato: è una decisione nostra.
 >
 > 4. Il **numero di incontri** lungo il perimetro come lo decidi? C'è una regola pratica?
 > 5. La **squadra angolare** ha quattro versioni (base, per traverso in alluminio, con
->    compensatore, entrambe). Su una finestra tutta in legno quale usi?
+>    compensatore, entrambe). Su una finestra tutta in legno quale usi? *(Dal 31/07 il programma
+>    te le fa scegliere tutte e quattro col prezzo davanti, quindi non è più bloccante: la tua
+>    risposta serve a decidere quale presentare già spuntata.)*
 > 6. Di queste, cosa metti **sempre** e cosa **solo se richiesto**: microventilazione · doppio
 >    nottolino a fungo · spessori di sollevamento · DSS · coperture degli incontri.
 > 7. Le **chiusure supplementari** da quale altezza in su le metti?

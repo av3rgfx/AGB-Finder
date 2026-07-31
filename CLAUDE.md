@@ -477,15 +477,49 @@ più difficile da vedere. Gate: typecheck·lint·**test 883**·build · **browse
 **Nessuna migrazione**; **AZIONI OPS ESEGUITE** (run `30618326143`, 09:15Z, 12/12 verdi: `db:seed` → i tre clienti
 creati su Neon).
 
-+ **🔴 PROSSIMA FEATURE: ANTIEFFRAZIONE** — l'utente l'ha chiesta a fine sessione («cambio entrambi e ci metto anche
-il nottolino a fungo»). Il listino pubblica **due configurazioni** per la stessa finestra, e i nomi ingannano:
-`p0406 (404)` «**sicurezza base**» (sede 30) monta gli incontri della tabella «Antieffrazione» + copertura + doppio
-nottolino a fungo; `p0408 (406)` «**config. antieffrazione RC1/RC2**» monta gli incontri **normali** + un
-**piastrino antieffrazione**. E `p0408` dichiara di essere lo schema per le sedi **diverse** da 30 → è quello della
-nostra sede, il che riduce il «divario 22 voci contro 16» a **due** voci, non sei. Codici tutti verificati sul
-catalogo reale: movimento angolare `A50302.01.02` → **`A50302.02.02`** (NB stampata a p0435 (433): «necessario per
-tutte le classi antieffrazione» — non era nella lista dell'utente, l'ha aggiunto il listino) · incontro
-`A51400.05.02` → `A514DX/SX.05.67` o `.68` · piastrino `A50194.00.01`/`A20050.00.02` **per entrata** · fungo
-`A50320.02.01`. **Due conflitti da sciogliere prima di scrivere codice** (dettagli in `handoff.md`): il fungo porta
-la NB «per sede 30», che nessuno dei tre clienti ha; e viti inclinate o dritte. `A522SX.05.67` **non esiste a
-catalogo**.
++ **ANTIEFFRAZIONE + VARIANTI COMPONENTE ✅ (branch `claude/antieffrazione-feature-dv8d37`, PR DA APRIRE)**:
+l'utente ha chiesto l'antieffrazione per l'anta-ribalta. Preparandola erano emerse **due domande a cui il listino non
+risponde** (il «nottolino a fungo» va su serramenti sede 30? gli incontri si ordinano a viti inclinate o dritte?), e
+la risposta dell'utente ha riorientato il lavoro: «*non saprei risponderti … ha senso aggiungere una sezione finale
+nel wizard, per far scegliere in modo semplice e visivo, quando ci sono più scelte per uno o più componenti che non
+dipendono dallo schema dello sviluppo del kit ma da una scelta personale*». Le due domande sono quindi state
+**risolte non rispondendole**: sono diventate **scelte nella UI** — nuovo passo **«Componenti»**, con codice, nome a
+catalogo, prezzo e differenza davanti. È la **settima** volta che il progetto incontra «una decisione che il motore
+prende da sé e non dichiara» (`openingDir`, entrata, geometria, `PILOT_GEOMETRY`, il default `A12_I13_B20`): le
+prime sei sono state chiuse una alla volta, **questa chiude la classe**. **Domande 2 (squadra angolare) e 30
+(antieffrazione) CHIUSE** — la risposta di merito ora sposterebbe il *default*, non i codici disponibili.
+**(1) Registro `artech-varianti.ts`**: cinque varianti (squadra angolare · incontro ribalta · movimento angolare ·
+incontri nottolino · piastrino), **74 codici scritti per esteso** e verificati sul catalogo reale dal gate — mai
+concatenati, perché `A50904.22` **non esiste** ed è la prima cosa che una formula produrrebbe (è il difetto che ha
+fatto disattivare PVC e battente). La **disponibilità è la tabella**: l'interasse 8,5 di MC vede **due** squadre, le
+altre sei geometrie quattro; e per l'**aria 4** il listino pubblica **solo le viti inclinate**, quindi per MC e
+Peruzzi le dritte **non compaiono affatto**. **(2) Una sola colonna**: `kit_requests.variants JSONB` (migrazione
+`20260731143758_kit_variants`, **solo** `ALTER TABLE … ADD COLUMN`, nessun backfill, nessun `@default` a DB:
+**`NULL` = «lo standard del programma»**). Sta nel **ramo ARTECH** dell'unione discriminata, così una riga TOUR non
+può portarsi addosso varianti ARTECH. **(3) Il «fungo» resta FUORI, ed è collocazione non rinuncia**:
+`A50320.02.01` sta nel capitolo Movimenti Angolari (quindi *sostituisce* un movimento angolare) e il listino lo lega
+alla **sede 30 nei due versi** (NB a p0435 (433); nota `(**)` stampata solo sulle righe `13x30` a p0469 (467)) — la
+sede 30 il motore la rifiuta a monte: è una **famiglia di schemi diversa**, entrerà con la **domanda 4**. Il
+**movimento angolare a due nottolini** invece è entrato e non era nella richiesta dell'utente: **l'ha aggiunto il
+listino** (NB stampata). **(4) Garanzia in due strati contro la variante inerte**: `RuleModule.varianti`
+**obbligatorio** (un modulo nuovo non compila senza averci pensato) e il motore **rifiuta a runtime**, col nome della
+variante, una richiesta che ne porti una non dichiarata; `no-silent-fields` deriva i casi **dalla dichiarazione del
+modulo** con una mutazione **per chiave**, quindi una variante che smettesse di essere letta fa fallire il test **col
+proprio nome** (provato mutilando il modulo). **(5) Ciclo di import reale** fra `types.ts` e `artech-varianti.ts`,
+che si manifestava **solo con certi ordini di caricamento** della suite: sciolto col file foglia
+`src/server/kit/varianti-schema.ts` (solo zod), **protetto da una regola ESLint provata nei due versi**.
+**(6) Due difetti trovati dalla review e corretti**: la potatura al cambio geometria **materializzava a DB uno
+standard** che una richiesta identica scriverebbe `NULL`; e «prezzo non a catalogo» — un'affermazione **sul listino
+AGB** — veniva detta mentre la query stava ancora caricando. **Il golden non si è mosso**: **16 righe / 21 pezzi /
+90,20 €**, gemello entrata 7,5 **96,29 €**; novità, ora sono asseriti anche l'**ordine assoluto delle righe** e le
+**16 descrizioni carattere per carattere**. Con l'**antieffrazione completa**: **17 righe / 22 pezzi / 110,13 €**,
+zero warning. Gate verdi (typecheck·lint·**test 992**·build 18 route) · **integration su catalogo reale 111 test
+eseguiti** · **browser 33 + 10 check** (Chromium desktop e **375px**, screenshot guardati).
+**🔴 AZIONE OPS**: un run di «Ops — Neon» **sul ref del branch, PRIMA del merge** — `kit.get`/`generate`/`ricalcola`
+leggono con `findFirst` **senza `select`**, quindi fra deploy e migrazione fallirebbero le **letture** delle
+richieste, non solo le creazioni (è alla lettera l'incidente da venti minuti della PR #40). **Nessun re-import
+necessario**: i 74 codici sono già tutti a catalogo con prezzo. Debito noto: `nuova-client.tsx` è a **1.979 righe**
+(i ~330 del passo «Componenti» sarebbero estraibili in `src/components/kit/`); «Visualizza nel listino» **per
+singola opzione omesso** (un `<button>` dentro il `<label>` di `RadioOption` è HTML non valido e ruberebbe il clic
+alla radio: servirebbe spezzare `RadioOption`); `dedupeRows` last-wins in `map-product.ts`; preview Vercel rotte su
+ogni PR. Spec/piano: `docs/superpowers/{specs,plans}/2026-07-31-varianti-componenti*`.

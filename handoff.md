@@ -9,210 +9,188 @@
 
 | Campo | Valore |
 |-------|--------|
-| **Data** | 2026-07-31 — sessione **CONCLUSA**. **PR #44 + #45 MERGIATE, ops eseguite** |
+| **Data** | 2026-07-31 — **ANTIEFFRAZIONE + VARIANTI COMPONENTE**: lavoro **completo e verificato**, **PR DA APRIRE** (push non ancora fatto) |
 | **Fase in corso** | Fase 1 — MVP Gestionale |
-| **Sotto-fase** | Kit engine: profilo serramento per cliente · default cablato della geometria tolto · anagrafica completa |
-| **Branch git** | ripartire da `main` (`9ec1a2b`) |
-| **Stato deploy** | **LIVE e ALLINEATO.** Run `30614027728` (migrazione, 08:02Z) e `30618326143` (seed clienti, 09:15Z), entrambi 12/12 verdi. **Nessuna azione ops residua.** |
-| **Aperto** | le **tre distinte reali** · **antieffrazione: 2 domande all'agente** · domanda 29 · preview Vercel rotte · mail ad AGB · audit `kit_requests` · `dedupeRows` |
+| **Sotto-fase** | Kit engine: passo «Componenti» — le scelte che il motore prendeva da sé diventano scelte dell'agente |
+| **Branch git** | `claude/antieffrazione-feature-dv8d37` (ripartito da `main`) — **non pushato** |
+| **Stato deploy** | **LIVE ma NON allineato al branch**: c'è **una migrazione da applicare** (`20260731143758_kit_variants`). Ultimi run: `30614027728` e `30618326143` (31/07, entrambi verdi). |
+| **🔴 Azione ops** | **«Ops — Neon» sul ref del branch, PRIMA del merge** — vedi §RIPRENDI DA QUI. Nessun re-import necessario. |
+| **Aperto** | le **tre distinte reali** (quinta sessione) · domanda 29 · domanda 4 (sede 30 → sblocca il fungo) · preview Vercel rotte · mail ad AGB · audit `kit_requests` · `dedupeRows` |
 
 ---
 
 > **▶ RIPRENDI DA QUI**
 >
-> ### Cosa è stato fatto (2026-07-30/31) — DUE PR, entrambe mergiate
+> ### Cosa è stato fatto (2026-07-31) — passo «Componenti», PR DA APRIRE
 >
-> Il wizard chiedeva geometria ed entrata **a ogni richiesta**, fra 14 combinazioni, e sbagliarle
-> non produce alcun errore: i codici dell'altra combinazione esistono a listino, hanno un prezzo,
-> nessun warning. Ma quelle due quote **non cambiano** fra un ordine e l'altro dello stesso
-> cliente. Ora vivono sul cliente, e si applicano con **un clic esplicito**.
+> L'utente ha chiesto l'**antieffrazione** per l'anta-ribalta. Preparandola erano emerse due
+> domande a cui **il listino non risponde** — il «nottolino a fungo» va su serramenti sede 30?
+> gli incontri si ordinano a viti inclinate o dritte? — e la risposta dell'utente ha
+> riorientato il lavoro:
 >
-> **Gate**: typecheck ✅ · lint ✅ · **test 875** (erano 843) ✅ · build 18 route ✅ ·
-> **integration gated 100 casi** sul catalogo reale (erano 29) · **browser 30/30**
-> (desktop 1440×900 **e 375px**, 24 screenshot **aperti e guardati**).
+> > «Non saprei risponderti. Posso solo dirti che secondo me ha senso aggiungere una sezione
+> > finale nel wizard, per decidere e far scegliere in modo semplice e visivo, quando ci sono
+> > più scelte per uno o più componenti che non dipendono dallo schema dello sviluppo del kit
+> > ma da una scelta personale (dell'agente o del cliente).»
 >
-> **I due riscontri sono intatti, e ora sono ASSERITI davvero:** anta-ribalta entrata 15 →
-> **16 righe / 21 pezzi / 90,20 €** · gemello entrata 7,5 → **16 / 21 / 96,29 €** con
-> `A50122.08.07`. Fino a oggi il gate diceva `totalPrice > 0`.
+> Le due domande sono state quindi **risolte non rispondendole**: sono diventate **scelte nella
+> UI**. È la settima volta che questo progetto incontra lo stesso difetto — `openingDir` mai
+> letto, l'entrata cablata, la geometria cablata, `PILOT_GEOMETRY` ignorata, il default
+> `A12_I13_B20` nel wizard — cioè **una decisione che il motore prende da sé e non dichiara**.
+> Le prime sei sono state chiuse una alla volta; questa chiude la classe.
 >
-> ### Ops: FATTE, nessuna azione residua
+> **Cosa vede l'agente** (passo 4 del wizard, solo ARTECH anta-ribalta legno): «Sicurezza»
+> sempre visibile (Normale / Antieffrazione), con **«Cosa cambia»** — vecchio codice → nuovo, e
+> il Δ unitario; «Modifica le tre scelte» per ordinare un solo componente; «Altre varianti»
+> (squadra angolare, incontro ribalta) dietro un pannello, **aperto d'ufficio se qualcosa è già
+> fuori standard**. Ogni opzione mostra **codice, nome a catalogo, prezzo e differenza**.
 >
-> | Run | Quando | Cosa |
-> |---|---|---|
-> | `30614027728` | 31/07 07:47→08:02Z, **dal branch della PR #44** | migrazione `20260730232026_customer_kit_profile` (due colonne nullable su `customers`, nessun backfill) + import 7.488 + seed + embed |
-> | `30618326143` | 31/07 09:00→09:15Z, da `main` dopo il merge #45 | `db:seed` → **MC, Peruzzi e Fosca creati su Neon** con la loro geometria |
+> **Due domande CHIUSE**: la **2** (squadra angolare) e la **30** (antieffrazione). Non
+> rispondendole: mostrando le opzioni che il listino pubblica per quella geometria. Vedi
+> `kit-assunzioni/DOMANDE-APERTE.md`, che spiega *come* sono state chiuse e cosa resterebbe da
+> sapere (la risposta di merito sposterebbe il **default**, non i codici disponibili).
 >
-> **La migrazione è arrivata su Neon quattordici minuti PRIMA del merge**, ed è la prima volta che
-> la finestra di disservizio è zero. Ha funzionato perché «Ops — Neon» accetta `workflow_dispatch`
-> su un ref qualunque: si lancia dal branch della PR e si mergia dopo. Nella direzione inversa
-> `customer.list` — che ha un `SELECT` esplicito — chiederebbe a Postgres colonne inesistenti, e
-> fallirebbero **le letture** dell'anagrafica, non solo le scritture. Lezione pagata due volte
-> (#40: venti minuti rotti; #42: qualche minuto), finalmente applicata.
+> **Il «fungo» resta fuori, ed è una collocazione, non una rinuncia:** `A50320.02.01` sta nel
+> capitolo Movimenti Angolari (quindi *sostituisce* un movimento angolare) ed è legato alla
+> **sede 30 nei due versi** — NB a `p0435 (433)` e nota `(**)` stampata solo sulle righe `13x30`
+> a `p0469 (467)`. La sede 30 il motore la rifiuta a monte: è una **famiglia di schemi diversa**.
+> Entrerà con la **domanda 4**.
 >
-> **Corollario utile:** l'ordine conta **solo** se c'è una migrazione. La #45 non ne aveva, e
-> infatti è stata mergiata prima e seedata dopo, senza alcun rischio.
+> **Fatto nuovo e dimostrato:** per l'**aria 4** il listino pubblica **solo le viti inclinate**,
+> quindi per **MC e Peruzzi le dritte non compaiono affatto** — non disabilitate, assenti.
 >
-> ### La seconda PR (#45): il pulsante che mancava, e i tre clienti
+> ### 🔴 AZIONE OPS — una sola, e va lanciata PRIMA del merge
 >
-> La `/clienti` della #44 aveva elenco, modifica ed eliminazione ma **non la creazione**: con
-> l'anagrafica vuota — lo stato del primo giorno — l'unico modo di aggiungere un cliente era
-> **iniziare una richiesta kit e poi abbandonarla**. Una pagina «Clienti» da cui non si creano
-> clienti. Segnalato dall'utente, non dai test: nessuna asserzione può accorgersi di un pulsante
-> che non è mai stato pensato.
+> **Migrazione `20260731143758_kit_variants`**, e contiene **solo**:
 >
-> Il form è **lo stesso** della modifica. L'unica differenza vera vive in tre righe di `salva()`:
-> in **creazione** i campi vuoti si **omettono** (`customer.create` li vuole `.optional()`), in
-> **modifica** si mandano a **`null`** (`update` distingue «azzera» da «non toccare»). Un test per
-> ciascun verso.
+> ```sql
+> ALTER TABLE "kit_requests" ADD COLUMN "variants" JSONB;
+> ```
 >
-> **I tre clienti principali sono in anagrafica** — MC (aria 4 · 8,5 · 15), Peruzzi (aria 4 · 9 ·
-> 18), Fosca (aria 12 · 13 · 18) — nel **seed**, non in uno script a parte: l'app è mono-azienda,
-> `pnpm db:seed` gira già a ogni run ops, e così non serve nessuno step nuovo. `upsert` con
-> `update: {}` su `customerCode`: **crea se manca, non tocca se c'è**. Verificato sul DB vero
-> ritoccando a mano sconto ed entrata e rilanciando il seed — il ritocco sopravvive, il conteggio
-> resta 3. Serve, perché il workflow rigira a ogni deploy e altrimenti cancellerebbe ogni
-> correzione dell'agente.
+> Nessun backfill, nessun `@default` a DB: **`NULL` = «lo standard del programma»**, che è
+> esattamente ciò che ogni riga esistente ha oggi. Stesso criterio di `seatConfig`, `entrata`,
+> `discountPercent`.
 >
-> **Entrata e sconto restano NULL, ed è una scelta con un test che la protegge**: l'entrata è la
-> domanda 17, ancora aperta. Inventarne una nel profilo di un cliente vero sarebbe lo stesso
-> difetto chiuso dalla #44 — un valore che nessuno ha scelto — in un posto molto più difficile da
-> vedere.
+> **Lanciare «Ops — Neon» sul ref del branch, prima del merge** (il workflow accetta
+> `workflow_dispatch` su un ref qualunque: è così che la #44 ha avuto disservizio **zero**).
+> Motivo verificato nel codice, non per prudenza: `kit.get`, `kit.generate` e `kit.ricalcola`
+> leggono la richiesta con **`findFirst` senza `select`**, quindi Prisma chiede a Postgres
+> **tutte** le colonne del modello — inclusa `variants`. Fra il deploy e la migrazione
+> fallirebbero le **letture** delle richieste esistenti, non solo le creazioni: è alla lettera
+> l'incidente della PR #40, venti minuti di produzione rotta.
 >
-> ### Il difetto che era già in produzione, e che nessuno cercava
+> **NIENTE re-import del catalogo.** I **74 codici** del registro varianti sono già tutti a
+> catalogo con prezzo — non assunto: il gate `codici-a-listino.integration.test.ts` li conta
+> (`expect(codici.size).toBe(74)`) e li verifica uno per uno sul DB reale, ed è verde.
 >
-> `nuova-client.tsx:57` cablava `geometry: "A12_I13_B20"` — la geometria del cliente del golden.
-> **Ogni nuovo ordine partiva con la geometria di un altro cliente.** L'hanno segnalato tutti e
-> cinque gli advisor del council, indipendentemente, mentre rispondevano a una domanda diversa.
-> Verificato nel file, tolto nel primo commit, isolato.
+> ### I numeri
 >
-> Dieci test navigavano fino al riepilogo **senza scegliere la geometria**, perché gliela regalava
-> il default; uno asseriva perfino `checked === true` sull'unica geometria ammessa dal vasistas.
-> Erano la codifica del difetto, non la sua sentinella.
+> **Il golden NON si è mosso**: **16 righe / 21 pezzi / 90,20 €**, gemello entrata 7,5 a
+> **96,29 €**. Novità di questa sessione: ora sono asseriti anche l'**ordine assoluto** delle
+> righe e le **16 descrizioni carattere per carattere** — prima nessun test si sarebbe accorto
+> di una riga spostata o di una descrizione riscritta.
 >
-> ### Cosa ha cambiato il council (e perché la UI non è quella che avevo proposto)
+> **Con l'antieffrazione completa** (movimento a due nottolini + incontri antieffrazione +
+> piastrino) il golden diventa **17 righe / 22 pezzi / 110,13 €**, zero warning. Misurato sul
+> catalogo reale importato, non stimato.
 >
-> La proposta era **precompilare** geometria ed entrata dal profilo. Il council l'ha respinta: un
-> valore che arriva da un profilo resta un valore che l'agente **non ha scelto in quel momento**,
-> con in più un'etichetta che lo fa *sembrare* verificato — mentre il primo dato lo digita
-> l'agente, dalla stessa memoria che è il punto di rottura.
+> ### La garanzia contro la variante inerte — due strati, nessuno dei due è «ricordarsi di»
 >
-> **Sintesi adottata**, approvata da tutte e tre le peer review: nessun prefill, un pulsante
-> **«Usa il profilo»**. Stesso codice, stessa ergonomia, ma il riempimento è un **atto esplicito**.
-> La regola della #40 («nessun valore preselezionato») regge ora **alla lettera su entrambi i
-> campi**. L'etichetta dice ciò che è vero: *dichiarato in anagrafica, mai confrontato con un
-> ordine*.
+> Il difetto pagato quattro volte da questo progetto è «campo raccolto, validato, persistito e
+> **mai letto da nessun modulo**». Con cinque varianti dentro un blob JSON il rischio si
+> moltiplica, perché per `no-silent-fields` **un blob è un campo**: mutarlo non equivale a
+> mutare ogni variante.
 >
-> **Guadagno non richiesto:** al passo 4 il riepilogo **constata** se la scelta diverge dal
-> profilo. Non blocca — non sappiamo quale delle due dichiarazioni sia giusta — ma è il **primo
-> rilevatore d'errore** che il sistema possieda: oggi nessuno confronta la richiesta di marzo con
-> quella di settembre.
+> 1. **A runtime** — `RuleModule.varianti` è **obbligatorio** (`readonly VarianteId[]`, `[]` per
+>    TOUR e vasistas): ogni modulo dichiara cosa consuma, e un modulo nuovo **non compila** senza
+>    averci pensato. `engine.ts`, in un punto solo, **rifiuta** con `KitGenerationError` — col
+>    nome della variante — una richiesta che ne porti una non dichiarata.
+> 2. **Nei test** — `no-silent-fields.test.ts` deriva i casi **dalla dichiarazione del modulo**,
+>    con una mutazione **per chiave**: una variante che smettesse di essere letta fa fallire il
+>    test **col proprio nome**. Provato mutilando il modulo, non solo scritto.
 >
-> ### 🆕 Domanda 29: l'«incontro nottolino incassato»
+> ### Il ciclo di import, che si vedeva solo a volte
 >
-> L'utente ha chiesto in corsa di mettere nel profilo anche la preferenza per l'**incontro
-> nottolino incassato**. **Non è mappabile a un codice**: «incassato» compare **due volte in 959
-> pagine**, entrambe fuori contesto (p0590 (588) binario, p0628 (626) serratura).
+> `artech-varianti.ts` (registro) e `types.ts` (input del motore) si importano già a vicenda.
+> Mettere `variantiSchema` in uno dei due chiude un **ciclo di valori**: con certi ordini di
+> caricamento della suite, `variantiSchema` risulta `undefined` mentre `artechInputSchema` sta
+> già valutando `variantiSchema.optional()`, e il modulo **crasha a runtime**. Non un'ipotesi:
+> riprodotto eseguendo la suite intera del kit.
 >
-> Il blocco incontri pubblica però **tre assi che il motore cabla senza chiederli**, ed è una
-> scoperta che vale da sola: (**a**) il **corpo** — stesso formato 9x18, due pezzi diversi,
-> `A51400.05.02` piastrina contro `A51400.05.13` corpo pieno, stesso prezzo; (**b**) **«con perni
-> di posizionamento Ø 8x3»**, famiglia `A52200.*` parallela su nottolino, ribalta e DSS; (**c**)
-> **antieffrazione**, p0470 (468), pagina **non citata** fra le fonti di `artech-incontri.ts`,
-> 2,04-3,03 € contro 0,81.
+> Sciolto con un **file foglia**, `src/server/kit/varianti-schema.ts` (solo `zod`, nessun import
+> di progetto), **protetto da una regola ESLint** (`no-restricted-imports` sui pattern `./*` e
+> `../*`, in `.eslintrc.json`) **provata nei due versi**: un import relativo lì dentro fallisce
+> il lint, e senza la regola passa.
 >
-> Due indizi si contraddicono: la descrizione parla di **mano DX/SX**, ma (a) e (b) sono
-> **ambidestri** — ad avere DX/SX è (c). E «fresatura» nel listino è una caratterizzazione della
-> **geometria** (aria 4), non una variante. **Deciso di non indovinare**: il campo entra nel
-> profilo solo dopo la risposta dell'esperto, e il `.13` non è comunque emettibile oggi perché
-> richiede la copertura della **domanda 20**. Testo pronto da inviare in `DOMANDE-APERTE.md`.
+> ### Verifica browser
 >
-> **Collaterale, sulla domanda 20:** ora si sa **quali codici** fanno scattare la copertura —
-> `A51400.CR.13` (13x24, cioè **Fosca**) e gli incontri ribalta `A51400.05.70`/`.CR.70`, **entrambi**
-> marcati `*`; il primo è quello del **golden**. Coperture `A52102.01.44`/`.87`, 0,39 €.
-> Il golden è un ordine reale a 16 righe: **non si tocca** su questa base.
+> **Chromium reale** (desktop 1440px e **375px**): **33 check** sulla prima versione e **10**
+> sulla versione corretta, con gli **screenshot aperti e guardati** (in scratchpad
+> `shots/`). È la lezione del progetto: i verdi non vedono ciò che si vede in un PNG.
 >
-> ### 🔴 ANTIEFFRAZIONE — è la prossima feature, e serve UNA risposta per partire
+> ### Due difetti trovati dalla review, e corretti
 >
-> A fine sessione l'utente ha detto: *«quando si sviluppa un'anta-ribalta bisogna chiedere se si
-> vuole il nottolino e l'incontro nottolino antieffrazione o normale»*, e alla domanda su cosa
-> cambia nell'ordine ha risposto: **«cambio entrambi e ci metto anche il nottolino a fungo»**.
+> 1. **La potatura al cambio geometria materializzava a DB uno standard.** Tornando al passo 3 e
+>    cambiando geometria, una scelta che sulla **nuova** geometria È lo standard veniva
+>    conservata e finiva nella colonna — mentre una richiesta identica creata da zero scrive
+>    `NULL`. Due righe indistinguibili sul serramento, diverse a DB, e il giorno in cui il
+>    default cambia si comportano diversamente.
+> 2. **«Prezzo non a catalogo» affermato mentre la query stava ancora caricando.** È
+>    un'affermazione **sul listino AGB** — la stessa classe di segnale che ha smascherato due
+>    moduli con codici inesistenti — e al primo render è sempre falsa. Ora gli stati sono tre e
+>    distinti (caricamento / errore di rete / assente dal catalogo), con un test per ciascuno.
 >
-> **Il listino pubblica DUE configurazioni per la stessa finestra**, e i nomi ingannano:
+> *(Coda dell'ultimo task: «Senza piastrino» non ha codice, quindi vale **zero per costruzione** e
+> non deve dire «in caricamento»; e `isError` ora si **legge**, non si deduce da «non pending».)*
 >
-> | | `p0406 (404)` «**sicurezza base**», sede 30 | `p0408 (406)` «**config. antieffrazione RC1/RC2**» |
-> |---|---|---|
-> | Incontro nottolino | voce 16 = **«Antieffrazione»** | voce 15 = «Aria 12» — i **normali** |
-> | Pezzo distintivo | voce 22 copertura + voce 9 doppio nottolino a fungo | voce 3 **«Piastrino antieffrazione»** |
-> | Voci | 22 | 18 |
+> ### Gate (tutti eseguiti su questo branch)
 >
-> `p0408` dice esplicitamente «*per serramenti con sede incontri da 30 mm riferirsi agli schemi
-> sede 30*»: quindi **p0408 è lo schema della NOSTRA sede**, non p0406. Il che ridimensiona il
-> famoso «divario 22 voci contro 16»: confrontati con lo schema giusto ne mancano **due** —
-> piastrino antieffrazione e spessori di sollevamento — non sei.
+> | Gate | Esito |
+> |---|---|
+> | `pnpm typecheck` | ✅ |
+> | `pnpm lint` | ✅ nessun warning |
+> | `pnpm test` | ✅ **992 passati**, 117 skippati (i gated), 1109 totali |
+> | `pnpm build` | ✅ 18 route |
+> | integration su catalogo reale | ✅ **111 test eseguiti** (101 `codici-a-listino` + 10 `engine`), **non** skippati |
 >
-> **Tutti i codici verificati sul catalogo reale** (7.488 prodotti):
+> Il gate su catalogo reale si lancia così — senza `INTEGRATION_DATABASE_URL` **passa a vuoto**:
 >
-> | Pezzo | Oggi | Antieffrazione | Fonte |
-> |---|---|---|---|
-> | Movimento angolare | `A50302.01.02` (1 nott.) 6,66 € × 2 | **`A50302.02.02`** (2 nott.) 9,73 € | p0435 (433), **NB stampata**: «necessario per tutte le classi antieffrazione» |
-> | Incontro nottolino | `A51400.05.02` 0,81 € × 5 | `A514DX/SX.05.67` (viti inclinate) o `.68` (dritte) 3,03 € | p0470 (468) |
-> | Piastrino antieffrazione | — | `A50194.00.01` (entrata 7,5) 3,17 € · `A20050.00.02` (entrata 15) 2,69 € | p0432 (430) |
-> | Doppio nottolino a fungo | — | `A50320.02.01` 7,58 € | p0435 (433) |
->
-> Il **movimento angolare** non era nella lista dell'utente ma la NB del listino lo rende
-> obbligatorio: è una scoperta del listino, non un'assunzione. E il **piastrino dipende
-> dall'entrata**, cioè dal campo reso esplicito dalla #40 — ortogonalità gratis.
->
-> **⚠️ DUE CONFLITTI DA SCIOGLIERE PRIMA DI SCRIVERE CODICE:**
->
-> 1. **Il nottolino a fungo porta la NB «soluzione per serramenti con sede incontri da 30 mm»**, e
->    nessuno dei tre clienti è sede 30 (MC e Peruzzi aria 4 senza sede, Fosca sede 24). O l'utente
->    monta il fungo su serramenti sede 30 — e allora è una geometria che il motore oggi **rifiuta a
->    monte** (`assertSeatConfigSupportata`) — oppure con «nottolino a fungo» intende il **movimento
->    angolare a 2 nottolini `A50302.02.02`**, che ha davvero due dentini ed è quello reso
->    obbligatorio dalla NB.
-> 2. **Viti inclinate (`.67`) o dritte (`.68`)?** Stesso prezzo, due codici. *(Nota: `A522SX.05.67`
->    — con perni, mano SX, 9x18 — **non esiste a catalogo**: p0470 pubblica «con perni di posiz.»
->    solo dx per il 9x18, entrambe le mani per il 13x24. Se la scelta cadesse lì, metà dei
->    serramenti non sarebbe ordinabile.)*
->
-> Con quelle due risposte la feature è **una spec breve**: un campo `sicurezza: "BASE" |
-> "ANTIEFFRAZIONE"` sul ramo ARTECH, ortogonale a geometria ed entrata come lo è l'entrata, che
-> sostituisce due righe e ne aggiunge due. Tutti i codici sono già verificati.
->
-> ### Debito chiuso: il gate su catalogo reale
->
-> Fissava `widthMm: 550`, quindi esercitava **1 banda su 5** di `FORBICI` e **1 su 4** di
-> `BRACCI_GRUPPI`: **40 codici braccio esistono, ne verificava 10**. Ora cinque larghezze
-> (400/550/700/900/1100, ciascuna nell'interno **non sovrapposto** della sua banda) × 7 geometrie
-> × 2 mani = **70 casi**, più una **guardia** che fallisce se un domani le bande cambiano e la
-> copertura cala in silenzio. **Tutti verdi**: i 34 codici mai verificati esistono a listino con
-> prezzo — ora dimostrato, non assunto. Il gate passa da 29 a **100 casi**.
->
-> ### Le tre distinte reali: ANCORA NO
->
-> Quarta sessione che la domanda resta aperta. Cercate nel repo, nella scratchpad e negli allegati:
-> non ci sono. Senza, i tre clienti principali ricevono distinte che nessuno ha mai confrontato con
-> un ordine vero, e `corsa = altezza − 420` resta **una retta tirata per un punto**. Basta una
-> foto, purché con **altezza diversa da 1820**.
->
-> 🆕 Da questa sessione i tre clienti **esistono in anagrafica su Neon**, con la loro geometria. Il
-> che rende il confronto più facile: aprire `/richieste/nuova`, scegliere il cliente, «Usa il
-> profilo», generare, e mettere la distinta a fianco della foto dell'ordine.
+> ```bash
+> set -a; source .env; set +a
+> INTEGRATION_DATABASE_URL="$DATABASE_URL" pnpm vitest run \
+>   src/server/kit/codici-a-listino.integration.test.ts \
+>   src/server/kit/engine.integration.test.ts
+> ```
 >
 > ### Debito noto residuo
 >
-> - **`no-silent-fields.test.ts`: `CASI` non è legato a `RULE_MODULES`.** Il giorno che battente o
->   PVC si riaccendono la garanzia non li segue e nulla lo dice.
+> - 🆕 **`nuova-client.tsx` è a 1.979 righe**, e i **~330** del passo «Componenti»
+>   (`ComponentiRibalta`) sarebbero estraibili in `src/components/kit/` senza toccare la logica.
+>   Non fatto: sarebbe stato un refactor dentro una feature.
+> - 🆕 **«Visualizza nel listino» per singola opzione: OMESSO.** Un `<button>` dentro il
+>   `<label>` di `RadioOption` è **HTML non valido** e ruberebbe il clic alla radio; servirebbe
+>   spezzare `RadioOption` (anchor overlay + fratello z-index, come le card dell'archivio).
 > - **`dedupeRows` last-wins** in `map-product.ts` (`T18001.02.93` ha `listinoPage` 561 invece di
 >   551 → «Visualizza nel listino» apre la pagina sbagliata; prezzo non affetto).
 > - **Le preview di Vercel falliscono su OGNI PR** — verificato su #39-#42. Ipotesi mai smentita:
 >   le env sono configurate solo per *Production* e non per *Preview*, e `src/env.ts` valida con
 >   zod e muore al primo `parseEnv`. **Nessun codice da scrivere**, ma una preview che non parte è
 >   un collaudo che non hai.
+> - **`no-silent-fields.test.ts`: `CASI` non è legato a `RULE_MODULES`.** Le **varianti** ora sì
+>   (si derivano dal modulo), i campi di primo livello no: il giorno che battente o PVC si
+>   riaccendono la garanzia non li segue e nulla lo dice.
 > - Il form cabla ancora `seatConfig`, `openingSide`, `widthMm 550`, `heightMm 1820`. Le quote sono
 >   innocue (si digitano sempre); `seatConfig` ha oggi un solo valore ammesso dai moduli, quindi
->   non può sbagliare in silenzio. Dichiarato nella spec §3.5, non risolto.
+>   non può sbagliare in silenzio.
+>
+> ### Le tre distinte reali: ANCORA NO
+>
+> **Quinta sessione** che la domanda resta aperta, ed è la cosa che vale di più: senza, i tre
+> clienti principali ricevono distinte che nessuno ha mai confrontato con un ordine vero, e
+> `corsa = altezza − 420` resta **una retta tirata per un punto solo**. Basta una foto, purché con
+> **altezza diversa da 1820**. I tre clienti sono già in anagrafica su Neon con la loro geometria:
+> aprire `/richieste/nuova`, scegliere il cliente, «Usa il profilo», generare, e mettere la
+> distinta a fianco della foto dell'ordine.
 >
 > ### Lezioni operative da non riscoprire
 >
@@ -220,17 +198,16 @@
 > - **Le legende degli schemi sono immagini**: `pdftoppm -r 150 -png` e **guardarle**. I numeri
 >   `1)…5)` delle tabelle incontri puntano dentro il disegno: senza renderizzare non si sa che
 >   `9x18` esiste in **due corpi diversi**.
+> - 🆕 **Un ciclo di import può manifestarsi solo con certi ordini di caricamento**: verde a file
+>   singolo, rosso a suite intera. Se un `undefined` appare «a caso», sospettare il ciclo — e
+>   chiuderlo con un file foglia **più una regola di lint**, perché il prossimo import relativo lo
+>   riaprirebbe in silenzio.
+> - 🆕 **Quando si aggiunge un campo a un blob JSON, la garanzia non si eredita**: per i test un
+>   blob è **un campo solo**. Derivare i casi dalla dichiarazione del modulo, uno per chiave.
 > - **`jest-dom` NON è configurato**: i soli matcher sono `toBeTruthy`/`toBeNull`/`.textContent`.
->   Metà del piano usava `toBeInTheDocument` e sarebbe esploso a runtime — corretto nella
->   self-review, prima di costare tempo.
 > - **Idiom dei test**: `nuova-client.test.tsx` usa `fireEvent`, i componenti `userEvent`,
 >   **nessuno usa un wrapper** (tRPC mockata a livello di modulo).
-> - 🆕 **Il council risponde anche a domande che non hai fatto.** Cinque advisor su cinque hanno
->   segnalato il default cablato della geometria mentre rispondevano a una domanda sul prefill.
->   Vale la pena dare loro il contesto vero, non solo la domanda.
-> - 🆕 **Guardare gli screenshot, non solo i verdi** — di nuovo. I 30 check del browser erano tutti
->   verdi mentre il campo sconto precompilava **`42.5` col punto** in una UI italiana, due righe
->   sotto una tabella che scrive `−42,5%`. L'ha trovato l'occhio su un PNG.
+> - **Guardare gli screenshot, non solo i verdi.**
 > - **`INTEGRATION_DATABASE_URL` è obbligatoria**: senza, i gate passano **a vuoto**.
 > - **Docker in questo container muore** se `dockerd` è avviato dentro uno script che poi esce:
 >   `setsid nohup dockerd … & disown`, e ricontrollare prima di ogni comando che tocchi il DB.
@@ -250,39 +227,58 @@
 > ≤375px + desktop) → /writing-plans → esecuzione TDD; /ponytail per il codice.
 > Vincoli CLAUDE.md: TS strict, API via tRPC/Prisma, UI in italiano, codici in mono,
 > mobile-first, e soprattutto: il KIT È UN ENGINE DETERMINISTICO TypeScript, MAI un LLM.
-> A fine lavoro: gate verdi (typecheck·lint·test·build) + verifica browser se c'è UI +
-> PR (chiedi il mio ok prima di aprirla) + indica le AZIONI OPS.
 >
-> Il PDF del listino AGB 2026 NON è nel container: scaricalo dal link in CLAUDE.md
-> (§FILE ESTERNI). Serve poppler-utils (`sudo apt-get install -y poppler-utils`, NON
-> è preinstallato). Estrai il testo con pdftotext -layout e splittalo pagina per pagina.
-> ATTENZIONE: pagina fisica = stampata + 2. E le legende degli schemi stanno DENTRO il
-> disegno: nel testo estratto NON compaiono, vanno renderizzate (pdftoppm -r 150 -png)
-> e GUARDATE. È così che è saltato fuori che il formato 9x18 esiste in due corpi diversi.
+> PRIMA DI TUTTO, verifica lo stato: il branch claude/antieffrazione-feature-dv8d37
+> (antieffrazione + varianti componente) era completo e verificato ma NON pushato.
+> Controlla se è stato pushato, se la PR è stata aperta e mergiata, e SOPRATTUTTO se
+> è stato eseguito il run «Ops — Neon» con la migrazione 20260731143758_kit_variants:
+> senza quella, in produzione falliscono le LETTURE delle richieste kit (findFirst
+> senza select), non solo le creazioni. Verifica i run su GitHub, non fidarti di qui.
 >
-> STATO: verifica tu i run di «Ops — Neon» invece di fidarti dell'handoff. L'ultima
-> sessione ha chiuso PR #44 e #45 e ha eseguito entrambe le ops (run 30614027728 e
-> 30618326143): non dovrebbe esserci nulla di pendente, ma controlla.
+> Se tutto è a posto, le strade aperte sono:
+>  (a) LE TRE DISTINTE REALI di MC, Peruzzi e Fosca — aperta da CINQUE sessioni, vale
+>      più di tutto il resto: i tre clienti sono già in anagrafica, basta generare la
+>      distinta e metterla a fianco della foto di un ordine vero (altezza ≠ 1820);
+>  (b) domanda 29 (corpo incontro / perni di posizionamento) — richiede però prima la
+>      domanda 20 sulle coperture;
+>  (c) i debiti in handoff.md §«Debito noto residuo»: estrarre il passo «Componenti»
+>      da nuova-client.tsx (1.979 righe), «Visualizza nel listino» per opzione,
+>      dedupeRows last-wins, preview Vercel rotte su ogni PR.
 >
-> LA PROSSIMA FEATURE È L'ANTIEFFRAZIONE, ed è quasi pronta: tutti i codici sono già
-> verificati sul catalogo reale e stanno in handoff.md §«ANTIEFFRAZIONE». Ma NON
-> partire finché non ho risposto a due domande, che trovi lì scritte per esteso:
->  1. il «nottolino a fungo» è per serramenti sede 30 (che il motore oggi rifiuta),
->     oppure intendevo il movimento angolare a 2 nottolini A50302.02.02?
->  2. incontri a viti inclinate (.67) o dritte (.68)?
-> Chiedimele in parole semplici, con un esempio numerico sul golden: l'ultima volta ha
-> funzionato così. Se ho già risposto in chat, parti pure.
->
-> Se non ho risposto, le alternative sono: (a) le tre distinte reali di MC, Peruzzi e
-> Fosca — aperta da QUATTRO sessioni, vale più di tutto il resto, e ora che i tre
-> clienti sono in anagrafica basta generare la distinta e metterla a fianco della foto;
-> (b) i debiti in handoff.md §«Debito noto residuo»: CASI non legato a RULE_MODULES,
-> dedupeRows last-wins, e le preview Vercel rotte su ogni PR (env solo su Production).
->
-> NON rompere il golden: 16 righe / 21 pezzi / 90,20 €, e il suo gemello a entrata
-> 7,5 a 96,29 €. Sono gli unici due riscontri numerici che abbiamo, e il gate su
-> catalogo reale ora li asserisce per davvero (prima diceva «> 0»).
+> NON rompere il golden: 16 righe / 21 pezzi / 90,20 €, gemello entrata 7,5 a 96,29 €,
+> e con antieffrazione completa 17 righe / 22 pezzi / 110,13 €. Il gate su catalogo
+> reale li asserisce per davvero, insieme all'ordine delle righe e alle 16 descrizioni.
 > ```
+>
+> ---
+>
+
+> **▶ STORICO — sessione 2026-07-30/31: PROFILO SERRAMENTO DEL CLIENTE + ANAGRAFICA ✅ — PR #44 + #45 MERGIATE, ops eseguite.**
+>
+> Il wizard chiedeva **geometria ed entrata a ogni richiesta**, fra 14 combinazioni, e sbagliarle
+> non produce alcun errore: i codici dell'altra combinazione esistono, hanno un prezzo, nessun
+> warning. Ora quelle due quote vivono **sul cliente** (due colonne nullable su `customers`,
+> migrazione `20260730232026`, nessun backfill) e si applicano con **un clic esplicito**.
+>
+> **La UI l'ha decisa il `/llm-council`**, respingendo la proposta di precompilare: un valore che
+> arriva da un profilo resta un valore che l'agente **non ha scelto in quel momento**, con in più
+> un'etichetta che lo fa *sembrare* verificato. Sintesi adottata: **nessun prefill, un pulsante
+> «Usa il profilo»**. Al passo 4 il riepilogo **constata** la divergenza dal profilo — il **primo
+> rilevatore d'errore** che il sistema possieda.
+>
+> **Un difetto già in produzione, trovato dal council mentre rispondeva ad altro**:
+> `nuova-client.tsx:57` cablava `geometry: "A12_I13_B20"` — **ogni nuovo ordine partiva con la
+> geometria del cliente del golden**. Dieci test navigavano al riepilogo senza scegliere la
+> geometria: erano la codifica del difetto, non la sua sentinella.
+>
+> La **#45** ha aggiunto il pulsante «Nuovo cliente» che mancava (una pagina «Clienti» da cui non
+> si creavano clienti) e ha messo **MC, Peruzzi e Fosca nel seed** con `upsert`/`update: {}`:
+> crea se manca, non tocca se c'è. Entrata e sconto restano **NULL** — l'entrata è la domanda 17.
+>
+> **Gate**: test **875** · browser 30/30 · **integration gated 100 casi** (erano 29: il gate
+> fissava `widthMm: 550` e verificava 10 dei 40 codici braccio). **Ops eseguite** (run
+> `30614027728` **quattordici minuti prima del merge**, dal ref del branch — prima volta con
+> finestra di disservizio **zero** — e `30618326143`).
 >
 > ---
 >
@@ -1165,3 +1161,4 @@ Actions** (rete aperta → Neon:5432 ok).
 | 2026-07-11 | **Fase 1f — Task 8 (e2e) VERIFICATO**: login admin reale fornito dall'utente → verifica end-to-end via **API backend** (browser bloccato da challenge Vercel↔proxy sandbox: scoperto e diagnosticato). Passano TUTTI i flussi contro Neon popolato: auth Better Auth (role ADMIN, createdAt=seed) · `dashboard.overview` · `product.search` **testuale+ibrida** (semantica «maniglia con chiave…» → A50107\* per solo vettore vec≈0.72) · **chat tool-use** (Gemini cita 5 codici reali) · **kit ARTECH golden** `KIT-2026-0001` **16 righe/21 pezzi/90,20€** zero warning · `settings.aiKeys.status` (Gemini da env). Creati dati test in staging (1 conv + KIT-2026-0001). **Resta solo Task 9** (docs + scelta fase successiva). | `claude/handoff-review-irs3gv` |
 | 2026-07-12 | **Fase 1g — kit multi-materiale (SDD subagent-driven)**: spec+piano approvati + **LLM Council** (4/4 → Opzione C: `kit-shared` meccanica condivisa, moduli per-materiale isolati). 5 task TDD (7 commit `b51aa11→544d94c`, **PR #15**, gate verdi): (1) fix LEGNO chiusure supplementari opzionali (default off); (2) estrazione `kit-shared.ts` (refactor puro); (3) modulo **PVC provvisorio** (cert ift, `//ASSUNZIONE`) + scheda esperto; (4) **ALLUMINIO gated** — scoperto che il listino 2026 NON ha composizione alluminio («PLANA»=cerniera complanare legno/PVC, non alu, assunzione piano falsificata) → modulo rifiuta + `isActive:false` + domande esperto; (5) colonna `KitRequest.supplementary_closures` + migrazione + wiring `kit.generate` + wizard (PVC on/provvisorio, ALLUMINIO off, toggle). Task 1-3 review individuali *Approved*; Task 4-5 fatti inline (session limit) + review finale inline. **Resta**: merge PR #15 · `migrate deploy`+`db:seed:kit` su Neon al deploy · validazione esperto (`docs/superpowers/kit-assunzioni/`). | `claude/handoff-review-irs3gv` (PR #15) |
 | 2026-07-25 | **BONIFICA KIT ARTECH LEGNO** (8 task TDD, un commit per task, dopo il merge #32): studio di tutti i moduli kit contro il **listino AGB 2026** → dei 4 template attivi, **3 producevano distinte non ordinabili**. **PVC spento** (i 4 codici material-specific esistono solo nelle pagine-certificato ift p0013 (11)/p0395 (393), senza prezzo; altri 7 dedotti per simmetria non esistono affatto) · **battente spento** (schema p0416 (414) = 21 voci, il modulo ne generava 5: mancava la **sospensione superiore**; schema composito → terna cerniere non decidibile) · **pilota corretto** (supporto cerniera `A50801.01.0N`→**`A50805.05.DX/.SX`**, banda cremonese GR02 610, descrizione incontro ribalta 9x18) · **guardia `assertPilotGeometry`** (aria/interasse/battuta/sede erano raccolti e ignorati) · **vasistas riscritto** dallo schema p0418 (416): forbici per **LBB**, via DSS+incontro DSS, dentro le **cerniere** (voci 10-11-12) e il 2° terminale, `sashWeightKg` opzionale per le NB sul peso → golden **13 righe/19 pezzi** · **parser catalogo allargato** ai segmenti alfanumerici (**+1.297 codici a prezzo, 6.191→7.488**) · schede `kit-assunzioni/` riscritte come esito + nuova `legno.md` con l'indice **globale** delle 10 domande per l'esperto. Attive: **anta-ribalta LEGNO + vasistas LEGNO**. Gate: typecheck·lint·**test 589/11 skip**. Verifica browser wizard desktop+375px (8 screenshot). **AZIONI OPS AL MERGE**: «Ops — Neon» completo (migrazione `kit_sash_weight` + **RE-IMPORT catalogo** + `db:seed:kit` + embed) e audit `kit_requests`. | `claude/kit-engine-study-wfo2hq` → PR #33 + #34 mergiate |
+| 2026-07-31 | **ANTIEFFRAZIONE + VARIANTI COMPONENTE** (10 task TDD, un commit per task): le due domande senza risposta nel listino (il «fungo» è per sede 30? viti inclinate o dritte?) diventano **scelte dell'agente** nel nuovo passo **«Componenti»** del wizard, per indicazione esplicita dell'utente → **domande 2 e 30 CHIUSE** senza essere risposte. Registro `artech-varianti.ts` (**74 codici** scritti per esteso, verificati sul catalogo reale) · colonna `kit_requests.variants JSONB` (migrazione `20260731143758_kit_variants`, nessun backfill, NULL = standard) · **garanzia in due strati** contro la variante inerte (`RuleModule.varianti` obbligatorio + `no-silent-fields` derivato dal modulo) · ciclo di import sciolto col file foglia `varianti-schema.ts` + regola ESLint. Il **fungo resta fuori**: il listino lo lega alla sede 30 nei due versi, che il motore rifiuta a monte. Golden invariato **16 righe/21 pezzi/90,20 €** (ora asseriti anche ordine righe e 16 descrizioni); antieffrazione completa **17/22/110,13 €**. Gate: typecheck·lint·**test 992**·build 18 route · **integration 111 eseguiti** · browser 33+10 check (desktop e 375px). **AZIONE OPS: «Ops — Neon» sul ref del branch PRIMA del merge** (letture di `kit.get` rotte senza la colonna); nessun re-import. | `claude/antieffrazione-feature-dv8d37` (PR da aprire) |
