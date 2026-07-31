@@ -347,3 +347,66 @@ describe("artechAntaRibaltaLegno — entrata maniglia", () => {
     expect(riga.ruleDescription).toContain("entrata 7,5");
   });
 });
+
+/**
+ * Task 5: il modulo consuma le 5 varianti del registro (`artech-varianti.ts`).
+ * `golden` è `base` con le chiusure supplementari ON — la distinta storica
+ * 16 righe/21 pezzi (90,20 €), quella su cui l'ordine delle righe NON può
+ * muoversi (la firma della distinta include l'ordine).
+ */
+describe("varianti componente", () => {
+  const golden: ArtechKitInput = { ...base, supplementaryClosures: true };
+
+  it("IL GOLDEN NON SI MUOVE senza varianti: 16 righe / 21 pezzi", () => {
+    const l = artechAntaRibaltaLegno.generate(golden);
+    expect(l).toHaveLength(16);
+    expect(l.reduce((s, x) => s + x.quantity, 0)).toBe(21);
+  });
+
+  it("la squadra angolare base cambia SOLO la sua riga", () => {
+    const base_ = artechAntaRibaltaLegno.generate(golden);
+    const mod = artechAntaRibaltaLegno.generate({
+      ...golden,
+      variants: { squadraAngolare: "BASE" },
+    });
+    expect(mod).toHaveLength(16);
+    const diverse = mod.filter((r, i) => r.code !== base_[i]!.code);
+    expect(diverse.map((r) => r.position)).toEqual(["squadra-angolare"]);
+    expect(diverse[0]!.code).toBe("A50902.36.02"); // golden: mano SINISTRA
+  });
+
+  it("l'antieffrazione completa: 17 righe / 22 pezzi", () => {
+    const l = artechAntaRibaltaLegno.generate({
+      ...golden,
+      variants: {
+        movimentoAngolare: "DUE_NOTTOLINI",
+        incontroNottolino: "ANTIEFFRAZIONE_INCLINATE",
+        piastrinoAntieffrazione: true,
+      },
+    });
+    expect(l).toHaveLength(17);
+    expect(l.reduce((s, x) => s + x.quantity, 0)).toBe(22);
+    expect(l.find((r) => r.position === "movimento-angolare")!.code).toBe("A50302.02.02");
+    expect(l.find((r) => r.position === "incontri-nottolino")!.code).toBe("A514SX.05.67");
+    expect(l.find((r) => r.position === "piastrino-antieffrazione")!.code).toBe("A20050.00.02");
+  });
+
+  it("il piastrino segue l'entrata", () => {
+    const l = artechAntaRibaltaLegno.generate({
+      ...golden,
+      entrata: "E75",
+      variants: { piastrinoAntieffrazione: true },
+    });
+    expect(l.find((r) => r.position === "piastrino-antieffrazione")!.code).toBe("A50194.00.01");
+  });
+
+  it("rifiuta una variante che il listino non pubblica per questa geometria", () => {
+    expect(() =>
+      artechAntaRibaltaLegno.generate({
+        ...golden,
+        geometry: "A4_I85_B15",
+        variants: { squadraAngolare: "COMPENSATORE" },
+      }),
+    ).toThrow(/non la pubblica per questo interasse|non disponibile/);
+  });
+});

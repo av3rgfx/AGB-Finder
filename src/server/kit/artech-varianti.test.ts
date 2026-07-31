@@ -9,6 +9,7 @@ import {
   incontroNottolinoVariante,
   movimentoAngolareCodice,
   piastrinoCodice,
+  avvisiVarianti,
 } from "./artech-varianti";
 import { GEOMETRIE, type ArtechGeometryId } from "./artech-geometrie";
 import { KitGenerationError } from "./types";
@@ -165,4 +166,25 @@ describe("antieffrazione", () => {
       }
     },
   );
+});
+
+describe("avvisi", () => {
+  it("segnala l'incontro antieffrazione senza il movimento angolare a due nottolini", () => {
+    const a = avvisiVarianti({ incontroNottolino: "ANTIEFFRAZIONE_INCLINATE" });
+    expect(a).toHaveLength(1);
+    expect(a[0]).toMatch(/A50302\.02\.02/);
+  });
+
+  it("non segnala nulla quando la combinazione è coerente", () => {
+    expect(
+      avvisiVarianti({
+        incontroNottolino: "ANTIEFFRAZIONE_INCLINATE",
+        movimentoAngolare: "DUE_NOTTOLINI",
+      }),
+    ).toEqual([]);
+  });
+
+  it("non segnala nulla senza varianti", () => {
+    expect(avvisiVarianti(undefined)).toEqual([]);
+  });
 });

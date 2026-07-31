@@ -98,6 +98,10 @@ const CASI: Caso[] = [
       { campo: "finish", valore: "BRONZO" },
       { campo: "supplementaryClosures", valore: false },
       { campo: "entrata", valore: "E75" },
+      // Task 5: il modulo ora LEGGE `input.variants` (registro `artech-varianti.ts`).
+      // Era dichiarato inerte fino a qui perché nessuna riga lo consumava — questa
+      // voce era il tripwire che doveva rompersi appena il collegamento funzionava.
+      { campo: "variants", valore: { squadraAngolare: "BASE" } },
     ],
     campi: Object.keys(artechInputSchema.shape),
     inerti: [
@@ -116,15 +120,6 @@ const CASI: Caso[] = [
         valore: 60,
         perche:
           "L'anta-ribalta non ha NB sul peso: le due che esistono sono dello schema vasistas.",
-      },
-      {
-        campo: "variants",
-        valore: { squadraAngolare: "BASE" },
-        perche:
-          "Task 3 collega SOLO lo schema all'input: il modulo dichiara `varianti: VARIANTE_IDS` " +
-          "(quali varianti sa CONSUMARE) ma `generate()` non legge ancora `input.variants` — la " +
-          "lettura arriva col Task 5. È lo stesso pattern di `openingDir`, ma pianificato e non un " +
-          "buco: il Task 5 sposterà questa riga da `inerti` a `mutazioni`.",
       },
     ],
   },

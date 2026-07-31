@@ -294,3 +294,26 @@ const PIASTRINO: Record<Entrata, string> = {
 export function piastrinoCodice(entrata: Entrata): string {
   return PIASTRINO[entrata];
 }
+
+/**
+ * Combinazioni che il listino VIETA ma i cui codici esistono tutti.
+ *
+ * NON è un rifiuto: è il precedente «avviso, mai blocco» dello sconto oltre
+ * soglia. Bloccare significherebbe impedire un ordine vero sulla base della
+ * NOSTRA lettura di una NB stampata.
+ *
+ * Pura, e usata in due posti: il motore (dove finisce in `warnings`, quindi
+ * persistita in `generatedKit`) e il wizard (dove si vede PRIMA di generare).
+ */
+export function avvisiVarianti(varianti: Varianti | undefined): string[] {
+  if (varianti === undefined) return [];
+  const avvisi: string[] = [];
+  const antieffrazione = varianti.incontroNottolino?.startsWith("ANTIEFFRAZIONE") === true;
+  if (antieffrazione && varianti.movimentoAngolare !== "DUE_NOTTOLINI")
+    avvisi.push(
+      "Incontro nottolino antieffrazione con movimento angolare a un nottolino: il listino " +
+        "2026 (p. stampata 433) richiede il movimento angolare a due nottolini A50302.02.02 " +
+        "per tutte le classi antieffrazione.",
+    );
+  return avvisi;
+}

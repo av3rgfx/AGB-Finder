@@ -3,6 +3,7 @@ import type { PrismaClient } from "@prisma/client";
 import { KitGenerationError, kitInputSchema, type KitLine } from "./types";
 import { resolveRuleModule } from "./registry";
 import type { VarianteId } from "./varianti-schema";
+import { avvisiVarianti } from "./artech-varianti";
 
 /**
  * Versione del codice-regole, timbrata su ogni distinta (`kit_requests.engine_version`).
@@ -87,6 +88,11 @@ export class KitEngine {
         "kit.varianti",
       );
 
+    // Avviso, mai blocco (stesso precedente dello sconto oltre soglia): i codici
+    // della combinazione esistono tutti a listino, quindi non è compito del
+    // motore impedire un ordine vero sulla base della nostra lettura di una NB.
+    const avvisiDaVarianti = "variants" in input ? avvisiVarianti(input.variants) : [];
+
     const lines = module_.generate(input);
 
     const products = await this.db.product.findMany({
@@ -95,7 +101,7 @@ export class KitEngine {
     });
     const byCode = new Map(products.map((p) => [p.agbCode, p]));
 
-    const warnings: string[] = [];
+    const warnings: string[] = [...avvisiDaVarianti];
     const priced: PricedKitLine[] = lines.map((line) => {
       const product = byCode.get(line.code);
       if (!product) {

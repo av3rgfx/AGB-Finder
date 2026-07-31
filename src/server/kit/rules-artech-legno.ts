@@ -31,18 +31,25 @@ import {
   type KitLine,
   type RuleModule,
 } from "./types";
-import { MOVIMENTO_ANGOLARE, incontriNottolino } from "./artech-legno-shared";
+import { incontriNottolino } from "./artech-legno-shared";
 import { geometria, assertSeatConfigSupportata, mm } from "./artech-geometrie";
 // Dal file FOGLIA, non da `artech-varianti.ts`: questo import è codice nuovo di
 // questo task e può puntare direttamente alla foglia, senza passare per il
 // registro (che non aggiunge nulla per `VARIANTE_IDS`, solo un arco in più).
 import { VARIANTE_IDS } from "./varianti-schema";
+import { incontroDss, formatoIncontro } from "./artech-incontri";
+// Task 5: il registro delle varianti componente. `squadraAngolare`,
+// `incontroRibaltaVariante` e `incontroNottolinoVariante` sostituiscono le
+// funzioni equivalenti di `artech-incontri.ts`/il campo `geo.squadraAngolare`
+// come sorgente del CODICE — con `undefined` restituiscono esattamente lo
+// stesso codice di prima (default = "lo standard del programma").
 import {
-  incontroNottolino,
-  incontroRibalta,
-  incontroDss,
-  formatoIncontro,
-} from "./artech-incontri";
+  squadraAngolare,
+  incontroRibaltaVariante,
+  incontroNottolinoVariante,
+  movimentoAngolareCodice,
+  piastrinoCodice,
+} from "./artech-varianti";
 
 type Side = ArtechKitInput["openingSide"];
 
@@ -140,7 +147,7 @@ const COPERTURE_KIT: Record<string, Record<Side, string>> = {
 };
 
 /**
- * Componenti davvero indipendenti da geometria, dimensioni e mano.
+ * Componenti davvero indipendenti da geometria, dimensioni, mano E varianti.
  *
  * Ne sono usciti (2026-07-29) supporto forbice, incontro DSS e incontro ribalta:
  * dipendono tutti e tre dalla geometria e stavano qui cablati sui valori del
@@ -148,9 +155,14 @@ const COPERTURE_KIT: Record<string, Record<Side, string>> = {
  * 12 asse 9). Ora sono righe esplicite, prese da `artech-geometrie.ts` e
  * `artech-incontri.ts`. Restare in FISSI significava che un serramento aria 4
  * riceveva in silenzio la ferramenta dell'aria 12.
+ *
+ * Ne è uscito anche (2026-07-31, Task 5) il movimento angolare: non è più
+ * fisso, è una VARIANTE (`v.movimentoAngolare`, un nottolino o due). La riga è
+ * spinta esplicitamente in `generate()`, nella stessa posizione in cui
+ * `linesFromParts(FISSI, …)` la emetteva: l'ordine delle righe è parte della
+ * firma della distinta, e non può muoversi.
  */
 const FISSI = [
-  MOVIMENTO_ANGOLARE,
   {
     position: "perno-supporto-forbice",
     code: "A50790.00.00",
@@ -223,6 +235,10 @@ export const artechAntaRibaltaLegno: RuleModule = {
     // famiglia di schemi «sede 30 mm», che manca dell'incontro DSS 13x30.
     assertSeatConfigSupportata(input.seatConfig);
     const geo = geometria(input.geometry);
+    // Task 5: `undefined` è "lo standard del programma" (registro
+    // `artech-varianti.ts`), non "niente" — il default vive nel registro, mai
+    // materializzato qui.
+    const v = input.variants ?? {};
 
     const lines: KitLine[] = [];
     const finish = input.finish.toUpperCase();
@@ -279,7 +295,7 @@ export const artechAntaRibaltaLegno: RuleModule = {
     lines.push(
       {
         position: "squadra-angolare",
-        code: geo.squadraAngolare[input.openingSide],
+        code: squadraAngolare(input.geometry, input.openingSide, v.squadraAngolare),
         quantity: 1,
         ruleId: "artech.mano",
         ruleDescription: `Squadra angolare legno aria ${geo.airGapMm} interasse ${mm(geo.axisOffsetMm)} battuta ${geo.rebateMm} ${input.openingSide}`,
@@ -300,6 +316,16 @@ export const artechAntaRibaltaLegno: RuleModule = {
       },
     );
 
+    // ORDINE: spinta qui, esattamente dove `linesFromParts(FISSI, …)` emetteva
+    // il movimento angolare quando era ancora il primo elemento di FISSI — la
+    // firma della distinta include l'ordine delle righe.
+    lines.push({
+      position: "movimento-angolare",
+      code: movimentoAngolareCodice(v.movimentoAngolare),
+      quantity: 2,
+      ruleId: "artech.fissi",
+      ruleDescription: "Movimento angolare 125x125",
+    });
     lines.push(...linesFromParts(FISSI, "artech.fissi"));
 
     lines.push(
@@ -322,7 +348,7 @@ export const artechAntaRibaltaLegno: RuleModule = {
       },
       {
         position: "incontro-ribalta",
-        code: incontroRibalta(input.geometry, input.openingSide),
+        code: incontroRibaltaVariante(input.geometry, input.openingSide, v.incontroRibalta),
         quantity: 1,
         ruleId: "artech.incontri",
         ruleDescription: `Incontro ribalta aria ${geo.airGapMm} ${formatoIncontro(input.geometry)}`,
@@ -331,7 +357,7 @@ export const artechAntaRibaltaLegno: RuleModule = {
 
     lines.push({
       position: "incontri-nottolino",
-      code: incontroNottolino(input.geometry, input.openingSide),
+      code: incontroNottolinoVariante(input.geometry, input.openingSide, v.incontroNottolino),
       quantity: incontriNottolino(input.widthMm, input.heightMm),
       ruleId: "artech.incontri",
       ruleDescription:
@@ -353,6 +379,17 @@ export const artechAntaRibaltaLegno: RuleModule = {
       );
       lines.push(...linesFromParts(verticali.parts, "artech.verticali"));
     }
+
+    // Riga AGGIUNTA, non sostituita: è la ragione per cui l'antieffrazione non
+    // è una «variante» nel senso della spec §2. FONTE: p0432 (430).
+    if (v.piastrinoAntieffrazione === true)
+      lines.push({
+        position: "piastrino-antieffrazione",
+        code: piastrinoCodice(input.entrata),
+        quantity: 1,
+        ruleId: "artech.varianti",
+        ruleDescription: `Piastrino antieffrazione entrata ${entrataLabel(input.entrata)}`,
+      });
 
     return lines;
   },

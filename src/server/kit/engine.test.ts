@@ -139,4 +139,21 @@ describe("KitEngine.generate", () => {
     const input = { ...vasistasInput, variants: { squadraAngolare: "BASE" } } as KitInput;
     await expect(engine.generate(input)).rejects.toThrow(/squadraAngolare/);
   });
+
+  // Task 5-bis: precedente «avviso, mai blocco» (già usato per lo sconto oltre
+  // soglia). I codici della combinazione esistono tutti a listino — impedire
+  // l'ordine sulla base della NOSTRA lettura di una NB sarebbe peggio del
+  // difetto che si sta togliendo.
+  it("la combinazione incoerente PRODUCE una distinta, con un warning — non un errore", async () => {
+    templateFindFirst.mockResolvedValue(template);
+    productFindMany.mockResolvedValue([]);
+    const engine = new KitEngine(db);
+    const input = {
+      ...validInput,
+      variants: { incontroNottolino: "ANTIEFFRAZIONE_INCLINATE" },
+    } as KitInput;
+    const out = await engine.generate(input);
+    expect(out.lines.length).toBeGreaterThan(0);
+    expect(out.warnings.some((w) => w.includes("A50302.02.02"))).toBe(true);
+  });
 });
