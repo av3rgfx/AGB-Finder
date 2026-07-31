@@ -18,6 +18,7 @@ const artechRow: PersistedKitRequest = {
   sashWeightKg: null,
   tourSchema: null,
   notes: null,
+  variants: null,
 };
 
 const tourRow: PersistedKitRequest = {
@@ -36,6 +37,7 @@ const tourRow: PersistedKitRequest = {
   sashWeightKg: null,
   tourSchema: 2,
   notes: null,
+  variants: null,
 };
 
 describe("kitInputFromRequest", () => {
@@ -120,5 +122,21 @@ describe("kitInputFromRequest", () => {
   it("non pretende l'entrata sulle righe TOUR", () => {
     const input = kitInputFromRequest({ ...tourRow, entrata: null });
     expect(input.series).toBe("TOUR");
+  });
+
+  it("rilegge le varianti dalla riga", () => {
+    const input = kitInputFromRequest({ ...artechRow, variants: { squadraAngolare: "BASE" } });
+    expect(input.series === "ARTECH" && input.variants?.squadraAngolare).toBe("BASE");
+  });
+
+  it("una riga senza varianti resta senza: nessun default materializzato", () => {
+    const input = kitInputFromRequest({ ...artechRow, variants: null });
+    expect(input.series === "ARTECH" && input.variants).toBeUndefined();
+  });
+
+  it("RIFIUTA una riga con varianti corrotte invece di ignorarle", () => {
+    expect(() =>
+      kitInputFromRequest({ ...artechRow, variants: { squadraAngolare: "INESISTENTE" } }),
+    ).toThrow(/incoerente/);
   });
 });

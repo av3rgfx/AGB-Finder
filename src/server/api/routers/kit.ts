@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { agentProcedure, createTRPCRouter } from "@/server/api/trpc";
 import { KitEngine } from "@/server/kit/engine";
@@ -62,6 +63,7 @@ export const kitRouter = createTRPCRouter({
               openingSide: specs.openingSide,
               openingDir: specs.openingDir,
               supplementaryClosures: specs.supplementaryClosures ?? false,
+              variants: specs.variants ?? Prisma.DbNull,
             };
       const request = await ctx.db.kitRequest.create({
         data: {
@@ -244,6 +246,10 @@ export const kitRouter = createTRPCRouter({
             openingSide: request.openingSide,
             openingDir: request.openingDir,
             supplementaryClosures: request.supplementaryClosures,
+            // La nuova versione eredita le varianti: ricalcolare non è
+            // rinegoziare la configurazione. È LA riga per cui la spec §4 ha
+            // scelto una colonna JSON invece di sei colonne tipizzate.
+            variants: request.variants ?? Prisma.DbNull,
             tourSchema: request.tourSchema,
             notes: request.notes,
             customerId: request.customerId,
