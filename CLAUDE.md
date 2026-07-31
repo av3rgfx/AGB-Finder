@@ -415,7 +415,7 @@ listino ha **34 classi di sconto**, i codici ARTECH sono tutti **F3** e i TOUR t
 tratta uguali (scelta consapevole, da riverificare con l'ufficio commerciale).
 Spec/piano: `docs/superpowers/{specs,plans}/2026-07-30-scontistica-cliente*`.
 
-+ **PROFILO SERRAMENTO DEL CLIENTE ✅ (branch `claude/distinte-schema-cliente-6qhe7o`, **PR #44**)**:
++ **PROFILO SERRAMENTO DEL CLIENTE ✅ (**PR #44 MERGIATA, ops eseguite**)**:
 il wizard chiedeva **geometria ed entrata a ogni richiesta**, fra 14 combinazioni, e sbagliarle non produce alcun
 errore — i codici dell'altra combinazione esistono a listino, hanno un prezzo, nessun warning. Ma quelle due quote
 **non cambiano** fra un ordine e l'altro dello stesso cliente (i tre principali ne hanno una fissa ciascuno).
@@ -454,6 +454,38 @@ Circostanziata anche la 20: i codici che fanno scattare la copertura sono `A5140
 righe **non si tocca** su questa base. Gate verdi (typecheck·lint·**test 875**·build 18 route) · **integration gated
 100 casi** · **browser 30/30** (desktop e **375px**, 24 screenshot guardati — è così che è saltato fuori lo sconto
 precompilato «42.5» col punto in una UI italiana, con 30 check verdi).
-**🔴 AZIONE OPS AL MERGE**: la sola migrazione `20260730232026_customer_kit_profile`, **da applicare PRIMA del merge**
-dal branch della PR (nella direzione inversa `customer.list` chiede colonne inesistenti e falliscono **le letture**
-dell'anagrafica). Spec/piano: `docs/superpowers/{specs,plans}/2026-07-30-profilo-serramento-cliente*`.
+**AZIONI OPS ESEGUITE** (run `30614027728`, 2026-07-31 08:02Z, 12/12 verdi): migrazione
+`20260730232026_customer_kit_profile` applicata **quattordici minuti PRIMA del merge**, lanciando «Ops — Neon» sul
+**ref del branch** — prima volta con finestra di disservizio **zero** (#40 ne aveva venti minuti, #42 qualcuno).
+Spec/piano: `docs/superpowers/{specs,plans}/2026-07-30-profilo-serramento-cliente*`.
+
++ **ANAGRAFICA COMPLETA ✅ (PR #45 MERGIATA, ops eseguite)**: la `/clienti` della #44 aveva elenco, modifica ed
+eliminazione ma **non la creazione** — con l'anagrafica vuota, che è lo stato del primo giorno, l'unico modo di
+aggiungere un cliente era **iniziare una richiesta kit e poi abbandonarla**. Una pagina «Clienti» da cui non si creano
+clienti; l'ha visto l'utente, non i test, perché nessuna asserzione può accorgersi di un pulsante mai pensato.
+**(1) Pulsante «Nuovo cliente»**, presente anche nell'empty-state. Il form è **lo stesso** della modifica, non un
+secondo: l'unica differenza vera vive in tre righe di `salva()` — in **creazione** i campi vuoti si **omettono**
+(`customer.create` li vuole `.optional()`), in **modifica** si mandano a **`null`** (`update` distingue «azzera» da
+«non toccare»); un test per ciascun verso. **(2) I tre clienti principali in anagrafica**: MC (`A4_I85_B15`), Peruzzi
+(`A4_I9_B18`), Fosca (`A12_I13_B18`) — le stesse geometrie già usate come fixture nei test del motore. Stanno nel
+**seed** e non in uno script a parte (app mono-azienda, `pnpm db:seed` gira già a ogni run ops → zero step nuovi),
+con `upsert`/`update: {}` su `customerCode`: **crea se manca, non tocca se c'è**, verificato sul DB vero ritoccando
+a mano sconto ed entrata e rilanciando — il ritocco sopravvive, il conteggio resta 3. Serve perché il workflow rigira
+a ogni deploy. **(3) Entrata e sconto restano NULL, con un test che lo protegge**: l'entrata è la **domanda 17**,
+ancora aperta, e inventarne una nel profilo di un cliente vero sarebbe lo stesso difetto chiuso dalla #44 in un posto
+più difficile da vedere. Gate: typecheck·lint·**test 883**·build · **browser 22/22** (desktop e 375px).
+**Nessuna migrazione**; **AZIONI OPS ESEGUITE** (run `30618326143`, 09:15Z, 12/12 verdi: `db:seed` → i tre clienti
+creati su Neon).
+
++ **🔴 PROSSIMA FEATURE: ANTIEFFRAZIONE** — l'utente l'ha chiesta a fine sessione («cambio entrambi e ci metto anche
+il nottolino a fungo»). Il listino pubblica **due configurazioni** per la stessa finestra, e i nomi ingannano:
+`p0406 (404)` «**sicurezza base**» (sede 30) monta gli incontri della tabella «Antieffrazione» + copertura + doppio
+nottolino a fungo; `p0408 (406)` «**config. antieffrazione RC1/RC2**» monta gli incontri **normali** + un
+**piastrino antieffrazione**. E `p0408` dichiara di essere lo schema per le sedi **diverse** da 30 → è quello della
+nostra sede, il che riduce il «divario 22 voci contro 16» a **due** voci, non sei. Codici tutti verificati sul
+catalogo reale: movimento angolare `A50302.01.02` → **`A50302.02.02`** (NB stampata a p0435 (433): «necessario per
+tutte le classi antieffrazione» — non era nella lista dell'utente, l'ha aggiunto il listino) · incontro
+`A51400.05.02` → `A514DX/SX.05.67` o `.68` · piastrino `A50194.00.01`/`A20050.00.02` **per entrata** · fungo
+`A50320.02.01`. **Due conflitti da sciogliere prima di scrivere codice** (dettagli in `handoff.md`): il fungo porta
+la NB «per sede 30», che nessuno dei tre clienti ha; e viti inclinate o dritte. `A522SX.05.67` **non esiste a
+catalogo**.
