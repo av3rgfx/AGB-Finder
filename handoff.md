@@ -9,18 +9,18 @@
 
 | Campo | Valore |
 |-------|--------|
-| **Data** | 2026-07-30 — sessione **CONCLUSA**. **PR #44 APERTA** |
+| **Data** | 2026-07-31 — sessione **CONCLUSA**. **PR #44 + #45 MERGIATE, ops eseguite** |
 | **Fase in corso** | Fase 1 — MVP Gestionale |
-| **Sotto-fase** | Kit engine: profilo serramento per cliente, e il default cablato della geometria tolto |
-| **Branch git** | `claude/distinte-schema-cliente-6qhe7o` — 11 commit su `origin/main` |
-| **Stato deploy** | **LIVE.** Ops precedenti eseguite (run `30583325831`). **Una migrazione nuova da applicare PRIMA del merge** |
-| **Aperto** | le **tre distinte reali** · **domanda 29** (incontro incassato) · preview Vercel rotte · mail ad AGB · audit `kit_requests` · `dedupeRows` |
+| **Sotto-fase** | Kit engine: profilo serramento per cliente · default cablato della geometria tolto · anagrafica completa |
+| **Branch git** | ripartire da `main` (`9ec1a2b`) |
+| **Stato deploy** | **LIVE e ALLINEATO.** Run `30614027728` (migrazione, 08:02Z) e `30618326143` (seed clienti, 09:15Z), entrambi 12/12 verdi. **Nessuna azione ops residua.** |
+| **Aperto** | le **tre distinte reali** · **antieffrazione: 2 domande all'agente** · domanda 29 · preview Vercel rotte · mail ad AGB · audit `kit_requests` · `dedupeRows` |
 
 ---
 
 > **▶ RIPRENDI DA QUI**
 >
-> ### Cosa è stato fatto (2026-07-30, terza sessione della giornata)
+> ### Cosa è stato fatto (2026-07-30/31) — DUE PR, entrambe mergiate
 >
 > Il wizard chiedeva geometria ed entrata **a ogni richiesta**, fra 14 combinazioni, e sbagliarle
 > non produce alcun errore: i codici dell'altra combinazione esistono a listino, hanno un prezzo,
@@ -35,16 +35,48 @@
 > **16 righe / 21 pezzi / 90,20 €** · gemello entrata 7,5 → **16 / 21 / 96,29 €** con
 > `A50122.08.07`. Fino a oggi il gate diceva `totalPrice > 0`.
 >
-> ### 🔴 AZIONE OPS — UNA, E VA FATTA PRIMA DEL MERGE
+> ### Ops: FATTE, nessuna azione residua
 >
-> Migrazione **`20260730232026_customer_kit_profile`**: due colonne nullable su `customers`
-> (`kit_geometry`, `kit_entrata`), **nessun backfill**, nessun `CREATE TYPE` (gli enum esistevano).
+> | Run | Quando | Cosa |
+> |---|---|---|
+> | `30614027728` | 31/07 07:47→08:02Z, **dal branch della PR #44** | migrazione `20260730232026_customer_kit_profile` (due colonne nullable su `customers`, nessun backfill) + import 7.488 + seed + embed |
+> | `30618326143` | 31/07 09:00→09:15Z, da `main` dopo il merge #45 | `db:seed` → **MC, Peruzzi e Fosca creati su Neon** con la loro geometria |
 >
-> **Si applica dal branch della PR, prima di mergiare.** «Ops — Neon» accetta `workflow_dispatch`
-> su un ref qualunque. Nella direzione inversa `customer.list` — che ha un `SELECT` esplicito —
-> chiederebbe a Postgres colonne inesistenti, e fallirebbero **le letture** dell'anagrafica, non
-> solo le scritture. È la lezione pagata due volte (#40: venti minuti di produzione rotta; #42:
-> qualche minuto). Import, seed ed embed non servono ma sono idempotenti.
+> **La migrazione è arrivata su Neon quattordici minuti PRIMA del merge**, ed è la prima volta che
+> la finestra di disservizio è zero. Ha funzionato perché «Ops — Neon» accetta `workflow_dispatch`
+> su un ref qualunque: si lancia dal branch della PR e si mergia dopo. Nella direzione inversa
+> `customer.list` — che ha un `SELECT` esplicito — chiederebbe a Postgres colonne inesistenti, e
+> fallirebbero **le letture** dell'anagrafica, non solo le scritture. Lezione pagata due volte
+> (#40: venti minuti rotti; #42: qualche minuto), finalmente applicata.
+>
+> **Corollario utile:** l'ordine conta **solo** se c'è una migrazione. La #45 non ne aveva, e
+> infatti è stata mergiata prima e seedata dopo, senza alcun rischio.
+>
+> ### La seconda PR (#45): il pulsante che mancava, e i tre clienti
+>
+> La `/clienti` della #44 aveva elenco, modifica ed eliminazione ma **non la creazione**: con
+> l'anagrafica vuota — lo stato del primo giorno — l'unico modo di aggiungere un cliente era
+> **iniziare una richiesta kit e poi abbandonarla**. Una pagina «Clienti» da cui non si creano
+> clienti. Segnalato dall'utente, non dai test: nessuna asserzione può accorgersi di un pulsante
+> che non è mai stato pensato.
+>
+> Il form è **lo stesso** della modifica. L'unica differenza vera vive in tre righe di `salva()`:
+> in **creazione** i campi vuoti si **omettono** (`customer.create` li vuole `.optional()`), in
+> **modifica** si mandano a **`null`** (`update` distingue «azzera» da «non toccare»). Un test per
+> ciascun verso.
+>
+> **I tre clienti principali sono in anagrafica** — MC (aria 4 · 8,5 · 15), Peruzzi (aria 4 · 9 ·
+> 18), Fosca (aria 12 · 13 · 18) — nel **seed**, non in uno script a parte: l'app è mono-azienda,
+> `pnpm db:seed` gira già a ogni run ops, e così non serve nessuno step nuovo. `upsert` con
+> `update: {}` su `customerCode`: **crea se manca, non tocca se c'è**. Verificato sul DB vero
+> ritoccando a mano sconto ed entrata e rilanciando il seed — il ritocco sopravvive, il conteggio
+> resta 3. Serve, perché il workflow rigira a ogni deploy e altrimenti cancellerebbe ogni
+> correzione dell'agente.
+>
+> **Entrata e sconto restano NULL, ed è una scelta con un test che la protegge**: l'entrata è la
+> domanda 17, ancora aperta. Inventarne una nel profilo di un cliente vero sarebbe lo stesso
+> difetto chiuso dalla #44 — un valore che nessuno ha scelto — in un posto molto più difficile da
+> vedere.
 >
 > ### Il difetto che era già in produzione, e che nessuno cercava
 >
@@ -99,6 +131,55 @@
 > marcati `*`; il primo è quello del **golden**. Coperture `A52102.01.44`/`.87`, 0,39 €.
 > Il golden è un ordine reale a 16 righe: **non si tocca** su questa base.
 >
+> ### 🔴 ANTIEFFRAZIONE — è la prossima feature, e serve UNA risposta per partire
+>
+> A fine sessione l'utente ha detto: *«quando si sviluppa un'anta-ribalta bisogna chiedere se si
+> vuole il nottolino e l'incontro nottolino antieffrazione o normale»*, e alla domanda su cosa
+> cambia nell'ordine ha risposto: **«cambio entrambi e ci metto anche il nottolino a fungo»**.
+>
+> **Il listino pubblica DUE configurazioni per la stessa finestra**, e i nomi ingannano:
+>
+> | | `p0406 (404)` «**sicurezza base**», sede 30 | `p0408 (406)` «**config. antieffrazione RC1/RC2**» |
+> |---|---|---|
+> | Incontro nottolino | voce 16 = **«Antieffrazione»** | voce 15 = «Aria 12» — i **normali** |
+> | Pezzo distintivo | voce 22 copertura + voce 9 doppio nottolino a fungo | voce 3 **«Piastrino antieffrazione»** |
+> | Voci | 22 | 18 |
+>
+> `p0408` dice esplicitamente «*per serramenti con sede incontri da 30 mm riferirsi agli schemi
+> sede 30*»: quindi **p0408 è lo schema della NOSTRA sede**, non p0406. Il che ridimensiona il
+> famoso «divario 22 voci contro 16»: confrontati con lo schema giusto ne mancano **due** —
+> piastrino antieffrazione e spessori di sollevamento — non sei.
+>
+> **Tutti i codici verificati sul catalogo reale** (7.488 prodotti):
+>
+> | Pezzo | Oggi | Antieffrazione | Fonte |
+> |---|---|---|---|
+> | Movimento angolare | `A50302.01.02` (1 nott.) 6,66 € × 2 | **`A50302.02.02`** (2 nott.) 9,73 € | p0435 (433), **NB stampata**: «necessario per tutte le classi antieffrazione» |
+> | Incontro nottolino | `A51400.05.02` 0,81 € × 5 | `A514DX/SX.05.67` (viti inclinate) o `.68` (dritte) 3,03 € | p0470 (468) |
+> | Piastrino antieffrazione | — | `A50194.00.01` (entrata 7,5) 3,17 € · `A20050.00.02` (entrata 15) 2,69 € | p0432 (430) |
+> | Doppio nottolino a fungo | — | `A50320.02.01` 7,58 € | p0435 (433) |
+>
+> Il **movimento angolare** non era nella lista dell'utente ma la NB del listino lo rende
+> obbligatorio: è una scoperta del listino, non un'assunzione. E il **piastrino dipende
+> dall'entrata**, cioè dal campo reso esplicito dalla #40 — ortogonalità gratis.
+>
+> **⚠️ DUE CONFLITTI DA SCIOGLIERE PRIMA DI SCRIVERE CODICE:**
+>
+> 1. **Il nottolino a fungo porta la NB «soluzione per serramenti con sede incontri da 30 mm»**, e
+>    nessuno dei tre clienti è sede 30 (MC e Peruzzi aria 4 senza sede, Fosca sede 24). O l'utente
+>    monta il fungo su serramenti sede 30 — e allora è una geometria che il motore oggi **rifiuta a
+>    monte** (`assertSeatConfigSupportata`) — oppure con «nottolino a fungo» intende il **movimento
+>    angolare a 2 nottolini `A50302.02.02`**, che ha davvero due dentini ed è quello reso
+>    obbligatorio dalla NB.
+> 2. **Viti inclinate (`.67`) o dritte (`.68`)?** Stesso prezzo, due codici. *(Nota: `A522SX.05.67`
+>    — con perni, mano SX, 9x18 — **non esiste a catalogo**: p0470 pubblica «con perni di posiz.»
+>    solo dx per il 9x18, entrambe le mani per il 13x24. Se la scelta cadesse lì, metà dei
+>    serramenti non sarebbe ordinabile.)*
+>
+> Con quelle due risposte la feature è **una spec breve**: un campo `sicurezza: "BASE" |
+> "ANTIEFFRAZIONE"` sul ramo ARTECH, ortogonale a geometria ed entrata come lo è l'entrata, che
+> sostituisce due righe e ne aggiunge due. Tutti i codici sono già verificati.
+>
 > ### Debito chiuso: il gate su catalogo reale
 >
 > Fissava `widthMm: 550`, quindi esercitava **1 banda su 5** di `FORBICI` e **1 su 4** di
@@ -114,6 +195,10 @@
 > non ci sono. Senza, i tre clienti principali ricevono distinte che nessuno ha mai confrontato con
 > un ordine vero, e `corsa = altezza − 420` resta **una retta tirata per un punto**. Basta una
 > foto, purché con **altezza diversa da 1820**.
+>
+> 🆕 Da questa sessione i tre clienti **esistono in anagrafica su Neon**, con la loro geometria. Il
+> che rende il confronto più facile: aprire `/richieste/nuova`, scegliere il cliente, «Usa il
+> profilo», generare, e mettere la distinta a fianco della foto dell'ordine.
 >
 > ### Debito noto residuo
 >
@@ -169,29 +254,34 @@
 > PR (chiedi il mio ok prima di aprirla) + indica le AZIONI OPS.
 >
 > Il PDF del listino AGB 2026 NON è nel container: scaricalo dal link in CLAUDE.md
-> (§FILE ESTERNI). Estrai il testo con pdftotext -layout e splittalo pagina per pagina.
+> (§FILE ESTERNI). Serve poppler-utils (`sudo apt-get install -y poppler-utils`, NON
+> è preinstallato). Estrai il testo con pdftotext -layout e splittalo pagina per pagina.
 > ATTENZIONE: pagina fisica = stampata + 2. E le legende degli schemi stanno DENTRO il
-> disegno: nel testo estratto NON compaiono, vanno renderizzate in immagine e guardate.
+> disegno: nel testo estratto NON compaiono, vanno renderizzate (pdftoppm -r 150 -png)
+> e GUARDATE. È così che è saltato fuori che il formato 9x18 esiste in due corpi diversi.
 >
-> STATO: verifica tu i run di «Ops — Neon» invece di fidarti dell'handoff. La sessione
-> precedente ha lasciato la migrazione `20260730232026_customer_kit_profile` (profilo
-> serramento cliente): controlla se è stata applicata a Neon e se la PR è mergiata.
+> STATO: verifica tu i run di «Ops — Neon» invece di fidarti dell'handoff. L'ultima
+> sessione ha chiuso PR #44 e #45 e ha eseguito entrambe le ops (run 30614027728 e
+> 30618326143): non dovrebbe esserci nulla di pendente, ma controlla.
 >
-> Prima di propormi qualsiasi cosa, rispondi a UNA domanda: sono arrivate le tre
-> distinte reali di MC, Peruzzi e Fosca? È aperta da QUATTRO sessioni ed è la cosa che
-> vale di più. Se ne è arrivata anche una sola con altezza diversa da 1820, cambia
-> tutte le priorità: si tara la corsa delle chiusure, che oggi è una retta per un punto.
+> LA PROSSIMA FEATURE È L'ANTIEFFRAZIONE, ed è quasi pronta: tutti i codici sono già
+> verificati sul catalogo reale e stanno in handoff.md §«ANTIEFFRAZIONE». Ma NON
+> partire finché non ho risposto a due domande, che trovi lì scritte per esteso:
+>  1. il «nottolino a fungo» è per serramenti sede 30 (che il motore oggi rifiuta),
+>     oppure intendevo il movimento angolare a 2 nottolini A50302.02.02?
+>  2. incontri a viti inclinate (.67) o dritte (.68)?
+> Chiedimele in parole semplici, con un esempio numerico sul golden: l'ultima volta ha
+> funzionato così. Se ho già risposto in chat, parti pure.
 >
-> Se non sono arrivate, le strade sono: (1) la DOMANDA 29 — l'«incontro nottolino
-> incassato»: se l'esperto ha risposto, il campo entra nel profilo (ma serve prima la
-> domanda 20, perché il codice candidato richiede una copertura che non emettiamo);
-> (2) il composer delle chiusure (§3.6 spec 2026-07-29), che però resta tarato su un
-> punto solo; (3) i debiti residui in handoff.md §«Debito noto residuo» — CASI non
-> legato a RULE_MODULES, dedupeRows last-wins, e le preview Vercel rotte su ogni PR.
+> Se non ho risposto, le alternative sono: (a) le tre distinte reali di MC, Peruzzi e
+> Fosca — aperta da QUATTRO sessioni, vale più di tutto il resto, e ora che i tre
+> clienti sono in anagrafica basta generare la distinta e metterla a fianco della foto;
+> (b) i debiti in handoff.md §«Debito noto residuo»: CASI non legato a RULE_MODULES,
+> dedupeRows last-wins, e le preview Vercel rotte su ogni PR (env solo su Production).
 >
 > NON rompere il golden: 16 righe / 21 pezzi / 90,20 €, e il suo gemello a entrata
-> 7,5 a 96,29 €. Sono gli unici due riscontri numerici che abbiamo, e ora il gate su
-> catalogo reale li asserisce per davvero (prima diceva «> 0»).
+> 7,5 a 96,29 €. Sono gli unici due riscontri numerici che abbiamo, e il gate su
+> catalogo reale ora li asserisce per davvero (prima diceva «> 0»).
 > ```
 >
 > ---

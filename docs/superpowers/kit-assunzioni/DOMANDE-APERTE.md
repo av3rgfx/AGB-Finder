@@ -4,8 +4,8 @@
 > globale e va conservata**: i commenti nel codice rimandano per numero («domanda 4 per
 > l'esperto»). Le 1-16 esistevano già; le **17-23** nascono dalla verifica del 2026-07-27; le
 > **24-26** dal lavoro sulle sette geometrie del 2026-07-29; la **27** dal lavoro sull'entrata maniglia,
-> la **28** dalla scontistica cliente e la **29** dal profilo serramento del cliente, tutte e tre
-> del 2026-07-30.
+> la **28** dalla scontistica cliente e la **29** dal profilo serramento del cliente (tutte e tre del
+> 2026-07-30); la **30** dall'antieffrazione, 2026-07-31.
 >
 > ⚠️ Questo è l'**unico** indice della numerazione globale: le schede per tipologia
 > (`legno.md`, `tour.md`, …) discutono le domande nel merito ma **non** ricopiano l'elenco —
@@ -33,6 +33,7 @@
 | 23 | La finestra 700×1400 battuta 18 sede 30 | agente | 🟡 **secondo golden**, se esiste |
 | 26 | Il nottolino di Fosca vuole una copertura | agente o AGB | 🟡 una riga mancante sulle geometrie nuove |
 | **29** | **«Incontro nottolino incassato»: quale dei tre assi?** | agente | 🟡 **tre assi che il motore cabla senza chiederli** |
+| **30** | **Antieffrazione: il fungo è per sede 30? viti inclinate o dritte?** | agente | 🔴 **sblocca l'intera feature antieffrazione, codici già pronti** |
 | 25 | Confezioni: si applica il +20% fuori confezione? | AGB o ufficio | 🟡 **i totali di ogni distinta** |
 | 28 | Lo sconto è unico per cliente, o per classe? | AGB o ufficio | 🟡 **il netto di ogni distinta** |
 | 24 | Interasse 8,5: quali incontri? | agente o AGB | 🟡 la famiglia incontri del cliente «MC» |
@@ -220,6 +221,60 @@ distinta che sappiamo già incompleta.
 *Perché non è stato indovinato: scegliere l'asse sbagliato significa scrivere nel profilo di un
 cliente una preferenza che il motore applica alla riga sbagliata — cioè un campo raccolto,
 mostrato al cliente, e inerte.*
+
+## 30 — Antieffrazione: due nodi, e la feature è pronta
+
+**Da dove nasce:** richiesta dell'utente, 2026-07-31 — «*quando si sviluppa un'anta-ribalta bisogna
+chiedere se si vuole il nottolino e l'incontro nottolino antieffrazione o normale*». Alla domanda su
+cosa cambi nell'ordine: «**cambio entrambi e ci metto anche il nottolino a fungo**».
+
+**Il listino pubblica DUE configurazioni per la stessa finestra**, e i nomi ingannano:
+
+| | `p0406 (404)` «**sicurezza base**», sede 30 | `p0408 (406)` «**config. antieffrazione RC1/RC2**» |
+|---|---|---|
+| Incontro nottolino | voce 16 = **«Antieffrazione»** | voce 15 = «Aria 12» — i **normali** |
+| Pezzo distintivo | voce 22 copertura + voce 9 doppio nottolino a fungo | voce 3 **«Piastrino antieffrazione»** |
+| Voci totali | 22 | 18 |
+
+`p0408` dichiara «*per serramenti con sede incontri da 30 mm riferirsi agli schemi sede 30*»: è
+quindi **lo schema della nostra sede**. Il che riduce il «divario 22 contro 16» della domanda 20 a
+**due voci** — piastrino e spessori di sollevamento — non sei.
+
+**Codici, tutti verificati sul catalogo reale (7.488 prodotti):**
+
+| Pezzo | Oggi | Antieffrazione | Fonte |
+|---|---|---|---|
+| Movimento angolare | `A50302.01.02` (1 nott.) 6,66 € × 2 | **`A50302.02.02`** (2 nott.) 9,73 € | p0435 (433) |
+| Incontro nottolino | `A51400.05.02` 0,81 € × 5 | `A514DX/SX.05.67` (viti inclinate) · `.68` (dritte) 3,03 € | p0470 (468) |
+| Piastrino antieffrazione | — | `A50194.00.01` (entrata 7,5) 3,17 € · `A20050.00.02` (entrata 15) 2,69 € | p0432 (430) |
+| Doppio nottolino a fungo | — | `A50320.02.01` 7,58 € | p0435 (433) |
+
+Il **movimento angolare** non era nella lista dell'utente: lo impone una **NB stampata** a p0435
+(433) — «*mov. angolare `A50302.02.02` necessario per tutte le classi antieffrazione*». È una
+scoperta del listino, non un'assunzione. E il **piastrino dipende dall'entrata**, cioè dal campo
+reso esplicito dalla PR #40.
+
+### Le due domande
+
+1. **Il «nottolino a fungo» va su serramenti sede 30?** La sua tabella porta la NB «*soluzione per
+   serramenti con sede incontri da 30 mm*», e **nessuno dei tre clienti è sede 30** (MC e Peruzzi
+   aria 4 senza sede, Fosca sede 24). O si monta su serramenti sede 30 — che il motore oggi
+   **rifiuta a monte** (`assertSeatConfigSupportata`) — oppure con «fungo» si intende il
+   **movimento angolare a 2 nottolini `A50302.02.02`**, che ha davvero due dentini ed è quello che
+   la NB rende obbligatorio.
+2. **Viti inclinate (`.67`) o dritte (`.68`)?** Stesso prezzo, due codici.
+
+> ⚠️ `A522SX.05.67` — con perni, mano SX, 9x18 — **non esiste a catalogo**: p0470 pubblica «con
+> perni di posiz.» solo **dx** per il 9x18, entrambe le mani per il 13x24. Se la scelta cadesse lì,
+> metà dei serramenti non sarebbe ordinabile.
+
+**Con le due risposte la feature è una spec breve:** un campo `sicurezza: "BASE" | "ANTIEFFRAZIONE"`
+sul ramo ARTECH, ortogonale a geometria ed entrata esattamente come lo è l'entrata, che sostituisce
+due righe e ne aggiunge due.
+
+*Esempio numerico sul golden (550×1820, aria 12/13/20, entrata 15, chiusure ON), oggi 16 righe / 21
+pezzi / **90,20 €**: sostituendo movimento angolare e incontri e aggiungendo piastrino e fungo si
+va a **~18 righe** e **~112 €**. Da confermare a valle delle due risposte.*
 
 ## 7 — Finestre basse
 Vi capitano finestre con altezza maniglia **sotto i 60 cm**? Se sì, come le ordinate?
