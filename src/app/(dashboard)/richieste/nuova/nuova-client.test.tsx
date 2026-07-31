@@ -46,6 +46,20 @@ const PREZZI_CATALOGO: Record<string, { name: string; price: number }> = {
   "A50194.00.01": { name: "Piastrino antieffrazione 7,5", price: 3.17 },
 };
 
+/**
+ * La query dei prezzi, MUTABILE per test: «prezzo non a catalogo» è
+ * un'affermazione sul listino AGB, e caricamento, errore e assenza sono tre
+ * fatti diversi. Un mock fisso a `{ data }` non poteva provare che la UI non ne
+ * spacci uno per un altro.
+ */
+type CatalogoQuery = {
+  data?: Record<string, { name: string; price: number }>;
+  isPending: boolean;
+  isError: boolean;
+};
+const CATALOGO_PRONTO: CatalogoQuery = { data: PREZZI_CATALOGO, isPending: false, isError: false };
+let catalogoQuery: CatalogoQuery = CATALOGO_PRONTO;
+
 vi.mock("@/trpc/react", () => ({
   api: {
     kit: {
@@ -95,7 +109,7 @@ vi.mock("@/trpc/react", () => ({
     // filtra sui codici richiesti, e per i test conta solo il lookup per codice.
     // I valori sono quelli VERI del catalogo importato (7.488 prodotti), non
     // inventati: è ciò che rende asseribile il Δ di 4,06 € della squadra.
-    product: { byCodes: { useQuery: () => ({ data: PREZZI_CATALOGO }) } },
+    product: { byCodes: { useQuery: () => catalogoQuery } },
     useUtils: () => ({ customer: { list: { invalidate: vi.fn() } } }),
   },
 }));
@@ -114,6 +128,7 @@ afterEach(() => {
   push.mockReset();
   createMutate.mockReset();
   generateMutate.mockReset();
+  catalogoQuery = CATALOGO_PRONTO;
 });
 
 /**
@@ -957,8 +972,11 @@ describe("NuovaRichiestaClient — passo «Componenti»", () => {
     const codice = within(squadra).getByText("A50904.36.02");
     expect(codice.className).toContain("font-mono");
     // Il nome A CATALOGO, non l'etichetta che diamo noi all'opzione: è ciò che
-    // permette di verificare il codice senza uscire dalla schermata.
-    expect(codice.getAttribute("title")).toBe("INTERASSE 13 SX");
+    // permette di verificare il codice senza uscire dalla schermata. TESTO, non
+    // più un `title`: a touch — cioè proprio a 375px, dove vale la regola
+    // mobile-first — e da tastiera un tooltip non esiste.
+    expect(within(squadra).getByText("INTERASSE 13 SX")).toBeTruthy();
+    expect(codice.getAttribute("title")).toBeNull();
     expect(within(squadra).getByText(/9,83/)).toBeTruthy();
     expect(within(squadra).getAllByText(/^standard$/i).length).toBeGreaterThan(0);
     // La base costa 4,06 € in meno: è il numero per cui esiste questa schermata.
@@ -972,8 +990,10 @@ describe("NuovaRichiestaClient — passo «Componenti»", () => {
     alPassoComponenti();
     accendiAntieffrazione();
 
-    // «Cosa cambia»: tre voci, vecchio → nuovo, e il Δ di ciascuna.
-    const cambia = screen.getByRole("group", { name: /cosa cambia/i });
+    // «Cosa cambia»: tre voci, vecchio → nuovo, e il Δ di ciascuna. Agganciato
+    // per `data-testid`: il blocco non è interattivo, e il `role="group"` che
+    // c'era prima era semantica falsa messa lì per i test.
+    const cambia = screen.getByTestId("cosa-cambia");
     expect(within(cambia).getByText("A50302.01.02")).toBeTruthy();
     expect(within(cambia).getByText("A50302.02.02")).toBeTruthy();
     expect(within(cambia).getByText("A51400.05.02")).toBeTruthy();
@@ -1028,7 +1048,7 @@ describe("NuovaRichiestaClient — passo «Componenti»", () => {
       }),
     );
     expect(statoAntieffrazione(undefined)).toBe("SPENTO");
-    expect(screen.queryByRole("group", { name: /cosa cambia/i })).toBeNull();
+    expect(screen.queryByTestId("cosa-cambia")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // → riepilogo
     fireEvent.click(screen.getByRole("button", { name: /genera kit/i }));
     await vi.waitFor(() => expect(createMutate).toHaveBeenCalled());
@@ -1130,6 +1150,133 @@ describe("NuovaRichiestaClient — passo «Componenti»", () => {
     expect(createMutate.mock.calls[0]![0].specs.variants).toBeUndefined();
   });
 
+  /**
+   * L'altra metà del ritorno indietro, e la meno ovvia: una scelta può restare
+   * DISPONIBILE sulla nuova geometria ed esserne lo STANDARD. `BASE` è fuori
+   * standard su `A12_I13_B20` (quindi si persiste) ed è lo standard di
+   * `A4_I85_B15`: la potatura che scartava solo l'assente la teneva, e finiva a
+   * DB dove una richiesta identica creata da zero scrive `NULL`.
+   */
+  it("cambiare geometria scarta anche la scelta che sulla nuova È lo standard", async () => {
+    createMutate.mockResolvedValue({ id: "kv5", requestNumber: "KIT-2026-0012" });
+    generateMutate.mockResolvedValue({ totalComponents: 16 });
+    alPassoComponenti("A12_I13_B20");
+    apriAltreVarianti();
+    fireEvent.click(
+      within(screen.getByRole("group", { name: /squadra angolare/i })).getByRole("radio", {
+        name: /^base$/i,
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /indietro/i })); // 4 → 3
+    scegliGeometria("A4_I85_B15"); // dove BASE È lo standard, e resta fra le opzioni
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // 3 → 4
+
+    // Le due affermazioni della schermata non si contraddicono più: la riga di
+    // stato non dice «Modificate» di un'opzione che porta il distintivo «standard».
+    expect(screen.getByText(/Squadra angolare e incontro ribalta: standard/i)).toBeTruthy();
+    apriAltreVarianti();
+    const squadra = screen.getByRole("group", { name: /squadra angolare/i });
+    expect(
+      (within(squadra).getByRole("radio", { name: /^base$/i }) as HTMLInputElement).checked,
+    ).toBe(true);
+
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // → riepilogo
+    fireEvent.click(screen.getByRole("button", { name: /genera kit/i }));
+    await vi.waitFor(() => expect(createMutate).toHaveBeenCalled());
+    // Il default vive nel REGISTRO: la riga a DB è identica a quella di una
+    // richiesta creata da zero su questa geometria.
+    expect(createMutate.mock.calls[0]![0].specs.variants).toBeUndefined();
+  });
+
+  /**
+   * I TRE stati della query dei prezzi. «Non a catalogo» è un'affermazione sul
+   * listino AGB — la stessa classe di segnale che ha smascherato due moduli con
+   * codici inesistenti: dirla mentre la query carica (cioè sempre, al primo
+   * render) o quando è fallita è affermare un fatto che non si conosce.
+   */
+  it("mentre i prezzi caricano non dice «non a catalogo», e non inventa Δ", () => {
+    catalogoQuery = { isPending: true, isError: false };
+    alPassoComponenti();
+    accendiAntieffrazione();
+    apriAltreVarianti();
+    const squadra = String(screen.getByRole("group", { name: /squadra angolare/i }).textContent);
+    expect(squadra).toMatch(/in caricamento/i);
+    expect(squadra).not.toMatch(/non a catalogo/i);
+    expect(squadra).not.toMatch(/€/);
+    // Nemmeno il totale di «Cosa cambia» si spaccia per noto.
+    const cambia = String(screen.getByTestId("cosa-cambia").textContent);
+    expect(cambia).toMatch(/in caricamento/i);
+    expect(cambia).not.toMatch(/€/);
+    // Caricare non è un errore: nessun allarme.
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("se la query fallisce lo dice, e non lo attribuisce al catalogo", () => {
+    catalogoQuery = { isPending: false, isError: true };
+    alPassoComponenti();
+    // Distinguibile da un buco del listino: è rete o server.
+    expect(String(screen.getByRole("alert").textContent)).toMatch(/rete o del server/i);
+    apriAltreVarianti();
+    const squadra = String(screen.getByRole("group", { name: /squadra angolare/i }).textContent);
+    expect(squadra).toMatch(/non caricato/i);
+    expect(squadra).not.toMatch(/non a catalogo/i);
+    expect(squadra).not.toMatch(/€/);
+  });
+
+  it("codice davvero assente dal catalogo: solo allora dice «non a catalogo»", () => {
+    catalogoQuery = { data: {}, isPending: false, isError: false };
+    alPassoComponenti();
+    apriAltreVarianti();
+    const squadra = String(screen.getByRole("group", { name: /squadra angolare/i }).textContent);
+    expect(squadra).toMatch(/non a catalogo/i);
+    expect(squadra).not.toMatch(/in caricamento/i);
+    // La risposta è arrivata: non c'è nessun problema di rete da segnalare.
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  // I due pannelli dichiarano `aria-expanded`: senza `aria-controls` non si sa
+  // COSA espandano.
+  it("i due toggle dichiarano il pannello che comandano", () => {
+    alPassoComponenti();
+    const treScelte = screen.getByRole("button", { name: /le tre scelte/i });
+    const altre = screen.getByRole("button", { name: /altre varianti/i });
+    expect(treScelte.getAttribute("aria-controls")).toBeTruthy();
+    expect(altre.getAttribute("aria-controls")).toBeTruthy();
+    expect(document.getElementById(treScelte.getAttribute("aria-controls")!)).toBeNull();
+    fireEvent.click(treScelte);
+    fireEvent.click(altre);
+    expect(document.getElementById(treScelte.getAttribute("aria-controls")!)).toBeTruthy();
+    expect(document.getElementById(altre.getAttribute("aria-controls")!)).toBeTruthy();
+  });
+
+  // Nasce da un DIVIETO stampato sul listino: è la stessa classe degli errori di
+  // passo di questa schermata, che usano già `alert`.
+  it("l'avviso sulla combinazione vietata è un alert", () => {
+    alPassoComponenti();
+    fireEvent.click(screen.getByRole("button", { name: /le tre scelte/i }));
+    fireEvent.click(
+      within(screen.getByRole("group", { name: /incontri nottolino/i })).getByRole("radio", {
+        name: /antieffrazione, viti inclinate/i,
+      }),
+    );
+    expect(String(screen.getByRole("alert").textContent)).toMatch(/p\. stampata 433/i);
+  });
+
+  // «Δ totale a pezzo» si contraddiceva, e la frase che lo chiariva si leggeva
+  // dopo il numero, cioè dopo aver frainteso.
+  it("il totale si chiama «Differenza per pezzo», con la spiegazione PRIMA del numero", () => {
+    alPassoComponenti();
+    accendiAntieffrazione();
+    const cambia = String(screen.getByTestId("cosa-cambia").textContent);
+    expect(cambia).toMatch(/Differenza per pezzo/);
+    expect(cambia).not.toMatch(/totale a pezzo/i);
+    // Le quantità in gioco sono DUE, e il movimento angolare mancava.
+    expect(cambia).toMatch(/il movimento angolare è 2/i);
+    expect(cambia.indexOf("le quantità li moltiplicano")).toBeLessThan(
+      cambia.indexOf("Differenza per pezzo"),
+    );
+  });
+
   // Regola inviolabile «mobile-first», come per materiale, geometria ed entrata.
   it("le griglie delle opzioni sono a una colonna sotto sm", () => {
     alPassoComponenti();
@@ -1200,6 +1347,28 @@ describe("variantiPerGeometria", () => {
 
   it("scarta la squadra che l'interasse 8,5 non pubblica, e resta senza varianti", () => {
     expect(variantiPerGeometria("A4_I85_B15", { squadraAngolare: "COMPENSATORE" })).toBeUndefined();
+  });
+
+  // La potatura meno ovvia: DISPONIBILE non basta, perché sulla nuova geometria
+  // può essere lo STANDARD — e uno standard materializzato nel dato non
+  // seguirebbe più un cambio di default.
+  it("scarta la scelta che sulla NUOVA geometria è lo standard", () => {
+    // BASE è fuori standard su A12_I13_B20…
+    expect(variantiPerGeometria("A12_I13_B20", { squadraAngolare: "BASE" })).toEqual({
+      squadraAngolare: "BASE",
+    });
+    // …ed è lo standard di A4_I85_B15, dove pure resta fra le due opzioni.
+    expect(variantiPerGeometria("A4_I85_B15", { squadraAngolare: "BASE" })).toBeUndefined();
+  });
+
+  it("non materializza nemmeno gli standard che non dipendono dalla geometria", () => {
+    expect(
+      variantiPerGeometria("A12_I13_B20", {
+        movimentoAngolare: "UN_NOTTOLINO",
+        incontroNottolino: "NORMALE",
+        incontroRibalta: "ZAMA",
+      }),
+    ).toBeUndefined();
   });
 
   it("scarta solo ciò che non esiste, non il resto del blocco", () => {

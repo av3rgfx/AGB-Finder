@@ -33,15 +33,19 @@ import {
 } from "@/server/kit/artech-geometrie";
 import {
   avvisiVarianti,
+  incontroNottolinoEtichettaSeNonStandard,
   incontroNottolinoVariante,
+  incontroRibaltaEtichettaSeNonStandard,
   incontroRibaltaVariante,
   movimentoAngolareCodice,
+  movimentoAngolareEtichettaSeNonStandard,
   opzioniIncontroNottolino,
   opzioniIncontroRibalta,
   opzioniSquadraAngolare,
   piastrinoCodice,
   scelteNonStandard,
   squadraAngolare,
+  squadraAngolareEtichettaSeNonStandard,
   COMPONENTE_LABEL,
   MOVIMENTO_ANGOLARE_LABEL,
   type MovimentoAngolareId,
@@ -308,14 +312,27 @@ export function statoAntieffrazione(v: Varianti | undefined): "SPENTO" | "PARZIA
 }
 
 /**
- * Le varianti che questa geometria pubblica davvero: le altre tornano allo
- * standard. La geometria si sceglie al passo 3 e le varianti al 4, quindi
- * tornare indietro e cambiarla può lasciare nel form una scelta che il listino
- * non pubblica per il nuovo interasse (spec §8).
+ * Le varianti che questa geometria pubblica davvero, e SOLO quelle fuori
+ * standard: le altre tornano allo standard. La geometria si sceglie al passo 3 e
+ * le varianti al 4, quindi tornare indietro e cambiarla può lasciare nel form
+ * una scelta che il listino non pubblica per il nuovo interasse (spec §8).
  *
- * Interroga le STESSE `opzioni*` del registro che costruiscono le radio: una
- * seconda lista scritta qui a mano si disallineerebbe dalle tabelle, ed è
- * esattamente il difetto che il registro esiste per chiudere.
+ * DUE potature, e la seconda è la meno ovvia. Una scelta può restare
+ * DISPONIBILE sulla nuova geometria ed esserne lo STANDARD: `BASE` è fuori
+ * standard su `A12_I13_B20` (quindi si persiste) ma è lo standard di
+ * `A4_I85_B15`. Senza la seconda potatura, tre clic scrivevano a DB
+ * `{ squadraAngolare: "BASE" }` dove una richiesta identica creata da zero
+ * scrive `NULL` — quella riga non seguirebbe un cambio di default, ed è
+ * esattamente ciò che l'invariante «il default vive nel registro» esiste per
+ * impedire. In più la Zona B diceva «Modificate: Squadra angolare» mentre a
+ * schermo la stessa opzione portava il distintivo «standard».
+ *
+ * Nessun criterio nuovo: la disponibilità sono le STESSE `opzioni*` che
+ * costruiscono le radio, e «fuori standard» sono le STESSE
+ * `*EtichettaSeNonStandard` con cui il motore decide se dichiarare la variante
+ * sulla riga di distinta (`undefined` = è lo standard). Una seconda nozione di
+ * «standard» sarebbe la seconda fonte di verità che questa feature esiste per
+ * eliminare.
  */
 export function variantiPerGeometria(
   geometry: ArtechGeometryId,
@@ -325,12 +342,29 @@ export function variantiPerGeometria(
   const restano = { ...varianti };
   const assente = <T extends string>(opzioni: { id: T }[], scelta: T | undefined) =>
     scelta !== undefined && !opzioni.some((o) => o.id === scelta);
-  if (assente(opzioniSquadraAngolare(geometry), restano.squadraAngolare))
+  // `undefined` dall'etichetta = «questa scelta È lo standard» (e vale anche per
+  // la scelta assente, dove il `delete` è un no-op).
+  const standard = (etichetta: string | undefined) => etichetta === undefined;
+  if (
+    assente(opzioniSquadraAngolare(geometry), restano.squadraAngolare) ||
+    standard(squadraAngolareEtichettaSeNonStandard(geometry, restano.squadraAngolare))
+  )
     delete restano.squadraAngolare;
-  if (assente(opzioniIncontroRibalta(geometry), restano.incontroRibalta))
+  if (
+    assente(opzioniIncontroRibalta(geometry), restano.incontroRibalta) ||
+    standard(incontroRibaltaEtichettaSeNonStandard(geometry, restano.incontroRibalta))
+  )
     delete restano.incontroRibalta;
-  if (assente(opzioniIncontroNottolino(geometry), restano.incontroNottolino))
+  if (
+    assente(opzioniIncontroNottolino(geometry), restano.incontroNottolino) ||
+    standard(incontroNottolinoEtichettaSeNonStandard(restano.incontroNottolino))
+  )
     delete restano.incontroNottolino;
+  // Non dipende dalla geometria — ma «il default non si materializza» sì: se
+  // `UN_NOTTOLINO` fosse scritto per esteso sarebbe lo standard congelato nel
+  // dato, lo stesso difetto in un campo diverso.
+  if (standard(movimentoAngolareEtichettaSeNonStandard(restano.movimentoAngolare)))
+    delete restano.movimentoAngolare;
   return componiVarianti(restano);
 }
 
@@ -1196,6 +1230,31 @@ function formatDelta(delta: number): string {
   return `${delta < 0 ? "−" : "+"}${formatPrice(Math.abs(delta))}`;
 }
 
+/**
+ * I TRE stati della query dei prezzi, tenuti distinti.
+ *
+ * «Non a catalogo» è un'AFFERMAZIONE SUL LISTINO AGB — è la stessa classe di
+ * segnale che ha smascherato due moduli con codici inesistenti. Dirla mentre la
+ * query carica (cioè sempre, al primo render) o quando è fallita significa
+ * affermare un fatto che non si conosce: in una schermata che esiste per togliere
+ * le decisioni silenziose sarebbe una decisione silenziosa.
+ */
+type StatoPrezzi = "CARICAMENTO" | "ERRORE" | "PRONTO";
+
+/** Nessuna delle tre frasi vale per gli altri due stati. */
+function etichettaPrezzo(stato: StatoPrezzi, prezzo: number | undefined): string {
+  if (stato === "CARICAMENTO") return "prezzo in caricamento…";
+  if (stato === "ERRORE") return "prezzo non caricato";
+  return prezzo === undefined ? "prezzo non a catalogo" : formatPrice(prezzo);
+}
+
+/** Il Δ ha gli stessi tre stati del prezzo da cui si calcola. */
+function etichettaDelta(stato: StatoPrezzi, delta: number | undefined): string {
+  if (stato === "CARICAMENTO") return "in caricamento…";
+  if (stato === "ERRORE") return "non caricato";
+  return delta === undefined ? "—" : formatDelta(delta);
+}
+
 type OpzioneVariante<T extends string> = { id: T; label: string; code: string | null };
 type GruppoOpzioni<T extends string> = { opzioni: OpzioneVariante<T>[]; standardId: T };
 
@@ -1240,6 +1299,7 @@ function GruppoVarianti<T extends string>({
   standardId,
   scelto,
   voce,
+  stato,
   onChange,
 }: {
   name: string;
@@ -1248,6 +1308,7 @@ function GruppoVarianti<T extends string>({
   standardId: T;
   scelto: T | undefined;
   voce: (code: string) => { name: string; price: number } | undefined;
+  stato: StatoPrezzi;
   onChange: (id: T | undefined) => void;
 }) {
   const prezzoDi = (o: OpzioneVariante<T> | undefined) =>
@@ -1263,6 +1324,11 @@ function GruppoVarianti<T extends string>({
         {opzioni.map((o) => {
           const p = prezzoDi(o);
           const delta = p === undefined || base === undefined ? undefined : p - base;
+          // Il nome a CATALOGO del codice — non l'etichetta che gli diamo noi. È
+          // l'unico modo di verificare, senza uscire dalla schermata, che il
+          // codice sia quello giusto: perciò è TESTO e non più un `title`, che a
+          // touch (cioè proprio a ≤375px) e da tastiera non esiste.
+          const nome = o.code === null ? undefined : voce(o.code)?.name;
           return (
             <RadioOption
               key={o.id}
@@ -1270,15 +1336,8 @@ function GruppoVarianti<T extends string>({
               label={o.label}
               hint={
                 <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                  {o.code !== null && (
-                    // `title`: il nome a CATALOGO del codice — non l'etichetta
-                    // che gli diamo noi. È l'unico modo di verificare, senza
-                    // uscire dalla schermata, che il codice sia quello giusto.
-                    <span className="font-mono text-ink-muted" title={voce(o.code)?.name}>
-                      {o.code}
-                    </span>
-                  )}
-                  <span>{p === undefined ? "prezzo non a catalogo" : formatPrice(p)}</span>
+                  {o.code !== null && <span className="font-mono text-ink-muted">{o.code}</span>}
+                  <span>{etichettaPrezzo(stato, p)}</span>
                   {delta !== undefined && delta !== 0 && (
                     <span className="font-medium text-ink">{formatDelta(delta)}</span>
                   )}
@@ -1287,6 +1346,9 @@ function GruppoVarianti<T extends string>({
                       standard
                     </span>
                   )}
+                  {/* `basis-full`: riga propria, così a 375px il nome lungo va a
+                      capo sotto e non spinge fuori schermo codice e prezzo. */}
+                  {nome !== undefined && <span className="basis-full break-words">{nome}</span>}
                 </span>
               }
               checked={(scelto ?? standardId) === o.id}
@@ -1342,12 +1404,16 @@ function cambioDi<T extends string>(
  * decide la distinta (il movimento angolare è 2, gli incontri nottolino sono
  * cinque sul golden): dirlo è l'unico modo di mostrare un totale senza mentire.
  */
-function CosaCambia({ cambi }: { cambi: Cambio[] }) {
+function CosaCambia({ cambi, stato }: { cambi: Cambio[]; stato: StatoPrezzi }) {
   const totale = cambi.some((c) => c.delta === undefined)
     ? undefined
     : cambi.reduce((somma, c) => somma + (c.delta ?? 0), 0);
   return (
-    <div role="group" aria-label="Cosa cambia" className="rounded-md bg-surface-sunken p-3">
+    // `data-testid` e non `role="group"`: il blocco non è interattivo e non
+    // raggruppa controlli, quindi il ruolo era semantica falsa aggiunta per
+    // rendere il blocco interrogabile dai test. Se serve solo ai test, si usa un
+    // aggancio che i lettori di schermo non vedono affatto.
+    <div data-testid="cosa-cambia" className="rounded-md bg-surface-sunken p-3">
       <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-subtle">
         Cosa cambia
       </p>
@@ -1372,15 +1438,16 @@ function CosaCambia({ cambi }: { cambi: Cambio[] }) {
           </li>
         ))}
       </ul>
-      <p className="mt-2 flex items-baseline justify-between gap-3 border-t border-line-strong pt-2 text-sm">
-        <span className="text-ink-subtle">Δ totale a pezzo</span>
-        <span className="font-semibold tabular-nums text-ink">
-          {totale === undefined ? "—" : formatDelta(totale)}
-        </span>
+      {/* La frase sta SOPRA il numero: sotto la si leggeva dopo aver già
+          frainteso. E nomina tutte e due le quantità in gioco, non solo una. */}
+      <p className="mt-2 border-t border-line-strong pt-2 text-xs text-ink-subtle">
+        Prezzi unitari di listino: nella distinta le quantità li moltiplicano — il movimento
+        angolare è 2, gli incontri nottolino sono più d&apos;uno.
       </p>
-      <p className="mt-1 text-xs text-ink-subtle">
-        Prezzi unitari di listino: nella distinta le quantità li moltiplicano (gli incontri
-        nottolino sono più d&apos;uno).
+      <p className="mt-1 flex items-baseline justify-between gap-3 text-sm">
+        {/* «Δ totale a pezzo» si contraddiceva: «totale» e «a pezzo» insieme. */}
+        <span className="text-ink-subtle">Differenza per pezzo</span>
+        <span className="font-semibold tabular-nums text-ink">{etichettaDelta(stato, totale)}</span>
       </p>
     </div>
   );
@@ -1482,16 +1549,37 @@ function ComponentiRibalta({
   const catalogo = api.product.byCodes.useQuery({ codes: codici });
   const voce = (code: string) => catalogo.data?.[code];
   const prezzo = (code: string) => voce(code)?.price;
+  // `data` in mano = prezzi noti, e allora è irrilevante che un refetch in
+  // sottofondo sia fallito: il numero a schermo resta quello del catalogo. Solo
+  // quando non c'è nulla si distingue «sto caricando» da «è andata male».
+  const statoPrezzi: StatoPrezzi =
+    catalogo.data !== undefined ? "PRONTO" : catalogo.isPending ? "CARICAMENTO" : "ERRORE";
 
   const stato = statoAntieffrazione(varianti);
   const attive = contaAntieffrazione(varianti);
+
+  // Le voci fuori standard fra le «altre varianti», dalla STESSA funzione che il
+  // motore usa per dichiararle nella distinta e che il riepilogo usa per
+  // elencarle: un `!== undefined` scritto qui sarebbe una seconda nozione di
+  // «modificata», e infatti diceva «Modificate: Squadra angolare» su una scelta
+  // che portava a schermo il distintivo «standard».
+  const fuoriStandardAltre = scelteNonStandard(geometry, varianti)
+    .filter(
+      (s) =>
+        s.componente === COMPONENTE_LABEL.squadraAngolare ||
+        s.componente === COMPONENTE_LABEL.incontroRibalta,
+    )
+    .map((s) => s.componente);
+
   // Aperte se c'è già qualcosa fuori standard: una scelta non standard non deve
   // MAI stare dietro un pannello chiuso (è il motivo per cui la sicurezza è
   // sempre visibile).
   const [modifica, setModifica] = useState(stato === "PARZIALE");
-  const [altre, setAltre] = useState(
-    varianti?.squadraAngolare !== undefined || varianti?.incontroRibalta !== undefined,
-  );
+  const [altre, setAltre] = useState(fuoriStandardAltre.length > 0);
+  // `aria-controls`: i due toggle dichiarano `aria-expanded`, e senza il
+  // riferimento al pannello non si sa COSA espandano.
+  const idTreScelte = useId();
+  const idAltreVarianti = useId();
 
   const set = (patch: Partial<Varianti>) => onChange(componiVarianti({ ...varianti, ...patch }));
 
@@ -1538,21 +1626,28 @@ function ComponentiRibalta({
   // distinta non possono dire cose diverse. Avviso, mai blocco (spec §8).
   const avvisi = avvisiVarianti(varianti);
 
-  const fuoriStandardAltre = [
-    gruppi.squadra !== null && varianti?.squadraAngolare !== undefined
-      ? COMPONENTE_LABEL.squadraAngolare
-      : null,
-    gruppi.ribalta !== null && varianti?.incontroRibalta !== undefined
-      ? COMPONENTE_LABEL.incontroRibalta
-      : null,
-  ].filter((x): x is string => x !== null);
-
   return (
     <div className="flex flex-col gap-6">
       <p className="text-sm text-ink-muted">
         Le scelte che il listino lascia aperte. Se il serramento è quello di sempre non c&apos;è
         nulla da toccare: si va avanti.
       </p>
+
+      {/* Errore della query, non del listino: senza dirlo, «prezzo non a
+          catalogo» sarebbe un'affermazione su AGB fondata su un timeout. */}
+      {statoPrezzi === "ERRORE" && (
+        <p
+          role="alert"
+          className="flex items-start gap-2 rounded border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-ink"
+        >
+          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-danger" aria-hidden />
+          <span>
+            Prezzi e differenze non caricati: è un problema di rete o del server, non del catalogo
+            AGB. I codici qui sotto restano quelli giusti, e la distinta ricalcola i prezzi dal
+            catalogo quando la generi.
+          </span>
+        </p>
+      )}
 
       {/* ZONA A — SICUREZZA, sempre visibile. È la ragione per cui questa
           schermata esiste: dentro un pannello chiuso non la troverebbe nessuno. */}
@@ -1588,12 +1683,14 @@ function ComponentiRibalta({
           </p>
         )}
 
-        {cambi.length > 0 && <CosaCambia cambi={cambi} />}
+        {cambi.length > 0 && <CosaCambia cambi={cambi} stato={statoPrezzi} />}
 
         {avvisi.map((avviso) => (
           <p
             key={avviso}
-            role="status"
+            // `alert` e non `status`: nasce da un DIVIETO stampato sul listino,
+            // ed è la stessa classe degli errori di passo di questa schermata.
+            role="alert"
             className="flex items-start gap-2 rounded border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-ink"
           >
             <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden />
@@ -1608,13 +1705,14 @@ function ComponentiRibalta({
           size="sm"
           className="w-fit"
           aria-expanded={modifica}
+          aria-controls={idTreScelte}
           onClick={() => setModifica((m) => !m)}
         >
           {modifica ? "Nascondi le tre scelte" : "Modifica le tre scelte"}
         </Button>
 
         {modifica && (
-          <div className="flex flex-col gap-6">
+          <div id={idTreScelte} className="flex flex-col gap-6">
             {gruppi.movimento && (
               <GruppoVarianti
                 name="movimentoAngolare"
@@ -1623,6 +1721,7 @@ function ComponentiRibalta({
                 standardId={gruppi.movimento.standardId}
                 scelto={varianti?.movimentoAngolare}
                 voce={voce}
+                stato={statoPrezzi}
                 onChange={(id) => set({ movimentoAngolare: id })}
               />
             )}
@@ -1634,6 +1733,7 @@ function ComponentiRibalta({
                 standardId={gruppi.nottolino.standardId}
                 scelto={varianti?.incontroNottolino}
                 voce={voce}
+                stato={statoPrezzi}
                 onChange={(id) => set({ incontroNottolino: id })}
               />
             )}
@@ -1644,6 +1744,7 @@ function ComponentiRibalta({
               standardId={gruppi.piastrino.standardId}
               scelto={varianti?.piastrinoAntieffrazione === true ? "SI" : undefined}
               voce={voce}
+              stato={statoPrezzi}
               onChange={(id) => set({ piastrinoAntieffrazione: id === "SI" ? true : undefined })}
             />
           </div>
@@ -1656,6 +1757,7 @@ function ComponentiRibalta({
         <button
           type="button"
           aria-expanded={altre}
+          aria-controls={idAltreVarianti}
           onClick={() => setAltre((a) => !a)}
           className="flex items-center justify-between gap-3 rounded text-left text-sm font-semibold text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
         >
@@ -1677,7 +1779,7 @@ function ComponentiRibalta({
             : "Squadra angolare e incontro ribalta: standard."}
         </p>
         {altre && (
-          <div className="flex flex-col gap-6">
+          <div id={idAltreVarianti} className="flex flex-col gap-6">
             {gruppi.squadra && (
               <GruppoVarianti
                 name="squadraAngolare"
@@ -1686,6 +1788,7 @@ function ComponentiRibalta({
                 standardId={gruppi.squadra.standardId}
                 scelto={varianti?.squadraAngolare}
                 voce={voce}
+                stato={statoPrezzi}
                 onChange={(id) => set({ squadraAngolare: id })}
               />
             )}
@@ -1697,6 +1800,7 @@ function ComponentiRibalta({
                 standardId={gruppi.ribalta.standardId}
                 scelto={varianti?.incontroRibalta}
                 voce={voce}
+                stato={statoPrezzi}
                 onChange={(id) => set({ incontroRibalta: id })}
               />
             )}
