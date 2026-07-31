@@ -4,6 +4,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 const listQuery = vi.fn();
+const createMutate = vi.fn();
 const updateMutate = vi.fn();
 const deleteMutate = vi.fn();
 const invalidateList = vi.fn();
@@ -12,6 +13,14 @@ vi.mock("@/trpc/react", () => ({
   api: {
     customer: {
       list: { useQuery: (...args: unknown[]) => listQuery(...args) },
+      create: {
+        useMutation: () => ({
+          mutateAsync: createMutate,
+          isPending: false,
+          isError: false,
+          error: null,
+        }),
+      },
       update: {
         useMutation: () => ({
           mutateAsync: updateMutate,
@@ -45,6 +54,7 @@ const clienti = [
 
 beforeEach(() => {
   listQuery.mockReset().mockReturnValue({ data: clienti, isPending: false, isError: false });
+  createMutate.mockReset().mockResolvedValue(clienti[0]);
   updateMutate.mockReset().mockResolvedValue(clienti[0]);
   deleteMutate.mockReset().mockResolvedValue({ id: "c1" });
   invalidateList.mockReset();
@@ -128,6 +138,65 @@ describe("ClientiClient", () => {
     render(<ClientiClient />);
     await azione(0, /elimina/i);
     expect((await screen.findByRole("alert")).textContent).toMatch(/3 richieste collegate/);
+  });
+
+  // CREAZIONE. Fino alla #44 l'unico posto dove si creava un cliente era il
+  // selettore dentro il wizard: con l'anagrafica vuota, per aggiungere un
+  // cliente bisognava iniziare una richiesta kit e poi abbandonarla.
+  it("crea un cliente nuovo dalla pagina", async () => {
+    createMutate.mockResolvedValue({
+      id: "c9",
+      companyName: "MC",
+      discount: null,
+      kitGeometry: "A4_I85_B15",
+      kitEntrata: null,
+    });
+    render(<ClientiClient />);
+    await userEvent.click(screen.getByRole("button", { name: /nuovo cliente/i }));
+    await userEvent.type(screen.getByLabelText(/ragione sociale/i), "MC");
+    await userEvent.selectOptions(screen.getByLabelText(/geometria/i), "A4_I85_B15");
+    await userEvent.click(screen.getByRole("button", { name: /^crea$/i }));
+
+    expect(createMutate).toHaveBeenCalledWith({
+      companyName: "MC",
+      kitGeometry: "A4_I85_B15",
+    });
+  });
+
+  // I campi facoltativi NON devono viaggiare come `null` in creazione: lo schema
+  // di `customer.create` li vuole `.optional()`, non `.nullable()` — e mandare
+  // null farebbe fallire la validazione al confine.
+  it("in creazione i campi vuoti non vengono inviati affatto", async () => {
+    createMutate.mockResolvedValue({
+      id: "c9",
+      companyName: "Occasionale",
+      discount: null,
+      kitGeometry: null,
+      kitEntrata: null,
+    });
+    render(<ClientiClient />);
+    await userEvent.click(screen.getByRole("button", { name: /nuovo cliente/i }));
+    await userEvent.type(screen.getByLabelText(/ragione sociale/i), "Occasionale");
+    await userEvent.click(screen.getByRole("button", { name: /^crea$/i }));
+
+    expect(createMutate).toHaveBeenCalledWith({ companyName: "Occasionale" });
+  });
+
+  it("il pulsante «Crea» resta spento senza ragione sociale", async () => {
+    render(<ClientiClient />);
+    await userEvent.click(screen.getByRole("button", { name: /nuovo cliente/i }));
+    expect((screen.getByRole("button", { name: /^crea$/i }) as HTMLButtonElement).disabled).toBe(
+      true,
+    );
+  });
+
+  // L'anagrafica vuota e` il PRIMO GIORNO: e` proprio li` che il pulsante deve
+  // esserci, altrimenti la pagina e` un vicolo cieco.
+  it("il pulsante c'e` anche con l'anagrafica vuota", () => {
+    listQuery.mockReturnValue({ data: [], isPending: false, isError: false });
+    render(<ClientiClient />);
+    expect(screen.getByRole("button", { name: /nuovo cliente/i })).toBeTruthy();
+    expect(screen.getByText(/nessun cliente in anagrafica/i)).toBeTruthy();
   });
 
   // Regola inviolabile «mobile-first»: la tabella scorre, e il menu azioni deve

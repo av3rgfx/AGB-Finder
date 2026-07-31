@@ -8,11 +8,16 @@ import { GEOMETRIE, geometriaLabel, type ArtechGeometryId } from "@/server/kit/a
 import { ENTRATE, entrataLabel, type Entrata } from "@/server/kit/types";
 
 /**
- * Anagrafica clienti: elenco, modifica, eliminazione.
+ * Anagrafica clienti: elenco, **creazione**, modifica, eliminazione.
  *
  * Esiste perché `customer.update` e `customer.delete` vivevano nel router dal
  * 2026-07-30 **senza essere raggiungibili da nessuna schermata**: un cliente,
  * una volta creato dal selettore del wizard, non era più correggibile.
+ *
+ * La creazione è arrivata subito dopo (PR #45): la prima versione della pagina
+ * la ometteva, e con l'anagrafica vuota — che è lo stato del primo giorno —
+ * l'unico modo di aggiungere un cliente era iniziare una richiesta kit e poi
+ * abbandonarla. Una pagina «Clienti» da cui non si creano clienti.
  *
  * Nessun gate ADMIN: l'anagrafica è **condivisa** fra gli agenti e il router usa
  * `agentProcedure`. Metterlo qui contraddirebbe il router e nasconderebbe una
@@ -35,9 +40,20 @@ function profiloLabel(c: ClienteRiga): string {
   return parti.length === 0 ? "Nessun profilo" : parti.join(" · ");
 }
 
+/**
+ * Modalità del form: `null` = creazione, una riga = modifica.
+ *
+ * Un solo componente per entrambi i casi. Non è un'astrazione preventiva: i due
+ * form hanno gli stessi quattro campi e le stesse regole di validazione, e
+ * tenerli separati significherebbe correggere due volte ogni etichetta. La sola
+ * differenza vera — `optional` in creazione contro `nullable` in modifica — vive
+ * in tre righe di `salva()`, ed è documentata lì.
+ */
+type ModoForm = { tipo: "crea" } | { tipo: "modifica"; cliente: ClienteRiga };
+
 export function ClientiClient() {
   const clienti = api.customer.list.useQuery({});
-  const [editing, setEditing] = useState<ClienteRiga | null>(null);
+  const [form, setForm] = useState<ModoForm | null>(null);
 
   if (clienti.isPending) return <p className="text-sm text-ink-subtle">Caricamento…</p>;
   if (clienti.isError)
@@ -52,20 +68,44 @@ export function ClientiClient() {
 
   const righe = clienti.data as ClienteRiga[];
 
-  // Due vuoti diversi non esistono qui — non c'è ricerca — ma il vuoto è lo
-  // stato del PRIMO GIORNO, non un caso limite: in produzione `customers` è
-  // vuota. Dirlo, e dire dove si creano.
+  const chiudi = () => setForm(null);
+  const salvato = () => {
+    setForm(null);
+    void clienti.refetch();
+  };
+
+  const pulsanteNuovo = (
+    <div className="flex justify-end">
+      <button
+        type="button"
+        onClick={() => setForm({ tipo: "crea" })}
+        className="h-11 rounded bg-brand px-4 text-sm font-medium text-white hover:bg-brand-dark"
+      >
+        Nuovo cliente
+      </button>
+    </div>
+  );
+
+  // Il vuoto è lo stato del PRIMO GIORNO, non un caso limite: in produzione
+  // `customers` nasce vuota. Ed è proprio lì che il pulsante deve esserci,
+  // altrimenti la pagina è un vicolo cieco — fino alla #44 per creare un cliente
+  // bisognava iniziare una richiesta kit e poi abbandonarla.
   if (righe.length === 0)
     return (
-      <p className="rounded-lg border border-line bg-surface p-6 text-sm text-ink-subtle">
-        Nessun cliente in anagrafica. Si creano dal selettore cliente quando apri una{" "}
-        <span className="text-ink">nuova richiesta kit</span>, e da lì puoi già dare a ciascuno il
-        suo sconto e il suo profilo serramento.
-      </p>
+      <div className="flex flex-col gap-4">
+        {pulsanteNuovo}
+        <p className="rounded-lg border border-line bg-surface p-6 text-sm text-ink-subtle">
+          Nessun cliente in anagrafica. Creane uno con il pulsante qui sopra, oppure al volo dal
+          selettore cliente quando apri una <span className="text-ink">nuova richiesta kit</span>.
+        </p>
+        {form && <ClienteForm modo={form} onClose={chiudi} onSaved={salvato} />}
+      </div>
     );
 
   return (
     <div className="flex flex-col gap-4">
+      {pulsanteNuovo}
+
       {/* Mobile-first: la tabella scorre invece di comprimere le colonne a
           375px, e il menu azioni è `fixed` per non farsi ritagliare dallo
           scorrimento (difetto già corretto su /utenti dalla PR #18). */}
@@ -92,7 +132,7 @@ export function ClientiClient() {
               <ClienteRow
                 key={c.id}
                 cliente={c}
-                onEdit={() => setEditing(c)}
+                onEdit={() => setForm({ tipo: "modifica", cliente: c })}
                 onChanged={() => void clienti.refetch()}
               />
             ))}
@@ -100,16 +140,7 @@ export function ClientiClient() {
         </table>
       </div>
 
-      {editing && (
-        <EditClienteForm
-          cliente={editing}
-          onClose={() => setEditing(null)}
-          onSaved={() => {
-            setEditing(null);
-            void clienti.refetch();
-          }}
-        />
-      )}
+      {form && <ClienteForm modo={form} onClose={chiudi} onSaved={salvato} />}
     </div>
   );
 }
@@ -255,25 +286,28 @@ function RowActions({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => 
 const FIELD =
   "h-11 rounded border border-line-strong bg-surface px-3.5 text-sm text-ink focus-visible:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/25";
 
-function EditClienteForm({
-  cliente,
+function ClienteForm({
+  modo,
   onClose,
   onSaved,
 }: {
-  cliente: ClienteRiga;
+  modo: ModoForm;
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [nome, setNome] = useState(cliente.companyName);
+  const cliente = modo.tipo === "modifica" ? modo.cliente : null;
+
+  const [nome, setNome] = useState(cliente?.companyName ?? "");
   // Virgola, non punto: `String(42.5)` dà «42.5» in una UI italiana che due
   // righe sopra, nella tabella, scrive «−42,5%». Il parse accetta entrambi
   // (`replace(",", ".")`), quindi qui si sceglie la forma che l'agente legge.
   const [sconto, setSconto] = useState(
-    cliente.discount === null ? "" : String(cliente.discount).replace(".", ","),
+    cliente == null || cliente.discount === null ? "" : String(cliente.discount).replace(".", ","),
   );
-  const [geometria, setGeometria] = useState<ArtechGeometryId | "">(cliente.kitGeometry ?? "");
-  const [entrata, setEntrata] = useState<Entrata | "">(cliente.kitEntrata ?? "");
+  const [geometria, setGeometria] = useState<ArtechGeometryId | "">(cliente?.kitGeometry ?? "");
+  const [entrata, setEntrata] = useState<Entrata | "">(cliente?.kitEntrata ?? "");
   const [errore, setErrore] = useState<string | null>(null);
+  const create = api.customer.create.useMutation();
   const update = api.customer.update.useMutation();
 
   const nomeId = useId();
@@ -289,16 +323,28 @@ function EditClienteForm({
     if (!nome.trim() || !scontoValido) return;
     setErrore(null);
     try {
-      // `null` e non `undefined` quando il campo è vuoto: qui si STA
-      // dichiarando che il cliente non ha profilo, che è diverso dal non
-      // toccarlo — ed è la distinzione che il router rispetta.
-      await update.mutateAsync({
-        id: cliente.id,
-        companyName: nome.trim(),
-        discount: scontoNum,
-        kitGeometry: geometria === "" ? null : geometria,
-        kitEntrata: entrata === "" ? null : entrata,
-      });
+      if (cliente === null) {
+        // CREAZIONE: i campi facoltativi si OMETTONO, non si mandano a `null`.
+        // `customer.create` li dichiara `.optional()` (non `.nullable()`),
+        // perché in creazione «vuoto» significa «non specificato» e basta.
+        await create.mutateAsync({
+          companyName: nome.trim(),
+          ...(scontoNum === null ? {} : { discount: scontoNum }),
+          ...(geometria === "" ? {} : { kitGeometry: geometria }),
+          ...(entrata === "" ? {} : { kitEntrata: entrata }),
+        });
+      } else {
+        // MODIFICA: `null` e non `undefined` quando il campo è vuoto — qui si
+        // STA dichiarando che il cliente non ha profilo, che è diverso dal non
+        // toccarlo. È la distinzione che il router rispetta.
+        await update.mutateAsync({
+          id: cliente.id,
+          companyName: nome.trim(),
+          discount: scontoNum,
+          kitGeometry: geometria === "" ? null : geometria,
+          kitEntrata: entrata === "" ? null : entrata,
+        });
+      }
       onSaved();
     } catch (e) {
       setErrore(e instanceof Error ? e.message : "Impossibile salvare il cliente.");
@@ -307,7 +353,9 @@ function EditClienteForm({
 
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-line bg-surface-sunken p-4">
-      <h2 className="text-sm font-semibold text-ink">Modifica {cliente.companyName}</h2>
+      <h2 className="text-sm font-semibold text-ink">
+        {cliente === null ? "Nuovo cliente" : `Modifica ${cliente.companyName}`}
+      </h2>
 
       <label htmlFor={nomeId} className="text-sm text-ink-muted">
         Ragione sociale
@@ -370,10 +418,10 @@ function EditClienteForm({
         <button
           type="button"
           onClick={() => void salva()}
-          disabled={!nome.trim() || !scontoValido || update.isPending}
+          disabled={!nome.trim() || !scontoValido || create.isPending || update.isPending}
           className="h-11 rounded bg-brand px-4 text-sm font-medium text-white hover:bg-brand-dark disabled:opacity-50"
         >
-          Salva
+          {cliente === null ? "Crea" : "Salva"}
         </button>
         <button
           type="button"
