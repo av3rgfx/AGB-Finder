@@ -1,7 +1,21 @@
 import { describe, it, expect } from "vitest";
-import { opzioniSquadraAngolare, squadraAngolare, SQUADRA_ANGOLARE } from "./artech-varianti";
+import {
+  opzioniSquadraAngolare,
+  squadraAngolare,
+  SQUADRA_ANGOLARE,
+  opzioniIncontroRibalta,
+  incontroRibaltaVariante,
+  opzioniIncontroNottolino,
+  incontroNottolinoVariante,
+  movimentoAngolareCodice,
+  piastrinoCodice,
+} from "./artech-varianti";
 import { GEOMETRIE, type ArtechGeometryId } from "./artech-geometrie";
 import { KitGenerationError } from "./types";
+import {
+  incontroRibalta as incontroRibaltaStandard,
+  incontroNottolino as incontroNottolinoStandard,
+} from "./artech-incontri";
 
 describe("squadra angolare", () => {
   it("il default riproduce ESATTAMENTE il codice che il motore emette oggi", () => {
@@ -53,4 +67,60 @@ describe("squadra angolare", () => {
       }
     },
   );
+});
+
+describe("incontro ribalta", () => {
+  it("il default riproduce il codice standard di oggi, su tutte le geometrie e mani", () => {
+    for (const geometry of Object.keys(GEOMETRIE) as ArtechGeometryId[])
+      for (const mano of ["DESTRA", "SINISTRA"] as const)
+        expect(incontroRibaltaVariante(geometry, mano, undefined)).toBe(
+          incontroRibaltaStandard(geometry, mano),
+        );
+  });
+
+  it("aria 4 asse 9 non offre alcuna scelta: a listino c'è solo l'acciaio", () => {
+    expect(opzioniIncontroRibalta("A4_I9_B18")).toEqual([]);
+  });
+
+  it("aria 4 asse 13 offre due opzioni, e non le viti dritte (l'aria 4 non le pubblica)", () => {
+    expect(opzioniIncontroRibalta("A4_I13_B18").map((o) => o.id)).toEqual([
+      "ZAMA",
+      "ACCIAIO_INCLINATE",
+    ]);
+  });
+
+  it("aria 12 offre tre opzioni", () => {
+    expect(opzioniIncontroRibalta("A12_I13_B20").map((o) => o.id)).toEqual([
+      "ZAMA",
+      "ACCIAIO_INCLINATE",
+      "ACCIAIO_DRITTE",
+    ]);
+  });
+});
+
+describe("antieffrazione", () => {
+  it("il movimento angolare di default è quello di oggi", () => {
+    expect(movimentoAngolareCodice(undefined)).toBe("A50302.01.02");
+    expect(movimentoAngolareCodice("DUE_NOTTOLINI")).toBe("A50302.02.02");
+  });
+
+  it("l'incontro nottolino di default è quello standard di oggi", () => {
+    for (const geometry of Object.keys(GEOMETRIE) as ArtechGeometryId[])
+      for (const mano of ["DESTRA", "SINISTRA"] as const)
+        expect(incontroNottolinoVariante(geometry, mano, undefined)).toBe(
+          incontroNottolinoStandard(geometry, mano),
+        );
+  });
+
+  it("in aria 4 le viti dritte non sono offerte", () => {
+    expect(opzioniIncontroNottolino("A4_I9_B18").map((o) => o.id)).toEqual([
+      "NORMALE",
+      "ANTIEFFRAZIONE_INCLINATE",
+    ]);
+  });
+
+  it("il piastrino dipende dall'entrata", () => {
+    expect(piastrinoCodice("E75")).toBe("A50194.00.01");
+    expect(piastrinoCodice("E15")).toBe("A20050.00.02");
+  });
 });

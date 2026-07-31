@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { ArtechGeometryId, PerMano } from "./artech-geometrie";
-import { KitGenerationError } from "./types";
+import { KitGenerationError, type Entrata } from "./types";
+import { chiaveIncontri, type ChiaveIncontri } from "./artech-incontri";
 
 /**
  * REGISTRO DELLE VARIANTI COMPONENTE — ARTECH legno.
@@ -172,4 +173,168 @@ export function squadraAngolare(
       "artech.varianti",
     );
   return perGeo[mano];
+}
+
+type Mano = "DESTRA" | "SINISTRA";
+const ambidestro = (code: string): PerMano => ({ DESTRA: code, SINISTRA: code });
+
+export type IncontroRibaltaId = NonNullable<Varianti["incontroRibalta"]>;
+
+export const INCONTRO_RIBALTA_LABEL: Record<IncontroRibaltaId, string> = {
+  ZAMA: "Zama",
+  ACCIAIO_INCLINATE: "Acciaio, viti inclinate",
+  ACCIAIO_DRITTE: "Acciaio, viti dritte",
+};
+
+/**
+ * FONTE: p0471 (469). L'attuale è lo ZAMA per aria 12 e aria 4 asse 13
+ * (ASSUNZIONE del 2026-07-25, ora una scelta esplicita); per aria 4 asse 9 lo
+ * zama NON esiste e l'attuale è l'acciaio — infatti `A4_ASSE9` ha una sola
+ * voce e §opzioniIncontroRibalta non offre nulla.
+ */
+const INCONTRO_RIBALTA: Record<IncontroRibaltaId, Partial<Record<ChiaveIncontri, PerMano>>> = {
+  ZAMA: {
+    A4_ASSE13: { DESTRA: "A514DX.DC.70", SINISTRA: "A514SX.DC.70" },
+    A12_9x18: ambidestro("A51400.05.70"),
+    A12_13x24: ambidestro("A51400.CR.70"),
+  },
+  ACCIAIO_INCLINATE: {
+    A4_ASSE9: { DESTRA: "A514DX.01.64", SINISTRA: "A514SX.01.64" },
+    A4_ASSE13: { DESTRA: "A514DX.DC.64", SINISTRA: "A514SX.DC.64" },
+    A12_9x18: { DESTRA: "A514DX.05.64", SINISTRA: "A514SX.05.64" },
+    A12_13x24: { DESTRA: "A514DX.CR.64", SINISTRA: "A514SX.CR.64" },
+  },
+  ACCIAIO_DRITTE: {
+    // A4_* ASSENTI: in aria 4 il listino pubblica solo le viti inclinate.
+    A12_9x18: { DESTRA: "A514DX.05.65", SINISTRA: "A514SX.05.65" },
+    A12_13x24: { DESTRA: "A514DX.CR.65", SINISTRA: "A514SX.CR.65" },
+  },
+};
+
+function ribaltaDefault(chiave: ChiaveIncontri): IncontroRibaltaId {
+  return chiave === "A4_ASSE9" ? "ACCIAIO_INCLINATE" : "ZAMA";
+}
+
+/** Vuoto quando la scelta non esiste: una variante con una sola opzione non è una scelta. */
+export function opzioniIncontroRibalta(
+  geometry: ArtechGeometryId,
+): { id: IncontroRibaltaId; label: string }[] {
+  const k = chiaveIncontri(geometry);
+  const ids = (Object.keys(INCONTRO_RIBALTA) as IncontroRibaltaId[]).filter(
+    (id) => INCONTRO_RIBALTA[id][k] !== undefined,
+  );
+  return ids.length < 2 ? [] : ids.map((id) => ({ id, label: INCONTRO_RIBALTA_LABEL[id] }));
+}
+
+export function incontroRibaltaVariante(
+  geometry: ArtechGeometryId,
+  mano: Mano,
+  scelta: IncontroRibaltaId | undefined,
+): string {
+  const k = chiaveIncontri(geometry);
+  const id = scelta ?? ribaltaDefault(k);
+  const perChiave = INCONTRO_RIBALTA[id][k];
+  if (perChiave === undefined)
+    throw new KitGenerationError(
+      `Incontro ribalta «${INCONTRO_RIBALTA_LABEL[id]}» non disponibile per il formato ${k}: ` +
+        "il listino 2026 non lo pubblica.",
+      "artech.varianti",
+    );
+  return perChiave[mano];
+}
+
+export type IncontroNottolinoId = NonNullable<Varianti["incontroNottolino"]>;
+
+export const INCONTRO_NOTTOLINO_LABEL: Record<IncontroNottolinoId, string> = {
+  NORMALE: "Normale",
+  ANTIEFFRAZIONE_INCLINATE: "Antieffrazione, viti inclinate",
+  ANTIEFFRAZIONE_DRITTE: "Antieffrazione, viti dritte",
+};
+
+/** FONTE: normale p0469 (467) · antieffrazione p0470 (468). */
+const INCONTRO_NOTTOLINO: Record<
+  IncontroNottolinoId,
+  Partial<Record<ChiaveIncontri, PerMano>>
+> = {
+  NORMALE: {
+    A4_ASSE9: { DESTRA: "A514DX.01.02", SINISTRA: "A514SX.01.02" },
+    A4_ASSE13: { DESTRA: "A48011.DC.02", SINISTRA: "A48012.DC.02" },
+    A12_9x18: ambidestro("A51400.05.02"),
+    A12_13x24: ambidestro("A51400.CR.13"),
+  },
+  ANTIEFFRAZIONE_INCLINATE: {
+    A4_ASSE9: { DESTRA: "A514DX.01.67", SINISTRA: "A514SX.01.67" },
+    A4_ASSE13: { DESTRA: "A514DX.DC.67", SINISTRA: "A514SX.DC.67" },
+    A12_9x18: { DESTRA: "A514DX.05.67", SINISTRA: "A514SX.05.67" },
+    A12_13x24: { DESTRA: "A514DX.CR.67", SINISTRA: "A514SX.CR.67" },
+  },
+  ANTIEFFRAZIONE_DRITTE: {
+    // A4_* ASSENTI: in aria 4 il listino pubblica solo le viti inclinate. È il
+    // motivo per cui la domanda «inclinate o dritte?» non andava risposta ma
+    // mostrata: per MC e Peruzzi le dritte non esistono.
+    A12_9x18: { DESTRA: "A514DX.05.68", SINISTRA: "A514SX.05.68" },
+    A12_13x24: { DESTRA: "A514DX.CR.68", SINISTRA: "A514SX.CR.68" },
+  },
+};
+
+export function opzioniIncontroNottolino(
+  geometry: ArtechGeometryId,
+): { id: IncontroNottolinoId; label: string }[] {
+  const k = chiaveIncontri(geometry);
+  return (Object.keys(INCONTRO_NOTTOLINO) as IncontroNottolinoId[])
+    .filter((id) => INCONTRO_NOTTOLINO[id][k] !== undefined)
+    .map((id) => ({ id, label: INCONTRO_NOTTOLINO_LABEL[id] }));
+}
+
+export function incontroNottolinoVariante(
+  geometry: ArtechGeometryId,
+  mano: Mano,
+  scelta: IncontroNottolinoId | undefined,
+): string {
+  const k = chiaveIncontri(geometry);
+  const id = scelta ?? "NORMALE";
+  const perChiave = INCONTRO_NOTTOLINO[id][k];
+  if (perChiave === undefined)
+    throw new KitGenerationError(
+      `Incontro nottolino «${INCONTRO_NOTTOLINO_LABEL[id]}» non disponibile per il formato ` +
+        `${k}: il listino 2026 non lo pubblica.`,
+      "artech.varianti",
+    );
+  return perChiave[mano];
+}
+
+export type MovimentoAngolareId = NonNullable<Varianti["movimentoAngolare"]>;
+
+export const MOVIMENTO_ANGOLARE_LABEL: Record<MovimentoAngolareId, string> = {
+  UN_NOTTOLINO: "Un nottolino",
+  DUE_NOTTOLINI: "Due nottolini (antieffrazione)",
+};
+
+/**
+ * FONTE: p0435 (433). NB STAMPATA: «mov. angolare A50302.02.02 necessario per
+ * tutte le classi antieffrazione» — non era nella richiesta dell'utente, l'ha
+ * imposto il listino.
+ */
+const MOVIMENTO_ANGOLARE_CODICI: Record<MovimentoAngolareId, string> = {
+  UN_NOTTOLINO: "A50302.01.02",
+  DUE_NOTTOLINI: "A50302.02.02",
+};
+
+export function movimentoAngolareCodice(scelta: MovimentoAngolareId | undefined): string {
+  return MOVIMENTO_ANGOLARE_CODICI[scelta ?? "UN_NOTTOLINO"];
+}
+
+/**
+ * Piastrino antieffrazione — riga AGGIUNTA, quantità 1. FONTE: p0432 (430).
+ * Dipende dall'ENTRATA, cioè dal campo reso esplicito dalla PR #40: mappa
+ * esaustiva `Record<Entrata, string>`, non un ternario (un terzo valore
+ * dell'enum non deve poter finire in silenzio su uno dei due).
+ */
+const PIASTRINO: Record<Entrata, string> = {
+  E75: "A50194.00.01",
+  E15: "A20050.00.02",
+};
+
+export function piastrinoCodice(entrata: Entrata): string {
+  return PIASTRINO[entrata];
 }

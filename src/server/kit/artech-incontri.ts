@@ -37,6 +37,17 @@ const A12_PER_FORMATO: Record<string, Chiave> = {
   "13x24": "A12_13x24",
 };
 
+export type ChiaveIncontri = Chiave;
+
+/**
+ * Esportata dal 2026-07-31: il registro varianti deve indicizzare le proprie
+ * tabelle sulla STESSA chiave che sceglie i codici standard, altrimenti la
+ * variante e il codice base potrebbero riferirsi a due formati diversi.
+ */
+export function chiaveIncontri(id: ArtechGeometryId): Chiave {
+  return chiave(id);
+}
+
 /** Riduce la geometria alla chiave che governa gli incontri: aria + asse (+ sede). */
 function chiave(id: ArtechGeometryId): Chiave {
   const g = geometria(id);
