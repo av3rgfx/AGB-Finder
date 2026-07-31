@@ -139,4 +139,18 @@ describe("kitInputFromRequest", () => {
       kitInputFromRequest({ ...artechRow, variants: { squadraAngolare: "INESISTENTE" } }),
     ).toThrow(/incoerente/);
   });
+
+  it("RIFIUTA una riga con una chiave di variante sconosciuta invece di ripulirla in silenzio", () => {
+    // Il gemello del test sopra: lì il valore era fuori enum, qui è la CHIAVE a
+    // non esistere (una variante rinominata, il residuo di uno schema
+    // precedente). È esattamente il caso per cui `variantiSchema` è dichiarato
+    // `.strict()` — senza, zod scarterebbe la chiave ignota in silenzio e la
+    // riga passerebbe come se la variante non fosse mai stata scelta.
+    expect(() =>
+      kitInputFromRequest({ ...artechRow, variants: { chiaveInesistente: "x" } }),
+    ).toThrow(KitGenerationError);
+    expect(() =>
+      kitInputFromRequest({ ...artechRow, variants: { chiaveInesistente: "x" } }),
+    ).toThrow(/incoerente/);
+  });
 });
