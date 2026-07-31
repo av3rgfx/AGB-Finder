@@ -21,6 +21,7 @@ import { KitGenerationError, type KitInput, type KitLine, type RuleModule } from
 
 export const artechAntaRibaltaAlu: RuleModule = {
   engineId: "artech-ar-alu",
+  varianti: [],
   generate(_input: KitInput): KitLine[] {
     throw new KitGenerationError(
       "Kit ALLUMINIO ARTECH anta-ribalta non ancora disponibile: manca il listino di composizione dedicato " +

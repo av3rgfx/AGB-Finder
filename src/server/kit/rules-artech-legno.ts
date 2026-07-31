@@ -33,6 +33,7 @@ import {
 } from "./types";
 import { MOVIMENTO_ANGOLARE, incontriNottolino } from "./artech-legno-shared";
 import { geometria, assertSeatConfigSupportata, mm } from "./artech-geometrie";
+import { VARIANTE_IDS } from "./artech-varianti";
 import {
   incontroNottolino,
   incontroRibalta,
@@ -198,6 +199,7 @@ const CHIUSURE_VERTICALI = [
 
 export const artechAntaRibaltaLegno: RuleModule = {
   engineId: "artech-ar-legno",
+  varianti: VARIANTE_IDS,
   generate(rawInput: KitInput): KitLine[] {
     // Restringe al ramo ARTECH dell'unione: senza, il modulo vedrebbe l'unione
     // intera e `input.geometry` non esisterebbe.

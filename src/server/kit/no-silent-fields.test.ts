@@ -117,6 +117,15 @@ const CASI: Caso[] = [
         perche:
           "L'anta-ribalta non ha NB sul peso: le due che esistono sono dello schema vasistas.",
       },
+      {
+        campo: "variants",
+        valore: { squadraAngolare: "BASE" },
+        perche:
+          "Task 3 collega SOLO lo schema all'input: il modulo dichiara `varianti: VARIANTE_IDS` " +
+          "(quali varianti sa CONSUMARE) ma `generate()` non legge ancora `input.variants` — la " +
+          "lettura arriva col Task 5. È lo stesso pattern di `openingDir`, ma pianificato e non un " +
+          "buco: il Task 5 sposterà questa riga da `inerti` a `mutazioni`.",
+      },
     ],
   },
   {
@@ -157,6 +166,14 @@ const CASI: Caso[] = [
           "Voce 7 (terminale sui montanti) omessa di proposito: il modulo IGNORA il flag " +
           "perché non ha righe da accendere per questa tipologia — coerente col wizard, che " +
           "per VASISTAS non mostra la casella e forza il campo a false.",
+      },
+      {
+        campo: "variants",
+        valore: { piastrinoAntieffrazione: true },
+        perche:
+          "Il modulo dichiara `varianti: []`: le 5 chiavi del registro (squadra angolare, " +
+          "incontri ribalta/nottolino, movimento angolare, piastrino) sono tutte specifiche " +
+          "dell'anta-ribalta e non hanno un equivalente nello schema vasistas p0418 (416).",
       },
     ],
   },

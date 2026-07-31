@@ -1,7 +1,14 @@
-import { z } from "zod";
 import type { ArtechGeometryId, PerMano } from "./artech-geometrie";
 import { KitGenerationError, type Entrata } from "./types";
 import { chiaveIncontri, type ChiaveIncontri } from "./artech-incontri";
+// Ri-esportati da qui per compatibilità con gli import esistenti (Task 1-2):
+// vivono nel file foglia `varianti-schema.ts` per spezzare un ciclo di VALORI —
+// questo file importa `KitGenerationError` da `types.ts`, e se `variantiSchema`
+// vivesse qui `types.ts` lo re-importerebbe indietro. Dettagli nel commento di
+// testa di `varianti-schema.ts`.
+import { variantiSchema, VARIANTE_IDS, type Varianti, type VarianteId } from "./varianti-schema";
+
+export { variantiSchema, VARIANTE_IDS, type Varianti, type VarianteId };
 
 /**
  * REGISTRO DELLE VARIANTI COMPONENTE — ARTECH legno.
@@ -29,57 +36,6 @@ import { chiaveIncontri, type ChiaveIncontri } from "./artech-incontri";
  *
  * FONTI: squadra angolare p0451-0452 (449-450).
  */
-
-/**
- * `.strict()` non è decorativo: una chiave sconosciuta — una variante
- * rinominata, il residuo di una versione precedente — deve FALLIRE il parse
- * invece di essere ignorata in silenzio.
- */
-export const variantiSchema = z
-  .object({
-    squadraAngolare: z
-      .enum(["BASE", "TRAVERSO_ALU", "COMPENSATORE", "TRAVERSO_ALU_COMPENSATORE"])
-      .optional(),
-    incontroRibalta: z.enum(["ZAMA", "ACCIAIO_INCLINATE", "ACCIAIO_DRITTE"]).optional(),
-    movimentoAngolare: z.enum(["UN_NOTTOLINO", "DUE_NOTTOLINI"]).optional(),
-    incontroNottolino: z
-      .enum(["NORMALE", "ANTIEFFRAZIONE_INCLINATE", "ANTIEFFRAZIONE_DRITTE"])
-      .optional(),
-    piastrinoAntieffrazione: z.boolean().optional(),
-  })
-  .strict();
-
-export type Varianti = z.infer<typeof variantiSchema>;
-
-/**
- * Gli stessi 5 nomi delle chiavi di `variantiSchema`, ma come lista ordinabile
- * (serve per iterarle in UI). Prima erano due elenchi indipendenti — rinominare
- * una chiave dello schema non veniva segnalato dal compilatore qui. Vincolata
- * nei due versi come `GEOMETRY_IDS` in `types.ts`:
- *
- * - `satisfies readonly (keyof Varianti)[]` respinge un id **in più** o storpiato;
- * - `VarianteMancante` sotto è `never` solo se la lista copre **tutte** le
- *   chiavi dello schema. Senza quel secondo controllo, PERDERE una chiave
- *   compilerebbe in silenzio (l'unione più stretta è assegnabile ovunque) e
- *   quella variante diventerebbe muta in UI pur esistendo nello schema.
- */
-export const VARIANTE_IDS = [
-  "squadraAngolare",
-  "incontroRibalta",
-  "movimentoAngolare",
-  "incontroNottolino",
-  "piastrinoAntieffrazione",
-] as const satisfies readonly (keyof Varianti)[];
-
-/**
- * Vincolo di esaustività, non un tipo da usare: se una chiave di `Varianti`
- * resta fuori da `VARIANTE_IDS`, `Exclude` non è più `never` e questa riga
- * non compila.
- */
-type AssertNever<T extends never> = T;
-type VarianteMancante = AssertNever<Exclude<keyof Varianti, (typeof VARIANTE_IDS)[number]>>;
-
-export type VarianteId = (typeof VARIANTE_IDS)[number];
 
 export type SquadraAngolareId = NonNullable<Varianti["squadraAngolare"]>;
 

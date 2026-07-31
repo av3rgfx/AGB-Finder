@@ -51,6 +51,7 @@ export const BATTENTE_CREMONESI = [
 
 export const artechAntaBattenteLegno: RuleModule = {
   engineId: "artech-batt-legno",
+  varianti: [],
   generate(_input: KitInput): KitLine[] {
     throw new KitGenerationError(
       "Kit anta a battente non disponibile: la distinta sarebbe priva del gruppo di sospensione superiore " +

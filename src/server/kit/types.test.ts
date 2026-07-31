@@ -7,6 +7,7 @@ import {
   kitInputSchema,
   tourInputSchema,
 } from "./types";
+import { variantiSchema } from "./artech-varianti";
 
 const valid = {
   windowType: "ANTA_RIBALTA",
@@ -247,5 +248,45 @@ describe("i campi commerciali restano fuori dall'input del motore", () => {
       expect(Object.keys(ramo.shape)).not.toContain("kitGeometry");
       expect(Object.keys(ramo.shape)).not.toContain("kitEntrata");
     }
+  });
+});
+
+describe("variants nell'input", () => {
+  const artechBase = {
+    windowType: "ANTA_RIBALTA",
+    series: "ARTECH",
+    material: "LEGNO",
+    widthMm: 550,
+    heightMm: 1820,
+    geometry: "A12_I13_B20",
+    entrata: "E15",
+    openingSide: "SINISTRA",
+    finish: "ARGENTO",
+  };
+
+  it("accetta le varianti sul ramo ARTECH", () => {
+    const r = kitInputSchema.safeParse({ ...artechBase, variants: { squadraAngolare: "BASE" } });
+    expect(r.success).toBe(true);
+    if (r.success && r.data.series === "ARTECH")
+      expect(r.data.variants?.squadraAngolare).toBe("BASE");
+  });
+
+  it("RIFIUTA una chiave sconosciuta invece di ignorarla", () => {
+    expect(variantiSchema.safeParse({ squadraAngolareX: "BASE" }).success).toBe(false);
+  });
+
+  it("il ramo TOUR SCARTA le varianti: non possono raggiungere una riga bilico", () => {
+    const r = kitInputSchema.safeParse({
+      windowType: "BILICO",
+      series: "TOUR",
+      material: "LEGNO",
+      widthMm: 700,
+      heightMm: 900,
+      finish: "MARRONE RAL 8019",
+      tourSchema: 2,
+      variants: { squadraAngolare: "BASE" },
+    });
+    expect(r.success).toBe(true);
+    if (r.success) expect("variants" in r.data).toBe(false);
   });
 });

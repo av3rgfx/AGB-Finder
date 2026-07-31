@@ -148,6 +148,7 @@ const SOGLIA_4_LATI_MM2 = 2_000_000;
 
 export const tourBilicoLegno: RuleModule = {
   engineId: "tour-bilico-legno",
+  varianti: [],
 
   generate(rawInput: KitInput): KitLine[] {
     const input = asTour(rawInput);
