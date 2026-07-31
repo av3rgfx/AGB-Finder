@@ -178,6 +178,7 @@ const N_MOVIMENTI = 2;
 
 export const artechVasistasLegno: RuleModule = {
   engineId: "artech-vasistas-legno",
+  varianti: [],
   generate(rawInput: KitInput): KitLine[] {
     // Restringe al ramo ARTECH dell'unione: il corpo sotto è invariato.
     const input = asArtech(rawInput);

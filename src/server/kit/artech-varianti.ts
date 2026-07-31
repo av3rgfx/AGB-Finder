@@ -1,0 +1,474 @@
+import type { ArtechGeometryId, PerMano } from "./artech-geometrie";
+import { KitGenerationError, type Entrata } from "./types";
+import { chiaveIncontri, type ChiaveIncontri } from "./artech-incontri";
+// SOLO i TIPI, e SOLO per uso interno: `variantiSchema` e `VARIANTE_IDS` vivono
+// nel file foglia `varianti-schema.ts` per spezzare un ciclo di VALORI — questo
+// file importa `KitGenerationError` da `types.ts`, e se `variantiSchema` vivesse
+// qui `types.ts` lo re-importerebbe indietro (dettagli nel commento di testa di
+// `varianti-schema.ts`).
+//
+// NIENTE RE-EXPORT. Fino a questo commit il registro ri-esportava `variantiSchema`
+// e `VARIANTE_IDS` «per compatibilità»: la regola ESLint impedisce alla foglia di
+// IMPORTARE, non a `types.ts` di re-importare attraverso il registro — cioè
+// esattamente la strada del ciclo che si è già manifestato una volta. Chi vuole
+// lo schema lo prende dalla foglia.
+import type { Varianti, VarianteId } from "./varianti-schema";
+
+/**
+ * REGISTRO DELLE VARIANTI COMPONENTE — ARTECH legno.
+ *
+ * Una VARIANTE è una scelta che non cambia QUALI righe compone la distinta, ma
+ * QUALE codice va su una riga (spec §2). Il piastrino antieffrazione è
+ * l'eccezione dichiarata: aggiunge una riga, e sta qui perché l'agente lo
+ * sceglie nella stessa schermata.
+ *
+ * DUE REGOLE CHE QUESTO FILE DEVE RISPETTARE.
+ *
+ * 1. **Codici INTERI, mai composti.** Le tabelle qui sotto sono regolarissime —
+ *    4 famiglie × 5 interassi × 2 mani — ed è esattamente la forma che invita a
+ *    scrivere `A509${fam}.${mid}.${mano}`. NON si fa: `A50901.22` e `A50904.22`
+ *    **non esistono a listino** e sarebbero la prima cosa che una formula
+ *    produrrebbe. È il difetto che ha fatto disattivare PVC e battente.
+ * 2. **La disponibilità È la tabella.** Un'opzione è disponibile per una
+ *    geometria se e solo se la tabella ha una voce per quella geometria. Nessun
+ *    predicato scritto a mano che possa disallinearsi dai codici.
+ *
+ * DEFAULT = il codice che il motore emette OGGI. `undefined` non significa
+ * "niente": significa "lo standard del programma". Non si materializza il
+ * default nel dato persistito, così un domani cambiarlo passa dal ricalcolo
+ * versionato e non da un valore congelato di cui nessuno sa più l'origine.
+ *
+ * FONTI: squadra angolare p0451-0452 (449-450).
+ */
+
+/**
+ * Vera per tutte e quattro le varianti che sostituiscono un codice — Rilievo 2
+ * (review Task 5): la descrizione di riga deve dichiarare la variante SOLO
+ * quando la scelta differisce dallo standard di questo contesto (esplicita o
+ * assente sono lo stesso caso, "lo standard": è la ragione per cui il golden
+ * senza varianti resta carattere per carattere identico a prima di questa
+ * feature). Vive QUI, non nel modulo, perché qui vivono i default — alcuni
+ * funzioni (`squadraAngolareDefault`, `ribaltaDefault`), altri costanti
+ * (`INCONTRO_NOTTOLINO_DEFAULT`, `MOVIMENTO_ANGOLARE_DEFAULT`) — e duplicarli
+ * nel modulo sarebbe una seconda sorgente che può divergere dalla prima.
+ */
+function etichettaSeNonStandard<T extends string>(
+  scelta: T | undefined,
+  standard: T,
+  labels: Record<T, string>,
+): string | undefined {
+  const id = scelta ?? standard;
+  return id === standard ? undefined : labels[id];
+}
+
+export type SquadraAngolareId = NonNullable<Varianti["squadraAngolare"]>;
+
+/** Etichette italiane, per la UI. */
+export const SQUADRA_ANGOLARE_LABEL: Record<SquadraAngolareId, string> = {
+  BASE: "Base",
+  TRAVERSO_ALU: "Per traverso in alluminio",
+  COMPENSATORE: "Con compensatore",
+  TRAVERSO_ALU_COMPENSATORE: "Traverso alluminio + compensatore",
+};
+
+/**
+ * Codici INTERI. Le due caselle mancanti (`COMPENSATORE` e
+ * `TRAVERSO_ALU_COMPENSATORE` per `A4_I85_B15`, cioè l'interasse 8,5) non sono
+ * un'omissione: a listino NON esistono, ed è la ragione per cui il cliente MC
+ * riceve oggi la squadra base mentre le altre sei geometrie ricevono la
+ * versione da 9,83 € (domanda 2).
+ */
+export const SQUADRA_ANGOLARE: Record<
+  SquadraAngolareId,
+  Partial<Record<ArtechGeometryId, PerMano>>
+> = {
+  BASE: {
+    A4_I85_B15: { DESTRA: "A50902.22.01", SINISTRA: "A50902.22.02" },
+    A4_I9_B18: { DESTRA: "A50902.24.01", SINISTRA: "A50902.24.02" },
+    A12_I9_B18: { DESTRA: "A50902.24.01", SINISTRA: "A50902.24.02" },
+    A12_I9_B20: { DESTRA: "A50902.26.01", SINISTRA: "A50902.26.02" },
+    A4_I13_B18: { DESTRA: "A50902.34.01", SINISTRA: "A50902.34.02" },
+    A12_I13_B18: { DESTRA: "A50902.34.01", SINISTRA: "A50902.34.02" },
+    A12_I13_B20: { DESTRA: "A50902.36.01", SINISTRA: "A50902.36.02" },
+  },
+  TRAVERSO_ALU: {
+    A4_I85_B15: { DESTRA: "A50903.22.01", SINISTRA: "A50903.22.02" },
+    A4_I9_B18: { DESTRA: "A50903.24.01", SINISTRA: "A50903.24.02" },
+    A12_I9_B18: { DESTRA: "A50903.24.01", SINISTRA: "A50903.24.02" },
+    A12_I9_B20: { DESTRA: "A50903.26.01", SINISTRA: "A50903.26.02" },
+    A4_I13_B18: { DESTRA: "A50903.34.01", SINISTRA: "A50903.34.02" },
+    A12_I13_B18: { DESTRA: "A50903.34.01", SINISTRA: "A50903.34.02" },
+    A12_I13_B20: { DESTRA: "A50903.36.01", SINISTRA: "A50903.36.02" },
+  },
+  COMPENSATORE: {
+    // A4_I85_B15 ASSENTE: `A50901.22` non esiste a listino.
+    A4_I9_B18: { DESTRA: "A50901.24.01", SINISTRA: "A50901.24.02" },
+    A12_I9_B18: { DESTRA: "A50901.24.01", SINISTRA: "A50901.24.02" },
+    A12_I9_B20: { DESTRA: "A50901.26.01", SINISTRA: "A50901.26.02" },
+    A4_I13_B18: { DESTRA: "A50901.34.01", SINISTRA: "A50901.34.02" },
+    A12_I13_B18: { DESTRA: "A50901.34.01", SINISTRA: "A50901.34.02" },
+    A12_I13_B20: { DESTRA: "A50901.36.01", SINISTRA: "A50901.36.02" },
+  },
+  TRAVERSO_ALU_COMPENSATORE: {
+    // A4_I85_B15 ASSENTE: `A50904.22` non esiste a listino.
+    A4_I9_B18: { DESTRA: "A50904.24.01", SINISTRA: "A50904.24.02" },
+    A12_I9_B18: { DESTRA: "A50904.24.01", SINISTRA: "A50904.24.02" },
+    A12_I9_B20: { DESTRA: "A50904.26.01", SINISTRA: "A50904.26.02" },
+    A4_I13_B18: { DESTRA: "A50904.34.01", SINISTRA: "A50904.34.02" },
+    A12_I13_B18: { DESTRA: "A50904.34.01", SINISTRA: "A50904.34.02" },
+    A12_I13_B20: { DESTRA: "A50904.36.01", SINISTRA: "A50904.36.02" },
+  },
+};
+
+/**
+ * Default per geometria: `A4_I85_B15` → BASE (è l'unica famiglia "ricca" che il
+ * listino le pubblichi), tutte le altre → TRAVERSO_ALU_COMPENSATORE. Riproduce
+ * ESATTAMENTE `GEOMETRIE[*].squadraAngolare`, ed è la ragione per cui il golden
+ * non può muoversi. Un test lo verifica geometria per geometria (Task 1).
+ */
+export function squadraAngolareDefault(geometry: ArtechGeometryId): SquadraAngolareId {
+  return geometry === "A4_I85_B15" ? "BASE" : "TRAVERSO_ALU_COMPENSATORE";
+}
+
+/** Opzioni realmente ordinabili per questa geometria, nell'ordine di listino. */
+export function opzioniSquadraAngolare(
+  geometry: ArtechGeometryId,
+): { id: SquadraAngolareId; label: string }[] {
+  return (Object.keys(SQUADRA_ANGOLARE) as SquadraAngolareId[])
+    .filter((id) => SQUADRA_ANGOLARE[id][geometry] !== undefined)
+    .map((id) => ({ id, label: SQUADRA_ANGOLARE_LABEL[id] }));
+}
+
+export function squadraAngolare(
+  geometry: ArtechGeometryId,
+  mano: "DESTRA" | "SINISTRA",
+  scelta: SquadraAngolareId | undefined,
+): string {
+  const id = scelta ?? squadraAngolareDefault(geometry);
+  const perGeo = SQUADRA_ANGOLARE[id][geometry];
+  if (perGeo === undefined)
+    throw new KitGenerationError(
+      `Squadra angolare «${SQUADRA_ANGOLARE_LABEL[id]}» non disponibile per la geometria ` +
+        `${geometry}: il listino 2026 non la pubblica per questo interasse.`,
+      "artech.varianti",
+    );
+  return perGeo[mano];
+}
+
+/** Etichetta SOLO se la scelta differisce dallo standard di questa geometria; vedi `etichettaSeNonStandard`. */
+export function squadraAngolareEtichettaSeNonStandard(
+  geometry: ArtechGeometryId,
+  scelta: SquadraAngolareId | undefined,
+): string | undefined {
+  return etichettaSeNonStandard(scelta, squadraAngolareDefault(geometry), SQUADRA_ANGOLARE_LABEL);
+}
+
+type Mano = "DESTRA" | "SINISTRA";
+const ambidestro = (code: string): PerMano => ({ DESTRA: code, SINISTRA: code });
+
+export type IncontroRibaltaId = NonNullable<Varianti["incontroRibalta"]>;
+
+export const INCONTRO_RIBALTA_LABEL: Record<IncontroRibaltaId, string> = {
+  ZAMA: "Zama",
+  ACCIAIO_INCLINATE: "Acciaio, viti inclinate",
+  ACCIAIO_DRITTE: "Acciaio, viti dritte",
+};
+
+/**
+ * FONTE: p0471 (469). L'attuale è lo ZAMA per aria 12 e aria 4 asse 13
+ * (ASSUNZIONE del 2026-07-25, ora una scelta esplicita); per aria 4 asse 9 lo
+ * zama NON esiste e l'attuale è l'acciaio — infatti `A4_ASSE9` ha una sola
+ * voce e §opzioniIncontroRibalta non offre nulla.
+ */
+const INCONTRO_RIBALTA: Record<IncontroRibaltaId, Partial<Record<ChiaveIncontri, PerMano>>> = {
+  ZAMA: {
+    A4_ASSE13: { DESTRA: "A514DX.DC.70", SINISTRA: "A514SX.DC.70" },
+    A12_9x18: ambidestro("A51400.05.70"),
+    A12_13x24: ambidestro("A51400.CR.70"),
+  },
+  ACCIAIO_INCLINATE: {
+    A4_ASSE9: { DESTRA: "A514DX.01.64", SINISTRA: "A514SX.01.64" },
+    A4_ASSE13: { DESTRA: "A514DX.DC.64", SINISTRA: "A514SX.DC.64" },
+    A12_9x18: { DESTRA: "A514DX.05.64", SINISTRA: "A514SX.05.64" },
+    A12_13x24: { DESTRA: "A514DX.CR.64", SINISTRA: "A514SX.CR.64" },
+  },
+  ACCIAIO_DRITTE: {
+    // A4_* ASSENTI: in aria 4 il listino pubblica solo le viti inclinate.
+    A12_9x18: { DESTRA: "A514DX.05.65", SINISTRA: "A514SX.05.65" },
+    A12_13x24: { DESTRA: "A514DX.CR.65", SINISTRA: "A514SX.CR.65" },
+  },
+};
+
+function ribaltaDefault(chiave: ChiaveIncontri): IncontroRibaltaId {
+  return chiave === "A4_ASSE9" ? "ACCIAIO_INCLINATE" : "ZAMA";
+}
+
+/** Vuoto quando la scelta non esiste: una variante con una sola opzione non è una scelta. */
+export function opzioniIncontroRibalta(
+  geometry: ArtechGeometryId,
+): { id: IncontroRibaltaId; label: string }[] {
+  const k = chiaveIncontri(geometry);
+  const ids = (Object.keys(INCONTRO_RIBALTA) as IncontroRibaltaId[]).filter(
+    (id) => INCONTRO_RIBALTA[id][k] !== undefined,
+  );
+  return ids.length < 2 ? [] : ids.map((id) => ({ id, label: INCONTRO_RIBALTA_LABEL[id] }));
+}
+
+export function incontroRibaltaVariante(
+  geometry: ArtechGeometryId,
+  mano: Mano,
+  scelta: IncontroRibaltaId | undefined,
+): string {
+  const k = chiaveIncontri(geometry);
+  const id = scelta ?? ribaltaDefault(k);
+  const perChiave = INCONTRO_RIBALTA[id][k];
+  if (perChiave === undefined)
+    throw new KitGenerationError(
+      `Incontro ribalta «${INCONTRO_RIBALTA_LABEL[id]}» non disponibile per il formato ${k}: ` +
+        "il listino 2026 non lo pubblica.",
+      "artech.varianti",
+    );
+  return perChiave[mano];
+}
+
+/** Etichetta SOLO se la scelta differisce dallo standard di questo formato; vedi `etichettaSeNonStandard`. */
+export function incontroRibaltaEtichettaSeNonStandard(
+  geometry: ArtechGeometryId,
+  scelta: IncontroRibaltaId | undefined,
+): string | undefined {
+  return etichettaSeNonStandard(
+    scelta,
+    ribaltaDefault(chiaveIncontri(geometry)),
+    INCONTRO_RIBALTA_LABEL,
+  );
+}
+
+export type IncontroNottolinoId = NonNullable<Varianti["incontroNottolino"]>;
+
+/**
+ * Default = il codice che il motore emette oggi senza scelta esplicita. Unica
+ * fonte per codice ED etichetta (Rilievo 1, review Task 5): prima "NORMALE"
+ * era scritto due volte, e cambiarlo in un solo punto avrebbe disallineato in
+ * silenzio la descrizione dal codice emesso.
+ */
+const INCONTRO_NOTTOLINO_DEFAULT: IncontroNottolinoId = "NORMALE";
+
+export const INCONTRO_NOTTOLINO_LABEL: Record<IncontroNottolinoId, string> = {
+  NORMALE: "Normale",
+  ANTIEFFRAZIONE_INCLINATE: "Antieffrazione, viti inclinate",
+  ANTIEFFRAZIONE_DRITTE: "Antieffrazione, viti dritte",
+};
+
+/** FONTE: normale p0469 (467) · antieffrazione p0470 (468). */
+const INCONTRO_NOTTOLINO: Record<IncontroNottolinoId, Partial<Record<ChiaveIncontri, PerMano>>> = {
+  NORMALE: {
+    A4_ASSE9: { DESTRA: "A514DX.01.02", SINISTRA: "A514SX.01.02" },
+    A4_ASSE13: { DESTRA: "A48011.DC.02", SINISTRA: "A48012.DC.02" },
+    A12_9x18: ambidestro("A51400.05.02"),
+    A12_13x24: ambidestro("A51400.CR.13"),
+  },
+  ANTIEFFRAZIONE_INCLINATE: {
+    A4_ASSE9: { DESTRA: "A514DX.01.67", SINISTRA: "A514SX.01.67" },
+    A4_ASSE13: { DESTRA: "A514DX.DC.67", SINISTRA: "A514SX.DC.67" },
+    A12_9x18: { DESTRA: "A514DX.05.67", SINISTRA: "A514SX.05.67" },
+    A12_13x24: { DESTRA: "A514DX.CR.67", SINISTRA: "A514SX.CR.67" },
+  },
+  ANTIEFFRAZIONE_DRITTE: {
+    // A4_* ASSENTI: in aria 4 il listino pubblica solo le viti inclinate. È il
+    // motivo per cui la domanda «inclinate o dritte?» non andava risposta ma
+    // mostrata: per MC e Peruzzi le dritte non esistono.
+    A12_9x18: { DESTRA: "A514DX.05.68", SINISTRA: "A514SX.05.68" },
+    A12_13x24: { DESTRA: "A514DX.CR.68", SINISTRA: "A514SX.CR.68" },
+  },
+};
+
+/**
+ * Quali voci della tabella qui sopra sono ANTIEFFRAZIONE — **elencate**, non
+ * dedotte dalla forma del nome.
+ *
+ * Prima erano tre `startsWith("ANTIEFFRAZIONE")` sparsi fra registro e wizard, e
+ * decidevano tre cose diverse: se emettere l'avviso della NB del listino, lo
+ * stato dell'interruttore «Sicurezza», e **quale codice** l'interruttore imposta.
+ * Rinominare una voce dell'enum fa fallire la compilazione sulle tabelle (sono
+ * `Record` esaustivi) ma **non** su uno `startsWith`, che avrebbe continuato a
+ * compilare restituendo `false` in silenzio: avviso del listino sparito e
+ * interruttore che dice «Normale» su una configurazione antieffrazione. È la
+ * regola dei codici interi — mai una proprietà dedotta dalla forma di una
+ * stringa — applicata a una categoria.
+ *
+ * `satisfies` lega l'elenco all'enum nel verso che conta: se una voce viene
+ * rinominata, **questo elenco non compila**.
+ */
+export const INCONTRO_NOTTOLINO_ANTIEFFRAZIONE = [
+  "ANTIEFFRAZIONE_INCLINATE",
+  "ANTIEFFRAZIONE_DRITTE",
+] as const satisfies readonly IncontroNottolinoId[];
+
+/**
+ * L'unico modo di chiedere «è antieffrazione?». `undefined` significa «lo
+ * standard del programma», cioè `INCONTRO_NOTTOLINO_DEFAULT`: la stessa `??` di
+ * ogni altra funzione di questo file, così il chiamante non deve conoscere il
+ * default per poter fare la domanda.
+ */
+export function eAntieffrazione(scelta: IncontroNottolinoId | undefined): boolean {
+  const id = scelta ?? INCONTRO_NOTTOLINO_DEFAULT;
+  return INCONTRO_NOTTOLINO_ANTIEFFRAZIONE.some((voce) => voce === id);
+}
+
+export function opzioniIncontroNottolino(
+  geometry: ArtechGeometryId,
+): { id: IncontroNottolinoId; label: string }[] {
+  const k = chiaveIncontri(geometry);
+  return (Object.keys(INCONTRO_NOTTOLINO) as IncontroNottolinoId[])
+    .filter((id) => INCONTRO_NOTTOLINO[id][k] !== undefined)
+    .map((id) => ({ id, label: INCONTRO_NOTTOLINO_LABEL[id] }));
+}
+
+export function incontroNottolinoVariante(
+  geometry: ArtechGeometryId,
+  mano: Mano,
+  scelta: IncontroNottolinoId | undefined,
+): string {
+  const k = chiaveIncontri(geometry);
+  const id = scelta ?? INCONTRO_NOTTOLINO_DEFAULT;
+  const perChiave = INCONTRO_NOTTOLINO[id][k];
+  if (perChiave === undefined)
+    throw new KitGenerationError(
+      `Incontro nottolino «${INCONTRO_NOTTOLINO_LABEL[id]}» non disponibile per il formato ` +
+        `${k}: il listino 2026 non lo pubblica.`,
+      "artech.varianti",
+    );
+  return perChiave[mano];
+}
+
+/** Etichetta SOLO se la scelta differisce dal NORMALE; vedi `etichettaSeNonStandard`. */
+export function incontroNottolinoEtichettaSeNonStandard(
+  scelta: IncontroNottolinoId | undefined,
+): string | undefined {
+  return etichettaSeNonStandard(scelta, INCONTRO_NOTTOLINO_DEFAULT, INCONTRO_NOTTOLINO_LABEL);
+}
+
+export type MovimentoAngolareId = NonNullable<Varianti["movimentoAngolare"]>;
+
+/**
+ * Default = il codice che il motore emette oggi senza scelta esplicita. Unica
+ * fonte per codice ED etichetta (Rilievo 1, review Task 5): prima
+ * "UN_NOTTOLINO" era scritto due volte, e cambiarlo in un solo punto avrebbe
+ * disallineato in silenzio la descrizione dal codice emesso.
+ */
+const MOVIMENTO_ANGOLARE_DEFAULT: MovimentoAngolareId = "UN_NOTTOLINO";
+
+export const MOVIMENTO_ANGOLARE_LABEL: Record<MovimentoAngolareId, string> = {
+  UN_NOTTOLINO: "Un nottolino",
+  DUE_NOTTOLINI: "Due nottolini (antieffrazione)",
+};
+
+/**
+ * FONTE: p0435 (433). NB STAMPATA: «mov. angolare A50302.02.02 necessario per
+ * tutte le classi antieffrazione» — non era nella richiesta dell'utente, l'ha
+ * imposto il listino.
+ */
+const MOVIMENTO_ANGOLARE_CODICI: Record<MovimentoAngolareId, string> = {
+  UN_NOTTOLINO: "A50302.01.02",
+  DUE_NOTTOLINI: "A50302.02.02",
+};
+
+export function movimentoAngolareCodice(scelta: MovimentoAngolareId | undefined): string {
+  return MOVIMENTO_ANGOLARE_CODICI[scelta ?? MOVIMENTO_ANGOLARE_DEFAULT];
+}
+
+/** Etichetta SOLO se la scelta differisce da UN_NOTTOLINO; vedi `etichettaSeNonStandard`. */
+export function movimentoAngolareEtichettaSeNonStandard(
+  scelta: MovimentoAngolareId | undefined,
+): string | undefined {
+  return etichettaSeNonStandard(scelta, MOVIMENTO_ANGOLARE_DEFAULT, MOVIMENTO_ANGOLARE_LABEL);
+}
+
+/**
+ * Piastrino antieffrazione — riga AGGIUNTA, quantità 1. FONTE: p0432 (430).
+ * Dipende dall'ENTRATA, cioè dal campo reso esplicito dalla PR #40: mappa
+ * esaustiva `Record<Entrata, string>`, non un ternario (un terzo valore
+ * dell'enum non deve poter finire in silenzio su uno dei due).
+ */
+const PIASTRINO: Record<Entrata, string> = {
+  E75: "A50194.00.01",
+  E15: "A20050.00.02",
+};
+
+export function piastrinoCodice(entrata: Entrata): string {
+  return PIASTRINO[entrata];
+}
+
+/**
+ * Nome del pezzo toccato da ciascuna variante. Uno solo, qui: la legenda del
+ * gruppo nel wizard, la voce «cosa cambia», il riepilogo della richiesta e la
+ * riga di distinta (`rules-artech-legno.ts`) devono chiamare lo stesso pezzo
+ * allo stesso modo — è l'unica cosa che permette all'agente di ritrovare nella
+ * distinta la scelta che ha fatto nel wizard. `Record<VarianteId, string>` non
+ * compila se una variante resta senza nome.
+ */
+export const COMPONENTE_LABEL: Record<VarianteId, string> = {
+  squadraAngolare: "Squadra angolare",
+  incontroRibalta: "Incontro ribalta",
+  movimentoAngolare: "Movimento angolare",
+  // Plurale come la riga di distinta: gli incontri nottolino sono più d'uno.
+  incontroNottolino: "Incontri nottolino",
+  piastrinoAntieffrazione: "Piastrino antieffrazione",
+};
+
+/**
+ * Le scelte che DIFFERISCONO dallo standard, per esteso — mai una sigla, mai la
+ * parola «antieffrazione» da sola (spec §9). Vuoto = la distinta di sempre.
+ *
+ * Riusa le `*EtichettaSeNonStandard` che il motore usa per le descrizioni di
+ * riga: se il motore non dichiara la variante sulla riga, il riepilogo non la
+ * dichiara nemmeno — non esiste una seconda nozione di «non standard».
+ * Il piastrino non ha etichetta di riga (è una riga AGGIUNTA, non un codice
+ * sostituito) ed è l'unico caso scritto qui.
+ */
+export function scelteNonStandard(
+  geometry: ArtechGeometryId,
+  varianti: Varianti | undefined,
+): { componente: string; scelta: string }[] {
+  if (varianti === undefined) return [];
+  const scelte: { componente: string; scelta: string }[] = [];
+  const push = (id: VarianteId, scelta: string | undefined) => {
+    if (scelta !== undefined) scelte.push({ componente: COMPONENTE_LABEL[id], scelta });
+  };
+  push(
+    "squadraAngolare",
+    squadraAngolareEtichettaSeNonStandard(geometry, varianti.squadraAngolare),
+  );
+  push(
+    "incontroRibalta",
+    incontroRibaltaEtichettaSeNonStandard(geometry, varianti.incontroRibalta),
+  );
+  push("movimentoAngolare", movimentoAngolareEtichettaSeNonStandard(varianti.movimentoAngolare));
+  push("incontroNottolino", incontroNottolinoEtichettaSeNonStandard(varianti.incontroNottolino));
+  if (varianti.piastrinoAntieffrazione === true)
+    push("piastrinoAntieffrazione", "Sì — riga aggiunta alla distinta");
+  return scelte;
+}
+
+/**
+ * Combinazioni che il listino VIETA ma i cui codici esistono tutti.
+ *
+ * NON è un rifiuto: è il precedente «avviso, mai blocco» dello sconto oltre
+ * soglia. Bloccare significherebbe impedire un ordine vero sulla base della
+ * NOSTRA lettura di una NB stampata.
+ *
+ * Pura, e usata in due posti: il motore (dove finisce in `warnings`, quindi
+ * persistita in `generatedKit`) e il wizard (dove si vede PRIMA di generare).
+ */
+export function avvisiVarianti(varianti: Varianti | undefined): string[] {
+  if (varianti === undefined) return [];
+  const avvisi: string[] = [];
+  const antieffrazione = eAntieffrazione(varianti.incontroNottolino);
+  if (antieffrazione && varianti.movimentoAngolare !== "DUE_NOTTOLINI")
+    avvisi.push(
+      "Incontro nottolino antieffrazione con movimento angolare a un nottolino: il listino " +
+        "2026 (p. stampata 433) richiede il movimento angolare a due nottolini A50302.02.02 " +
+        "per tutte le classi antieffrazione.",
+    );
+  return avvisi;
+}

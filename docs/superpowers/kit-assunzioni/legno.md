@@ -11,7 +11,8 @@
 > Golden = **distinta reale AGB del 16/11/2021** riportata su ARTECH LEGNO, riverificata
 > riga per riga contro il **listino AGB 2026** il 2026-07-25.
 > Distinta: **12 righe / 17 pezzi** senza chiusure supplementari, **16 righe / 21 pezzi /
-> 90,20 €** con (la distinta storica).
+> 90,20 €** con (la distinta storica). Con l'**antieffrazione completa** (scelta dell'agente dal
+> 2026-07-31, mai il default): **17 righe / 22 pezzi / 110,13 €**.
 
 **Pagine.** Si cita sempre la **pagina fisica del PDF con la stampata fra parentesi**
 (fisica = stampata + 2), es. `p0451 (449)`. `Product.listinoPage` a DB è la fisica.
@@ -27,9 +28,9 @@ ovunque. **L'elenco completo e ordinato per priorità è in
 stessa numerazione divergono al primo aggiornamento (è già successo: la tabella che stava qui
 saltava le domande 17-23, aggiunte da un altro lavoro in parallelo).
 
-Le domande discusse **nel merito** in questa scheda: **2** (squadra angolare), **3** (incontri),
-**4** (sede 18 vs 30), **7** (finestre basse), **10** (offset altezza→HBB), **24** (interasse
-8,5), **25** (confezioni).
+Le domande discusse **nel merito** in questa scheda: **2** (squadra angolare, **chiusa**), **3**
+(incontri), **4** (sede 18 vs 30), **7** (finestre basse), **10** (offset altezza→HBB), **24**
+(interasse 8,5), **25** (confezioni), **30** (antieffrazione, **chiusa**).
 
 ⚠️ `alu.md` conserva una propria lista numerata 1-13 della Fase 1g: quella è **locale a quella
 scheda** e non va confusa con la numerazione globale. Nell'indice globale l'alluminio è
@@ -116,16 +117,54 @@ bande identiche, cambia il codice e cambia il prezzo (GR07: 16,03 € contro
 
 ---
 
-## Cosa NON è stato toccato, e perché
+## Cosa è stato corretto il 2026-07-31 — le scelte che il motore prendeva da sé
 
-Due rilievi avevano una fonte autorevole **a favore dello stato attuale**: cambiarli
-sarebbe stato sostituire un'assunzione con un'altra. Sono le domande 2 e 3.
+**Passo «Componenti» del wizard.** Tre punti in cui il modulo sceglieva un codice fra più
+possibili senza dichiararlo sono diventati **scelte dell'agente**: squadra angolare
+(**domanda 2**), incontro ribalta (assunzione ZAMA, sotto) e antieffrazione (**domanda 30**).
+Nessuno dei tre è stato *risposto*: sono stati **spostati a chi ordina**, con il codice, il
+nome a catalogo, il prezzo e la differenza rispetto allo standard davanti.
+
+**I default non si muovono**, quindi il golden resta **16 righe / 21 pezzi / 90,20 €**
+(gemello entrata 7,5: **96,29 €**). Con l'antieffrazione completa diventa **17 righe / 22 pezzi
+/ 110,13 €** — misurato sul catalogo reale, zero warning.
+
+**Il «doppio nottolino a fungo» NON è entrato**, e la ragione è di collocazione, non di
+prudenza: `A50320.02.01` sta nel capitolo Movimenti Angolari (quindi *sostituisce* un movimento
+angolare) ed è legato alla **sede 30 nei due versi** — NB sotto la sua tabella a `p0435 (433)`
+e nota `(**)` stampata solo sulle righe `13x30` a `p0469 (467)`. La sede 30 il motore la rifiuta
+a monte: il fungo è una **famiglia di schemi diversa**, ed entrerà con la **domanda 4**.
+
+**L'ASSUNZIONE sull'incontro ribalta non è più un'assunzione.** Il commento di
+`artech-incontri.ts` diceva: «*a listino esistono sia l'acciaio (`.DC.64`) sia lo zama
+(`.DC.70`): si adotta lo ZAMA per coerenza col pilota*». Oggi lo **zama è lo standard** e
+l'**acciaio** — viti inclinate o viti dritte — è un'alternativa che l'agente vede e può
+scegliere, con la sua differenza di prezzo (`p0471 (469)`):
+
+| Chiave incontri | Zama (standard) | Acciaio viti inclinate | Acciaio viti dritte |
+|---|---|---|---|
+| `A4_ASSE9` — **MC, Peruzzi** | — *non esiste* | `A514DX/SX.01.64` 3,03 **(è lo standard qui)** | — |
+| `A4_ASSE13` | `A514DX/SX.DC.70` 2,64 | `A514DX/SX.DC.64` 3,03 | — |
+| `A12_9x18` — il **golden** | `A51400.05.70` 2,54 ambidestro | `A514DX/SX.05.64` 3,03 | `A514DX/SX.05.65` 3,03 |
+| `A12_13x24` — **Fosca** | `A51400.CR.70` 2,54 ambidestro | `A514DX/SX.CR.64` 3,03 | `A514DX/SX.CR.65` 3,03 |
+
+**Per l'aria 4 asse 9 la scelta non esiste**: il listino pubblica solo l'acciaio, quindi c'è
+**una sola opzione** — e la variante **non viene mostrata affatto**, non mostrata disabilitata.
+Una scelta con una voce sola non è una scelta: sarebbe un campo finto.
 
 ---
 
-## Domanda 2 — squadra angolare: quale delle quattro varianti?
+## Cosa NON è stato toccato, e perché
 
-Il modulo usa `A50904.36.01` (dx) / `.02` (sx). Per la geometria del pilota
+Due rilievi avevano una fonte autorevole **a favore dello stato attuale**: cambiarli
+sarebbe stato sostituire un'assunzione con un'altra. Erano le domande 2 e 3 — **la 2 è stata
+chiusa il 2026-07-31** (sopra: non rispondendola, ma facendola scegliere), **la 3 resta**.
+
+---
+
+## Domanda 2 — squadra angolare: quale delle quattro varianti? *(CHIUSA il 2026-07-31 — vedi sopra; resta il merito)*
+
+Il modulo usa `A50904.36.01` (dx) / `.02` (sx) **come standard**. Per la geometria del pilota
 (**interasse 13 · aria 12 · battuta 20**) il listino 2026 offre **quattro** varianti, tutte
 con la stessa coppia di mano `.01`/`.02`:
 
@@ -134,7 +173,12 @@ con la stessa coppia di mano `.01`/`.02`:
 | `A50902.36.01/.02` | «Squadra angolare - Interasse 13» (base) | **5,77** | p0451 (449) |
 | `A50903.36.01/.02` | «Squadra angolare **per traverso in alluminio** - Interasse 13» | 7,54 | p0452 (450) |
 | `A50901.36.01/.02` | «Squadra angolare **con compensatore 16/12** - Interasse 13» | 8,05 | p0452 (450) |
-| `A50904.36.01/.02` | «Squadra angolare **per traverso in alluminio con compensatore 16/12**» — **in uso** | 9,83 | p0452 (450) |
+| `A50904.36.01/.02` | «Squadra angolare **per traverso in alluminio con compensatore 16/12**» — **standard** | 9,83 | p0452 (450) |
+
+**Dal 2026-07-31 tutte e quattro sono selezionabili nel wizard** (due sole per l'interasse 8,5:
+`A50901.22` e `A50904.22` non esistono). Le 36 righe della tabella — 4 famiglie × 5 interassi ×
+2 mani — sono scritte **per esteso**, mai concatenate: `A50904.22` è esattamente ciò che una
+formula avrebbe prodotto, ed è il difetto che ha già fatto disattivare i moduli PVC e battente.
 
 - Le **legende degli schemi di montaggio** chiedono genericamente «Squadra angolare con
   compensatore» → suggerirebbero `A50901.36`.
@@ -146,8 +190,9 @@ con la stessa coppia di mano `.01`/`.02`:
 **Domanda:** per una finestra **tutto-legno** aria 12 / interasse 13 / battuta 20, quale
 delle quattro va montata? Fra la più economica e quella in uso ballano **4,06 € a pezzo**.
 
-*(Fino alla risposta si conserva `A50904.36`: è l'unica prescritta da un documento
-tecnico intestato «ARTech Legno».)*
+*(Fino alla risposta `A50904.36` resta lo **standard preselezionato**: è l'unica prescritta da un
+documento tecnico intestato «ARTech Legno». La risposta ora non sblocca più un codice — sposta il
+default, e l'etichetta a schermo smette di dire «mai confrontato con un ordine vero».)*
 
 ---
 

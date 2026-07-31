@@ -309,6 +309,15 @@ model KitRequest {
   /// anche le righe che non devono averlo. Il backfill è nella migrazione.
   entrata Entrata?
 
+  /// Varianti componente scelte dall'agente (spec 2026-07-31). SOLO ARTECH:
+  /// NULL sulle righe TOUR e su ogni riga creata prima di questa migrazione.
+  /// NULL = «lo standard del programma», cioè i codici che il motore emette da
+  /// sempre → NESSUN backfill, e nessuna riga esistente si muove. Nessun
+  /// `@default` a livello DB, stesso criterio di `seatConfig`/`entrata`/
+  /// `discountPercent`: un default DB valorizzerebbe anche le righe che non
+  /// devono averlo.
+  variants Json?
+
   /// Sconto applicato al cliente, in punti percentuali (42.50 = −42,5%).
   /// NULL = nessuno sconto: la distinta resta al lordo di listino, che è il
   /// comportamento di OGNI riga esistente prima del 2026-07-30 — per questo la

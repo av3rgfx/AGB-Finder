@@ -25,6 +25,7 @@ export interface PersistedKitRequest {
   sashWeightKg: number | null;
   tourSchema: number | null;
   notes: string | null;
+  variants: unknown;
 }
 
 /**
@@ -74,6 +75,12 @@ export function kitInputFromRequest(row: PersistedKitRequest): KitInput {
           openingSide: row.openingSide,
           openingDir: row.openingDir ?? "TIRARE",
           supplementaryClosures: row.supplementaryClosures,
+          // NESSUN `?? {}`. Un fallback qui renderebbe indistinguibile «non
+          // scelto» da «dato rotto», e il default vive nel registro. `null` a
+          // DB → `undefined` nell'input, che è ciò che lo schema `.optional()`
+          // vuole; qualunque altra cosa passa dal `safeParse` sotto e, se non è
+          // valida, la riga viene RIFIUTATA con un messaggio.
+          ...(row.variants !== null && row.variants !== undefined && { variants: row.variants }),
         };
 
   const parsed = kitInputSchema.safeParse(candidate);

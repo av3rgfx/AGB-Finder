@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { Prisma } from "@prisma/client";
 import { createTRPCRouter, createCallerFactory, type TRPCContext } from "@/server/api/trpc";
 import { ENGINE_VERSION } from "@/server/kit/engine";
+import { kitInputFromRequest, type PersistedKitRequest } from "@/server/kit/from-request";
 vi.mock("@/server/settings/discount-threshold", () => ({
   getDiscountThreshold: vi.fn().mockResolvedValue(40),
   SOGLIA_SCONTO_DEFAULT: 40,
@@ -433,6 +435,11 @@ describe("kit.ricalcola", () => {
       tourSchema: null,
       notes: "nota di prova",
       customerId: "cust1",
+      // Valorizzato e diverso da null/{} come tutti gli altri campi di questo
+      // test: se `ricalcola` dimenticasse `variants` nella copia, qui non lo
+      // vedrebbe nessun altro test (quello del giro completo usa un valore
+      // presente ma non prova l'assenza del campo dalla copia).
+      variants: { squadraAngolare: "TRAVERSO_ALU" },
     });
     requestCreate.mockResolvedValue({ id: "req2", requestNumber: "KIT-2026-0008" });
 
@@ -458,6 +465,7 @@ describe("kit.ricalcola", () => {
       customerId: "cust1",
       status: "DRAFT",
       agentId: "agent1",
+      variants: { squadraAngolare: "TRAVERSO_ALU" },
     });
   });
 
@@ -632,5 +640,98 @@ describe("kit.setDiscount", () => {
     await expect(
       caller.kit.setDiscount({ id: "k1", discountPercent: v }),
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+});
+
+describe("kit — le varianti sopravvivono al giro completo", () => {
+  // Il modulo anta-ribalta non legge ancora `variants` (Task 5, deliberatamente
+  // dopo questo): qui si prova solo il PERCORSO DATI, non l'effetto sulla
+  // distinta. Se il giro creazione → rilettura → ricalcolo perdesse le
+  // varianti in uno dei tre punti, questo test lo scoprirebbe prima che un
+  // modulo inizi a fidarsene.
+  it("la variante sopravvive al giro creazione → rilettura → ricalcolo", async () => {
+    requestCount.mockResolvedValue(0);
+    requestCreate.mockImplementation(({ data }) => Promise.resolve({ id: "k1", ...data }));
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+
+    // 1. CREATE — le varianti scelte nel wizard finiscono sulla colonna.
+    await caller.kit.create({
+      specs: { ...validInput, variants: { squadraAngolare: "BASE" } },
+    });
+    const creata = requestCreate.mock.calls[0]![0].data;
+    expect(creata.variants).toEqual({ squadraAngolare: "BASE" });
+
+    // 2. RILETTURA — la riga (così come uscirebbe da Prisma) si ricostruisce
+    // in un `KitInput` puro, senza toccare il DB (from-request.ts è testabile
+    // da solo per questo).
+    const riga: PersistedKitRequest = {
+      windowType: creata.windowType,
+      widthMm: creata.widthMm,
+      heightMm: creata.heightMm,
+      material: creata.material,
+      finish: creata.finish,
+      series: creata.series,
+      geometry: creata.geometry,
+      entrata: creata.entrata,
+      seatConfig: creata.seatConfig,
+      openingSide: creata.openingSide,
+      openingDir: creata.openingDir,
+      supplementaryClosures: creata.supplementaryClosures,
+      sashWeightKg: creata.sashWeightKg,
+      tourSchema: creata.tourSchema ?? null,
+      notes: creata.notes,
+      variants: creata.variants,
+    };
+    const input = kitInputFromRequest(riga);
+    expect(input.series === "ARTECH" && input.variants).toEqual({ squadraAngolare: "BASE" });
+
+    // 3. RICALCOLO — su una riga già emessa nasce una versione nuova, che deve
+    // ereditare le stesse varianti (non rinegoziarle).
+    requestCount.mockResolvedValue(7);
+    requestFindFirst.mockResolvedValue({
+      ...creata,
+      id: "k1",
+      requestNumber: "KIT-2026-0001",
+      status: "COMPLETED",
+      supersededById: null,
+    });
+    requestCreate.mockResolvedValue({ id: "k2", requestNumber: "KIT-2026-0008" });
+    await caller.kit.ricalcola({ kitRequestId: "k1" });
+    const ricalcolata = requestCreate.mock.calls[1]![0].data;
+    expect(ricalcolata.variants).toEqual({ squadraAngolare: "BASE" });
+  });
+
+  // Gemello a NULL del test sopra: «assente» non è «vuoto». `Prisma.DbNull` è
+  // il sentinella che dice a Prisma di scrivere un NULL su una colonna JSON —
+  // un `{}` letterale sarebbe una richiesta con "zero varianti scelte" invece
+  // che "nessuna variante mai scelta", e le due cose non sono la stessa cosa
+  // (un domani, un modulo potrebbe leggere `{}` come "campo presente" invece
+  // che "campo assente").
+  it("una richiesta SENZA varianti scrive Prisma.DbNull, e il ricalcolo non lo materializza in {}", async () => {
+    requestCount.mockResolvedValue(0);
+    requestCreate.mockImplementation(({ data }) => Promise.resolve({ id: "k1", ...data }));
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+
+    // 1. CREATE — nessuna variante nel wizard: `validInput` non porta `variants`.
+    await caller.kit.create({ specs: validInput });
+    const creata = requestCreate.mock.calls[0]![0].data;
+    expect(creata.variants).toBe(Prisma.DbNull);
+
+    // 2. RICALCOLO — una colonna JSON NULL torna da Prisma come `null` (mai
+    // come `Prisma.DbNull`, che è solo il sentinella di SCRITTURA): la riga
+    // che `ricalcola` rilegge ha quindi `variants: null`, non `Prisma.DbNull`.
+    requestCount.mockResolvedValue(7);
+    requestFindFirst.mockResolvedValue({
+      ...creata,
+      variants: null,
+      id: "k1",
+      requestNumber: "KIT-2026-0001",
+      status: "COMPLETED",
+      supersededById: null,
+    });
+    requestCreate.mockResolvedValue({ id: "k2", requestNumber: "KIT-2026-0008" });
+    await caller.kit.ricalcola({ kitRequestId: "k1" });
+    const ricalcolata = requestCreate.mock.calls[1]![0].data;
+    expect(ricalcolata.variants).toBe(Prisma.DbNull);
   });
 });

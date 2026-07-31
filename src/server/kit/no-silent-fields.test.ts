@@ -4,6 +4,11 @@ import { artechVasistasLegno } from "./rules-artech-vasistas-legno";
 import { tourBilicoLegno } from "./rules-tour-bilico-legno";
 import { artechInputSchema, tourInputSchema } from "./types";
 import type { KitInput, KitLine, RuleModule } from "./types";
+import {
+  opzioniSquadraAngolare,
+  opzioniIncontroRibalta,
+  opzioniIncontroNottolino,
+} from "./artech-varianti";
 
 /**
  * `series` e `windowType` sono i DISCRIMINATORI: mutarli non significa «un'altra
@@ -98,8 +103,28 @@ const CASI: Caso[] = [
       { campo: "finish", valore: "BRONZO" },
       { campo: "supplementaryClosures", valore: false },
       { campo: "entrata", valore: "E75" },
+      // Task 7: STRATO 2 della garanzia (spec §6). `variants` è un oggetto
+      // annidato: una mutazione sola su tutto il blob (Task 5) si accorgerebbe
+      // di un modulo che ha smesso di leggere OGNI variante, ma non di uno che
+      // ne ha smesso di leggere UNA sola continuando a leggere le altre. Qui
+      // c'è una mutazione per chiave, con la fixture su cui ciascuna è
+      // DAVVERO disponibile — vedi il test di disponibilità qui sotto — così
+      // che un'inerzia non passi «a vuoto» perché il codice era comunque
+      // irraggiungibile su questa geometria.
+      { campo: "variants.squadraAngolare", valore: "BASE" },
+      { campo: "variants.incontroRibalta", valore: "ACCIAIO_INCLINATE" },
+      { campo: "variants.movimentoAngolare", valore: "DUE_NOTTOLINI" },
+      { campo: "variants.incontroNottolino", valore: "ANTIEFFRAZIONE_INCLINATE" },
+      { campo: "variants.piastrinoAntieffrazione", valore: true },
     ],
-    campi: Object.keys(artechInputSchema.shape),
+    campi: [
+      ...Object.keys(artechInputSchema.shape).filter((c) => c !== "variants"),
+      // DERIVATO dalla dichiarazione del modulo, non scritto a mano: una
+      // variante aggiunta al registro e dichiarata dal modulo, ma senza
+      // mutazione qui, fa fallire il test COL PROPRIO NOME. È lo strato 2
+      // della garanzia (spec §6).
+      ...artechAntaRibaltaLegno.varianti.map((id) => `variants.${id}`),
+    ],
     inerti: [
       {
         campo: "openingDir",
@@ -158,6 +183,14 @@ const CASI: Caso[] = [
           "perché non ha righe da accendere per questa tipologia — coerente col wizard, che " +
           "per VASISTAS non mostra la casella e forza il campo a false.",
       },
+      {
+        campo: "variants",
+        valore: { piastrinoAntieffrazione: true },
+        perche:
+          "Il modulo dichiara `varianti: []`: le 5 chiavi del registro (squadra angolare, " +
+          "incontri ribalta/nottolino, movimento angolare, piastrino) sono tutte specifiche " +
+          "dell'anta-ribalta e non hanno un equivalente nello schema vasistas p0418 (416).",
+      },
     ],
   },
   {
@@ -178,6 +211,19 @@ const CASI: Caso[] = [
     ],
   },
 ];
+
+/**
+ * Assegna a un percorso di UN livello (`variants.squadraAngolare`). Serve perché
+ * le varianti vivono in un oggetto annidato: uno spread piatto le
+ * sostituirebbe in blocco invece di mutarne una, e il test passerebbe per il
+ * motivo sbagliato.
+ */
+function setPath(base: KitInput, campo: string, valore: unknown): KitInput {
+  const [testa, coda] = campo.split(".");
+  if (coda === undefined) return { ...base, [testa!]: valore } as KitInput;
+  const annidato = (base as Record<string, unknown>)[testa!] as Record<string, unknown> | undefined;
+  return { ...base, [testa!]: { ...(annidato ?? {}), [coda]: valore } } as KitInput;
+}
 
 /** Firma stabile della distinta: codice, quantità e ordine. */
 function firma(lines: KitLine[]): string {
@@ -212,12 +258,36 @@ describe.each(CASI)("nessun campo ignorato in silenzio — $nome", (caso) => {
   });
 
   it.each(caso.mutazioni)("mutare $campo cambia la distinta o viene rifiutato", (m) => {
-    const mutato = { ...caso.base, [m.campo]: m.valore } as KitInput;
+    const mutato = setPath(caso.base, m.campo, m.valore);
     expect(esito(caso.modulo, mutato)).not.toBe(riferimento);
   });
 
   it.each(caso.inerti)("$campo è dichiarato inerte e lo è davvero — $perche", (i) => {
-    const mutato = { ...caso.base, [i.campo]: i.valore } as KitInput;
+    const mutato = setPath(caso.base, i.campo, i.valore);
     expect(esito(caso.modulo, mutato)).toBe(riferimento);
+  });
+});
+
+describe("disponibilità delle varianti sulla fixture ARTECH anta-ribalta", () => {
+  // Il tranello del task: `artechBase` usa un'unica geometria (`A12_I13_B20`).
+  // Alcune varianti sono disponibili solo su certe geometrie (vedi le tabelle
+  // in `artech-varianti.ts`) — su una fixture sbagliata risulterebbero
+  // «legittimamente inerti» e le mutazioni sopra passerebbero A VUOTO. Questo
+  // test lo DIMOSTRA invece di darlo per scontato.
+  it("ogni variante mutata nel caso anta-ribalta è DAVVERO disponibile sulla fixture", () => {
+    expect(opzioniSquadraAngolare("A12_I13_B20").length).toBeGreaterThan(1);
+    expect(opzioniIncontroRibalta("A12_I13_B20").length).toBeGreaterThan(1);
+    expect(opzioniIncontroNottolino("A12_I13_B20").length).toBeGreaterThan(1);
+  });
+
+  // Rilievo reviewer (opzionale, Task 7): `{ squadraAngolare: undefined }` è la
+  // CHIAVE presente col valore `undefined` — diverso dalla chiave assente, ma
+  // gestito dallo stesso `??` di `artech-varianti.ts`. Non era mai stato
+  // asserito esplicitamente.
+  it("`variants: { squadraAngolare: undefined }` (chiave presente, valore assente) si comporta come nessuna scelta", () => {
+    const conChiaveUndefined = setPath(artechBase, "variants.squadraAngolare", undefined);
+    expect(esito(artechAntaRibaltaLegno, conChiaveUndefined)).toBe(
+      esito(artechAntaRibaltaLegno, artechBase),
+    );
   });
 });

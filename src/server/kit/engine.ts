@@ -2,6 +2,8 @@ import "server-only";
 import type { PrismaClient } from "@prisma/client";
 import { KitGenerationError, kitInputSchema, type KitLine } from "./types";
 import { resolveRuleModule } from "./registry";
+import type { VarianteId } from "./varianti-schema";
+import { avvisiVarianti } from "./artech-varianti";
 
 /**
  * Versione del codice-regole, timbrata su ogni distinta (`kit_requests.engine_version`).
@@ -68,7 +70,30 @@ export class KitEngine {
         `Nessun template kit attivo per ${input.windowType} / ${input.series} / ${input.material}.`,
       );
 
-    const lines = resolveRuleModule(template.rules).generate(input);
+    const module_ = resolveRuleModule(template.rules);
+
+    // STRATO 1 della garanzia sulle varianti (spec §6). Una variante persistita
+    // che il modulo non dichiara è un dato raccolto e mai letto: il difetto che
+    // questo progetto ha già pagato quattro volte. Qui è un rifiuto, col nome
+    // della variante — non un silenzio.
+    const varianti = "variants" in input ? (input.variants ?? {}) : {};
+    const nonDichiarate = Object.entries(varianti)
+      .filter(([, v]) => v !== undefined)
+      .map(([id]) => id)
+      .filter((id) => !module_.varianti.includes(id as VarianteId));
+    if (nonDichiarate.length > 0)
+      throw new KitGenerationError(
+        `Il modulo "${module_.engineId}" non gestisce le varianti: ${nonDichiarate.join(", ")}. ` +
+          "La richiesta le porta ma nessuna riga di distinta le userebbe.",
+        "kit.varianti",
+      );
+
+    // Avviso, mai blocco (stesso precedente dello sconto oltre soglia): i codici
+    // della combinazione esistono tutti a listino, quindi non è compito del
+    // motore impedire un ordine vero sulla base della nostra lettura di una NB.
+    const avvisiDaVarianti = "variants" in input ? avvisiVarianti(input.variants) : [];
+
+    const lines = module_.generate(input);
 
     const products = await this.db.product.findMany({
       where: { agbCode: { in: lines.map((line) => line.code) } },
@@ -76,7 +101,7 @@ export class KitEngine {
     });
     const byCode = new Map(products.map((p) => [p.agbCode, p]));
 
-    const warnings: string[] = [];
+    const warnings: string[] = [...avvisiDaVarianti];
     const priced: PricedKitLine[] = lines.map((line) => {
       const product = byCode.get(line.code);
       if (!product) {

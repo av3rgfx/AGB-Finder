@@ -1,3 +1,21 @@
 {
-  "extends": "next/core-web-vitals"
+  "extends": "next/core-web-vitals",
+  "overrides": [
+    {
+      "files": ["src/server/kit/varianti-schema.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["./*", "../*"],
+                "message": "Questo file è la foglia che rompe il ciclo di import fra types.ts e artech-varianti.ts (vedi il commento di testa del file): può importare solo pacchetti esterni (zod), mai un altro file di questo progetto."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
 }

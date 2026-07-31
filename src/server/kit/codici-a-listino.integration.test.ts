@@ -15,6 +15,16 @@ import { GEOMETRIE } from "./artech-geometrie";
 import { artechAntaRibaltaLegno } from "./rules-artech-legno";
 import type { ArtechGeometryId } from "./artech-geometrie";
 import { ENTRATE, type KitInput } from "./types";
+import {
+  opzioniSquadraAngolare,
+  squadraAngolare,
+  opzioniIncontroRibalta,
+  incontroRibaltaVariante,
+  opzioniIncontroNottolino,
+  incontroNottolinoVariante,
+  movimentoAngolareCodice,
+  piastrinoCodice,
+} from "./artech-varianti";
 
 const url = process.env.INTEGRATION_DATABASE_URL;
 
@@ -219,6 +229,63 @@ describe.runIf(Boolean(url))("ogni codice emettibile esiste a catalogo con prezz
       trovati.filter((p) => p.basePrice !== null && Number(p.basePrice) > 0).map((p) => p.agbCode),
     );
     const orfani = codici.filter((c) => !prezzati.has(c));
+    expect(orfani, `codici assenti o senza prezzo: ${orfani.join(", ")}`).toEqual([]);
+  });
+
+  // PERCHÉ LE TABELLE E NON LE DISTINTE. I test sopra percorrono `generate()`,
+  // quindi vedono solo i codici che il motore emette OGGI — quelli di default.
+  // Il registro delle varianti (`artech-varianti.ts`) pubblica anche i codici
+  // che l'agente sceglie esplicitamente in UI (squadra angolare, incontro
+  // ribalta/nottolino, movimento angolare, piastrino) e che una distinta col
+  // solo standard non tocca mai. Un codice sbagliato lì — la stessa famiglia di
+  // errore che ha fatto disattivare PVC e battente — resterebbe invisibile
+  // finché nessun agente lo sceglie in produzione.
+  it("ogni codice del registro varianti esiste a catalogo con prezzo", async () => {
+    const codici = new Set<string>();
+    for (const geometry of Object.keys(GEOMETRIE) as ArtechGeometryId[]) {
+      for (const mano of ["DESTRA", "SINISTRA"] as const) {
+        // Il DEFAULT va raccolto ESPLICITAMENTE (chiamando la funzione con
+        // `undefined`), non basta iterare le `opzioni*`: `opzioniIncontroRibalta`
+        // torna [] quando per la geometria esiste UNA SOLA scelta possibile —
+        // "una variante con una sola opzione non è una scelta" per la UI, ma il
+        // codice resta quello che il motore emette DAVVERO per quel serramento.
+        // Succede per aria 4 asse 9 (A4_I85_B15, A4_I9_B18): senza questa riga
+        // `A514DX.01.64`/`A514SX.01.64` — i codici reali di MC e Peruzzi —
+        // non entrerebbero mai nel Set (il conto scenderebbe da 74 a 72).
+        codici.add(squadraAngolare(geometry, mano, undefined));
+        for (const o of opzioniSquadraAngolare(geometry))
+          codici.add(squadraAngolare(geometry, mano, o.id));
+
+        codici.add(incontroRibaltaVariante(geometry, mano, undefined));
+        for (const o of opzioniIncontroRibalta(geometry))
+          codici.add(incontroRibaltaVariante(geometry, mano, o.id));
+
+        codici.add(incontroNottolinoVariante(geometry, mano, undefined));
+        for (const o of opzioniIncontroNottolino(geometry))
+          codici.add(incontroNottolinoVariante(geometry, mano, o.id));
+      }
+    }
+    // Movimento angolare e piastrino non hanno una funzione `opzioni*` (sono un
+    // enum fisso, non una tabella per geometria): si elencano per esteso.
+    codici.add(movimentoAngolareCodice("UN_NOTTOLINO"));
+    codici.add(movimentoAngolareCodice("DUE_NOTTOLINI"));
+    for (const e of ENTRATE) codici.add(piastrinoCodice(e));
+
+    // GUARDIA DI COPERTURA: se un domani una tabella si svuota per errore (o la
+    // raccolta sopra dimentica un ramo), il confronto sotto passerebbe
+    // verificando zero codici — il difetto che questo stesso task chiude. 74 è
+    // il numero verificato sul listino 2026 il 2026-07-31 con questa raccolta
+    // (default + opzioni, deduplicati).
+    expect(codici.size).toBe(74);
+
+    const trovati = await db.product.findMany({
+      where: { agbCode: { in: [...codici] } },
+      select: { agbCode: true, basePrice: true },
+    });
+    const prezzati = new Set(
+      trovati.filter((p) => p.basePrice !== null && Number(p.basePrice) > 0).map((p) => p.agbCode),
+    );
+    const orfani = [...codici].filter((c) => !prezzati.has(c));
     expect(orfani, `codici assenti o senza prezzo: ${orfani.join(", ")}`).toEqual([]);
   });
 });

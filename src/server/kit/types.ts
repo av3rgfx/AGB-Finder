@@ -4,6 +4,10 @@ import { z } from "zod";
 // `import type` viene cancellato in compilazione — il ciclo non esiste — e basta
 // a vincolare la lista sotto.
 import type { ArtechGeometryId } from "./artech-geometrie";
+// Dal file FOGLIA, non da `artech-varianti.ts`: quel modulo importa
+// `KitGenerationError` da qui, quindi importare da lì un valore (`variantiSchema`)
+// chiuderebbe un ciclo — si è riprodotto (vedi `varianti-schema.ts`).
+import { variantiSchema, type VarianteId } from "./varianti-schema";
 
 /**
  * Le 7 geometrie di `artech-geometrie.ts`, replicate qui (vedi l'import sopra) e
@@ -157,6 +161,15 @@ export const artechInputSchema = z.object({
   // in rules-artech-legno.ts). Solo `.optional()`, per la stessa ragione di
   // sashWeightKg; il gate a valle tratta già `undefined` come "OFF".
   supplementaryClosures: z.boolean().optional(),
+  /**
+   * Varianti componente (spec 2026-07-31). SOLO ARTECH: fuori dal ramo, una
+   * riga TOUR potrebbe portarsi addosso varianti ARTECH — l'impossibilità
+   * strutturale che l'unione discriminata esiste per garantire (PR #35).
+   *
+   * `.optional()` e non `.default({})`: `undefined` significa «lo standard del
+   * programma», e il default vive nel REGISTRO, non nel dato persistito.
+   */
+  variants: variantiSchema.optional(),
 });
 
 /**
@@ -208,6 +221,13 @@ export interface KitLine {
 /** Modulo regole per una famiglia di kit. Puro: nessun I/O. */
 export interface RuleModule {
   engineId: string;
+  /**
+   * Varianti che questo modulo CONSUMA. OBBLIGATORIO, non `?`: un modulo nuovo
+   * non compila senza averci pensato. Il motore rifiuta una richiesta che porti
+   * una variante non dichiarata qui — è lo strato 1 della garanzia contro la
+   * variante «raccolta, mostrata, persistita e mai letta» (spec §6).
+   */
+  varianti: readonly VarianteId[];
   generate(input: KitInput): KitLine[];
 }
 

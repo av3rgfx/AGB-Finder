@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { KitEngine } from "./engine";
-import { KitGenerationError } from "./types";
+import { KitGenerationError, type KitInput } from "./types";
 
 const templateFindFirst = vi.fn();
 const productFindMany = vi.fn();
@@ -16,6 +16,15 @@ const validInput = {
 };
 
 const template = { id: "t1", rules: { engine: "artech-ar-legno", version: 1 } };
+
+// Golden vasistas (rules-artech-vasistas-legno.test.ts): il modulo dichiara
+// `varianti: []` — è il soggetto naturale per verificare il rifiuto di una
+// variante non dichiarata.
+const vasistasInput = {
+  windowType: "VASISTAS", widthMm: 600, heightMm: 1000, material: "LEGNO",
+  geometry: "A12_I13_B20", entrata: "E15", seatConfig: "STANDARD",
+  openingSide: "DESTRA", openingDir: "TIRARE", finish: "ARGENTO", series: "ARTECH",
+};
 
 beforeEach(() => {
   templateFindFirst.mockReset();
@@ -115,5 +124,42 @@ describe("KitEngine.generate", () => {
         }),
       }),
     );
+  });
+
+  // Strato 1 della garanzia sulle varianti (spec §6): il motore rifiuta, col
+  // nome della variante, una richiesta che ne porta una non dichiarata dal
+  // modulo — prima che quella scelta si perda in silenzio in una distinta.
+  it("rifiuta, col nome della variante, una richiesta che porta una variante non dichiarata dal modulo", async () => {
+    templateFindFirst.mockResolvedValue({
+      id: "tv",
+      rules: { engine: "artech-vasistas-legno", version: 1 },
+    });
+    const engine = new KitEngine(db);
+    // Il modulo vasistas dichiara `varianti: []`.
+    const input = { ...vasistasInput, variants: { squadraAngolare: "BASE" } } as KitInput;
+    await expect(engine.generate(input)).rejects.toThrow(/squadraAngolare/);
+  });
+
+  // Task 5-bis: precedente «avviso, mai blocco» (già usato per lo sconto oltre
+  // soglia). I codici della combinazione esistono tutti a listino — impedire
+  // l'ordine sulla base della NOSTRA lettura di una NB sarebbe peggio del
+  // difetto che si sta togliendo.
+  it("la combinazione incoerente PRODUCE una distinta, con un warning — non un errore", async () => {
+    templateFindFirst.mockResolvedValue(template);
+    productFindMany.mockResolvedValue([]);
+    const engine = new KitEngine(db);
+    const input = {
+      ...validInput,
+      variants: { incontroNottolino: "ANTIEFFRAZIONE_INCLINATE" },
+    } as KitInput;
+    const out = await engine.generate(input);
+    expect(out.lines.length).toBeGreaterThan(0);
+    // Rilievo 4 (review Task 5): `product.findMany` è mockato a lista vuota,
+    // quindi OGNI riga produce un warning «Codice X non a listino» — un
+    // `.includes("A50302.02.02")` sarebbe verde anche se quel warning fosse
+    // il "non a listino" e non l'avviso vero. Si ancora al testo dell'avviso.
+    expect(
+      out.warnings.some((w) => w.includes("per tutte le classi antieffrazione")),
+    ).toBe(true);
   });
 });

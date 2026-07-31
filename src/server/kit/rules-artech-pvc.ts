@@ -31,6 +31,7 @@ import { KitGenerationError, type KitInput, type KitLine, type RuleModule } from
 
 export const artechAntaRibaltaPvc: RuleModule = {
   engineId: "artech-ar-pvc",
+  varianti: [],
   generate(_input: KitInput): KitLine[] {
     throw new KitGenerationError(
       "Kit PVC ARTECH non disponibile: il listino 2026 non contiene la composizione PVC per ARTECH " +

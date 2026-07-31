@@ -18,6 +18,7 @@ const artechRow: PersistedKitRequest = {
   sashWeightKg: null,
   tourSchema: null,
   notes: null,
+  variants: null,
 };
 
 const tourRow: PersistedKitRequest = {
@@ -36,6 +37,7 @@ const tourRow: PersistedKitRequest = {
   sashWeightKg: null,
   tourSchema: 2,
   notes: null,
+  variants: null,
 };
 
 describe("kitInputFromRequest", () => {
@@ -120,5 +122,35 @@ describe("kitInputFromRequest", () => {
   it("non pretende l'entrata sulle righe TOUR", () => {
     const input = kitInputFromRequest({ ...tourRow, entrata: null });
     expect(input.series).toBe("TOUR");
+  });
+
+  it("rilegge le varianti dalla riga", () => {
+    const input = kitInputFromRequest({ ...artechRow, variants: { squadraAngolare: "BASE" } });
+    expect(input.series === "ARTECH" && input.variants?.squadraAngolare).toBe("BASE");
+  });
+
+  it("una riga senza varianti resta senza: nessun default materializzato", () => {
+    const input = kitInputFromRequest({ ...artechRow, variants: null });
+    expect(input.series === "ARTECH" && input.variants).toBeUndefined();
+  });
+
+  it("RIFIUTA una riga con varianti corrotte invece di ignorarle", () => {
+    expect(() =>
+      kitInputFromRequest({ ...artechRow, variants: { squadraAngolare: "INESISTENTE" } }),
+    ).toThrow(/incoerente/);
+  });
+
+  it("RIFIUTA una riga con una chiave di variante sconosciuta invece di ripulirla in silenzio", () => {
+    // Il gemello del test sopra: lì il valore era fuori enum, qui è la CHIAVE a
+    // non esistere (una variante rinominata, il residuo di uno schema
+    // precedente). È esattamente il caso per cui `variantiSchema` è dichiarato
+    // `.strict()` — senza, zod scarterebbe la chiave ignota in silenzio e la
+    // riga passerebbe come se la variante non fosse mai stata scelta.
+    expect(() =>
+      kitInputFromRequest({ ...artechRow, variants: { chiaveInesistente: "x" } }),
+    ).toThrow(KitGenerationError);
+    expect(() =>
+      kitInputFromRequest({ ...artechRow, variants: { chiaveInesistente: "x" } }),
+    ).toThrow(/incoerente/);
   });
 });
