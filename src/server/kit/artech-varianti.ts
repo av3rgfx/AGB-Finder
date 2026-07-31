@@ -29,16 +29,6 @@ import { KitGenerationError } from "./types";
  * FONTI: squadra angolare p0451-0452 (449-450).
  */
 
-export const VARIANTE_IDS = [
-  "squadraAngolare",
-  "incontroRibalta",
-  "movimentoAngolare",
-  "incontroNottolino",
-  "piastrinoAntieffrazione",
-] as const;
-
-export type VarianteId = (typeof VARIANTE_IDS)[number];
-
 /**
  * `.strict()` non è decorativo: una chiave sconosciuta — una variante
  * rinominata, il residuo di una versione precedente — deve FALLIRE il parse
@@ -60,9 +50,39 @@ export const variantiSchema = z
 
 export type Varianti = z.infer<typeof variantiSchema>;
 
+/**
+ * Gli stessi 5 nomi delle chiavi di `variantiSchema`, ma come lista ordinabile
+ * (serve per iterarle in UI). Prima erano due elenchi indipendenti — rinominare
+ * una chiave dello schema non veniva segnalato dal compilatore qui. Vincolata
+ * nei due versi come `GEOMETRY_IDS` in `types.ts`:
+ *
+ * - `satisfies readonly (keyof Varianti)[]` respinge un id **in più** o storpiato;
+ * - `VarianteMancante` sotto è `never` solo se la lista copre **tutte** le
+ *   chiavi dello schema. Senza quel secondo controllo, PERDERE una chiave
+ *   compilerebbe in silenzio (l'unione più stretta è assegnabile ovunque) e
+ *   quella variante diventerebbe muta in UI pur esistendo nello schema.
+ */
+export const VARIANTE_IDS = [
+  "squadraAngolare",
+  "incontroRibalta",
+  "movimentoAngolare",
+  "incontroNottolino",
+  "piastrinoAntieffrazione",
+] as const satisfies readonly (keyof Varianti)[];
+
+/**
+ * Vincolo di esaustività, non un tipo da usare: se una chiave di `Varianti`
+ * resta fuori da `VARIANTE_IDS`, `Exclude` non è più `never` e questa riga
+ * non compila.
+ */
+type AssertNever<T extends never> = T;
+type VarianteMancante = AssertNever<Exclude<keyof Varianti, (typeof VARIANTE_IDS)[number]>>;
+
+export type VarianteId = (typeof VARIANTE_IDS)[number];
+
 export type SquadraAngolareId = NonNullable<Varianti["squadraAngolare"]>;
 
-/** Etichette italiane e prezzo di listino, per la UI. */
+/** Etichette italiane, per la UI. */
 export const SQUADRA_ANGOLARE_LABEL: Record<SquadraAngolareId, string> = {
   BASE: "Base",
   TRAVERSO_ALU: "Per traverso in alluminio",

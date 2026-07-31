@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { opzioniSquadraAngolare, squadraAngolare, SQUADRA_ANGOLARE } from "./artech-varianti";
 import { GEOMETRIE, type ArtechGeometryId } from "./artech-geometrie";
+import { KitGenerationError } from "./types";
 
 describe("squadra angolare", () => {
   it("il default riproduce ESATTAMENTE il codice che il motore emette oggi", () => {
@@ -36,4 +37,20 @@ describe("squadra angolare", () => {
       expect(new Set(codici).size).toBe(codici.length);
     }
   });
+
+  it.each(["COMPENSATORE", "TRAVERSO_ALU_COMPENSATORE"] as const)(
+    "%s su A4_I85_B15 (interasse 8,5) solleva KitGenerationError, non un TypeError su undefined",
+    (scelta) => {
+      expect(() => squadraAngolare("A4_I85_B15", "DESTRA", scelta)).toThrow(KitGenerationError);
+
+      try {
+        squadraAngolare("A4_I85_B15", "DESTRA", scelta);
+        expect.unreachable("doveva sollevare KitGenerationError");
+      } catch (err) {
+        expect(err).toBeInstanceOf(KitGenerationError);
+        expect((err as KitGenerationError).message).toContain("A4_I85_B15");
+        expect((err as KitGenerationError).ruleId).toBe("artech.varianti");
+      }
+    },
+  );
 });
