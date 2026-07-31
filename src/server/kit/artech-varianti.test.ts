@@ -96,6 +96,27 @@ describe("incontro ribalta", () => {
       "ACCIAIO_DRITTE",
     ]);
   });
+
+  it.each(["A4_I85_B15", "A4_I9_B18", "A4_I13_B18"] as const)(
+    "ACCIAIO_DRITTE su %s (aria 4) solleva KitGenerationError, non un TypeError su undefined",
+    (geometry) => {
+      // ACCIAIO_DRITTE in INCONTRO_RIBALTA ha voci solo per A12_9x18/A12_13x24
+      // (vedi commento «A4_* ASSENTI» sopra la tabella): tutte e tre le
+      // geometrie aria 4 (asse 9 → A4_ASSE9, asse 13 → A4_ASSE13) non hanno
+      // riscontro.
+      expect(() => incontroRibaltaVariante(geometry, "DESTRA", "ACCIAIO_DRITTE")).toThrow(
+        KitGenerationError,
+      );
+
+      try {
+        incontroRibaltaVariante(geometry, "DESTRA", "ACCIAIO_DRITTE");
+        expect.unreachable("doveva sollevare KitGenerationError");
+      } catch (err) {
+        expect(err).toBeInstanceOf(KitGenerationError);
+        expect((err as KitGenerationError).ruleId).toBe("artech.varianti");
+      }
+    },
+  );
 });
 
 describe("antieffrazione", () => {
@@ -123,4 +144,25 @@ describe("antieffrazione", () => {
     expect(piastrinoCodice("E75")).toBe("A50194.00.01");
     expect(piastrinoCodice("E15")).toBe("A20050.00.02");
   });
+
+  it.each(["A4_I85_B15", "A4_I9_B18", "A4_I13_B18"] as const)(
+    "ANTIEFFRAZIONE_DRITTE su %s (aria 4) solleva KitGenerationError, non un TypeError su undefined",
+    (geometry) => {
+      // ANTIEFFRAZIONE_DRITTE in INCONTRO_NOTTOLINO ha voci solo per
+      // A12_9x18/A12_13x24 (vedi commento «A4_* ASSENTI» sopra la tabella):
+      // tutte e tre le geometrie aria 4 (asse 9 → A4_ASSE9, asse 13 →
+      // A4_ASSE13) non hanno riscontro.
+      expect(() =>
+        incontroNottolinoVariante(geometry, "DESTRA", "ANTIEFFRAZIONE_DRITTE"),
+      ).toThrow(KitGenerationError);
+
+      try {
+        incontroNottolinoVariante(geometry, "DESTRA", "ANTIEFFRAZIONE_DRITTE");
+        expect.unreachable("doveva sollevare KitGenerationError");
+      } catch (err) {
+        expect(err).toBeInstanceOf(KitGenerationError);
+        expect((err as KitGenerationError).ruleId).toBe("artech.varianti");
+      }
+    },
+  );
 });
