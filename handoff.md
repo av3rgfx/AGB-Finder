@@ -9,7 +9,7 @@
 
 | Campo | Valore |
 |-------|--------|
-| **Data** | 2026-07-30 — sessione **CONCLUSA**. PR **da aprire** (attesa ok utente) |
+| **Data** | 2026-07-30 — sessione **CONCLUSA**. **PR #44 APERTA** |
 | **Fase in corso** | Fase 1 — MVP Gestionale |
 | **Sotto-fase** | Kit engine: profilo serramento per cliente, e il default cablato della geometria tolto |
 | **Branch git** | `claude/distinte-schema-cliente-6qhe7o` — 11 commit su `origin/main` |

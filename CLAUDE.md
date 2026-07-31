@@ -415,7 +415,7 @@ listino ha **34 classi di sconto**, i codici ARTECH sono tutti **F3** e i TOUR t
 tratta uguali (scelta consapevole, da riverificare con l'ufficio commerciale).
 Spec/piano: `docs/superpowers/{specs,plans}/2026-07-30-scontistica-cliente*`.
 
-+ **PROFILO SERRAMENTO DEL CLIENTE ✅ (branch `claude/distinte-schema-cliente-6qhe7o`, PR da aprire)**:
++ **PROFILO SERRAMENTO DEL CLIENTE ✅ (branch `claude/distinte-schema-cliente-6qhe7o`, **PR #44**)**:
 il wizard chiedeva **geometria ed entrata a ogni richiesta**, fra 14 combinazioni, e sbagliarle non produce alcun
 errore — i codici dell'altra combinazione esistono a listino, hanno un prezzo, nessun warning. Ma quelle due quote
 **non cambiano** fra un ordine e l'altro dello stesso cliente (i tre principali ne hanno una fissa ciascuno).
