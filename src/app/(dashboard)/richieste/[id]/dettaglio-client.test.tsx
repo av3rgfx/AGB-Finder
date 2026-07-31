@@ -114,7 +114,65 @@ describe("DettaglioClient — geometria", () => {
     expect(dl?.className).toContain("grid-cols-1");
     expect(dl?.className).toContain("sm:grid-cols-3");
   });
+});
 
+/**
+ * LE VARIANTI COMPONENTE. Cambiano un codice e un prezzo della distinta: vanno
+ * lette dove si controlla la richiesta, non solo dove si compila — altrimenti
+ * due richieste identiche a video darebbero distinte diverse. Per esteso, mai la
+ * sola parola «antieffrazione»: sono tre pezzi distinti.
+ */
+describe("DettaglioClient — varianti componente", () => {
+  it("elenca le scelte non standard, per esteso", () => {
+    getQuery.mockReturnValue({
+      isPending: false,
+      isError: false,
+      data: {
+        ...request,
+        variants: {
+          movimentoAngolare: "DUE_NOTTOLINI",
+          incontroNottolino: "ANTIEFFRAZIONE_INCLINATE",
+          piastrinoAntieffrazione: true,
+        },
+      },
+    });
+    render(<DettaglioClient id="k1" />);
+    expect(screen.getByText("Movimento angolare")).toBeTruthy();
+    expect(screen.getByText("Due nottolini (antieffrazione)")).toBeTruthy();
+    expect(screen.getByText("Antieffrazione, viti inclinate")).toBeTruthy();
+    expect(screen.getByText("Piastrino antieffrazione")).toBeTruthy();
+  });
+
+  it("senza varianti (o con la sola scelta standard) non aggiunge righe", () => {
+    getQuery.mockReturnValue({ isPending: false, isError: false, data: request });
+    render(<DettaglioClient id="k1" />);
+    expect(screen.queryByText("Movimento angolare")).toBeNull();
+    // `null` a DB è il caso di OGNI riga precedente la migrazione: non deve
+    // rompere la scheda.
+    cleanup();
+    getQuery.mockReturnValue({
+      isPending: false,
+      isError: false,
+      data: { ...request, variants: null },
+    });
+    render(<DettaglioClient id="k1" />);
+    expect(screen.queryByText("Movimento angolare")).toBeNull();
+  });
+
+  // Una colonna JSON può contenere qualunque cosa (modifica a mano, versione
+  // precedente del form): la scheda deve restare leggibile, non esplodere.
+  it("un JSON corrotto non rompe la scheda", () => {
+    getQuery.mockReturnValue({
+      isPending: false,
+      isError: false,
+      data: { ...request, variants: { squadraAngolare: "NON_ESISTE" } },
+    });
+    render(<DettaglioClient id="k1" />);
+    expect(screen.getByText(geometriaLabel("A12_I13_B20"))).toBeTruthy();
+  });
+});
+
+describe("DettaglioClient — quote legacy", () => {
   it("riga legacy (geometry NULL): mostra le quote storiche invece di sparire", () => {
     getQuery.mockReturnValue({
       isPending: false,

@@ -78,6 +78,30 @@ export const productRouter = createTRPCRouter({
       return serializeProduct(product);
     }),
 
+  /**
+   * Nome e prezzo di più codici in UNA query, come mappa `codice → {…}`.
+   *
+   * Serve al passo «Componenti» del wizard, che mostra fino a una dozzina di
+   * codici alternativi nella stessa schermata: `getByCode` chiamata N volte
+   * sarebbe N round-trip, e cablare i prezzi nella UI li farebbe divergere dal
+   * catalogo al primo aggiornamento del listino.
+   *
+   * Un codice assente dal catalogo **manca dalla mappa** e non è un errore: è il
+   * caso che ha smascherato PVC e battente (righe senza prezzo), e chi legge
+   * deve poterlo dire invece di mostrare uno zero.
+   */
+  byCodes: agentProcedure
+    .input(z.object({ codes: z.array(z.string().min(1).max(20)).min(1).max(50) }))
+    .query(async ({ ctx, input }) => {
+      const products = await ctx.db.product.findMany({
+        where: { agbCode: { in: input.codes } },
+        select: { agbCode: true, name: true, basePrice: true },
+      });
+      return Object.fromEntries(
+        products.map((p) => [p.agbCode, { name: p.name, price: Number(p.basePrice) }]),
+      );
+    }),
+
   listCategories: publicProcedure
     .input(z.object({ parentId: z.string().nullish() }).optional())
     .query(({ ctx, input }) =>

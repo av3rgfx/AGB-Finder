@@ -13,8 +13,10 @@ import {
   windowTypeLabel,
 } from "@/lib/kit-labels";
 import { SCHEMI_TOUR } from "@/server/kit/rules-tour-bilico-legno";
-import { GEOMETRIE, geometriaLabel } from "@/server/kit/artech-geometrie";
+import { GEOMETRIE, geometriaLabel, type ArtechGeometryId } from "@/server/kit/artech-geometrie";
 import { entrataLabel } from "@/server/kit/types";
+import { variantiSchema } from "@/server/kit/varianti-schema";
+import { scelteNonStandard } from "@/server/kit/artech-varianti";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { DistintaTable } from "@/components/kit/distinta-table";
 import { RiepilogoSconto } from "@/components/kit/riepilogo-sconto";
@@ -31,6 +33,24 @@ function tourGeometryLabel(schema: number): string | null {
   if (!s) return null;
   const asse = Number.isInteger(s.asseMm) ? String(s.asseMm) : String(s.asseMm).replace(".", ",");
   return `Listello ${s.listelloMm} · asse ${asse} · battuta ${s.battutaMm}`;
+}
+
+/**
+ * Le varianti componente scelte, per esteso — vuoto se sono quelle standard.
+ *
+ * La colonna è JSON e `Prisma.JsonValue` non è tipizzato: si RIPARSA con lo
+ * stesso `variantiSchema` del motore, e un contenuto che non lo soddisfa (una
+ * modifica a mano, il residuo di una versione precedente del form) vale «nessuna
+ * variante» invece di far esplodere la scheda. Il generatore, che sullo stesso
+ * dato **rifiuta**, resta l'autorità: qui si legge, non si ordina.
+ */
+function variantiScelte(
+  geometry: string | null,
+  raw: unknown,
+): { componente: string; scelta: string }[] {
+  if (geometry === null || raw === null || raw === undefined) return [];
+  const parsed = variantiSchema.safeParse(raw);
+  return parsed.success ? scelteNonStandard(geometry as ArtechGeometryId, parsed.data) : [];
 }
 
 /** Estrae i warning dal JSON `generatedKit` (Prisma.JsonValue non tipizzato). */
@@ -229,6 +249,13 @@ export function DettaglioClient({ id }: { id: string }) {
               cambia la distinta (terza cerniera oltre i 70 kg), altrimenti due
               richieste identiche a video darebbero distinte diverse. */}
           {r.sashWeightKg !== null && <Spec label="Peso anta" value={`${r.sashWeightKg} kg`} />}
+          {/* Le varianti componente: cambiano un codice e un prezzo della
+              distinta, quindi vanno lette anche qui — altrimenti due richieste
+              identiche a video darebbero distinte diverse. Per esteso, mai la
+              sola parola «antieffrazione»: sono tre pezzi distinti. */}
+          {variantiScelte(r.geometry, r.variants).map((s) => (
+            <Spec key={s.componente} label={s.componente} value={s.scelta} />
+          ))}
         </dl>
       </section>
 

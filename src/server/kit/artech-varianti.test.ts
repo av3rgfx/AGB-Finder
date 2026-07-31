@@ -14,6 +14,8 @@ import {
   movimentoAngolareEtichettaSeNonStandard,
   piastrinoCodice,
   avvisiVarianti,
+  scelteNonStandard,
+  COMPONENTE_LABEL,
 } from "./artech-varianti";
 import { GEOMETRIE, type ArtechGeometryId } from "./artech-geometrie";
 import { KitGenerationError } from "./types";
@@ -34,10 +36,7 @@ describe("squadra angolare", () => {
   });
 
   it("l'interasse 8,5 ha DUE opzioni, le altre geometrie quattro", () => {
-    expect(opzioniSquadraAngolare("A4_I85_B15").map((o) => o.id)).toEqual([
-      "BASE",
-      "TRAVERSO_ALU",
-    ]);
+    expect(opzioniSquadraAngolare("A4_I85_B15").map((o) => o.id)).toEqual(["BASE", "TRAVERSO_ALU"]);
     expect(opzioniSquadraAngolare("A12_I13_B20")).toHaveLength(4);
   });
 
@@ -157,9 +156,9 @@ describe("antieffrazione", () => {
       // A12_9x18/A12_13x24 (vedi commento «A4_* ASSENTI» sopra la tabella):
       // tutte e tre le geometrie aria 4 (asse 9 → A4_ASSE9, asse 13 →
       // A4_ASSE13) non hanno riscontro.
-      expect(() =>
-        incontroNottolinoVariante(geometry, "DESTRA", "ANTIEFFRAZIONE_DRITTE"),
-      ).toThrow(KitGenerationError);
+      expect(() => incontroNottolinoVariante(geometry, "DESTRA", "ANTIEFFRAZIONE_DRITTE")).toThrow(
+        KitGenerationError,
+      );
 
       try {
         incontroNottolinoVariante(geometry, "DESTRA", "ANTIEFFRAZIONE_DRITTE");
@@ -190,9 +189,9 @@ describe("etichetta se non standard (Rilievo 2)", () => {
 
   it("squadra angolare: scelta diversa dallo standard → l'etichetta italiana", () => {
     expect(squadraAngolareEtichettaSeNonStandard("A12_I13_B20", "BASE")).toBe("Base");
-    expect(
-      squadraAngolareEtichettaSeNonStandard("A4_I85_B15", "TRAVERSO_ALU"),
-    ).toBe("Per traverso in alluminio");
+    expect(squadraAngolareEtichettaSeNonStandard("A4_I85_B15", "TRAVERSO_ALU")).toBe(
+      "Per traverso in alluminio",
+    );
   });
 
   it("incontro ribalta: assente o standard esplicito (ZAMA per aria 12) → undefined", () => {
@@ -228,6 +227,58 @@ describe("etichetta se non standard (Rilievo 2)", () => {
     expect(movimentoAngolareEtichettaSeNonStandard("DUE_NOTTOLINI")).toBe(
       "Due nottolini (antieffrazione)",
     );
+  });
+});
+
+/**
+ * `scelteNonStandard` è ciò che il riepilogo del wizard e la scheda della
+ * richiesta mostrano all'agente. Deve dire ESATTAMENTE quello che dicono le
+ * righe di distinta — riusa infatti le stesse `*EtichettaSeNonStandard` — e
+ * mai la parola «antieffrazione» da sola (spec §9).
+ */
+describe("scelte non standard (per il riepilogo)", () => {
+  it("senza varianti, o con la sola scelta standard esplicita, non elenca nulla", () => {
+    expect(scelteNonStandard("A12_I13_B20", undefined)).toEqual([]);
+    expect(
+      scelteNonStandard("A12_I13_B20", {
+        squadraAngolare: "TRAVERSO_ALU_COMPENSATORE",
+        incontroRibalta: "ZAMA",
+        movimentoAngolare: "UN_NOTTOLINO",
+        incontroNottolino: "NORMALE",
+      }),
+    ).toEqual([]);
+  });
+
+  it("elenca ogni scelta diversa dallo standard, per esteso", () => {
+    expect(
+      scelteNonStandard("A12_I13_B20", {
+        squadraAngolare: "BASE",
+        movimentoAngolare: "DUE_NOTTOLINI",
+        incontroNottolino: "ANTIEFFRAZIONE_INCLINATE",
+        piastrinoAntieffrazione: true,
+      }),
+    ).toEqual([
+      { componente: "Squadra angolare", scelta: "Base" },
+      { componente: "Movimento angolare", scelta: "Due nottolini (antieffrazione)" },
+      { componente: "Incontri nottolino", scelta: "Antieffrazione, viti inclinate" },
+      { componente: "Piastrino antieffrazione", scelta: "Sì — riga aggiunta alla distinta" },
+    ]);
+  });
+
+  it("lo standard dipende dalla geometria: la stessa scelta si elenca su una e non sull'altra", () => {
+    const v = { squadraAngolare: "BASE" } as const;
+    expect(scelteNonStandard("A4_I85_B15", v)).toEqual([]); // lì BASE È lo standard
+    expect(scelteNonStandard("A12_I13_B20", v)).toHaveLength(1);
+  });
+
+  it("il piastrino a false non è una scelta da elencare", () => {
+    expect(scelteNonStandard("A12_I13_B20", { piastrinoAntieffrazione: false })).toEqual([]);
+  });
+
+  it("i nomi dei componenti sono quelli delle righe di distinta", () => {
+    expect(COMPONENTE_LABEL.squadraAngolare).toBe("Squadra angolare");
+    expect(COMPONENTE_LABEL.incontroRibalta).toBe("Incontro ribalta");
+    expect(COMPONENTE_LABEL.movimentoAngolare).toBe("Movimento angolare");
   });
 });
 

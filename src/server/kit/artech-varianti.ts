@@ -256,10 +256,7 @@ export const INCONTRO_NOTTOLINO_LABEL: Record<IncontroNottolinoId, string> = {
 };
 
 /** FONTE: normale p0469 (467) · antieffrazione p0470 (468). */
-const INCONTRO_NOTTOLINO: Record<
-  IncontroNottolinoId,
-  Partial<Record<ChiaveIncontri, PerMano>>
-> = {
+const INCONTRO_NOTTOLINO: Record<IncontroNottolinoId, Partial<Record<ChiaveIncontri, PerMano>>> = {
   NORMALE: {
     A4_ASSE9: { DESTRA: "A514DX.01.02", SINISTRA: "A514SX.01.02" },
     A4_ASSE13: { DESTRA: "A48011.DC.02", SINISTRA: "A48012.DC.02" },
@@ -363,6 +360,57 @@ const PIASTRINO: Record<Entrata, string> = {
 
 export function piastrinoCodice(entrata: Entrata): string {
   return PIASTRINO[entrata];
+}
+
+/**
+ * Nome del pezzo toccato da ciascuna variante. Uno solo, qui: la legenda del
+ * gruppo nel wizard, la voce «cosa cambia», il riepilogo della richiesta e la
+ * riga di distinta (`rules-artech-legno.ts`) devono chiamare lo stesso pezzo
+ * allo stesso modo — è l'unica cosa che permette all'agente di ritrovare nella
+ * distinta la scelta che ha fatto nel wizard. `Record<VarianteId, string>` non
+ * compila se una variante resta senza nome.
+ */
+export const COMPONENTE_LABEL: Record<VarianteId, string> = {
+  squadraAngolare: "Squadra angolare",
+  incontroRibalta: "Incontro ribalta",
+  movimentoAngolare: "Movimento angolare",
+  // Plurale come la riga di distinta: gli incontri nottolino sono più d'uno.
+  incontroNottolino: "Incontri nottolino",
+  piastrinoAntieffrazione: "Piastrino antieffrazione",
+};
+
+/**
+ * Le scelte che DIFFERISCONO dallo standard, per esteso — mai una sigla, mai la
+ * parola «antieffrazione» da sola (spec §9). Vuoto = la distinta di sempre.
+ *
+ * Riusa le `*EtichettaSeNonStandard` che il motore usa per le descrizioni di
+ * riga: se il motore non dichiara la variante sulla riga, il riepilogo non la
+ * dichiara nemmeno — non esiste una seconda nozione di «non standard».
+ * Il piastrino non ha etichetta di riga (è una riga AGGIUNTA, non un codice
+ * sostituito) ed è l'unico caso scritto qui.
+ */
+export function scelteNonStandard(
+  geometry: ArtechGeometryId,
+  varianti: Varianti | undefined,
+): { componente: string; scelta: string }[] {
+  if (varianti === undefined) return [];
+  const scelte: { componente: string; scelta: string }[] = [];
+  const push = (id: VarianteId, scelta: string | undefined) => {
+    if (scelta !== undefined) scelte.push({ componente: COMPONENTE_LABEL[id], scelta });
+  };
+  push(
+    "squadraAngolare",
+    squadraAngolareEtichettaSeNonStandard(geometry, varianti.squadraAngolare),
+  );
+  push(
+    "incontroRibalta",
+    incontroRibaltaEtichettaSeNonStandard(geometry, varianti.incontroRibalta),
+  );
+  push("movimentoAngolare", movimentoAngolareEtichettaSeNonStandard(varianti.movimentoAngolare));
+  push("incontroNottolino", incontroNottolinoEtichettaSeNonStandard(varianti.incontroNottolino));
+  if (varianti.piastrinoAntieffrazione === true)
+    push("piastrinoAntieffrazione", "Sì — riga aggiunta alla distinta");
+  return scelte;
 }
 
 /**
