@@ -215,11 +215,25 @@ raccolto, validato, persistito e mai letto da nessun modulo». Con cinque varian
 JSON il rischio si moltiplica, e `no-silent-fields.test.ts` non lo copre da solo: **un blob è
 un campo**, mutarlo non equivale a mutare ogni variante.
 
-**La risposta strutturale: una variante non consumata è un errore.** Il modulo riceve le
-varianti attraverso un piccolo accessore che **marca** ogni id letto; a fine `generate()`, se
-resta una variante valorizzata e mai letta → `KitGenerationError` **col suo nome**. Non è «da
-ricordarsi di leggerla»: il motore **non compila una distinta** senza averla letta. Il difetto
-diventa impossibile invece che sorvegliato.
+**La risposta strutturale, in due strati automatici.** Nessuno dei due è «ricordarsi di».
+
+**Strato 1 — a runtime, nel motore.** `RuleModule` acquisisce un campo **obbligatorio**
+`varianti: readonly VarianteId[]`: ogni modulo **dichiara** quali varianti consuma (`[]` per
+TOUR e vasistas). Obbligatorio, non `?`, così un modulo nuovo **non compila** senza averci
+pensato. `engine.ts` — un punto solo — rifiuta con `KitGenerationError` **col nome della
+variante** se la richiesta ne porta una che il modulo non dichiara. Questo chiude «persistita,
+e il modulo non la conosce nemmeno».
+
+**Strato 2 — nei test, dal registro.** `no-silent-fields.test.ts` deriva i casi **dalla
+dichiarazione del modulo**: per ogni id dichiarato, mutarlo deve cambiare la distinta o farla
+rifiutare. Questo chiude «dichiarata, ma di fatto mai letta».
+
+Insieme coprono i due versi, e nessuno dei due si può dimenticare: il primo è un errore di
+compilazione, il secondo un test che si costruisce da sé.
+
+**PERCHÉ NON UN ACCESSORE CHE MARCA LE LETTURE.** Sarebbe la versione «pura», ma impone un
+secondo parametro a `RuleModule.generate` e quindi tocca tutti e sei i moduli per una garanzia
+che i due strati sopra danno già. Il costo non si paga.
 
 **Due garanzie di contorno:**
 
