@@ -1324,6 +1324,13 @@ function GruppoVarianti<T extends string>({
         {opzioni.map((o) => {
           const p = prezzoDi(o);
           const delta = p === undefined || base === undefined ? undefined : p - base;
+          // Un'opzione SENZA codice («Senza piastrino») non ha un prezzo che
+          // possa caricare o fallire: vale zero per costruzione, e nessuna
+          // risposta del catalogo lo cambierà. Lo stato della query non la
+          // riguarda — dirle «prezzo in caricamento…» sarebbe affermare un
+          // fatto falso, cioè esattamente ciò che i tre stati esistono per
+          // impedire. L'assenza di codice vince sullo stato.
+          const statoDi: StatoPrezzi = o.code === null ? "PRONTO" : stato;
           // Il nome a CATALOGO del codice — non l'etichetta che gli diamo noi. È
           // l'unico modo di verificare, senza uscire dalla schermata, che il
           // codice sia quello giusto: perciò è TESTO e non più un `title`, che a
@@ -1337,7 +1344,7 @@ function GruppoVarianti<T extends string>({
               hint={
                 <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                   {o.code !== null && <span className="font-mono text-ink-muted">{o.code}</span>}
-                  <span>{etichettaPrezzo(stato, p)}</span>
+                  <span>{etichettaPrezzo(statoDi, p)}</span>
                   {delta !== undefined && delta !== 0 && (
                     <span className="font-medium text-ink">{formatDelta(delta)}</span>
                   )}
@@ -1552,8 +1559,16 @@ function ComponentiRibalta({
   // `data` in mano = prezzi noti, e allora è irrilevante che un refetch in
   // sottofondo sia fallito: il numero a schermo resta quello del catalogo. Solo
   // quando non c'è nulla si distingue «sto caricando» da «è andata male».
+  //
+  // `isError` si LEGGE, non si deduce da «non pending»: l'errore è l'unico dei
+  // tre stati che accusa qualcuno (la rete, il server), e va affermato solo
+  // quando la query lo dichiara. Dedurlo per esclusione lo faceva comparire su
+  // ogni stato futuro che non fosse né dati né pending — il giorno in cui
+  // qualcuno aggiungesse `enabled:` a questa query, una query disabilitata (che
+  // per react-query è `isPending: true` a tempo indeterminato) o un `idle`
+  // qualsiasi avrebbero mostrato un allarme di rete che nessuno ha visto.
   const statoPrezzi: StatoPrezzi =
-    catalogo.data !== undefined ? "PRONTO" : catalogo.isPending ? "CARICAMENTO" : "ERRORE";
+    catalogo.data !== undefined ? "PRONTO" : catalogo.isError ? "ERRORE" : "CARICAMENTO";
 
   const stato = statoAntieffrazione(varianti);
   const attive = contaAntieffrazione(varianti);

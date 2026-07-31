@@ -1234,6 +1234,46 @@ describe("NuovaRichiestaClient — passo «Componenti»", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
+  /**
+   * L'eccezione ai tre stati: «Senza piastrino» non ha codice, quindi non ha un
+   * prezzo che possa caricare o fallire — vale zero per COSTRUZIONE, e nessuna
+   * risposta del catalogo lo cambierà. Farle dire «prezzo in caricamento…» è la
+   * stessa affermazione infondata che i tre stati esistono per impedire, al
+   * contrario: un fatto noto spacciato per ignoto.
+   */
+  it("«Senza piastrino» vale zero anche mentre la query è in volo: l'assenza di codice vince", () => {
+    catalogoQuery = { isPending: true, isError: false };
+    alPassoComponenti();
+    fireEvent.click(screen.getByRole("button", { name: /le tre scelte/i }));
+    const piastrino = screen.getByRole("group", { name: /piastrino antieffrazione/i });
+    const hintDi = (nome: RegExp) => {
+      const radio = within(piastrino).getByRole("radio", { name: nome });
+      return String(document.getElementById(radio.getAttribute("aria-describedby")!)?.textContent);
+    };
+    expect(hintDi(/^senza piastrino$/i)).toMatch(/0,00\s*€/);
+    expect(hintDi(/^senza piastrino$/i)).not.toMatch(/caricamento/i);
+    // L'altra opzione un codice ce l'ha, e resta onesta sul proprio stato.
+    expect(hintDi(/^con piastrino antieffrazione$/i)).toMatch(/in caricamento/i);
+    expect(hintDi(/^con piastrino antieffrazione$/i)).not.toMatch(/€/);
+  });
+
+  /**
+   * `isError` si LEGGE, non si deduce da «non pending»: l'errore è l'unico dei
+   * tre stati che accusa qualcuno (la rete, il server). Dedurlo per esclusione
+   * faceva comparire l'allarme su ogni stato futuro che non fosse né dati né
+   * pending — questo è quello di una query inattiva o disabilitata.
+   */
+  it("una query senza dati che non ha fallito non accusa la rete", () => {
+    catalogoQuery = { isPending: false, isError: false };
+    alPassoComponenti();
+    expect(screen.queryByRole("alert")).toBeNull();
+    apriAltreVarianti();
+    const squadra = String(screen.getByRole("group", { name: /squadra angolare/i }).textContent);
+    expect(squadra).toMatch(/in caricamento/i);
+    expect(squadra).not.toMatch(/non caricato/i);
+    expect(squadra).not.toMatch(/non a catalogo/i);
+  });
+
   // I due pannelli dichiarano `aria-expanded`: senza `aria-controls` non si sa
   // COSA espandano.
   it("i due toggle dichiarano il pannello che comandano", () => {
