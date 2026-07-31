@@ -219,4 +219,33 @@ describe("i campi commerciali restano fuori dall'input del motore", () => {
       expect(Object.keys(ramo.shape)).not.toContain("discountPercent");
     }
   });
+
+  /**
+   * Il profilo serramento (`customers.kit_geometry` / `kit_entrata`) e` un
+   * SUGGERIMENTO AL WIZARD, non un ingresso del motore.
+   *
+   * La differenza non e` stilistica: `kit.generate` non rigenera dall'input
+   * originale ma RILEGGE le colonne di `kit_requests`. Un campo che entrasse
+   * nell'input senza avere una colonna li` non verrebbe ritrovato, e ogni
+   * rigenerazione divergerebbe dalla prima — la bonifica riaperta, spostata
+   * nella persistenza. Cio` che il motore deve vedere e` la geometria SCELTA e
+   * gia` copiata sulla richiesta, non quella dichiarata in anagrafica.
+   */
+  it("kitInputSchema scarta anche il profilo serramento del cliente", () => {
+    const parsed = kitInputSchema.parse({
+      ...valid,
+      material: "LEGNO",
+      kitGeometry: "A4_I9_B18",
+      kitEntrata: "E75",
+    });
+    expect(parsed).not.toHaveProperty("kitGeometry");
+    expect(parsed).not.toHaveProperty("kitEntrata");
+  });
+
+  it("il profilo non e` un campo dello schema, in nessuno dei due rami", () => {
+    for (const ramo of [artechInputSchema, tourInputSchema]) {
+      expect(Object.keys(ramo.shape)).not.toContain("kitGeometry");
+      expect(Object.keys(ramo.shape)).not.toContain("kitEntrata");
+    }
+  });
 });

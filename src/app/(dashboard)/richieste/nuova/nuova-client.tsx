@@ -27,6 +27,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CustomerPicker, type CustomerOption } from "@/components/kit/customer-picker";
+import { ProfiloSerramento } from "@/components/kit/profilo-serramento";
 import { cn } from "@/lib/utils";
 import { formatPercent } from "@/lib/format";
 import {
@@ -38,12 +39,23 @@ import {
 } from "@/lib/kit-labels";
 
 /**
- * Lo stato del form NON è un `ArtechKitInput`: l'entrata deve nascere **non
- * valorizzata**, perché sceglierla è il punto di questo campo. È l'unico prezzo
- * della decisione «nessun default», e si paga solo qui — la validazione vera
- * resta quella dello schema, all'avanzamento del passo e al submit.
+ * Lo stato del form NON è un `ArtechKitInput`: **entrata e geometria** devono
+ * nascere non valorizzate, perché sceglierle è il punto di questi campi.
+ *
+ * L'entrata lo fa dal 2026-07-30 (PR #40). La geometria si è aggiunta dopo: fino
+ * ad allora `ARTECH_DEFAULT` la cablava a `A12_I13_B20`, cioè alla geometria del
+ * cliente storico del golden — ogni nuovo ordine partiva con la geometria di un
+ * ALTRO cliente. Sceglierla male non produce un errore: i codici dell'altra
+ * combinazione esistono a listino, hanno un prezzo e non danno warning. Era la
+ * stessa classe di difetto della cremonese cablata, con la stessa cura.
+ *
+ * È l'unico prezzo della decisione «nessun default», e si paga solo qui — la
+ * validazione vera resta quella dello schema, all'avanzamento del passo e al submit.
  */
-type ArtechFormValues = Omit<ArtechKitInput, "entrata"> & { entrata?: Entrata };
+type ArtechFormValues = Omit<ArtechKitInput, "entrata" | "geometry"> & {
+  entrata?: Entrata;
+  geometry?: ArtechGeometryId;
+};
 type FormValues = ArtechFormValues | TourKitInput;
 
 const ARTECH_DEFAULT: ArtechFormValues = {
@@ -52,9 +64,6 @@ const ARTECH_DEFAULT: ArtechFormValues = {
   material: "LEGNO",
   widthMm: 550,
   heightMm: 1820,
-  // Il pilota storico (distinta reale AGB 16/11/2021): aria 12 · interasse 13 ·
-  // battuta 20. È la geometria del golden 16 righe / 21 pezzi / 90,20 €.
-  geometry: "A12_I13_B20",
   seatConfig: "STANDARD",
   openingSide: "SINISTRA",
   openingDir: "TIRARE",
@@ -158,8 +167,9 @@ export function materialForWindowType(
  * che non genereranno mai, come una sede 30. Gated con la ragione, non nascoste.
  *
  * Non serve un reset del valore al cambio di tipologia (come per il materiale):
- * `defaultForWindowType` riparte da `ARTECH_DEFAULT.geometry`, che è appunto la
- * geometria coperta anche dal vasistas.
+ * nessuna geometria è preselezionata (vedi `ArtechFormValues`), quindi
+ * `defaultForWindowType` riparte da «nessuna scelta» e non può sopravvivere una
+ * geometria non ammessa dalla nuova tipologia.
  */
 function geometriaAmmessa(wt: KitInput["windowType"], id: ArtechGeometryId): boolean {
   return wt === "VASISTAS" ? id === GEOMETRIA_COPERTA : true;
@@ -389,7 +399,11 @@ export function NuovaRichiestaClient() {
           (form.series === "TOUR" ? (
             <Step3SchemaFinitura form={form} update={makeUpdate<TourKitInput>(setForm)} />
           ) : (
-            <Step3ManoFinitura form={form} update={makeUpdate<ArtechFormValues>(setForm)} />
+            <Step3ManoFinitura
+              form={form}
+              update={makeUpdate<ArtechFormValues>(setForm)}
+              cliente={cliente}
+            />
           ))}
         {step === 4 && <Step4Riepilogo form={form} cliente={cliente} />}
       </div>
@@ -731,13 +745,30 @@ function Step2DimensioniTour({
 function Step3ManoFinitura({
   form,
   update,
+  cliente,
 }: {
   form: ArtechFormValues;
   update: Update<ArtechFormValues>;
+  cliente: CustomerOption | null;
 }) {
-  const sedeMm = GEOMETRIE[form.geometry].sedeMm;
+  // Tre stati, non due: `undefined` = geometria non ancora scelta, `null` = aria 4
+  // (il listino prevede una fresatura, non una sede), numero = la sede derivata.
+  const sedeMm = form.geometry === undefined ? undefined : GEOMETRIE[form.geometry].sedeMm;
   return (
     <div className="flex flex-col gap-6">
+      <ProfiloSerramento
+        cliente={cliente}
+        onApplica={(valori) => {
+          // Si applica SOLO ciò che il profilo contiene, e solo se la tipologia
+          // lo ammette: il vasistas copre una geometria sola e rifiuta l'entrata
+          // 7,5, quindi scriverci sopra il profilo di un cliente anta-ribalta
+          // darebbe un passo che non avanza con valori che l'agente non ha scelto.
+          if (valori.geometry !== undefined && geometriaAmmessa(form.windowType, valori.geometry))
+            update("geometry", valori.geometry);
+          if (valori.entrata !== undefined && entrataAmmessa(form.windowType, valori.entrata))
+            update("entrata", valori.entrata);
+        }}
+      />
       <fieldset>
         <legend className="mb-1 text-sm font-semibold text-ink">Geometria del serramento</legend>
         <p className="mb-2 text-xs text-ink-subtle">
@@ -849,9 +880,11 @@ function Step3ManoFinitura({
             // riepilogo e nella scheda) stonava. Per l'aria 4 il listino non
             // parla di sede ma di fresatura (p0469 (467)).
             hint={
-              sedeMm === null
-                ? "Per questa geometria (aria 4) il listino prevede una fresatura, non una sede."
-                : `Sede per questa geometria: ${sedeMm} mm.`
+              sedeMm === undefined
+                ? "La sede la determina la geometria: sceglila qui sopra."
+                : sedeMm === null
+                  ? "Per questa geometria (aria 4) il listino prevede una fresatura, non una sede."
+                  : `Sede per questa geometria: ${sedeMm} mm.`
             }
             checked={form.seatConfig === "STANDARD"}
             onChange={() => update("seatConfig", "STANDARD")}
@@ -1034,6 +1067,28 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
   );
 }
 
+/**
+ * Le voci del profilo del cliente su cui la scelta dell'agente diverge.
+ *
+ * PERCHÉ CONSTATA E NON BLOCCA. È il primo rilevatore d'errore che il sistema
+ * possieda — oggi nessuno confronta la richiesta di marzo con quella di
+ * settembre — ma non sa QUALE delle due dichiarazioni sia giusta: il profilo lo
+ * ha scritto lo stesso agente, a memoria. Segnala che due dichiarazioni sullo
+ * stesso cliente non coincidono, il che è informativo in entrambe le direzioni.
+ * Un blocco, o una conferma da cliccare, sarebbe teatro del consenso.
+ *
+ * Le voci a NULL nel profilo non divergono: «non dichiarato» non è «diverso».
+ */
+function divergenzeDalProfilo(form: ArtechFormValues, cliente: CustomerOption | null): string[] {
+  if (cliente === null) return [];
+  const out: string[] = [];
+  if (cliente.kitGeometry !== null && form.geometry !== cliente.kitGeometry)
+    out.push(geometriaLabel(cliente.kitGeometry));
+  if (cliente.kitEntrata !== null && form.entrata !== cliente.kitEntrata)
+    out.push(`Entrata ${entrataLabel(cliente.kitEntrata)}`);
+  return out;
+}
+
 function Step4Riepilogo({ form, cliente }: { form: FormValues; cliente: CustomerOption | null }) {
   const comuni = (
     <>
@@ -1086,33 +1141,54 @@ function Step4Riepilogo({ form, cliente }: { form: FormValues; cliente: Customer
     );
   }
 
+  const divergenze = divergenzeDalProfilo(form, cliente);
+
   return (
-    // Vedi sopra: «Aria 12 · interasse 13 · battuta 20» a 375px vuole la riga intera.
-    <dl className="grid grid-cols-1 gap-x-6 gap-y-4 text-sm sm:grid-cols-3">
-      {comuni}
-      <SummaryItem label="Geometria" value={geometriaLabel(form.geometry)} />
-      {/* `form.entrata` è opzionale nello stato ma qui è sempre valorizzata: al
-          passo 4 si arriva solo dopo la validazione del passo 3. */}
-      {form.entrata && <SummaryItem label="Entrata maniglia" value={entrataLabel(form.entrata)} />}
-      {/* La sede è l'unica quota DERIVATA che finisce nella distinta: mostrarla
+    <>
+      {/* Vedi sopra: «Aria 12 · interasse 13 · battuta 20» a 375px vuole la riga intera. */}
+      <dl className="grid grid-cols-1 gap-x-6 gap-y-4 text-sm sm:grid-cols-3">
+        {comuni}
+        {/* `form.geometry` e `form.entrata` sono opzionali nello stato ma qui sono
+          sempre valorizzate: al passo 4 si arriva solo dopo la validazione del
+          passo 3, che le richiede entrambe. */}
+        {form.geometry && <SummaryItem label="Geometria" value={geometriaLabel(form.geometry)} />}
+        {form.entrata && (
+          <SummaryItem label="Entrata maniglia" value={entrataLabel(form.entrata)} />
+        )}
+        {/* La sede è l'unica quota DERIVATA che finisce nella distinta: mostrarla
           qui è ciò che permette all'agente di accorgersi di una geometria scelta
           male, ed è la ragione per cui il campo può sparire dall'input. */}
-      <SummaryItem
-        label="Sede incontri"
-        value={sedeIncontriLabel(GEOMETRIE[form.geometry].sedeMm)}
-      />
-      <SummaryItem label="Mano" value={hingeSideLabel(form.openingSide)} />
-      <SummaryItem label="Apertura" value={openingDirLabel(form.openingDir)} />
-      <SummaryItem label="Finitura" value={form.finish} />
-      {form.windowType === "ANTA_RIBALTA" && (
-        <SummaryItem label="Chiusure suppl." value={form.supplementaryClosures ? "Sì" : "No"} />
+        {form.geometry && (
+          <SummaryItem
+            label="Sede incontri"
+            value={sedeIncontriLabel(GEOMETRIE[form.geometry].sedeMm)}
+          />
+        )}
+        <SummaryItem label="Mano" value={hingeSideLabel(form.openingSide)} />
+        <SummaryItem label="Apertura" value={openingDirLabel(form.openingDir)} />
+        <SummaryItem label="Finitura" value={form.finish} />
+        {form.windowType === "ANTA_RIBALTA" && (
+          <SummaryItem label="Chiusure suppl." value={form.supplementaryClosures ? "Sì" : "No"} />
+        )}
+        {form.windowType === "VASISTAS" && (
+          <SummaryItem
+            label="Peso anta"
+            value={form.sashWeightKg === undefined ? "Non indicato" : `${form.sashWeightKg} kg`}
+          />
+        )}
+      </dl>
+
+      {/* `cliente` è non-null per costruzione quando ci sono divergenze:
+          `divergenzeDalProfilo` restituisce subito `[]` se è null. */}
+      {divergenze.length > 0 && cliente !== null && (
+        <p className="mt-5 rounded-md border border-line-strong bg-surface-sunken px-3.5 py-3 text-sm text-ink-muted">
+          <span className="font-medium text-ink">
+            Diverso dal profilo di {cliente.companyName}:
+          </span>{" "}
+          {divergenze.join(" · ")}. Va bene se questo serramento è diverso dal solito; se non lo è,
+          controlla la scelta — o aggiorna il profilo in Clienti.
+        </p>
       )}
-      {form.windowType === "VASISTAS" && (
-        <SummaryItem
-          label="Peso anta"
-          value={form.sashWeightKg === undefined ? "Non indicato" : `${form.sashWeightKg} kg`}
-        />
-      )}
-    </dl>
+    </>
   );
 }

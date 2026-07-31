@@ -141,3 +141,83 @@ describe("customer.delete", () => {
     await expect(caller.customer.delete({ id: "c1" })).resolves.toEqual({ id: "c1" });
   });
 });
+
+/**
+ * Profilo serramento: geometria ed entrata del cliente.
+ *
+ * Sono le due quote che non cambiano fra un ordine e l'altro dello stesso
+ * cliente, e che oggi l'agente ri-sceglie a memoria fra 14 combinazioni a ogni
+ * richiesta — sbagliandole senza che nulla lo segnali.
+ */
+describe("profilo serramento", () => {
+  it("list lo restituisce", async () => {
+    customerFindMany.mockResolvedValue([
+      {
+        id: "c1",
+        companyName: "Fosca",
+        discount: null,
+        kitGeometry: "A12_I13_B18",
+        kitEntrata: "E15",
+      },
+    ]);
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await expect(caller.customer.list({})).resolves.toEqual([
+      {
+        id: "c1",
+        companyName: "Fosca",
+        discount: null,
+        kitGeometry: "A12_I13_B18",
+        kitEntrata: "E15",
+      },
+    ]);
+  });
+
+  it("create lo accetta, e senza profilo scrive NULL", async () => {
+    customerCreate.mockResolvedValue({
+      id: "c2",
+      companyName: "Peruzzi",
+      discount: null,
+      kitGeometry: "A4_I9_B18",
+      kitEntrata: null,
+    });
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await caller.customer.create({ companyName: "Peruzzi", kitGeometry: "A4_I9_B18" });
+    expect(customerCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ kitGeometry: "A4_I9_B18", kitEntrata: null }),
+      }),
+    );
+  });
+
+  it("create rifiuta una geometria che non esiste", async () => {
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await expect(
+      caller.customer.create({ companyName: "X", kitGeometry: "A99_I0_B0" as never }),
+    ).rejects.toThrow();
+    expect(customerCreate).not.toHaveBeenCalled();
+  });
+
+  // `undefined` (non toccare) e `null` (azzera) sono due cose diverse: un
+  // cliente che cambia linea di serramento deve poter svuotare il profilo, e
+  // svuotarlo non e` lasciarlo stare. Stessa disciplina gia` adottata per lo
+  // sconto.
+  it("update distingue «non toccare» da «azzera»", async () => {
+    customerUpdate.mockResolvedValue({
+      id: "c1",
+      companyName: "MC",
+      discount: null,
+      kitGeometry: null,
+      kitEntrata: null,
+    });
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+
+    await caller.customer.update({ id: "c1", companyName: "MC" });
+    expect(customerUpdate.mock.calls.at(-1)?.[0].data).not.toHaveProperty("kitGeometry");
+
+    await caller.customer.update({ id: "c1", kitGeometry: null });
+    expect(customerUpdate.mock.calls.at(-1)?.[0].data).toHaveProperty("kitGeometry", null);
+
+    await caller.customer.update({ id: "c1", kitEntrata: "E75" });
+    expect(customerUpdate.mock.calls.at(-1)?.[0].data).toHaveProperty("kitEntrata", "E75");
+  });
+});

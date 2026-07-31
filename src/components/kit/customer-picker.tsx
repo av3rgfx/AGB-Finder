@@ -7,12 +7,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { formatPercent } from "@/lib/format";
+import { GEOMETRIE, geometriaLabel, type ArtechGeometryId } from "@/server/kit/artech-geometrie";
+import { ENTRATE, entrataLabel, type Entrata } from "@/server/kit/types";
 
 export interface CustomerOption {
   id: string;
   companyName: string;
   discount: number | null;
+  /** Profilo serramento — vedi `ProfiloSerramento`. NULL = non dichiarato. */
+  kitGeometry: ArtechGeometryId | null;
+  kitEntrata: Entrata | null;
 }
+
+/**
+ * Classi del `<select>` native, allineate agli altri campi del wizard.
+ * `h-11` è la soglia di bersaglio tattile che il progetto usa ovunque.
+ */
+const SELECT_CLASS =
+  "h-11 rounded border border-line-strong bg-surface px-3.5 text-sm text-ink focus-visible:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/25";
 
 /**
  * Selettore cliente del wizard, con creazione in linea.
@@ -39,9 +51,13 @@ export function CustomerPicker({
   const [creating, setCreating] = useState(false);
   const [nome, setNome] = useState("");
   const [sconto, setSconto] = useState("");
+  const [geometria, setGeometria] = useState<ArtechGeometryId | "">("");
+  const [entrata, setEntrata] = useState<Entrata | "">("");
   const searchId = useId();
   const nomeId = useId();
   const scontoId = useId();
+  const geometriaId = useId();
+  const entrataId = useId();
 
   const utils = api.useUtils();
   const ricerca = search.trim();
@@ -59,11 +75,15 @@ export function CustomerPicker({
     const creato = await create.mutateAsync({
       companyName,
       ...(scontoNum === null ? {} : { discount: scontoNum }),
+      ...(geometria === "" ? {} : { kitGeometry: geometria }),
+      ...(entrata === "" ? {} : { kitEntrata: entrata }),
     });
     void utils.customer.list.invalidate();
     setCreating(false);
     setNome("");
     setSconto("");
+    setGeometria("");
+    setEntrata("");
     onChange(creato);
   }
 
@@ -73,7 +93,8 @@ export function CustomerPicker({
         Cliente <span className="font-normal text-ink-subtle">(facoltativo)</span>
       </legend>
       <p className="text-sm text-ink-subtle">
-        Sceglierlo applica il suo sconto alla distinta. Potrai comunque ritoccarlo dopo.
+        Sceglierlo applica il suo sconto alla distinta e ti propone il suo profilo serramento al
+        passo della geometria. Potrai comunque ritoccare entrambi.
       </p>
 
       <label htmlFor={searchId} className="sr-only">
@@ -165,6 +186,48 @@ export function CustomerPicker({
           {!scontoValido && (
             <p className="text-sm text-danger">Scrivi una percentuale fra 0 e 100.</p>
           )}
+
+          {/* Profilo serramento. `<select>` e non radio: questo riquadro vive
+              dentro il wizard, e sette radio a 375px lo farebbero esplodere. Al
+              passo 3, dove la scelta È il punto della schermata, restano radio. */}
+          <label htmlFor={geometriaId} className="text-sm text-ink-muted">
+            Geometria del serramento <span className="text-ink-subtle">(facoltativa)</span>
+          </label>
+          <select
+            id={geometriaId}
+            value={geometria}
+            onChange={(event) => setGeometria(event.target.value as ArtechGeometryId | "")}
+            className={SELECT_CLASS}
+          >
+            <option value="">Non dichiarata</option>
+            {(Object.keys(GEOMETRIE) as ArtechGeometryId[]).map((id) => (
+              <option key={id} value={id}>
+                {geometriaLabel(id)}
+              </option>
+            ))}
+          </select>
+
+          <label htmlFor={entrataId} className="text-sm text-ink-muted">
+            Entrata maniglia <span className="text-ink-subtle">(facoltativa)</span>
+          </label>
+          <select
+            id={entrataId}
+            value={entrata}
+            onChange={(event) => setEntrata(event.target.value as Entrata | "")}
+            className={SELECT_CLASS}
+          >
+            <option value="">Non dichiarata</option>
+            {ENTRATE.map((valore) => (
+              <option key={valore} value={valore}>
+                Entrata {entrataLabel(valore)}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-ink-subtle">
+            Sono le due quote che non cambiano fra un ordine e l&apos;altro di questo cliente. Non
+            precompilano nulla: al passo della geometria potrai applicarle con un clic.
+          </p>
+
           <div className="flex flex-wrap gap-2">
             <Button
               size="sm"

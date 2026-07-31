@@ -20,7 +20,25 @@ vi.mock("@/trpc/react", () => ({
     customer: {
       list: {
         useQuery: () => ({
-          data: [{ id: "c1", companyName: "Fosca", discount: 42.5 }],
+          // Due clienti, e di proposito diversi: Fosca HA un profilo serramento,
+          // Peruzzi no. Serve a provare che il blocco «Usa il profilo» e la riga
+          // di divergenza compaiano solo quando c'è qualcosa da confrontare.
+          data: [
+            {
+              id: "c1",
+              companyName: "Fosca",
+              discount: 42.5,
+              kitGeometry: "A12_I13_B18",
+              kitEntrata: "E15",
+            },
+            {
+              id: "c2",
+              companyName: "Peruzzi",
+              discount: null,
+              kitGeometry: null,
+              kitEntrata: null,
+            },
+          ],
           isPending: false,
         }),
       },
@@ -47,6 +65,20 @@ afterEach(() => {
   createMutate.mockReset();
   generateMutate.mockReset();
 });
+
+/**
+ * Sceglie una geometria al passo 3.
+ *
+ * Dal 2026-07-30 **nessuna è preselezionata**: prima lo era `A12_I13_B20`, la
+ * geometria del cliente storico del golden, che ogni ordine si portava addosso.
+ * Ogni percorso che arriva al riepilogo deve quindi passare di qui — ed è il
+ * motivo per cui questo helper esiste invece di dieci blocchi ricopiati.
+ */
+function scegliGeometria(id: ArtechGeometryId = "A12_I13_B20") {
+  fireEvent.click(
+    within(screen.getByRole("group", { name: /geometria/i })).getByLabelText(geometriaLabel(id)),
+  );
+}
 
 describe("NuovaRichiestaClient", () => {
   it("parte dallo step 1 con ARTECH/anta-ribalta preselezionati", () => {
@@ -141,6 +173,34 @@ describe("NuovaRichiestaClient", () => {
     expect(within(geometria).getByLabelText(/aria 12 · interasse 13 · battuta 18/i)).toBeTruthy();
   });
 
+  // Fino al 2026-07-30 `ARTECH_DEFAULT` cablava `geometry: "A12_I13_B20"`, cioè
+  // la geometria del cliente storico del golden: ogni nuovo ordine partiva con
+  // la geometria di un ALTRO cliente. Sceglierla male non produce un errore —
+  // i codici dell'altra combinazione esistono a listino, hanno un prezzo e non
+  // danno warning — quindi il default non era una comodità, era un errore
+  // silenzioso preconfezionato. Stesso trattamento già dato all'entrata.
+  it("nessuna geometria è preselezionata, e senza sceglierla il passo non avanza", () => {
+    render(<NuovaRichiestaClient />);
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // 1 → 2
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // 2 → 3
+
+    const geometria = screen.getByRole("group", { name: /geometria/i });
+    const radio = within(geometria).getAllByRole("radio") as HTMLInputElement[];
+    expect(radio).toHaveLength(Object.keys(GEOMETRIE).length);
+    expect(radio.some((r) => r.checked)).toBe(false);
+
+    // Si sceglie SOLO l'entrata: manca la geometria, il passo non deve avanzare.
+    fireEvent.click(
+      within(screen.getByRole("group", { name: /entrata maniglia/i })).getByRole("radio", {
+        name: /15 mm/i,
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
+    expect(screen.getByRole("group", { name: /geometria/i })).toBeTruthy();
+    // «derivata» compare solo nel riepilogo (sede derivata): se c'è, siamo avanzati.
+    expect(screen.queryByText(/derivata/i)).toBeNull();
+  });
+
   // Regola inviolabile «mobile-first», stessa ragione dei materiali: «Aria 12 ·
   // interasse 13 · battuta 18» a due colonne fisse andrebbe a capo tre volte in
   // ~170px di cella a 375px.
@@ -209,6 +269,7 @@ describe("NuovaRichiestaClient", () => {
     render(<NuovaRichiestaClient />);
     fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
     fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
+    scegliGeometria();
     fireEvent.click(
       within(screen.getByRole("group", { name: /entrata maniglia/i })).getByRole("radio", {
         name: /7,5 mm/i,
@@ -226,6 +287,7 @@ describe("NuovaRichiestaClient", () => {
     const { container } = render(<NuovaRichiestaClient />);
     fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
     fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
+    scegliGeometria();
     fireEvent.click(
       within(screen.getByRole("group", { name: /entrata maniglia/i })).getByRole("radio", {
         name: /7,5 mm/i,
@@ -298,6 +360,7 @@ describe("NuovaRichiestaClient", () => {
     render(<NuovaRichiestaClient />);
     fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
     fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // default validi
+    scegliGeometria();
     fireEvent.click(
       within(screen.getByRole("group", { name: /entrata maniglia/i })).getByRole("radio", {
         name: /7,5 mm/i,
@@ -355,6 +418,7 @@ describe("NuovaRichiestaClient", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // step 2 (ANTA_RIBALTA)
     fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // step 3
+    scegliGeometria();
     const toggle = screen.getByLabelText(/chiusure supplementari/i) as HTMLInputElement;
     fireEvent.click(toggle);
     expect(toggle.checked).toBe(true);
@@ -369,6 +433,10 @@ describe("NuovaRichiestaClient", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // step 2
     fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // step 3
+    // Cambiando tipologia si cambia RAMO dell'unione: la geometria scelta prima
+    // non sopravvive, e va riscelta. È l'unica ammessa dal vasistas
+    // (`GEOMETRIA_COPERTA`), la stessa del default di `scegliGeometria`.
+    scegliGeometria();
     // 15 mm, non 7,5: I2 (revisione finale) disabilita l'entrata 7,5 sulla
     // VASISTAS (il motore la rifiuta), quindi non è più cliccabile qui.
     fireEvent.click(
@@ -428,7 +496,10 @@ describe("NuovaRichiestaClient", () => {
       .filter((radio) => !(radio as HTMLInputElement).disabled);
     expect(abilitate).toHaveLength(1);
     expect(abilitate[0]).toBe(within(geometria).getByLabelText(geometriaLabel("A12_I13_B20")));
-    expect((abilitate[0] as HTMLInputElement).checked).toBe(true);
+    // NON preselezionata: il default cablato è caduto il 2026-07-30. L'unica
+    // geometria ammessa dal vasistas è **selezionabile**, non già selezionata —
+    // asserire `checked === true` qui era codificare il difetto.
+    expect((abilitate[0] as HTMLInputElement).checked).toBe(false);
     expect(within(geometria).getAllByText(/solo per l'anta-ribalta/i).length).toBeGreaterThan(0);
   });
 
@@ -490,6 +561,10 @@ describe("NuovaRichiestaClient — entrata maniglia", () => {
   const vai = () => {
     fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // 1 → 2
     fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // 2 → 3
+    // La geometria si sceglie anche qui: dal 2026-07-30 non è preselezionata, e
+    // senza di essa il passo 3 si ferma sul messaggio della GEOMETRIA — questo
+    // blocco vuole invece esercitare quello dell'ENTRATA.
+    scegliGeometria();
   };
 
   it("non preseleziona nessuna entrata", () => {
@@ -565,6 +640,7 @@ describe("NuovaRichiestaClient — il cliente", () => {
     fireEvent.click(screen.getByRole("button", { name: /fosca/i }));
     fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // 1 → 2
     fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // 2 → 3
+    scegliGeometria();
     fireEvent.click(
       within(screen.getByRole("group", { name: /entrata maniglia/i })).getByRole("radio", {
         name: /7,5 mm/i,
@@ -582,6 +658,7 @@ describe("NuovaRichiestaClient — il cliente", () => {
     render(<NuovaRichiestaClient />);
     fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
     fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
+    scegliGeometria();
     fireEvent.click(
       within(screen.getByRole("group", { name: /entrata maniglia/i })).getByRole("radio", {
         name: /7,5 mm/i,
@@ -598,6 +675,7 @@ describe("NuovaRichiestaClient — il cliente", () => {
     fireEvent.click(screen.getByRole("button", { name: /fosca/i }));
     fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
     fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
+    scegliGeometria();
     fireEvent.click(
       within(screen.getByRole("group", { name: /entrata maniglia/i })).getByRole("radio", {
         name: /7,5 mm/i,
@@ -605,5 +683,88 @@ describe("NuovaRichiestaClient — il cliente", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
     expect(screen.getByText(/Fosca · sconto 42,5%/)).toBeTruthy();
+  });
+
+  // PROFILO SERRAMENTO. Nulla è preselezionato: il profilo del cliente si
+  // applica con un clic esplicito. È la sintesi del council — stessa ergonomia
+  // della precompilazione, ma il riempimento resta un atto dell'agente.
+  it("«Usa il profilo» riempie geometria ed entrata in un colpo", () => {
+    render(<NuovaRichiestaClient />);
+    fireEvent.click(screen.getByRole("button", { name: /fosca/i }));
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // 1 → 2
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // 2 → 3
+
+    const geometria = screen.getByRole("group", { name: /geometria/i });
+    const entrataGruppo = screen.getByRole("group", { name: /entrata maniglia/i });
+    // Prima del clic: nulla scelto.
+    expect(
+      (within(geometria).getAllByRole("radio") as HTMLInputElement[]).some((r) => r.checked),
+    ).toBe(false);
+
+    fireEvent.click(screen.getByRole("button", { name: /usa il profilo/i }));
+
+    expect(
+      (within(geometria).getByLabelText(geometriaLabel("A12_I13_B18")) as HTMLInputElement).checked,
+    ).toBe(true);
+    expect(
+      (within(entrataGruppo).getByRole("radio", { name: /15 mm/i }) as HTMLInputElement).checked,
+    ).toBe(true);
+  });
+
+  it("senza profilo il blocco non compare affatto", () => {
+    render(<NuovaRichiestaClient />);
+    fireEvent.click(screen.getByRole("button", { name: /peruzzi/i }));
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
+    expect(screen.queryByRole("button", { name: /usa il profilo/i })).toBeNull();
+  });
+
+  it("senza cliente il blocco non compare affatto", () => {
+    render(<NuovaRichiestaClient />);
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
+    expect(screen.queryByRole("button", { name: /usa il profilo/i })).toBeNull();
+  });
+
+  /** Porta al riepilogo scegliendo cliente, geometria ed entrata. */
+  function alRiepilogo(opts: { cliente?: RegExp; geometry: ArtechGeometryId; entrata: RegExp }) {
+    render(<NuovaRichiestaClient />);
+    if (opts.cliente !== undefined)
+      fireEvent.click(screen.getByRole("button", { name: opts.cliente }));
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // 1 → 2
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // 2 → 3
+    scegliGeometria(opts.geometry);
+    fireEvent.click(
+      within(screen.getByRole("group", { name: /entrata maniglia/i })).getByRole("radio", {
+        name: opts.entrata,
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i })); // 3 → 4
+  }
+
+  // LA DIVERGENZA. Constata, non blocca: non sa quale delle due dichiarazioni
+  // sia giusta — il profilo l'ha scritto lo stesso agente, a memoria. Ma e' il
+  // primo rilevatore d'errore che il sistema possieda.
+  it("il riepilogo segnala la divergenza dal profilo del cliente", () => {
+    // Fosca ha profilo A12_I13_B18 / E15; l'agente sceglie A12_I13_B20 / 7,5.
+    alRiepilogo({ cliente: /fosca/i, geometry: "A12_I13_B20", entrata: /7,5 mm/i });
+    expect(screen.getByText(/diverso dal profilo di Fosca/i)).toBeTruthy();
+    // Mostra i valori DEL PROFILO: sono cio' con cui confrontarsi.
+    expect(screen.getByText(new RegExp(geometriaLabel("A12_I13_B18")))).toBeTruthy();
+  });
+
+  it("non segnala nulla se la scelta coincide col profilo", () => {
+    alRiepilogo({ cliente: /fosca/i, geometry: "A12_I13_B18", entrata: /15 mm/i });
+    expect(screen.queryByText(/diverso dal profilo/i)).toBeNull();
+  });
+
+  it("non segnala nulla se il cliente non ha profilo", () => {
+    alRiepilogo({ cliente: /peruzzi/i, geometry: "A12_I13_B20", entrata: /7,5 mm/i });
+    expect(screen.queryByText(/diverso dal profilo/i)).toBeNull();
+  });
+
+  it("non segnala nulla senza cliente", () => {
+    alRiepilogo({ geometry: "A12_I13_B20", entrata: /7,5 mm/i });
+    expect(screen.queryByText(/diverso dal profilo/i)).toBeNull();
   });
 });

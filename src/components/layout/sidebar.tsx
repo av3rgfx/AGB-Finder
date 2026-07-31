@@ -1,6 +1,14 @@
 "use client";
 
-import { LayoutDashboard, MessageSquare, Package, ClipboardList, Settings, Users } from "lucide-react";
+import {
+  Building2,
+  LayoutDashboard,
+  MessageSquare,
+  Package,
+  ClipboardList,
+  Settings,
+  Users,
+} from "lucide-react";
 import { NavItem, type NavItemProps } from "./nav-item";
 
 const PRIMARY_NAV: NavItemProps[] = [
@@ -8,6 +16,10 @@ const PRIMARY_NAV: NavItemProps[] = [
   { href: "/assistente", label: "Assistente", icon: MessageSquare },
   { href: "/archivio", label: "Archivio", icon: Package },
   { href: "/richieste", label: "Richieste Kit", icon: ClipboardList },
+  // Fuori dal blocco ADMIN: l'anagrafica è condivisa e il router usa
+  // `agentProcedure`. Fino al 2026-07-30 `customer.update`/`delete` esistevano
+  // senza una schermata da cui raggiungerli.
+  { href: "/clienti", label: "Clienti", icon: Building2 },
 ];
 
 export function Sidebar({ role }: { role: string }) {
