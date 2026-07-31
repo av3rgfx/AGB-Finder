@@ -275,6 +275,19 @@ describe("variants nell'input", () => {
     expect(variantiSchema.safeParse({ squadraAngolareX: "BASE" }).success).toBe(false);
   });
 
+  /**
+   * Non è lo stesso test di sopra: qui la chiave sconosciuta è ANNIDATA dentro
+   * `variants`, com'è nel caso vero (wizard o riga riletta da DB). Ciò che il
+   * Task 3 ha davvero costruito è la PROPAGAZIONE di `.strict()` attraverso
+   * `artechInputSchema`: `variantiSchema` da sola non lo prova, perché rifiuta
+   * la chiave sconosciuta a prescindere da dove viene chiamata — è la stessa
+   * proprietà del test precedente, verificata due volte.
+   */
+  it("una chiave sconosciuta DENTRO variants fa fallire l'intero kitInputSchema", () => {
+    const r = kitInputSchema.safeParse({ ...artechBase, variants: { squadraAngolareX: "BASE" } });
+    expect(r.success).toBe(false);
+  });
+
   it("il ramo TOUR SCARTA le varianti: non possono raggiungere una riga bilico", () => {
     const r = kitInputSchema.safeParse({
       windowType: "BILICO",

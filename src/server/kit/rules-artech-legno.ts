@@ -33,7 +33,10 @@ import {
 } from "./types";
 import { MOVIMENTO_ANGOLARE, incontriNottolino } from "./artech-legno-shared";
 import { geometria, assertSeatConfigSupportata, mm } from "./artech-geometrie";
-import { VARIANTE_IDS } from "./artech-varianti";
+// Dal file FOGLIA, non da `artech-varianti.ts`: questo import è codice nuovo di
+// questo task e può puntare direttamente alla foglia, senza passare per il
+// registro (che non aggiunge nulla per `VARIANTE_IDS`, solo un arco in più).
+import { VARIANTE_IDS } from "./varianti-schema";
 import {
   incontroNottolino,
   incontroRibalta,
