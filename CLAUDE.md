@@ -517,8 +517,13 @@ zero warning. Gate verdi (typecheck·lint·**test 992**·build 18 route) · **in
 eseguiti** · **browser 33 + 10 check** (Chromium desktop e **375px**, screenshot guardati).
 **🔴 AZIONE OPS**: un run di «Ops — Neon» **sul ref del branch, PRIMA del merge** — `kit.get`/`generate`/`ricalcola`
 leggono con `findFirst` **senza `select`**, quindi fra deploy e migrazione fallirebbero le **letture** delle
-richieste, non solo le creazioni (è alla lettera l'incidente da venti minuti della PR #40). **Nessun re-import
-necessario**: i 74 codici sono già tutti a catalogo con prezzo. Debito noto: `nuova-client.tsx` è a **1.979 righe**
+richieste, non solo le creazioni (è alla lettera l'incidente da venti minuti della PR #40). **Il raggio è più largo
+di «le richieste»**: anche `src/server/api/routers/dashboard.ts:40` fa `kitRequest.findMany` **senza `select`**,
+quindi si rompe pure **`dashboard.overview`**, cioè la **pagina d'ingresso di tutti e dieci gli agenti** — nessuno
+scarto fra merge e migrazione è tollerabile. **Nessun re-import necessario**: i 74 codici sono già tutti a catalogo
+con prezzo. **Le varianti NON si possono cambiare dopo la creazione** (`kit.ricalcola` le eredita verbatim,
+`kit.ts:249-252`; nessuna mutation le modifica): per cambiarle si rifà il wizard da capo — **va detto agli agenti
+insieme alla feature**; il seguito è un `variants` opzionale in input a `ricalcola`. Debito noto: `nuova-client.tsx` è a **1.979 righe**
 (i ~330 del passo «Componenti» sarebbero estraibili in `src/components/kit/`); «Visualizza nel listino» **per
 singola opzione omesso** (un `<button>` dentro il `<label>` di `RadioOption` è HTML non valido e ruberebbe il clic
 alla radio: servirebbe spezzare `RadioOption`); `dedupeRows` last-wins in `map-product.ts`; preview Vercel rotte su

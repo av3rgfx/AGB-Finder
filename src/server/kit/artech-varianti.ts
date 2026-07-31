@@ -1,14 +1,18 @@
 import type { ArtechGeometryId, PerMano } from "./artech-geometrie";
 import { KitGenerationError, type Entrata } from "./types";
 import { chiaveIncontri, type ChiaveIncontri } from "./artech-incontri";
-// Ri-esportati da qui per compatibilità con gli import esistenti (Task 1-2):
-// vivono nel file foglia `varianti-schema.ts` per spezzare un ciclo di VALORI —
-// questo file importa `KitGenerationError` da `types.ts`, e se `variantiSchema`
-// vivesse qui `types.ts` lo re-importerebbe indietro. Dettagli nel commento di
-// testa di `varianti-schema.ts`.
-import { variantiSchema, VARIANTE_IDS, type Varianti, type VarianteId } from "./varianti-schema";
-
-export { variantiSchema, VARIANTE_IDS, type Varianti, type VarianteId };
+// SOLO i TIPI, e SOLO per uso interno: `variantiSchema` e `VARIANTE_IDS` vivono
+// nel file foglia `varianti-schema.ts` per spezzare un ciclo di VALORI — questo
+// file importa `KitGenerationError` da `types.ts`, e se `variantiSchema` vivesse
+// qui `types.ts` lo re-importerebbe indietro (dettagli nel commento di testa di
+// `varianti-schema.ts`).
+//
+// NIENTE RE-EXPORT. Fino a questo commit il registro ri-esportava `variantiSchema`
+// e `VARIANTE_IDS` «per compatibilità»: la regola ESLint impedisce alla foglia di
+// IMPORTARE, non a `types.ts` di re-importare attraverso il registro — cioè
+// esattamente la strada del ciclo che si è già manifestato una volta. Chi vuole
+// lo schema lo prende dalla foglia.
+import type { Varianti, VarianteId } from "./varianti-schema";
 
 /**
  * REGISTRO DELLE VARIANTI COMPONENTE — ARTECH legno.
@@ -278,6 +282,39 @@ const INCONTRO_NOTTOLINO: Record<IncontroNottolinoId, Partial<Record<ChiaveIncon
   },
 };
 
+/**
+ * Quali voci della tabella qui sopra sono ANTIEFFRAZIONE — **elencate**, non
+ * dedotte dalla forma del nome.
+ *
+ * Prima erano tre `startsWith("ANTIEFFRAZIONE")` sparsi fra registro e wizard, e
+ * decidevano tre cose diverse: se emettere l'avviso della NB del listino, lo
+ * stato dell'interruttore «Sicurezza», e **quale codice** l'interruttore imposta.
+ * Rinominare una voce dell'enum fa fallire la compilazione sulle tabelle (sono
+ * `Record` esaustivi) ma **non** su uno `startsWith`, che avrebbe continuato a
+ * compilare restituendo `false` in silenzio: avviso del listino sparito e
+ * interruttore che dice «Normale» su una configurazione antieffrazione. È la
+ * regola dei codici interi — mai una proprietà dedotta dalla forma di una
+ * stringa — applicata a una categoria.
+ *
+ * `satisfies` lega l'elenco all'enum nel verso che conta: se una voce viene
+ * rinominata, **questo elenco non compila**.
+ */
+export const INCONTRO_NOTTOLINO_ANTIEFFRAZIONE = [
+  "ANTIEFFRAZIONE_INCLINATE",
+  "ANTIEFFRAZIONE_DRITTE",
+] as const satisfies readonly IncontroNottolinoId[];
+
+/**
+ * L'unico modo di chiedere «è antieffrazione?». `undefined` significa «lo
+ * standard del programma», cioè `INCONTRO_NOTTOLINO_DEFAULT`: la stessa `??` di
+ * ogni altra funzione di questo file, così il chiamante non deve conoscere il
+ * default per poter fare la domanda.
+ */
+export function eAntieffrazione(scelta: IncontroNottolinoId | undefined): boolean {
+  const id = scelta ?? INCONTRO_NOTTOLINO_DEFAULT;
+  return INCONTRO_NOTTOLINO_ANTIEFFRAZIONE.some((voce) => voce === id);
+}
+
 export function opzioniIncontroNottolino(
   geometry: ArtechGeometryId,
 ): { id: IncontroNottolinoId; label: string }[] {
@@ -426,7 +463,7 @@ export function scelteNonStandard(
 export function avvisiVarianti(varianti: Varianti | undefined): string[] {
   if (varianti === undefined) return [];
   const avvisi: string[] = [];
-  const antieffrazione = varianti.incontroNottolino?.startsWith("ANTIEFFRAZIONE") === true;
+  const antieffrazione = eAntieffrazione(varianti.incontroNottolino);
   if (antieffrazione && varianti.movimentoAngolare !== "DUE_NOTTOLINI")
     avvisi.push(
       "Incontro nottolino antieffrazione con movimento angolare a un nottolino: il listino " +

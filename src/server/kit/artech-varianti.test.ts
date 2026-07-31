@@ -16,6 +16,8 @@ import {
   avvisiVarianti,
   scelteNonStandard,
   COMPONENTE_LABEL,
+  eAntieffrazione,
+  INCONTRO_NOTTOLINO_ANTIEFFRAZIONE,
 } from "./artech-varianti";
 import { GEOMETRIE, type ArtechGeometryId } from "./artech-geometrie";
 import { KitGenerationError } from "./types";
@@ -142,6 +144,31 @@ describe("antieffrazione", () => {
       "NORMALE",
       "ANTIEFFRAZIONE_INCLINATE",
     ]);
+  });
+
+  /**
+   * La categoria «antieffrazione» è DICHIARATA dal registro, non dedotta dalla
+   * forma del nome. Erano tre `startsWith("ANTIEFFRAZIONE")` (avviso della NB,
+   * stato dell'interruttore, codice che l'interruttore imposta): rinominare una
+   * voce dell'enum li avrebbe lasciati compilare, restituendo `false` in
+   * silenzio. Ora la sorgente è `INCONTRO_NOTTOLINO_ANTIEFFRAZIONE`, che con
+   * `satisfies` non compila se una voce viene rinominata.
+   */
+  it("la categoria antieffrazione è quella dichiarata dal registro", () => {
+    expect(eAntieffrazione("ANTIEFFRAZIONE_INCLINATE")).toBe(true);
+    expect(eAntieffrazione("ANTIEFFRAZIONE_DRITTE")).toBe(true);
+    expect(eAntieffrazione("NORMALE")).toBe(false);
+    // `undefined` = lo standard del programma, cioè NORMALE.
+    expect(eAntieffrazione(undefined)).toBe(false);
+  });
+
+  it("l'elenco è esattamente ciò che il registro offre oltre alla voce normale", () => {
+    // `A12_I13_B20` è l'unica chiave incontri che pubblica tutte e tre le voci.
+    const offerte = opzioniIncontroNottolino("A12_I13_B20").map((o) => o.id);
+    expect(offerte.filter((id) => eAntieffrazione(id))).toEqual([
+      ...INCONTRO_NOTTOLINO_ANTIEFFRAZIONE,
+    ]);
+    expect(offerte.filter((id) => !eAntieffrazione(id))).toEqual(["NORMALE"]);
   });
 
   it("il piastrino dipende dall'entrata", () => {

@@ -7,7 +7,9 @@ import {
   kitInputSchema,
   tourInputSchema,
 } from "./types";
-import { variantiSchema } from "./artech-varianti";
+// Dal file FOGLIA: il registro non ri-esporta più lo schema (il re-export era
+// la strada del ciclo che `varianti-schema.ts` esiste per spezzare).
+import { variantiSchema } from "./varianti-schema";
 
 const valid = {
   windowType: "ANTA_RIBALTA",

@@ -964,6 +964,25 @@ describe("NuovaRichiestaClient — passo «Componenti»", () => {
     expect(within(nottolino).queryByText(/dritte/i)).toBeNull();
   });
 
+  /**
+   * La nota sullo standard stava dentro OGNI `GruppoVarianti` e dentro la
+   * fieldset Sicurezza: con i due pannelli aperti erano **sei copie** della
+   * stessa frase di 86 caratteri, e a 375px un muro davanti proprio ai codici e
+   * ai prezzi per cui la schermata esiste. Si dice una volta, in testa al passo;
+   * nei gruppi resta il solo distintivo «standard».
+   */
+  it("la nota sullo standard è detta UNA volta sola, anche coi due pannelli aperti", () => {
+    alPassoComponenti();
+    const nota = /ciò che il programma ordina oggi/i;
+    expect(screen.getAllByText(nota)).toHaveLength(1);
+    apriAltreVarianti();
+    fireEvent.click(screen.getByRole("button", { name: /le tre scelte/i }));
+    // Cinque gruppi visibili + la fieldset Sicurezza: la frase resta una.
+    expect(screen.getAllByText(nota)).toHaveLength(1);
+    // …e il distintivo «standard» invece c'è in ognuno dei gruppi.
+    expect(screen.getAllByText(/^standard$/i).length).toBeGreaterThan(1);
+  });
+
   it("ogni opzione mostra il codice in mono, il prezzo e il Δ, all'italiana", () => {
     alPassoComponenti();
     apriAltreVarianti();
@@ -1409,6 +1428,25 @@ describe("variantiPerGeometria", () => {
         incontroRibalta: "ZAMA",
       }),
     ).toBeUndefined();
+  });
+
+  /**
+   * L'asimmetria che restava: la potatura toglieva `undefined` ma non `false`.
+   * Per il piastrino — l'unica variante booleana — lo standard è «nessun
+   * piastrino», che il motore legge da `=== true`: `false` sarebbe quindi uno
+   * standard MATERIALIZZATO, cioè ciò che questa potatura esiste per impedire
+   * alle altre quattro. La UI non lo produce (spegnere scrive `undefined`), ma
+   * `kit.create` accetta il blocco dal client.
+   */
+  it("scarta il piastrino «false»: è lo standard materializzato, come per le altre quattro", () => {
+    expect(variantiPerGeometria("A12_I13_B20", { piastrinoAntieffrazione: false })).toBeUndefined();
+    // E non si porta via il resto del blocco.
+    expect(
+      variantiPerGeometria("A12_I13_B20", {
+        piastrinoAntieffrazione: false,
+        movimentoAngolare: "DUE_NOTTOLINI",
+      }),
+    ).toEqual({ movimentoAngolare: "DUE_NOTTOLINI" });
   });
 
   it("scarta solo ciò che non esiste, non il resto del blocco", () => {

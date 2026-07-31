@@ -245,9 +245,21 @@ che i due strati sopra danno già. Il costo non si paga.
    *legittimamente* inerti e la lista degli inerti diventerebbe un alibi. Ogni variante muta a
    partire da una geometria in cui è **davvero disponibile**.
 
-**Il ricalcolo resta versionato.** Una distinta emessa non si riscrive: cambiare una variante
-crea una nuova versione (`supersededById`). In PR1 le varianti si scelgono **alla creazione**;
-per cambiarle si usa il ricalcolo, che è la strada già esistente e già versionata.
+**Il ricalcolo resta versionato — ma NON è una via per cambiare le varianti.** Una distinta
+emessa non si riscrive, questo è vero e resta vero. Non è vero, invece, che il ricalcolo permetta
+di cambiare una variante: `kit.ricalcola` (`src/server/api/routers/kit.ts:249-252`) le fa
+ereditare **verbatim** alla nuova versione, con tanto di commento che lo dichiara, e **nessuna
+mutation le modifica** — `kit.setVariants` non esiste. In PR1 le varianti si scelgono **alla
+creazione e basta**.
+
+**Conseguenza da dire agli agenti**, perché è la prima segnalazione che arriverà dal campo: chi
+ha creato una richiesta «Normale» e poi vuole l'antieffrazione **deve rifare il wizard da capo**.
+Non c'è alcun percorso di modifica.
+
+**Il seguito naturale, lavoro a parte:** un `variants` **opzionale** nell'input di `ricalcola`
+(assente = eredita com'è oggi, presente = sostituisce). Non riscriverebbe nulla di già emesso —
+la riga vecchia viene marcata `supersededById` e la nuova nasce comunque `DRAFT` — quindi la
+garanzia «una distinta in mano al cliente non si riscrive» regge senza modifiche.
 
 **I tre punti del percorso dati** — e sono tre, non due, perché è dove si perdono i campi:
 
@@ -364,8 +376,13 @@ Nuovo passo **4 «Componenti»**; il riepilogo diventa il **5**.
   da dichiarare: la squadra angolare *è* per definizione un'abitudine per cliente, quindi se un
   cliente devia stabilmente dallo standard lo si riscoprirà a ogni richiesta. Il dato ha la
   stessa forma, quindi spostarlo sul cliente resta poco costoso.
-- **`kit.setVariants`**: cambiare le varianti dopo l'emissione riscriverebbe una distinta già in
-  mano al cliente. Si usa il ricalcolo versionato.
+- **Cambiare le varianti dopo la creazione**: non è possibile, in nessun modo. `kit.setVariants`
+  non esiste, e `kit.ricalcola` le eredita **verbatim** (`src/server/api/routers/kit.ts:249-252`):
+  l'unica via è **rifare il wizard da capo**. Qui c'era scritto «si usa il ricalcolo versionato»,
+  ed era **falso** — corretto in §4 insieme a questo punto. Il seguito naturale è un `variants`
+  opzionale in input a `ricalcola` (assente = eredita, presente = sostituisce): non riscrive
+  nulla di emesso, perché la nuova versione nasce comunque `DRAFT`. **Va detto agli agenti
+  insieme alla feature**, altrimenti è la prima segnalazione dal campo.
 - **Il fungo e la sede 30**: §5.4. Sono una famiglia di schemi, e richiedono prima l'incontro
   DSS 13x30, che a listino **non esiste**.
 - **Finiture** (11 colori di copertura, **domanda 22**) e **microventilazione / spessori di

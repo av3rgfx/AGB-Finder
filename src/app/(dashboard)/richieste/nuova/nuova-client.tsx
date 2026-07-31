@@ -31,8 +31,12 @@ import {
   mm,
   type ArtechGeometryId,
 } from "@/server/kit/artech-geometrie";
+// `type Varianti` dal file FOGLIA: il registro non ri-esporta più lo schema né i
+// suoi tipi (vedi il commento di testa di `artech-varianti.ts`).
+import type { Varianti } from "@/server/kit/varianti-schema";
 import {
   avvisiVarianti,
+  eAntieffrazione,
   incontroNottolinoEtichettaSeNonStandard,
   incontroNottolinoVariante,
   incontroRibaltaEtichettaSeNonStandard,
@@ -49,7 +53,6 @@ import {
   COMPONENTE_LABEL,
   MOVIMENTO_ANGOLARE_LABEL,
   type MovimentoAngolareId,
-  type Varianti,
 } from "@/server/kit/artech-varianti";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -274,10 +277,18 @@ const STEP_SCHEMAS = {
  * del programma», e il default vive nel REGISTRO, non nel dato persistito
  * (`artech-varianti.ts`). Senza questa normalizzazione, spegnere l'interruttore
  * lascerebbe una colonna `{}` indistinguibile da una scelta.
+ *
+ * `false` si pota come `undefined`, e non è una simmetria estetica: per il
+ * piastrino — l'unica variante booleana — lo standard è «nessun piastrino», che
+ * il motore legge da `=== true`. `{ piastrinoAntieffrazione: false }` sarebbe
+ * quindi **uno standard materializzato**, cioè esattamente ciò che la potatura
+ * esiste per impedire alle altre quattro. Oggi la UI non lo produce (spegnere
+ * scrive `undefined`), ma `kit.create` accetta il blocco dal client: la chiusura
+ * sta qui, non nella fiducia che nessuno scriva mai `false`.
  */
 function componiVarianti(v: Varianti): Varianti | undefined {
   const pulite = Object.fromEntries(
-    Object.entries(v).filter(([, valore]) => valore !== undefined),
+    Object.entries(v).filter(([, valore]) => valore !== undefined && valore !== false),
   ) as Varianti;
   return Object.keys(pulite).length === 0 ? undefined : pulite;
 }
@@ -291,7 +302,7 @@ function contaAntieffrazione(v: Varianti | undefined): number {
   if (v === undefined) return 0;
   return (
     (v.movimentoAngolare === "DUE_NOTTOLINI" ? 1 : 0) +
-    (v.incontroNottolino?.startsWith("ANTIEFFRAZIONE") === true ? 1 : 0) +
+    (eAntieffrazione(v.incontroNottolino) ? 1 : 0) +
     (v.piastrinoAntieffrazione === true ? 1 : 0)
   );
 }
@@ -1217,13 +1228,22 @@ function Step3SchemaFinitura({
 }
 
 /**
- * La nota che accompagna ogni gruppo di opzioni. È la formula già adottata dalla
- * PR #44 per il profilo cliente, e dice la verità: le distinte reali di MC,
- * Peruzzi e Fosca non sono mai arrivate, quindi «quello che ordiniamo oggi»
- * sarebbe un'affermazione sull'azienda che il programma non può fare.
+ * La nota sullo standard, detta **una volta sola** in testa al passo. È la
+ * formula già adottata dalla PR #44 per il profilo cliente, e dice la verità: le
+ * distinte reali di MC, Peruzzi e Fosca non sono mai arrivate, quindi «quello
+ * che ordiniamo oggi» sarebbe un'affermazione sull'azienda che il programma non
+ * può fare.
+ *
+ * Stava dentro OGNI `GruppoVarianti` e dentro la fieldset Sicurezza: con i due
+ * pannelli aperti erano **sei copie** della stessa frase, e a 375px un muro di
+ * testo che nasconde proprio i codici e i prezzi per cui la schermata esiste.
+ * Nei gruppi resta il solo distintivo «standard» sull'opzione, che è il legame
+ * riga-per-riga; questa frase spiega, una volta, cosa quel distintivo afferma.
+ * Non lo NOMINA: la fieldset «Sicurezza» non porta distintivi, e dire «è
+ * l'opzione col distintivo standard» sarebbe falso proprio lì.
  */
 const NOTA_STANDARD =
-  "Preimpostato su ciò che il programma ordina oggi. Mai confrontato con un ordine vero.";
+  "Tutto è già impostato su ciò che il programma ordina oggi. Mai confrontato con un ordine vero.";
 
 /** `+0,49 €` / `−4,06 €`. Segno meno tipografico, come nel riepilogo sconto. */
 function formatDelta(delta: number): string {
@@ -1316,8 +1336,7 @@ function GruppoVarianti<T extends string>({
   const base = prezzoDi(opzioni.find((o) => o.id === standardId));
   return (
     <fieldset>
-      <legend className="mb-1 text-sm font-medium text-ink">{legend}</legend>
-      <p className="mb-2 text-xs text-ink-subtle">{NOTA_STANDARD}</p>
+      <legend className="mb-2 text-sm font-medium text-ink">{legend}</legend>
       {/* Mobile-first: una colonna sotto sm — codice, prezzo e Δ stanno sulla
           stessa riga dell'hint e a 375px vogliono la larghezza intera. */}
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -1604,9 +1623,9 @@ function ComponentiRibalta({
       movimentoAngolare: "DUE_NOTTOLINI",
       // La famiglia antieffrazione disponibile per QUESTA geometria: in aria 4
       // le viti dritte non esistono, quindi si prende la prima che il registro
-      // pubblica invece di cablarne una.
-      incontroNottolino: gruppi.nottolino?.opzioni.find((o) => o.id.startsWith("ANTIEFFRAZIONE"))
-        ?.id,
+      // pubblica invece di cablarne una. La categoria la dichiara il registro
+      // (`eAntieffrazione`), non la forma del nome.
+      incontroNottolino: gruppi.nottolino?.opzioni.find((o) => eAntieffrazione(o.id))?.id,
       piastrinoAntieffrazione: true,
     });
   const spegni = () =>
@@ -1643,10 +1662,16 @@ function ComponentiRibalta({
 
   return (
     <div className="flex flex-col gap-6">
-      <p className="text-sm text-ink-muted">
-        Le scelte che il listino lascia aperte. Se il serramento è quello di sempre non c&apos;è
-        nulla da toccare: si va avanti.
-      </p>
+      {/* La nota sullo standard vale per TUTTI i gruppi di questo passo e si
+          dice QUI, una volta: ripetuta in ognuno erano sei copie della stessa
+          frase, e a 375px un muro davanti a codici e prezzi. */}
+      <div className="flex flex-col gap-1">
+        <p className="text-sm text-ink-muted">
+          Le scelte che il listino lascia aperte. Se il serramento è quello di sempre non c&apos;è
+          nulla da toccare: si va avanti.
+        </p>
+        <p className="text-xs text-ink-subtle">{NOTA_STANDARD}</p>
+      </div>
 
       {/* Errore della query, non del listino: senza dirlo, «prezzo non a
           catalogo» sarebbe un'affermazione su AGB fondata su un timeout. */}
@@ -1668,8 +1693,7 @@ function ComponentiRibalta({
           schermata esiste: dentro un pannello chiuso non la troverebbe nessuno. */}
       <div className="flex flex-col gap-3">
         <fieldset>
-          <legend className="mb-1 text-sm font-semibold text-ink">Sicurezza</legend>
-          <p className="mb-2 text-xs text-ink-subtle">{NOTA_STANDARD}</p>
+          <legend className="mb-2 text-sm font-semibold text-ink">Sicurezza</legend>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <RadioOption
               name="sicurezza"
