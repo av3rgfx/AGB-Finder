@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { KitEngine } from "./engine";
-import { KitGenerationError } from "./types";
+import { KitGenerationError, type KitInput } from "./types";
 
 const templateFindFirst = vi.fn();
 const productFindMany = vi.fn();
@@ -16,6 +16,15 @@ const validInput = {
 };
 
 const template = { id: "t1", rules: { engine: "artech-ar-legno", version: 1 } };
+
+// Golden vasistas (rules-artech-vasistas-legno.test.ts): il modulo dichiara
+// `varianti: []` — è il soggetto naturale per verificare il rifiuto di una
+// variante non dichiarata.
+const vasistasInput = {
+  windowType: "VASISTAS", widthMm: 600, heightMm: 1000, material: "LEGNO",
+  geometry: "A12_I13_B20", entrata: "E15", seatConfig: "STANDARD",
+  openingSide: "DESTRA", openingDir: "TIRARE", finish: "ARGENTO", series: "ARTECH",
+};
 
 beforeEach(() => {
   templateFindFirst.mockReset();
@@ -115,5 +124,19 @@ describe("KitEngine.generate", () => {
         }),
       }),
     );
+  });
+
+  // Strato 1 della garanzia sulle varianti (spec §6): il motore rifiuta, col
+  // nome della variante, una richiesta che ne porta una non dichiarata dal
+  // modulo — prima che quella scelta si perda in silenzio in una distinta.
+  it("rifiuta, col nome della variante, una richiesta che porta una variante non dichiarata dal modulo", async () => {
+    templateFindFirst.mockResolvedValue({
+      id: "tv",
+      rules: { engine: "artech-vasistas-legno", version: 1 },
+    });
+    const engine = new KitEngine(db);
+    // Il modulo vasistas dichiara `varianti: []`.
+    const input = { ...vasistasInput, variants: { squadraAngolare: "BASE" } } as KitInput;
+    await expect(engine.generate(input)).rejects.toThrow(/squadraAngolare/);
   });
 });
