@@ -477,7 +477,7 @@ più difficile da vedere. Gate: typecheck·lint·**test 883**·build · **browse
 **Nessuna migrazione**; **AZIONI OPS ESEGUITE** (run `30618326143`, 09:15Z, 12/12 verdi: `db:seed` → i tre clienti
 creati su Neon).
 
-+ **ANTIEFFRAZIONE + VARIANTI COMPONENTE ✅ (branch `claude/antieffrazione-feature-dv8d37`, PR DA APRIRE)**:
++ **ANTIEFFRAZIONE + VARIANTI COMPONENTE ✅ (PR #47 APERTA, ops ESEGUITE — resta solo il merge)**:
 l'utente ha chiesto l'antieffrazione per l'anta-ribalta. Preparandola erano emerse **due domande a cui il listino non
 risponde** (il «nottolino a fungo» va su serramenti sede 30? gli incontri si ordinano a viti inclinate o dritte?), e
 la risposta dell'utente ha riorientato il lavoro: «*non saprei risponderti … ha senso aggiungere una sezione finale
@@ -513,9 +513,9 @@ standard** che una richiesta identica scriverebbe `NULL`; e «prezzo non a catal
 AGB** — veniva detta mentre la query stava ancora caricando. **Il golden non si è mosso**: **16 righe / 21 pezzi /
 90,20 €**, gemello entrata 7,5 **96,29 €**; novità, ora sono asseriti anche l'**ordine assoluto delle righe** e le
 **16 descrizioni carattere per carattere**. Con l'**antieffrazione completa**: **17 righe / 22 pezzi / 110,13 €**,
-zero warning. Gate verdi (typecheck·lint·**test 992**·build 18 route) · **integration su catalogo reale 111 test
+zero warning. Gate verdi (typecheck·lint·**test 996**·build 18 route) · **integration su catalogo reale 111 test
 eseguiti** · **browser 33 + 10 check** (Chromium desktop e **375px**, screenshot guardati).
-**🔴 AZIONE OPS**: un run di «Ops — Neon» **sul ref del branch, PRIMA del merge** — `kit.get`/`generate`/`ricalcola`
+**✅ AZIONI OPS ESEGUITE** (run `30659737114`, 2026-07-31 19:36→19:53Z, 12/12 verdi, lanciato **sul ref del branch PRIMA del merge** → finestra di disservizio **zero**, come nella #44). Il motivo per cui l'ordine era obbligatorio: — `kit.get`/`generate`/`ricalcola`
 leggono con `findFirst` **senza `select`**, quindi fra deploy e migrazione fallirebbero le **letture** delle
 richieste, non solo le creazioni (è alla lettera l'incidente da venti minuti della PR #40). **Il raggio è più largo
 di «le richieste»**: anche `src/server/api/routers/dashboard.ts:40` fa `kitRequest.findMany` **senza `select`**,
@@ -528,3 +528,4 @@ insieme alla feature**; il seguito è un `variants` opzionale in input a `ricalc
 singola opzione omesso** (un `<button>` dentro il `<label>` di `RadioOption` è HTML non valido e ruberebbe il clic
 alla radio: servirebbe spezzare `RadioOption`); `dedupeRows` last-wins in `map-product.ts`; preview Vercel rotte su
 ogni PR. Spec/piano: `docs/superpowers/{specs,plans}/2026-07-31-varianti-componenti*`.
+**RESTA**: mergiare la PR #47, poi la **verifica funzionale** in produzione — anta-ribalta 550×1820 · aria 12/13/20 · entrata 15 · sinistra · chiusure ON, con **Antieffrazione** accesa → **17 righe / 22 pezzi / 110,13 €, zero warning**. Se ne escono 16 manca un codice a catalogo, e oggi il programma **accorcia la distinta** invece di fermarsi (`kit.ts:145`, difetto pre-esistente, §12 della spec).

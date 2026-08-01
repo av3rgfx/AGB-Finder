@@ -9,19 +9,26 @@
 
 | Campo | Valore |
 |-------|--------|
-| **Data** | 2026-07-31 — **ANTIEFFRAZIONE + VARIANTI COMPONENTE**: lavoro **completo e verificato**, **PR DA APRIRE** (push non ancora fatto) |
+| **Data** | 2026-07-31 — **ANTIEFFRAZIONE + VARIANTI COMPONENTE**: lavoro completo e verificato, **PR #47 APERTA**, **ops ESEGUITE**. Resta **solo il merge**. |
 | **Fase in corso** | Fase 1 — MVP Gestionale |
 | **Sotto-fase** | Kit engine: passo «Componenti» — le scelte che il motore prendeva da sé diventano scelte dell'agente |
-| **Branch git** | `claude/antieffrazione-feature-dv8d37` (ripartito da `main`) — **non pushato** |
-| **Stato deploy** | **LIVE ma NON allineato al branch**: c'è **una migrazione da applicare** (`20260731143758_kit_variants`). Ultimi run: `30614027728` e `30618326143` (31/07, entrambi verdi). |
-| **🔴 Azione ops** | **«Ops — Neon» sul ref del branch, PRIMA del merge** — vedi §RIPRENDI DA QUI. Nessun re-import necessario. |
-| **Aperto** | le **tre distinte reali** (quinta sessione) · domanda 29 · domanda 4 (sede 30 → sblocca il fungo) · preview Vercel rotte · mail ad AGB · audit `kit_requests` · `dedupeRows` |
+| **Branch git** | `claude/antieffrazione-feature-dv8d37`, pushato · **PR #47** https://github.com/av3rgfx/AGB-Finder/pull/47 · punta `6819308` |
+| **Stato deploy** | **Neon È GIÀ ALLINEATO**: la migrazione `20260731143758_kit_variants` è stata applicata **prima** del merge (run `30659737114`, 31/07 19:37Z). Il codice non è ancora in produzione: manca solo il merge della #47. |
+| **🔴 Azione ops** | **NESSUNA RESIDUA.** L'ordine giusto è già stato rispettato — vedi §AZIONE OPS. Dopo il merge resta la **verifica funzionale** (17 righe / 22 pezzi / 110,13 €). |
+| **Aperto** | le **tre distinte reali** (quinta sessione) · **cambiare una variante dopo la creazione non è possibile** (vedi sotto) · domanda 29 · domanda 4 (sede 30 → sblocca il fungo) · preview Vercel rotte · mail ad AGB · audit `kit_requests` · `dedupeRows` |
 
 ---
 
 > **▶ RIPRENDI DA QUI**
 >
-> ### Cosa è stato fatto (2026-07-31) — passo «Componenti», PR DA APRIRE
+> ### ▶ STATO IN UNA RIGA
+>
+> **Tutto fatto tranne il merge.** PR **#47** aperta, gate verdi, ops **eseguite sul ref del
+> branch** (run `30659737114`, 12/12 step verdi, 19:36→19:53Z): la colonna `variants` è già su
+> Neon **con il codice non ancora in produzione**, cioè finestra di disservizio **zero**. La
+> prossima sessione: **mergiare la #47**, poi la verifica funzionale di dieci secondi (sotto).
+>
+> ### Cosa è stato fatto (2026-07-31) — passo «Componenti»
 >
 > L'utente ha chiesto l'**antieffrazione** per l'anta-ribalta. Preparandola erano emerse due
 > domande a cui **il listino non risponde** — il «nottolino a fungo» va su serramenti sede 30?
@@ -59,7 +66,25 @@
 > **Fatto nuovo e dimostrato:** per l'**aria 4** il listino pubblica **solo le viti inclinate**,
 > quindi per **MC e Peruzzi le dritte non compaiono affatto** — non disabilitate, assenti.
 >
-> ### 🔴 AZIONE OPS — una sola, e va lanciata PRIMA del merge
+> ### ✅ AZIONE OPS — ESEGUITA, e nell'ordine giusto
+>
+> **Run `30659737114`** — «Ops — Neon» lanciato **sul ref del branch**, 2026-07-31 19:36→19:53Z,
+> **12/12 step verdi** su `6819308`: `migrate deploy` (19:37:20) · import catalogo (15'50") ·
+> `db:seed` + `db:seed:kit` · `embed:products`.
+>
+> **Perché conta l'ordine, e perché stavolta è andata bene.** La migrazione è arrivata su Neon
+> **prima** che il codice fosse in produzione, quindi la finestra di disservizio è **zero** —
+> come nella #44, contro i venti minuti della #40. Il motivo è nel codice, non nella prudenza:
+> vedi sotto.
+>
+> **Resta solo la verifica funzionale dopo il merge** (dieci secondi): `/richieste/nuova` →
+> aria 12 · interasse 13 · battuta 20 · entrata 15 · mano sinistra · chiusure ON → passo
+> «Componenti» → **Antieffrazione** → devono uscire **17 righe / 22 pezzi / 110,13 €, zero
+> warning**. Se ne escono **16**, manca un codice a catalogo: in quel caso il programma oggi
+> **accorcia la distinta** invece di fermarsi (`kit.ts:145` filtra le righe senza `productId`),
+> difetto pre-esistente descritto in §12 della spec e **non** corretto qui.
+>
+> #### Il contenuto della migrazione, e perché l'ordine era obbligatorio
 >
 > **Migrazione `20260731143758_kit_variants`**, e contiene **solo**:
 >
@@ -1179,4 +1204,4 @@ Actions** (rete aperta → Neon:5432 ok).
 | 2026-07-11 | **Fase 1f — Task 8 (e2e) VERIFICATO**: login admin reale fornito dall'utente → verifica end-to-end via **API backend** (browser bloccato da challenge Vercel↔proxy sandbox: scoperto e diagnosticato). Passano TUTTI i flussi contro Neon popolato: auth Better Auth (role ADMIN, createdAt=seed) · `dashboard.overview` · `product.search` **testuale+ibrida** (semantica «maniglia con chiave…» → A50107\* per solo vettore vec≈0.72) · **chat tool-use** (Gemini cita 5 codici reali) · **kit ARTECH golden** `KIT-2026-0001` **16 righe/21 pezzi/90,20€** zero warning · `settings.aiKeys.status` (Gemini da env). Creati dati test in staging (1 conv + KIT-2026-0001). **Resta solo Task 9** (docs + scelta fase successiva). | `claude/handoff-review-irs3gv` |
 | 2026-07-12 | **Fase 1g — kit multi-materiale (SDD subagent-driven)**: spec+piano approvati + **LLM Council** (4/4 → Opzione C: `kit-shared` meccanica condivisa, moduli per-materiale isolati). 5 task TDD (7 commit `b51aa11→544d94c`, **PR #15**, gate verdi): (1) fix LEGNO chiusure supplementari opzionali (default off); (2) estrazione `kit-shared.ts` (refactor puro); (3) modulo **PVC provvisorio** (cert ift, `//ASSUNZIONE`) + scheda esperto; (4) **ALLUMINIO gated** — scoperto che il listino 2026 NON ha composizione alluminio («PLANA»=cerniera complanare legno/PVC, non alu, assunzione piano falsificata) → modulo rifiuta + `isActive:false` + domande esperto; (5) colonna `KitRequest.supplementary_closures` + migrazione + wiring `kit.generate` + wizard (PVC on/provvisorio, ALLUMINIO off, toggle). Task 1-3 review individuali *Approved*; Task 4-5 fatti inline (session limit) + review finale inline. **Resta**: merge PR #15 · `migrate deploy`+`db:seed:kit` su Neon al deploy · validazione esperto (`docs/superpowers/kit-assunzioni/`). | `claude/handoff-review-irs3gv` (PR #15) |
 | 2026-07-25 | **BONIFICA KIT ARTECH LEGNO** (8 task TDD, un commit per task, dopo il merge #32): studio di tutti i moduli kit contro il **listino AGB 2026** → dei 4 template attivi, **3 producevano distinte non ordinabili**. **PVC spento** (i 4 codici material-specific esistono solo nelle pagine-certificato ift p0013 (11)/p0395 (393), senza prezzo; altri 7 dedotti per simmetria non esistono affatto) · **battente spento** (schema p0416 (414) = 21 voci, il modulo ne generava 5: mancava la **sospensione superiore**; schema composito → terna cerniere non decidibile) · **pilota corretto** (supporto cerniera `A50801.01.0N`→**`A50805.05.DX/.SX`**, banda cremonese GR02 610, descrizione incontro ribalta 9x18) · **guardia `assertPilotGeometry`** (aria/interasse/battuta/sede erano raccolti e ignorati) · **vasistas riscritto** dallo schema p0418 (416): forbici per **LBB**, via DSS+incontro DSS, dentro le **cerniere** (voci 10-11-12) e il 2° terminale, `sashWeightKg` opzionale per le NB sul peso → golden **13 righe/19 pezzi** · **parser catalogo allargato** ai segmenti alfanumerici (**+1.297 codici a prezzo, 6.191→7.488**) · schede `kit-assunzioni/` riscritte come esito + nuova `legno.md` con l'indice **globale** delle 10 domande per l'esperto. Attive: **anta-ribalta LEGNO + vasistas LEGNO**. Gate: typecheck·lint·**test 589/11 skip**. Verifica browser wizard desktop+375px (8 screenshot). **AZIONI OPS AL MERGE**: «Ops — Neon» completo (migrazione `kit_sash_weight` + **RE-IMPORT catalogo** + `db:seed:kit` + embed) e audit `kit_requests`. | `claude/kit-engine-study-wfo2hq` → PR #33 + #34 mergiate |
-| 2026-07-31 | **ANTIEFFRAZIONE + VARIANTI COMPONENTE** (10 task TDD, un commit per task): le due domande senza risposta nel listino (il «fungo» è per sede 30? viti inclinate o dritte?) diventano **scelte dell'agente** nel nuovo passo **«Componenti»** del wizard, per indicazione esplicita dell'utente → **domande 2 e 30 CHIUSE** senza essere risposte. Registro `artech-varianti.ts` (**74 codici** scritti per esteso, verificati sul catalogo reale) · colonna `kit_requests.variants JSONB` (migrazione `20260731143758_kit_variants`, nessun backfill, NULL = standard) · **garanzia in due strati** contro la variante inerte (`RuleModule.varianti` obbligatorio + `no-silent-fields` derivato dal modulo) · ciclo di import sciolto col file foglia `varianti-schema.ts` + regola ESLint. Il **fungo resta fuori**: il listino lo lega alla sede 30 nei due versi, che il motore rifiuta a monte. Golden invariato **16 righe/21 pezzi/90,20 €** (ora asseriti anche ordine righe e 16 descrizioni); antieffrazione completa **17/22/110,13 €**. Gate: typecheck·lint·**test 992**·build 18 route · **integration 111 eseguiti** · browser 33+10 check (desktop e 375px). **AZIONE OPS: «Ops — Neon» sul ref del branch PRIMA del merge** — senza la colonna si rompono le **letture** di `kit.get`/`generate`/`ricalcola` **e `dashboard.overview`** (`dashboard.ts:40`, `findMany` senza `select`), cioè la pagina d'ingresso di tutti gli agenti; nessun re-import. **Le varianti non si cambiano dopo la creazione** (si rifà il wizard): da dire agli agenti. | `claude/antieffrazione-feature-dv8d37` (PR da aprire) |
+| 2026-07-31 | **ANTIEFFRAZIONE + VARIANTI COMPONENTE** (10 task TDD, un commit per task): le due domande senza risposta nel listino (il «fungo» è per sede 30? viti inclinate o dritte?) diventano **scelte dell'agente** nel nuovo passo **«Componenti»** del wizard, per indicazione esplicita dell'utente → **domande 2 e 30 CHIUSE** senza essere risposte. Registro `artech-varianti.ts` (**74 codici** scritti per esteso, verificati sul catalogo reale) · colonna `kit_requests.variants JSONB` (migrazione `20260731143758_kit_variants`, nessun backfill, NULL = standard) · **garanzia in due strati** contro la variante inerte (`RuleModule.varianti` obbligatorio + `no-silent-fields` derivato dal modulo) · ciclo di import sciolto col file foglia `varianti-schema.ts` + regola ESLint. Il **fungo resta fuori**: il listino lo lega alla sede 30 nei due versi, che il motore rifiuta a monte. Golden invariato **16 righe/21 pezzi/90,20 €** (ora asseriti anche ordine righe e 16 descrizioni); antieffrazione completa **17/22/110,13 €**. Gate: typecheck·lint·**test 996**·build 18 route · **integration 111 eseguiti** · browser 33+10 check (desktop e 375px). **AZIONI OPS ESEGUITE** (run `30659737114`, 19:36→19:53Z, 12/12 verdi, lanciato **sul ref del branch prima del merge** → disservizio **zero**): senza la colonna si sarebbero rotte le **letture** di `kit.get`/`generate`/`ricalcola` **e `dashboard.overview`** (`dashboard.ts:40`, `findMany` senza `select`), cioè la pagina d'ingresso di tutti gli agenti; nessun re-import. **Le varianti non si cambiano dopo la creazione** (si rifà il wizard): da dire agli agenti. | `claude/antieffrazione-feature-dv8d37` — **PR #47 aperta** |
