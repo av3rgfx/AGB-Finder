@@ -497,6 +497,197 @@ describe("kit.ricalcola", () => {
   });
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// `ricalcola` con `variants` (2026-08-01). Prima di oggi le varianti scelte nel
+// passo «Componenti» non si cambiavano più dopo la creazione: si rifaceva il
+// wizard da capo.
+//
+// Contratto: assente = eredita verbatim · `{}` = reset esplicito allo standard
+// (scrive NULL) · oggetto = SOSTITUZIONE INTEGRALE, mai un merge.
+// ─────────────────────────────────────────────────────────────────────────────
+describe("kit.ricalcola — varianti", () => {
+  const emessa = {
+    id: "req1",
+    agentId: "agent1",
+    requestNumber: "KIT-2026-0007",
+    status: "COMPLETED",
+    supersededById: null,
+    ...validInput,
+    supplementaryClosures: true,
+    sashWeightKg: null,
+    tourSchema: null,
+    notes: null,
+    customerId: null,
+    discountPercent: null,
+    variants: { squadraAngolare: "BASE" },
+  };
+
+  /** Mock perché la validazione in memoria arrivi in fondo senza sollevare. */
+  function preparaRicalcolo(row: Record<string, unknown> = emessa) {
+    requestCount.mockResolvedValue(11);
+    requestFindFirst.mockResolvedValue(row);
+    templateFindFirst.mockResolvedValue({
+      id: "t1",
+      rules: { engine: "artech-ar-legno", version: 1 },
+    });
+    // Ogni codice risolve a un prodotto con prezzo: al router serve che il
+    // motore non sollevi, non i prezzi veri — quelli li asserisce il gate su
+    // catalogo reale (`engine.integration.test.ts`).
+    productFindMany.mockImplementation(({ where }) =>
+      Promise.resolve(
+        (where.agbCode.in as string[]).map((code: string) => ({
+          id: "p_" + code,
+          agbCode: code,
+          name: "N " + code,
+          basePrice: { toString: () => "1.5" },
+        })),
+      ),
+    );
+    requestCreate.mockResolvedValue({ id: "req2", requestNumber: "KIT-2026-0012" });
+  }
+
+  it("senza `variants` la nuova versione eredita quelle della riga", async () => {
+    preparaRicalcolo();
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await caller.kit.ricalcola({ kitRequestId: "req1" });
+    expect(requestCreate.mock.calls[0]![0].data.variants).toEqual({ squadraAngolare: "BASE" });
+  });
+
+  it("con `variants` la nuova versione porta le nuove, non un merge", async () => {
+    preparaRicalcolo();
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await caller.kit.ricalcola({
+      kitRequestId: "req1",
+      variants: { piastrinoAntieffrazione: true },
+    });
+    // `squadraAngolare` NON sopravvive: una variante che l'agente non vede più
+    // a schermo non deve restare nel dato — sarebbe «campo persistito e mai
+    // dichiarato», la stessa classe di difetto pagata sette volte.
+    expect(requestCreate.mock.calls[0]![0].data.variants).toEqual({
+      piastrinoAntieffrazione: true,
+    });
+  });
+
+  it("`variants: {}` è il reset esplicito: scrive NULL, non {}", async () => {
+    preparaRicalcolo();
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await caller.kit.ricalcola({ kitRequestId: "req1", variants: {} });
+    expect(requestCreate.mock.calls[0]![0].data.variants).toBe(Prisma.DbNull);
+  });
+
+  it("un blocco che si pota a vuoto scrive NULL, non {}", async () => {
+    preparaRicalcolo();
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await caller.kit.ricalcola({
+      kitRequestId: "req1",
+      variants: { piastrinoAntieffrazione: false },
+    });
+    expect(requestCreate.mock.calls[0]![0].data.variants).toBe(Prisma.DbNull);
+  });
+
+  // IL TEST CHE CONTA. La validazione sta PRIMA di qualunque scrittura.
+  // `COMPENSATORE` non è pubblicata a listino per l'interasse 8,5 (è la
+  // geometria del cliente MC): il modulo solleva. Se il rifiuto arrivasse dopo,
+  // resterebbe una richiesta superata che punta a una riga non generabile — e
+  // la vecchia sarebbe congelata, perché `generate` e `ricalcola` la rifiutano
+  // entrambi.
+  it("una variante non disponibile per quella geometria è rifiutata SENZA scrivere", async () => {
+    preparaRicalcolo({ ...emessa, geometry: "A4_I85_B15", variants: null });
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await expect(
+      caller.kit.ricalcola({
+        kitRequestId: "req1",
+        variants: { squadraAngolare: "COMPENSATORE" },
+      }),
+    ).rejects.toThrow(/non disponibile|non la pubblica/);
+    expect(requestCreate).not.toHaveBeenCalled();
+    expect(requestUpdateMany).not.toHaveBeenCalled();
+    expect(activityCreate).not.toHaveBeenCalled();
+  });
+
+  it("su una bozza scrive sulla stessa riga: nessuna versione, nessun numero consumato", async () => {
+    preparaRicalcolo({ ...emessa, status: "DRAFT" });
+    requestUpdate.mockResolvedValue({});
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    const out = await caller.kit.ricalcola({
+      kitRequestId: "req1",
+      variants: { piastrinoAntieffrazione: true },
+    });
+    expect(out).toEqual({ id: "req1", requestNumber: "KIT-2026-0007" });
+    expect(requestUpdate).toHaveBeenCalledWith({
+      where: { id: "req1" },
+      data: { variants: { piastrinoAntieffrazione: true } },
+    });
+    expect(requestCreate).not.toHaveBeenCalled();
+  });
+
+  it("su una bozza il reset scrive NULL sulla stessa riga", async () => {
+    preparaRicalcolo({ ...emessa, status: "DRAFT" });
+    requestUpdate.mockResolvedValue({});
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await caller.kit.ricalcola({ kitRequestId: "req1", variants: {} });
+    expect(requestUpdate).toHaveBeenCalledWith({
+      where: { id: "req1" },
+      data: { variants: Prisma.DbNull },
+    });
+  });
+
+  it("su una bozza SENZA `variants` non tocca la colonna (comportamento storico)", async () => {
+    preparaRicalcolo({ ...emessa, status: "DRAFT" });
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await caller.kit.ricalcola({ kitRequestId: "req1" });
+    expect(requestUpdate).not.toHaveBeenCalled();
+  });
+
+  // Il ramo TOUR non dichiara varianti: `kitInputFromRequest` non le
+  // proporrebbe nemmeno al parse, quindi senza questo rifiuto verrebbero
+  // raccolte, persistite e MAI LETTE da nessun modulo.
+  it("su una richiesta TOUR le varianti sono rifiutate, con la serie nel messaggio", async () => {
+    preparaRicalcolo({
+      ...emessa,
+      series: "TOUR",
+      windowType: "BILICO",
+      geometry: null,
+      entrata: null,
+      tourSchema: 2,
+      variants: null,
+    });
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await expect(
+      caller.kit.ricalcola({
+        kitRequestId: "req1",
+        variants: { piastrinoAntieffrazione: true },
+      }),
+    ).rejects.toThrow(/TOUR/);
+    expect(requestCreate).not.toHaveBeenCalled();
+  });
+
+  it("una chiave sconosciuta è rifiutata dallo schema, prima di ogni scrittura", async () => {
+    preparaRicalcolo();
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await expect(
+      caller.kit.ricalcola({
+        kitRequestId: "req1",
+        // @ts-expect-error — chiave inesistente: `variantiSchema` è `.strict()`
+        variants: { squadraAngolareX: "BASE" },
+      }),
+    ).rejects.toThrow();
+    expect(requestCreate).not.toHaveBeenCalled();
+  });
+
+  it("la guardia sulla riga superata scatta anche portando varianti", async () => {
+    preparaRicalcolo({ ...emessa, supersededById: "req9" });
+    const caller = createCallerFactory(appRouter)(makeCtx(agent));
+    await expect(
+      caller.kit.ricalcola({
+        kitRequestId: "req1",
+        variants: { piastrinoAntieffrazione: true },
+      }),
+    ).rejects.toThrow(/già.*ricalcolata/i);
+    expect(requestCreate).not.toHaveBeenCalled();
+  });
+});
+
 describe("kit.create — il cliente e il suo sconto", () => {
   beforeEach(() => {
     requestCount.mockResolvedValue(0);

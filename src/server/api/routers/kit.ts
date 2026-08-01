@@ -5,6 +5,7 @@ import { agentProcedure, createTRPCRouter } from "@/server/api/trpc";
 import { KitEngine } from "@/server/kit/engine";
 import { KitGenerationError, kitInputSchema } from "@/server/kit/types";
 import { kitInputFromRequest } from "@/server/kit/from-request";
+import { componiVarianti, variantiSchema } from "@/server/kit/varianti-schema";
 import {
   applicaSconto,
   centToEuro,
@@ -198,7 +199,22 @@ export const kitRouter = createTRPCRouter({
    * può esserlo di nuovo: si ricalcola sempre la versione più recente.
    */
   ricalcola: agentProcedure
-    .input(z.object({ kitRequestId: z.string().min(1) }))
+    .input(
+      z.object({
+        kitRequestId: z.string().min(1),
+        /**
+         * ASSENTE = eredita verbatim (comportamento storico, invariato).
+         * PRESENTE = **sostituisce integralmente**, mai un merge: una variante
+         * che l'agente non vede più a schermo non deve sopravvivere nel dato.
+         * `{}` = reset esplicito allo standard del programma, e non è un valore
+         * inventato per l'occasione — le cinque chiavi sono tutte `.optional()`
+         * dentro uno `.strict()`, quindi `{}` era già valido e già significava
+         * «nessuna variante». Senza dichiararlo, accendere l'antieffrazione
+         * sarebbe stata un'operazione **a senso unico**.
+         */
+        variants: variantiSchema.optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const request = await ctx.db.kitRequest.findFirst({
         where: { id: input.kitRequestId, agentId: ctx.session.user.id },
@@ -206,14 +222,78 @@ export const kitRouter = createTRPCRouter({
       if (!request)
         throw new TRPCError({ code: "NOT_FOUND", message: "Richiesta kit non trovata." });
 
-      if (request.status === "DRAFT")
-        return { id: request.id, requestNumber: request.requestNumber };
+      const sostituisce = input.variants !== undefined;
 
-      if (request.supersededById)
+      // Il ramo TOUR non dichiara varianti (`kitInputSchema` è un'unione
+      // discriminata su `series`, e il modulo bilico espone `varianti: []`).
+      // Senza questo rifiuto `kitInputFromRequest` non le proporrebbe nemmeno
+      // al parse: verrebbero raccolte, persistite e **mai lette da nessun
+      // modulo** — il difetto che questo progetto ha già pagato sette volte.
+      if (sostituisce && request.series === "TOUR")
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "La serie TOUR non ha varianti componente: la richiesta ne porta, ma nessuna " +
+            "riga di distinta le userebbe.",
+        });
+
+      // `undefined` = eredita · `null` = reset esplicito → NULL a DB.
+      // Si pota PRIMA di scrivere: un `{}` sulla colonna sarebbe uno standard
+      // materializzato dove una richiesta identica creata da zero scrive NULL —
+      // due righe indistinguibili sul serramento e diverse a DB.
+      const variantiFinali = sostituisce
+        ? (componiVarianti(input.variants!) ?? null)
+        : undefined;
+
+      // La guardia sulla riga SUPERATA sale qui, sopra la validazione: una riga
+      // già ricalcolata va rifiutata comunque, e farle attraversare il motore
+      // sarebbe lavoro per un esito impossibile. Il test `status !== "DRAFT"`
+      // conserva l'ordine storico — una bozza non passava da questo controllo
+      // nemmeno prima, perché usciva al `return` qui sotto.
+      if (request.status !== "DRAFT" && request.supersededById)
         throw new TRPCError({
           code: "CONFLICT",
           message: "Questa richiesta è già stata ricalcolata: aprire la versione più recente.",
         });
+
+      // VALIDAZIONE PRIMA DI QUALUNQUE SCRITTURA: le varianti
+      // disponibili DIPENDONO dalla geometria (per
+      // l'interasse 8,5 il listino pubblica due squadre angolari su quattro;
+      // per l'aria 4 le viti dritte non esistono affatto), e quel controllo
+      // vive nei moduli, che sollevano `KitGenerationError`. Eseguire il motore
+      // in memoria **è** la validazione: non esiste un secondo validatore che
+      // possa disallinearsi dalle tabelle dei codici.
+      //
+      // Se il rifiuto arrivasse dopo, resterebbe una richiesta superata che
+      // punta a una riga non generabile — e la vecchia sarebbe congelata,
+      // perché `generate` e `ricalcola` la rifiutano entrambi.
+      if (sostituisce) {
+        const prova = (() => {
+          try {
+            return kitInputFromRequest({ ...request, variants: variantiFinali });
+          } catch (error) {
+            return toTRPC(error);
+          }
+        })();
+        await new KitEngine(ctx.db).generate(prova).catch(toTRPC);
+      }
+
+      if (request.status === "DRAFT") {
+        // Su una bozza non c'è nulla di emesso da proteggere: le nuove varianti
+        // si scrivono sulla riga esistente e il `generate` successivo rifà la
+        // distinta in loco. Nessuna versione, nessun numero `KIT-` consumato —
+        // è la stessa ragione per cui «Rigenera» riscrive in loco.
+        if (variantiFinali !== undefined)
+          await ctx.db.kitRequest.update({
+            where: { id: request.id },
+            data: { variants: variantiFinali ?? Prisma.DbNull },
+          });
+        return { id: request.id, requestNumber: request.requestNumber };
+      }
+
+      // (La guardia sulla riga superata è salita sopra la validazione: qui
+      // sarebbe una seconda copia della stessa condizione, e due copie di un
+      // controllo di stato divergono al primo che si tocca.)
 
       const year = new Date().getFullYear();
       const inYear = await ctx.db.kitRequest.count({
@@ -246,10 +326,18 @@ export const kitRouter = createTRPCRouter({
             openingSide: request.openingSide,
             openingDir: request.openingDir,
             supplementaryClosures: request.supplementaryClosures,
-            // La nuova versione eredita le varianti: ricalcolare non è
-            // rinegoziare la configurazione. È LA riga per cui la spec §4 ha
-            // scelto una colonna JSON invece di sei colonne tipizzate.
-            variants: request.variants ?? Prisma.DbNull,
+            // Senza `variants` in input la nuova versione **eredita**:
+            // ricalcolare non è rinegoziare la configurazione. Con `variants`
+            // in input, l'agente le ha appena scelte nel passo «Componenti», e
+            // la nuova versione nasce con quelle — il che non riscrive nulla di
+            // emesso, perché è una riga nuova. È LA riga per cui la spec §4
+            // della #47 ha scelto una colonna JSON invece di sei tipizzate.
+            // `??` qui NON si può usare: tratterebbe `null` come nullish e
+            // farebbe ricadere il RESET sull'ereditarietà, cioè l'esatto
+            // contrario di ciò che l'agente ha chiesto. I due valori vanno
+            // distinti alla lettera — `undefined` = eredita, `null` = resetta.
+            variants:
+              (variantiFinali === undefined ? request.variants : variantiFinali) ?? Prisma.DbNull,
             tourSchema: request.tourSchema,
             notes: request.notes,
             customerId: request.customerId,
