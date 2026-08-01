@@ -9,7 +9,22 @@
 
 | Campo | Valore |
 |-------|--------|
-| **Data** | 2026-07-31 — **ANTIEFFRAZIONE + VARIANTI COMPONENTE**: lavoro **completo e verificato**, **PR DA APRIRE** (push non ancora fatto) |
+| **Data** | 2026-08-01 — **CAMBIARE LE VARIANTI DOPO LA CREAZIONE**: lavoro completo e verificato, **PR da aprire** |
+| **Fase in corso** | Fase 1 — MVP Gestionale |
+| **Sotto-fase** | Kit engine: le varianti del passo «Componenti» diventano modificabili su una richiesta già emessa |
+| **Branch git** | `claude/verifica-distinte-reali-8zz9mw` (ripartito da `main` dopo il merge della #47) |
+| **Stato deploy** | **LIVE e allineato**: la #47 è mergiata e le sue ops sono state eseguite (run `30659737114`, sul ref del branch **48 minuti prima del merge** → disservizio zero). |
+| **🟢 Azione ops** | **NESSUNA.** Nessuna migrazione: la colonna `variants` esiste dalla #47 ed è già su Neon. Nessun re-import: nessun codice nuovo. |
+| **Verifica funzionale #47** | ✅ fatta a inizio sessione sul catalogo reale e dal wizard: antieffrazione **17 righe / 22 pezzi / 110,13 €**, zero warning. |
+| **Aperto** | le **tre distinte reali** (sesta sessione) · domanda 31 (numero richiesta o versione?) · domanda 4 · domanda 29 · preview Vercel rotte · mail ad AGB · audit `kit_requests` · `dedupeRows` |
+
+---
+
+## Sessione precedente
+
+| Campo | Valore |
+|-------|--------|
+| **Data** | 2026-07-31 — **ANTIEFFRAZIONE + VARIANTI COMPONENTE** — **PR #47 MERGIATA** |
 | **Fase in corso** | Fase 1 — MVP Gestionale |
 | **Sotto-fase** | Kit engine: passo «Componenti» — le scelte che il motore prendeva da sé diventano scelte dell'agente |
 | **Branch git** | `claude/antieffrazione-feature-dv8d37` (ripartito da `main`) — **non pushato** |
@@ -20,6 +35,117 @@
 ---
 
 > **▶ RIPRENDI DA QUI**
+>
+> ### Cosa è stato fatto (2026-08-01)
+>
+> **Prima cosa: la verifica funzionale della #47, e il buco che ha scoperto.** L'antieffrazione
+> esce davvero — sul catalogo reale importato dal listino vero (7.488 prodotti) e **dal wizard**,
+> con Chromium: **17 righe / 22 pezzi / 110,13 €, zero warning**. Ma `110,13 €` **non era
+> asserito da nessun test**: il test del modulo conta righe e pezzi e **non vede i prezzi affatto**
+> (i moduli restituiscono `KitLine` senza prezzo, che il motore risolve dopo contro il catalogo),
+> quindi il numero viveva solo nei `.md` — una fotografia, che il giorno in cui AGB cambia un
+> prezzo resta identica e sbagliata.
+>
+> **Poi la feature: le varianti si cambiano dopo la creazione.** Prima si rifaceva il wizard da
+> capo. Ora sulla scheda c'è **«Modifica componenti»**, che riapre il wizard precompilato sulla
+> richiesta; al conferma nasce una **nuova versione** con le varianti scelte.
+>
+> ### Le tre decisioni, e perché
+>
+> **1. Solo il passo «Componenti» è editabile** (verdetto `/llm-council`, 5 advisor su 5 + 3 peer
+> review). Non è prudenza, è il tipo: `ricalcola({id, variants?})` **congela la geometria nella
+> firma**, quindi lo spazio rappresentabile resta (geometria immutata) × (varianti valide per
+> quella geometria) e la combinazione mai validata diventa **irrappresentabile**, non
+> «sconsigliata». Le due alternative — un diff che decide fra versione e richiesta nuova, e
+> `ricalcola` che accetta l'intera `specs` — aprivano un **secondo percorso di scrittura** su
+> `specs`, che l'unione discriminata e `from-request.ts` esistono per impedire.
+>
+> **2. `{}` è il reset, e non è un valore inventato.** Le cinque chiavi erano già tutte
+> `.optional()` dentro uno `.strict()`: `{}` era già valido e già significava «nessuna variante».
+> Dichiararlo nel contratto è ciò che impedisce all'operazione di essere **a senso unico** —
+> altrimenti si accende l'antieffrazione e non la si spegne più. Si normalizza a `NULL` in
+> scrittura, perché `{}` sulla colonna sarebbe uno standard materializzato dove una richiesta
+> identica creata da zero scrive `NULL`.
+>
+> **3. L'idratazione del wizard passa da `kitInputFromRequest`**, la stessa funzione del motore.
+> È il rilievo più importante del council, ed era fuori dalle tre opzioni: un prefill che
+> rileggesse le colonne per conto suo sarebbe una **seconda ricostruzione**, e se divergesse
+> l'agente vedrebbe a schermo una configurazione che la riga non codifica e la confermerebbe —
+> senza che alcun test se ne accorga, perché non ci sarebbe niente da confrontare. Possibile
+> perché **solo `engine.ts` porta `server-only`**. Corollario: il test «prefill === fromRequest»
+> che la spec chiedeva **non serve**, perché non esistono due funzioni che possano divergere.
+>
+> ### Difetti trovati dai test mentre scrivevo, non dopo
+>
+> - **`variantiFinali ?? request.variants` faceva ricadere il RESET sull'ereditarietà**, perché
+>   `??` tratta `null` come nullish: `undefined` (eredita) e `null` (resetta) vanno distinti alla
+>   lettera. Senza il test su `{}` sarebbe finito in produzione, e spegnere l'antieffrazione non
+>   avrebbe fatto nulla **in silenzio**.
+> - La guardia sulla riga superata girava **dopo** la validazione: una riga già condannata
+>   attraversava il motore per un esito impossibile. Salita sopra, e la vecchia copia **rimossa**
+>   invece di lasciarne due.
+> - La rinomina «Ricalcola» → «Nuova versione» era **a metà**: due stringhe visibili all'agente
+>   (l'empty-state della distinta e il messaggio di `CONFLICT` di `kit.generate`) nominavano
+>   ancora il pulsante vecchio, mandandolo a cercare qualcosa che non c'è più.
+>
+> ### Il ciclo di import, di nuovo — e chiuso di nuovo
+>
+> `ComponentiRibalta` usa `RadioOption`, che viveva nel wizard: estrarre solo la prima avrebbe
+> chiuso un ciclo **wizard → componenti → wizard**, la stessa forma del ciclo di valori della #47.
+> `RadioOption` è uscita insieme, in `src/components/kit/radio-option.tsx`.
+>
+> ### I numeri
+>
+> | | |
+> |---|---|
+> | Golden | **16 righe / 21 pezzi / 90,20 €** — invariato |
+> | Gemello entrata 7,5 | **96,29 €** — invariato |
+> | Antieffrazione | **17 / 22 / 110,13 €** — ora **asserito** sul catalogo reale |
+> | Bilico TOUR | **450,03 · 766,51 · 433,46 €** — erano `toBeGreaterThan(0)`, ora esatti |
+> | Test | 996 → **1.025** · build 18 route |
+> | Gate su catalogo reale | **112 test eseguiti**, non skippati |
+> | Browser | **22/22 desktop · 22/22 a 375px** |
+>
+> La verifica browser ha percorso il **ciclo intero**: 90,20 € → «Modifica componenti» →
+> antieffrazione → **110,13 € su un numero nuovo**, la vecchia marcata come ricalcolata → di nuovo
+> «Modifica componenti» → «Normale» → **ritorno a 90,20 €**. È la prova che il reset funziona, cioè
+> che l'operazione è reversibile.
+>
+> ### 🟢 Azioni ops: NESSUNA
+>
+> Nessuna migrazione (la colonna `variants` esiste dalla #47 ed è su Neon), nessun re-import
+> (nessun codice nuovo), nessun seed. Si merge e basta.
+>
+> ### Debito noto residuo
+>
+> - **Le tre distinte reali: ANCORA NO.** Sesta sessione. Vale più di tutto il resto: senza,
+>   `corsa = altezza − 420` resta una retta tirata per un punto solo, e ora anche le **varianti**
+>   (quale squadra angolare ordinano davvero MC, Peruzzi e Fosca? quale incontro ribalta?) restano
+>   non confrontate. Basta una foto di un ordine vero, purché con **altezza diversa da 1820**.
+> - **`requestNumber` con `count()+1`** → domanda **31** e la nota tecnica nei debiti sopra.
+> - **`no-silent-fields.test.ts`: `CASI` non è legato a `RULE_MODULES`** (le varianti sì).
+> - **`dedupeRows` last-wins** in `map-product.ts`.
+> - **Le preview di Vercel falliscono su OGNI PR** — ipotesi mai smentita: env solo per
+>   *Production* e non per *Preview*. Nessun codice da scrivere, ma una preview che non parte è un
+>   collaudo che non hai.
+> - **«Visualizza nel listino» per singola opzione: ancora OMESSO** (un `<button>` dentro il
+>   `<label>` di `RadioOption` è HTML non valido). Ora che `RadioOption` è un file suo, spezzarla
+>   costa meno.
+>
+> ### Lezioni operative nuove
+>
+> - **`??` non distingue `null` da `undefined`**, e in un contratto dove i due significano cose
+>   opposte («resetta» contro «eredita») è un difetto silenzioso. Distinguerli alla lettera.
+> - **Una rinomina di etichetta va cercata in tutto il codice**, messaggi d'errore del router
+>   compresi: `grep «NomeVecchio»` prima di dire fatto.
+> - **Postgres in questo container muore da solo**: se un test gated risulta «skippato» senza
+>   ragione, controllare `docker ps` prima di sospettare la variabile d'ambiente. È costato dieci
+>   minuti oggi.
+>
+> ---
+>
+> ### (Sessione precedente, 2026-07-31)
+
 >
 > ### Cosa è stato fatto (2026-07-31) — passo «Componenti», PR DA APRIRE
 >
@@ -172,19 +298,21 @@
 >
 > ### Debito noto residuo
 >
-> - 🆕 🔴 **Le varianti NON si possono cambiare dopo la creazione — e va detto agli agenti.**
->   `kit.ricalcola` (`src/server/api/routers/kit.ts:249-252`) le fa ereditare **verbatim** alla
->   nuova versione, e nessuna mutation le modifica (`kit.setVariants` non esiste): chi ha creato
->   una richiesta «Normale» e poi vuole l'antieffrazione **deve rifare il wizard da capo**. La
->   spec diceva in due punti che «si usa il ricalcolo versionato» — **falso**, corretto nel
->   commit di chiusura review. **Questa frase va nella comunicazione agli agenti insieme alla
->   feature**: senza, è la prima segnalazione che arriva dal campo. Il seguito è piccolo e già
->   individuato: un `variants` **opzionale** nell'input di `ricalcola` (assente = eredita,
->   presente = sostituisce), che non riscrive nulla di emesso perché la nuova versione nasce
->   comunque `DRAFT`.
-> - 🆕 **`nuova-client.tsx` è a 1.979 righe**, e i **~330** del passo «Componenti»
->   (`ComponentiRibalta`) sarebbero estraibili in `src/components/kit/` senza toccare la logica.
->   Non fatto: sarebbe stato un refactor dentro una feature.
+> - ✅ **CHIUSA il 2026-08-01** — «le varianti non si cambiano dopo la creazione»: ora si
+>   cambiano, da «Modifica componenti» sulla scheda. Vedi la sessione in testa.
+> - ✅ **CHIUSA il 2026-08-01** — l'estrazione di `ComponentiRibalta`: `nuova-client.tsx` è
+>   passato da 1.983 a 1.383 righe.
+> - 🆕 **`requestNumber` è coniato con `count() + 1`** su una colonna `@unique` (`kit.ts:47-50` e
+>   `219-222`): due richieste create nello stesso istante collidono → errore all'agente, nessuna
+>   corruzione, il riprova funziona. Portato al council il 2026-08-01 e tenuto **fuori** dalla PR.
+>   Verificato allora che **non esiste** alcun `kitRequest.delete`/`deleteMany` e che nessuno dei
+>   quattro `onDelete: Cascade` dello schema punta a `KitRequest`: lo scenario «il conteggio scende
+>   e il numero successivo RIPETE uno già mandato a un cliente» **oggi non è raggiungibile**.
+>   ⚠️ Il rimedio ovvio **non funziona**: un retry attorno alla `create` non basta, perché in
+>   `ricalcola` il `count()` sta **fuori** dalla `$transaction` e la `create` dentro — un `P2002`
+>   aborta l'intero callback, `updateMany` compreso. La domanda a monte («il numero identifica la
+>   richiesta o la versione?») è la **31** in `DOMANDE-APERTE.md`, e la decide l'ufficio
+>   commerciale.
 > - 🆕 **«Visualizza nel listino» per singola opzione: OMESSO.** Un `<button>` dentro il
 >   `<label>` di `RadioOption` è **HTML non valido** e ruberebbe il clic alla radio; servirebbe
 >   spezzare `RadioOption` (anchor overlay + fratello z-index, come le card dell'archivio).
@@ -1179,4 +1307,5 @@ Actions** (rete aperta → Neon:5432 ok).
 | 2026-07-11 | **Fase 1f — Task 8 (e2e) VERIFICATO**: login admin reale fornito dall'utente → verifica end-to-end via **API backend** (browser bloccato da challenge Vercel↔proxy sandbox: scoperto e diagnosticato). Passano TUTTI i flussi contro Neon popolato: auth Better Auth (role ADMIN, createdAt=seed) · `dashboard.overview` · `product.search` **testuale+ibrida** (semantica «maniglia con chiave…» → A50107\* per solo vettore vec≈0.72) · **chat tool-use** (Gemini cita 5 codici reali) · **kit ARTECH golden** `KIT-2026-0001` **16 righe/21 pezzi/90,20€** zero warning · `settings.aiKeys.status` (Gemini da env). Creati dati test in staging (1 conv + KIT-2026-0001). **Resta solo Task 9** (docs + scelta fase successiva). | `claude/handoff-review-irs3gv` |
 | 2026-07-12 | **Fase 1g — kit multi-materiale (SDD subagent-driven)**: spec+piano approvati + **LLM Council** (4/4 → Opzione C: `kit-shared` meccanica condivisa, moduli per-materiale isolati). 5 task TDD (7 commit `b51aa11→544d94c`, **PR #15**, gate verdi): (1) fix LEGNO chiusure supplementari opzionali (default off); (2) estrazione `kit-shared.ts` (refactor puro); (3) modulo **PVC provvisorio** (cert ift, `//ASSUNZIONE`) + scheda esperto; (4) **ALLUMINIO gated** — scoperto che il listino 2026 NON ha composizione alluminio («PLANA»=cerniera complanare legno/PVC, non alu, assunzione piano falsificata) → modulo rifiuta + `isActive:false` + domande esperto; (5) colonna `KitRequest.supplementary_closures` + migrazione + wiring `kit.generate` + wizard (PVC on/provvisorio, ALLUMINIO off, toggle). Task 1-3 review individuali *Approved*; Task 4-5 fatti inline (session limit) + review finale inline. **Resta**: merge PR #15 · `migrate deploy`+`db:seed:kit` su Neon al deploy · validazione esperto (`docs/superpowers/kit-assunzioni/`). | `claude/handoff-review-irs3gv` (PR #15) |
 | 2026-07-25 | **BONIFICA KIT ARTECH LEGNO** (8 task TDD, un commit per task, dopo il merge #32): studio di tutti i moduli kit contro il **listino AGB 2026** → dei 4 template attivi, **3 producevano distinte non ordinabili**. **PVC spento** (i 4 codici material-specific esistono solo nelle pagine-certificato ift p0013 (11)/p0395 (393), senza prezzo; altri 7 dedotti per simmetria non esistono affatto) · **battente spento** (schema p0416 (414) = 21 voci, il modulo ne generava 5: mancava la **sospensione superiore**; schema composito → terna cerniere non decidibile) · **pilota corretto** (supporto cerniera `A50801.01.0N`→**`A50805.05.DX/.SX`**, banda cremonese GR02 610, descrizione incontro ribalta 9x18) · **guardia `assertPilotGeometry`** (aria/interasse/battuta/sede erano raccolti e ignorati) · **vasistas riscritto** dallo schema p0418 (416): forbici per **LBB**, via DSS+incontro DSS, dentro le **cerniere** (voci 10-11-12) e il 2° terminale, `sashWeightKg` opzionale per le NB sul peso → golden **13 righe/19 pezzi** · **parser catalogo allargato** ai segmenti alfanumerici (**+1.297 codici a prezzo, 6.191→7.488**) · schede `kit-assunzioni/` riscritte come esito + nuova `legno.md` con l'indice **globale** delle 10 domande per l'esperto. Attive: **anta-ribalta LEGNO + vasistas LEGNO**. Gate: typecheck·lint·**test 589/11 skip**. Verifica browser wizard desktop+375px (8 screenshot). **AZIONI OPS AL MERGE**: «Ops — Neon» completo (migrazione `kit_sash_weight` + **RE-IMPORT catalogo** + `db:seed:kit` + embed) e audit `kit_requests`. | `claude/kit-engine-study-wfo2hq` → PR #33 + #34 mergiate |
+| 2026-08-01 | **CAMBIARE LE VARIANTI DOPO LA CREAZIONE** (8 task TDD): «Modifica componenti» sulla scheda riapre il wizard precompilato su `?da=<id>`; al conferma nasce una nuova versione. Contratto `ricalcola({kitRequestId, variants?})` — assente eredita · `{}` **resetta** (scrive NULL) · oggetto **sostituisce**; il reset non è inventato (le 5 chiavi erano già `.optional()` in uno `.strict()`), dichiararlo impedisce che l'operazione sia a senso unico. Solo «Componenti» editabile — la firma **congela la geometria**, quindi la combinazione mai validata è **irrappresentabile**. Validazione = **motore in memoria prima di ogni scrittura**. Idratazione via **`kitInputFromRequest`**, la stessa del motore (solo `engine.ts` ha `server-only`): niente secondo percorso di lettura. «Ricalcola» → **«Nuova versione»**. `ComponentiRibalta` + `RadioOption` estratte (insieme: separarle chiudeva un ciclo). **Chiuso il buco trovato nella verifica funzionale della #47**: `110,13 €` non era asserito da nessun test, e i tre totali bilico stavano dietro `toBeGreaterThan(0)`. Difetto colto dai test: `??` faceva ricadere il reset sull'ereditarietà. Gate: typecheck·lint·**test 1.025**·build 18 route · catalogo reale 112 · **browser 22/22 desktop e 375px** col ciclo 90,20 → 110,13 → **ritorno a 90,20**. **NESSUNA AZIONE OPS.** Nuova domanda **31** (il numero identifica la richiesta o la versione?). | `claude/verifica-distinte-reali-8zz9mw` (PR da aprire) |
 | 2026-07-31 | **ANTIEFFRAZIONE + VARIANTI COMPONENTE** (10 task TDD, un commit per task): le due domande senza risposta nel listino (il «fungo» è per sede 30? viti inclinate o dritte?) diventano **scelte dell'agente** nel nuovo passo **«Componenti»** del wizard, per indicazione esplicita dell'utente → **domande 2 e 30 CHIUSE** senza essere risposte. Registro `artech-varianti.ts` (**74 codici** scritti per esteso, verificati sul catalogo reale) · colonna `kit_requests.variants JSONB` (migrazione `20260731143758_kit_variants`, nessun backfill, NULL = standard) · **garanzia in due strati** contro la variante inerte (`RuleModule.varianti` obbligatorio + `no-silent-fields` derivato dal modulo) · ciclo di import sciolto col file foglia `varianti-schema.ts` + regola ESLint. Il **fungo resta fuori**: il listino lo lega alla sede 30 nei due versi, che il motore rifiuta a monte. Golden invariato **16 righe/21 pezzi/90,20 €** (ora asseriti anche ordine righe e 16 descrizioni); antieffrazione completa **17/22/110,13 €**. Gate: typecheck·lint·**test 992**·build 18 route · **integration 111 eseguiti** · browser 33+10 check (desktop e 375px). **AZIONE OPS: «Ops — Neon» sul ref del branch PRIMA del merge** — senza la colonna si rompono le **letture** di `kit.get`/`generate`/`ricalcola` **e `dashboard.overview`** (`dashboard.ts:40`, `findMany` senza `select`), cioè la pagina d'ingresso di tutti gli agenti; nessun re-import. **Le varianti non si cambiano dopo la creazione** (si rifà il wizard): da dire agli agenti. | `claude/antieffrazione-feature-dv8d37` (PR da aprire) |

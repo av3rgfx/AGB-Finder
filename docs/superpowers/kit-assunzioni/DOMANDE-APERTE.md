@@ -602,6 +602,41 @@ modulo**. Va tolto dall'input o usato: è una decisione nostra.
 >
 > Grazie!
 
+## 31 — Il numero di richiesta identifica la richiesta o la versione?
+
+*(Aperta il 2026-08-01, quando le varianti sono diventate modificabili dopo la creazione. Non serve
+AGB: la decide l'**ufficio commerciale**.)*
+
+**In parole semplici:** oggi ogni volta che una distinta si rifà — perché è cambiata una variante,
+o perché il listino è stato reimportato — nasce una riga nuova con un **numero nuovo**. Il cliente
+che aveva ricevuto `KIT-2026-0007` si vede arrivare `KIT-2026-0018`, e non c'è niente, nel numero,
+che dica che è lo **stesso serramento**.
+
+**Perché conta adesso e non prima:** finché il ricalcolo era raro la cosa non si vedeva. Da oggi
+l'agente può cambiare le varianti quando vuole, quindi versionare diventa **ordinario**.
+
+**Le due strade:**
+
+| | Cosa vede il cliente | Costo |
+|---|---|---|
+| **Come oggi** — un numero nuovo per versione | `KIT-2026-0007` poi `KIT-2026-0018` | zero, ma la commessa non ha identità stabile |
+| **Numero stabile + versione** | `KIT-2026-0007` poi `KIT-2026-0007 v2` | una colonna `version` e una migrazione |
+
+La seconda renderebbe leggibile anche il **confronto fra versioni** (v1 90,20 € → v2 110,13 €, cioè
+quanto costa l'antieffrazione su quel serramento), che oggi si può solo ricostruire a mano.
+
+**Nota tecnica, per chi implementa e non per chi risponde:** il numero è coniato con `count() + 1`
+sulle richieste dell'anno (`kit.ts:47-50` e `219-222`) su una colonna `@unique`, quindi due
+creazioni nello **stesso istante** collidono e una delle due dà errore all'agente (nessuna
+corruzione: si riprova e funziona). Verificato il 2026-08-01 che **non esiste** alcun
+`kitRequest.delete`/`deleteMany` e che nessun `onDelete: Cascade` punta a `KitRequest`, quindi lo
+scenario peggiore — un conteggio che scende e **ripete** un numero già mandato a un cliente — oggi
+**non è raggiungibile**. Attenzione al rimedio ovvio: un retry attorno alla `create` **non basta**,
+perché in `ricalcola` il `count()` sta fuori dalla `$transaction` e la `create` dentro — un `P2002`
+aborta l'intero callback, `updateMany` compreso.
+
+---
+
 ## B) Per AGB
 
 Il testo completo è in `DA-FARE-audit-e-domande-agb.md`. Le due che contano più di tutte:
