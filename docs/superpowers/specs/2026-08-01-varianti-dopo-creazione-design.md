@@ -178,9 +178,25 @@ modifica — si rifà.
   listino** accanto al modulo e al DB, e ripeterebbe il difetto «prezzo non a catalogo»
   affermato mentre la query sta ancora caricando (già corretto nella #47).
 - **`requestNumber` coniato con `count() + 1`** su una colonna `@unique`
-  (`kit.ts:47-50` e `219-222`): due richieste create nello stesso istante collidono.
-  Difetto **preesistente**, non introdotto qui, ma questa feature rende il versionamento
-  routine e quindi lo espone di più. Va in `handoff.md` fra i debiti, con la riga.
+  (`kit.ts:47-50` e `219-222`). Portato al council il 2026-08-01 e tenuto **fuori**, con
+  la diagnosi riscritta dopo aver verificato tre affermazioni degli advisor:
+  - «basta una riga cancellata e la collisione diventa deterministica» → **non
+    raggiungibile oggi**: non esiste alcun `kitRequest.delete`/`deleteMany` in `src/` né
+    in `prisma/`, e nessuno dei quattro `onDelete: Cascade` dello schema punta a
+    `KitRequest` (vanno verso `ActivityLog`, `KitComponent`, `ChatMessage`).
+  - «retry da cinque righe» → **non funziona come descritto**: in `ricalcola` il `count()`
+    sta **fuori** dalla `$transaction` e la `create` dentro, quindi un `P2002` aborta
+    l'intero callback — il retry dovrebbe riavvolgere anche l'`updateMany` che marca
+    `supersededById`. Non è una pezza, è un rifacimento della mutation.
+  - ciò che regge: `count()` conta **anche le righe superate**, quindi ogni ricalcolo
+    consuma un numero e `KIT-2026-0042` e `0043` possono essere lo stesso serramento. Ma
+    è **il disegno attuale**, non un difetto: l'activity log scrive «nuova versione di X».
+    Rendere il ricalcolo routine trasforma però la domanda in una vera — *il numero
+    identifica la richiesta o la versione?* — che è una decisione dell'**ufficio
+    commerciale**, non una patch. Va in `DOMANDE-APERTE.md`, non nei debiti tecnici.
+
+  Resta quindi aperta la sola corsa: un 500 raro, senza corruzione, che il riprova
+  dell'agente risolve.
 - **Il test che lega le 18 colonne copiate a mano in `ricalcola` allo schema Prisma.**
   È `no-silent-fields` applicato alla persistenza invece che ai moduli, e `variants?` in
   input tocca proprio quella lista. Subito dopo, non dentro.
@@ -212,11 +228,23 @@ coincide con `kitInputFromRequest(row)` — cioè non esistono due letture.
 asseriti anche l'**ordine assoluto** delle righe e le 16 descrizioni carattere per
 carattere.
 
-**Da chiudere in questa PR** (buco trovato durante la verifica funzionale del 2026-08-01):
-`110,13 €` non è asserito da **nessun** test sul catalogo reale — `17 righe / 22 pezzi`
-sta solo in `rules-artech-legno.test.ts:548`, che è unitario e mocka `product.findMany`,
-quindi i prezzi sono finti. `engine.integration.test.ts` asserisce il golden e il gemello
-ma non l'antieffrazione. È la classe di buco che ha lasciato passare PVC e battente.
+**Da chiudere in questa PR** (buco trovato durante la verifica funzionale del 2026-08-01,
+portato al council il 2026-08-01, verdetto unanime «dentro questa PR»):
+
+`110,13 €` **non è asserito da nessun test**, e non «solo da un test unitario» come
+scritto in un primo momento: `rules-artech-legno.test.ts:548` asserisce 17 righe, 22
+pezzi e i tre codici, ma **non vede i prezzi affatto** — i moduli regola restituiscono
+righe senza prezzo, che il motore risolve dopo contro il catalogo. Il numero vive solo
+nei `.md`. Le ~15 righe non aggiungono una seconda rete: **sono la prima**.
+
+Nello **stesso file** il bilico TOUR asserisce ancora `toBeGreaterThan(0)`
+(`engine.integration.test.ts:159`) mentre i tre totali reali sono noti dalla #35 e sono
+stati **ri-misurati sul catalogo importato oggi**, identici: `450,03 €` (3 lati, 7 righe
+/ 18 pezzi) · `766,51 €` (4 lati, 9 / 20) · `433,46 €` (schema 3, 8 / 19). Si asseriscono
+anche quelli: `toBeGreaterThan(0)` accanto a tre totali esatti è la stessa asimmetria che
+la #44 ha già chiuso una volta sul golden, e il gate diventa così un **oracolo di
+prezzo** — al listino 2027 non dirà «rotto», dirà *quali configurazioni sono cambiate e
+di quanto*.
 
 **Browser**: desktop e **375px**, con gli screenshot guardati.
 
