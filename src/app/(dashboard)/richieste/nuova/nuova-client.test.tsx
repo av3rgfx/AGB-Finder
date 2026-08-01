@@ -117,9 +117,9 @@ vi.mock("@/trpc/react", () => ({
 import {
   NuovaRichiestaClient,
   materialForWindowType,
-  statoAntieffrazione,
   variantiPerGeometria,
 } from "./nuova-client";
+import { statoAntieffrazione } from "@/components/kit/componenti-ribalta";
 import { windowTypeLabel } from "@/lib/kit-labels";
 import { GEOMETRIE, geometriaLabel, type ArtechGeometryId } from "@/server/kit/artech-geometrie";
 
