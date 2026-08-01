@@ -528,3 +528,50 @@ insieme alla feature**; il seguito è un `variants` opzionale in input a `ricalc
 singola opzione omesso** (un `<button>` dentro il `<label>` di `RadioOption` è HTML non valido e ruberebbe il clic
 alla radio: servirebbe spezzare `RadioOption`); `dedupeRows` last-wins in `map-product.ts`; preview Vercel rotte su
 ogni PR. Spec/piano: `docs/superpowers/{specs,plans}/2026-07-31-varianti-componenti*`.
+
++ **VARIANTI MODIFICABILI DOPO LA CREAZIONE ✅ (branch `claude/verifica-distinte-reali-8zz9mw`,
+**PR #48 APERTA**)**: la #47 lasciava un difetto dichiarato — le cinque varianti del passo «Componenti»
+**non si cambiavano più** dopo la creazione, si rifaceva il wizard da capo. Ora sulla scheda c'è
+**«Modifica componenti»**, che riapre il wizard precompilato; al conferma nasce una **nuova
+versione**. **(0) La verifica funzionale della #47, fatta per prima, ha scoperto un buco**:
+`110,13 €` **non era asserito da nessun test** — il test del modulo conta righe e pezzi ma **non
+vede i prezzi affatto** (i moduli restituiscono `KitLine` senza prezzo, che il motore risolve dopo
+contro il catalogo), quindi il numero viveva solo nei `.md`. Chiuso nel primo commit, insieme ai
+**tre totali bilico** che stavano ancora dietro un `toBeGreaterThan(0)` (450,03 · 766,51 · 433,46,
+ri-misurati e identici alla #35). **(1) Contratto** deciso col **`/llm-council`** (5 advisor
+unanimi + 3 peer review): `ricalcola({kitRequestId, variants?})` — assente = **eredita** · `{}` =
+**reset** allo standard (scrive `NULL`) · oggetto = **sostituzione integrale**, mai un merge. Il
+reset non è inventato: le 5 chiavi erano già `.optional()` in uno `.strict()`, quindi `{}` era già
+valido; **dichiararlo** è ciò che impedisce all'operazione di essere a senso unico. **(2) Solo
+«Componenti» è editabile**, e non per prudenza ma per il tipo: la firma **congela la geometria**,
+quindi la combinazione geometria/varianti mai validata è **irrappresentabile**, non «sconsigliata»
+— le due alternative (un diff che sceglie fra versione e richiesta nuova; `ricalcola` che accetta
+l'intera `specs`) aprivano un **secondo percorso di scrittura** su `specs`. **(3) Validazione prima
+di ogni scrittura**, ed è il **motore eseguito in memoria**: le varianti disponibili dipendono dalla
+geometria e quel controllo vive nei moduli, quindi un secondo validatore avrebbe potuto
+disallinearsi dalle tabelle dei codici. **(4) L'idratazione passa da `kitInputFromRequest`**, la
+stessa funzione del motore (possibile perché **solo `engine.ts` ha `server-only`**): un prefill che
+rileggesse le colonne per conto suo sarebbe una seconda ricostruzione, e se divergesse l'agente
+confermerebbe a schermo una configurazione che la riga non codifica. **(5)** «Ricalcola» →
+**«Nuova versione»** (la parola prometteva «rifai lo stesso conto» mentre emette un documento con un
+numero nuovo), rinominata anche nelle due stringhe che la citavano altrove. **(6)** `ComponentiRibalta`
+e `RadioOption` estratte in `src/components/kit/` — insieme, perché estrarre solo la prima avrebbe
+chiuso un **ciclo** wizard→componenti→wizard; `nuova-client.tsx` da 1.983 a 1.383 righe. **Difetti
+colti dai test**: `variantiFinali ?? request.variants` faceva ricadere il **reset**
+sull'ereditarietà (`??` tratta `null` come nullish) — spegnere l'antieffrazione non avrebbe fatto
+nulla in silenzio. **Quattro trovati dalla review di branch, coi gate tutti verdi**: (a) un
+**refetch** di `kit.get` cancellava le varianti appena scelte — lo structural sharing di
+react-query non regge sulle `Date` e il `QueryClient` è nudo (`staleTime: 0` +
+`refetchOnWindowFocus`), quindi bastava cambiare finestra → idratazione **una volta sola**;
+(b) la validazione copriva solo il ramo con `variants`, mentre «Nuova versione» chiama `ricalcola`
+**senza**: su una riga PVC/battente già emessa nascevano **due righe morte** → si valida ogni volta
+che si sta per scrivere; (c) su una **bozza** la UI prometteva una versione che non nasce (il
+router scrive in loco); (d) la **vasistas** passava il filtro per serie pur non avendo varianti →
+si filtra sulla **tipologia**, con un test in `registry.test.ts` che fallisce se un modulo cambia
+idea. Gate verdi (typecheck·lint·**test 1.035**·build 18 route) · **catalogo reale 112
+test** · **browser 22/22 desktop e 22/22 a 375px**, col ciclo intero 90,20 → 110,13 → **ritorno a
+90,20** (la prova che il reset funziona). **🟢 NESSUNA MIGRAZIONE, NESSUNA AZIONE OPS.** Nuova
+**domanda 31**: il numero di richiesta identifica la richiesta o la versione? (`count()+1` su
+colonna `@unique`; verificato che nessun `kitRequest.delete` esista, quindi la collisione
+deterministica non è raggiungibile). Spec/piano:
+`docs/superpowers/{specs,plans}/2026-08-01-varianti-dopo-creazione*`.

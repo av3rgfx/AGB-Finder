@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, cleanup, fireEvent, within } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent, within, act } from "@testing-library/react";
 
 const push = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 const createMutate = vi.fn();
 const generateMutate = vi.fn();
 const customerCreateMutate = vi.fn();
+const ricalcolaMutate = vi.fn();
 
 /**
  * Prezzi REALI del listino AGB 2026, letti dal catalogo importato (7.488
@@ -60,12 +61,49 @@ type CatalogoQuery = {
 const CATALOGO_PRONTO: CatalogoQuery = { data: PREZZI_CATALOGO, isPending: false, isError: false };
 let catalogoQuery: CatalogoQuery = CATALOGO_PRONTO;
 
+/**
+ * La riga da cui il wizard si idrata in modalità modifica. È la forma che
+ * restituisce `kit.get`: le COLONNE della richiesta, che è ciò che il motore
+ * rilegge — non un input già pronto.
+ */
+const RIGA_EMESSA = {
+  id: "k1",
+  requestNumber: "KIT-2026-0007",
+  status: "COMPLETED",
+  supersededById: null,
+  windowType: "ANTA_RIBALTA",
+  widthMm: 550,
+  heightMm: 1820,
+  material: "LEGNO",
+  finish: "ARGENTO",
+  series: "ARTECH",
+  sashWeightKg: null,
+  geometry: "A12_I13_B20",
+  entrata: "E15",
+  seatConfig: "STANDARD",
+  openingSide: "SINISTRA",
+  openingDir: "TIRARE",
+  supplementaryClosures: true,
+  tourSchema: null,
+  notes: null,
+  variants: null,
+};
+
+type KitGetQuery = { data?: Record<string, unknown>; isPending: boolean; isError: boolean };
+let kitGetQuery: KitGetQuery = { data: undefined, isPending: false, isError: false };
+
 vi.mock("@/trpc/react", () => ({
   api: {
     kit: {
       create: { useMutation: () => ({ mutateAsync: createMutate, isPending: false }) },
       generate: {
         useMutation: () => ({ mutateAsync: generateMutate, isPending: false, error: null }),
+      },
+      // Modalità modifica (2026-08-01): il wizard riaperto su ?da=<id> rilegge
+      // la richiesta e, al conferma, chiama `ricalcola` invece di `create`.
+      get: { useQuery: () => kitGetQuery },
+      ricalcola: {
+        useMutation: () => ({ mutateAsync: ricalcolaMutate, isPending: false, error: null }),
       },
     },
     // Il passo 1 monta ora il selettore cliente: senza queste voci il mock
@@ -117,9 +155,9 @@ vi.mock("@/trpc/react", () => ({
 import {
   NuovaRichiestaClient,
   materialForWindowType,
-  statoAntieffrazione,
   variantiPerGeometria,
 } from "./nuova-client";
+import { statoAntieffrazione } from "@/components/kit/componenti-ribalta";
 import { windowTypeLabel } from "@/lib/kit-labels";
 import { GEOMETRIE, geometriaLabel, type ArtechGeometryId } from "@/server/kit/artech-geometrie";
 
@@ -129,6 +167,8 @@ afterEach(() => {
   createMutate.mockReset();
   generateMutate.mockReset();
   catalogoQuery = CATALOGO_PRONTO;
+  ricalcolaMutate.mockReset();
+  kitGetQuery = { data: undefined, isPending: false, isError: false };
 });
 
 /**
@@ -1462,5 +1502,220 @@ describe("variantiPerGeometria", () => {
         piastrinoAntieffrazione: true,
       }),
     ).toEqual({ movimentoAngolare: "DUE_NOTTOLINI", piastrinoAntieffrazione: true });
+  });
+});
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Modalità MODIFICA (2026-08-01). Il wizard si riapre su `?da=<id>` per cambiare
+// le sole varianti: geometria, entrata e quote sono congelate, perché cambiarle
+// vuol dire un altro serramento — quindi una richiesta nuova.
+// ─────────────────────────────────────────────────────────────────────────────
+describe("wizard in modalità modifica", () => {
+  const conRiga = (patch: Record<string, unknown> = {}) => {
+    kitGetQuery = { data: { ...RIGA_EMESSA, ...patch }, isPending: false, isError: false };
+  };
+
+  it("idrata dalla richiesta e mostra le specifiche congelate", () => {
+    conRiga();
+    render(<NuovaRichiestaClient daId="k1" />);
+    const testo = document.body.textContent ?? "";
+    expect(testo.includes(geometriaLabel("A12_I13_B20"))).toBe(true);
+    expect(testo.includes("KIT-2026-0007")).toBe(true);
+    // La via d'uscita è SCRITTA, non lasciata indovinare: un campo assente
+    // senza spiegazione è un ticket al supporto.
+    expect(/richiesta nuova/i.test(testo)).toBe(true);
+  });
+
+  it("la geometria non è più una scelta: nessuna radio", () => {
+    conRiga();
+    render(<NuovaRichiestaClient daId="k1" />);
+    expect(screen.queryByRole("group", { name: /geometria/i })).toBeNull();
+  });
+
+  it("il passo «Componenti» è quello di partenza, con le sue scelte", () => {
+    conRiga();
+    render(<NuovaRichiestaClient daId="k1" />);
+    expect(screen.getByRole("radio", { name: /^Antieffrazione$/i })).toBeTruthy();
+  });
+
+  // Se `ricalcola` partisse all'apertura, chi cambia idea e chiude la scheda
+  // lascerebbe la vecchia richiesta superata e congelata, puntando a una bozza
+  // vuota.
+  it("aprire la modifica non chiama ricalcola", () => {
+    conRiga();
+    render(<NuovaRichiestaClient daId="k1" />);
+    expect(ricalcolaMutate).not.toHaveBeenCalled();
+  });
+
+  it("il conferma chiama ricalcola con le varianti scelte, non create", async () => {
+    conRiga();
+    ricalcolaMutate.mockResolvedValue({ id: "k2", requestNumber: "KIT-2026-0012" });
+    generateMutate.mockResolvedValue({});
+    render(<NuovaRichiestaClient daId="k1" />);
+
+    fireEvent.click(screen.getByRole("radio", { name: /^Antieffrazione$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
+    fireEvent.click(screen.getByRole("button", { name: /genera nuova versione/i }));
+
+    await vi.waitFor(() => expect(ricalcolaMutate).toHaveBeenCalled());
+    const arg = ricalcolaMutate.mock.calls[0]![0];
+    expect(arg.kitRequestId).toBe("k1");
+    expect(arg.variants.piastrinoAntieffrazione).toBe(true);
+    // Modificare NON è creare: la richiesta nuova nasce come VERSIONE.
+    expect(createMutate).not.toHaveBeenCalled();
+  });
+
+  // Il reset è ciò che rende l'operazione reversibile: senza, si può accendere
+  // l'antieffrazione e mai più spegnerla.
+  it("senza varianti scelte manda {}, cioè il reset esplicito allo standard", async () => {
+    conRiga({ variants: { piastrinoAntieffrazione: true } });
+    ricalcolaMutate.mockResolvedValue({ id: "k2", requestNumber: "KIT-2026-0012" });
+    generateMutate.mockResolvedValue({});
+    render(<NuovaRichiestaClient daId="k1" />);
+
+    // Ristretta alla fieldset «Sicurezza»: «Normale» è anche il nome di
+    // un'opzione dell'incontro nottolino, e il pannello «Altre varianti» si apre
+    // da sé quando la richiesta parte già fuori standard.
+    fireEvent.click(
+      within(screen.getByRole("group", { name: /sicurezza/i })).getByRole("radio", {
+        name: /normale/i,
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
+    fireEvent.click(screen.getByRole("button", { name: /genera nuova versione/i }));
+
+    await vi.waitFor(() => expect(ricalcolaMutate).toHaveBeenCalled());
+    expect(ricalcolaMutate.mock.calls[0]![0].variants).toEqual({});
+  });
+
+  // Su una BOZZA il router scrive in loco e restituisce lo stesso id: non nasce
+  // nessuna versione e nessun numero viene consumato. Promettere il contrario è
+  // la stessa bugia per cui questo branch ha rinominato «Ricalcola».
+  it("su una bozza non promette una versione nuova", () => {
+    conRiga({ status: "DRAFT" });
+    render(<NuovaRichiestaClient daId="k1" />);
+    const testo = document.body.textContent ?? "";
+    expect(/nascerà una nuova versione/i.test(testo)).toBe(false);
+    expect(/bozza/i.test(testo)).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
+    expect(screen.queryByRole("button", { name: /genera nuova versione/i })).toBeNull();
+    expect(screen.getByRole("button", { name: /rigenera la distinta/i })).toBeTruthy();
+  });
+
+  it("su una richiesta emessa promette la versione nuova, e la mantiene", () => {
+    conRiga({ status: "COMPLETED" });
+    render(<NuovaRichiestaClient daId="k1" />);
+    expect(/nascerà una nuova versione/i.test(document.body.textContent ?? "")).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
+    expect(screen.getByRole("button", { name: /genera nuova versione/i })).toBeTruthy();
+  });
+
+  // `?da=` con l'id di un altro agente → NOT_FOUND. Senza gestirlo la pagina
+  // restava uno scheletro pulsante per sempre, senza dire niente.
+  it("se la richiesta non si carica lo dice, invece di pulsare all'infinito", () => {
+    kitGetQuery = { data: undefined, isPending: false, isError: true };
+    render(<NuovaRichiestaClient daId="k1" />);
+    expect(screen.getByRole("alert").textContent).toMatch(/non trovata|caricamento/i);
+  });
+
+  it("in modifica il link in testa torna alla richiesta, non all'elenco", () => {
+    conRiga();
+    render(<NuovaRichiestaClient daId="k1" />);
+    expect(screen.getByRole("link", { name: /torna alla richiesta/i }).getAttribute("href")).toBe(
+      "/richieste/k1",
+    );
+  });
+
+  it("una riga che il motore non sa rileggere mostra il rifiuto, senza conferma", () => {
+    // `geometry: null` è una riga scritta prima del cutover della geometria:
+    // `kitInputFromRequest` la rifiuta, e nessuno può indovinarla.
+    conRiga({ geometry: null });
+    render(<NuovaRichiestaClient daId="k1" />);
+    expect(screen.getByRole("alert").textContent).toMatch(/incoerente/i);
+    expect(screen.queryByRole("button", { name: /genera nuova versione/i })).toBeNull();
+  });
+
+  // Il riepilogo dice «Cliente: Nessuno» quando `cliente` è null. In modifica
+  // lo stato non si popolerebbe da sé, e la frase sarebbe FALSA: `ricalcola` fa
+  // ereditare customerId e discountPercent alla nuova versione. Uno schermo che
+  // contraddice ciò che il programma fa, proprio prima del conferma.
+  it("in modifica il riepilogo nomina il cliente della richiesta, non «Nessuno»", () => {
+    kitGetQuery = {
+      data: {
+        ...RIGA_EMESSA,
+        customer: { id: "c1", companyName: "Fosca" },
+        discountPercent: 42.5,
+      },
+      isPending: false,
+      isError: false,
+    };
+    render(<NuovaRichiestaClient daId="k1" />);
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
+    const testo = document.body.textContent ?? "";
+    expect(testo.includes("Fosca")).toBe(true);
+    expect(/Cliente[\s\S]{0,20}Nessuno/.test(testo)).toBe(false);
+  });
+
+  // Lo sconto mostrato è quello TIMBRATO sulla richiesta, non quello corrente
+  // dell'anagrafica: è ciò che la nuova versione eredita davvero.
+  it("in modifica mostra lo sconto timbrato sulla richiesta", () => {
+    kitGetQuery = {
+      data: {
+        ...RIGA_EMESSA,
+        customer: { id: "c1", companyName: "Fosca" },
+        discountPercent: 30,
+      },
+      isPending: false,
+      isError: false,
+    };
+    render(<NuovaRichiestaClient daId="k1" />);
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
+    // 30% timbrato, NON il 42,5% che l'anagrafica mockata dà a Fosca.
+    expect(document.body.textContent).toMatch(/30\s*%/);
+    expect(document.body.textContent).not.toMatch(/42,5\s*%/);
+  });
+
+  // IL DIFETTO PIÙ GRAVE trovato in review, e non è ipotetico: `kit.get`
+  // restituisce campi `Date` (createdAt/updatedAt/generatedAt) e lo structural
+  // sharing di react-query NON regge sulle Date — con due payload IDENTICI che
+  // ne contengono una, `replaceEqualDeep` restituisce un oggetto NUOVO
+  // (verificato eseguendolo). Il QueryClient è `new QueryClient()` nudo, quindi
+  // `staleTime: 0` e `refetchOnWindowFocus: true`: basta cambiare finestra e
+  // tornare perché il refetch produca un riferimento nuovo. Se l'idratazione
+  // riscrivesse il form a ogni cambio di riferimento, le scelte appena fatte
+  // sparirebbero IN SILENZIO — e «Genera nuova versione» emetterebbe una
+  // versione identica alla precedente, consumando un numero e congelando
+  // l'originale per niente.
+  it("un refetch con dati identici NON azzera le varianti appena scelte", () => {
+    const dati = () => ({
+      ...RIGA_EMESSA,
+      createdAt: new Date("2026-08-01T00:00:00Z"),
+      updatedAt: new Date("2026-08-01T00:00:00Z"),
+    });
+    kitGetQuery = { data: dati(), isPending: false, isError: false };
+    const { rerender } = render(<NuovaRichiestaClient daId="k1" />);
+
+    const anti = () =>
+      within(screen.getByRole("group", { name: /sicurezza/i })).getByRole("radio", {
+        name: /antieffrazione/i,
+      }) as HTMLInputElement;
+    fireEvent.click(anti());
+    expect(anti().checked).toBe(true);
+
+    // Il refetch: stesso contenuto, oggetto NUOVO — ciò che react-query
+    // consegna davvero quando il payload contiene una Date.
+    act(() => {
+      kitGetQuery = { data: dati(), isPending: false, isError: false };
+    });
+    rerender(<NuovaRichiestaClient daId="k1" />);
+
+    expect(anti().checked).toBe(true);
+  });
+
+  it("senza `daId` resta il wizard di creazione, e non entra in modalità modifica", () => {
+    render(<NuovaRichiestaClient />);
+    expect(screen.getByRole("button", { name: /avanti/i })).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/KIT-2026-0007/);
   });
 });

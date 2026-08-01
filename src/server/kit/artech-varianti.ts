@@ -472,3 +472,21 @@ export function avvisiVarianti(varianti: Varianti | undefined): string[] {
     );
   return avvisi;
 }
+
+/**
+ * Le tipologie il cui modulo regole dichiara varianti — cioè le sole per cui il
+ * passo «Componenti» ha qualcosa da mostrare.
+ *
+ * Oggi è l'anta-ribalta e basta: `rules-artech-vasistas-legno.ts` e
+ * `rules-tour-bilico-legno.ts` dichiarano entrambi `varianti: []`. Sta QUI e non
+ * in due posti perché la usano in due — il passo del wizard e il link «Modifica
+ * componenti» della scheda — e filtrare sulla SERIE (come faceva la prima
+ * versione) lasciava passare la vasistas, che è ARTECH: il link portava a una
+ * schermata senza scelte, e il conferma creava comunque una versione nuova,
+ * consumando un numero e superando la precedente per zero modifiche.
+ *
+ * `RuleModule` non porta la tipologia, quindi questa lista non si può derivare
+ * dal registro: la lega alla realtà il test in `registry.test.ts`, che fallisce
+ * se un modulo comincia (o smette) di dichiarare varianti.
+ */
+export const TIPOLOGIE_CON_VARIANTI: readonly string[] = ["ANTA_RIBALTA"];

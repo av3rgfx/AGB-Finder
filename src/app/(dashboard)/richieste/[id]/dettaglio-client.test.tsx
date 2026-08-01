@@ -222,10 +222,10 @@ describe("DettaglioClient — entrata maniglia", () => {
 });
 
 describe("DettaglioClient — ricalcolo versionato", () => {
-  it("su DRAFT non offre «Ricalcola» (basta «Rigenera»)", () => {
+  it("su DRAFT non offre «Nuova versione» (basta «Rigenera»)", () => {
     getQuery.mockReturnValue({ isPending: false, isError: false, data: request });
     render(<DettaglioClient id="k1" />);
-    expect(screen.queryByRole("button", { name: /ricalcola/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /nuova versione/i })).toBeNull();
   });
 
   it("su una richiesta già emessa ricalcola e apre la NUOVA versione", async () => {
@@ -237,7 +237,7 @@ describe("DettaglioClient — ricalcolo versionato", () => {
     ricalcolaMutate.mockResolvedValue({ id: "k2", requestNumber: "KIT-2026-0002" });
     generateMutateAsync.mockResolvedValue({ totalComponents: 16 });
     render(<DettaglioClient id="k1" />);
-    fireEvent.click(screen.getByRole("button", { name: /ricalcola/i }));
+    fireEvent.click(screen.getByRole("button", { name: /nuova versione/i }));
     await vi.waitFor(() => expect(push).toHaveBeenCalledWith("/richieste/k2"));
     expect(ricalcolaMutate).toHaveBeenCalledWith({ kitRequestId: "k1" });
     // «Ricalcola» deve RICALCOLARE: la nuova versione nasce DRAFT e senza questa
@@ -255,7 +255,7 @@ describe("DettaglioClient — ricalcolo versionato", () => {
     ricalcolaMutate.mockResolvedValue({ id: "k2", requestNumber: "KIT-2026-0002" });
     generateMutateAsync.mockRejectedValue(new Error("fuori campo di applicazione"));
     render(<DettaglioClient id="k1" />);
-    fireEvent.click(screen.getByRole("button", { name: /ricalcola/i }));
+    fireEvent.click(screen.getByRole("button", { name: /nuova versione/i }));
     // La riga nuova esiste ed è DRAFT: nasconderla lascerebbe una versione
     // creata e mai vista. L'errore è visibile sulla sua scheda.
     await vi.waitFor(() => expect(push).toHaveBeenCalledWith("/richieste/k2"));
@@ -274,7 +274,7 @@ describe("DettaglioClient — ricalcolo versionato", () => {
     expect(screen.getByRole("button", { name: /rigenera/i })).toBeTruthy();
   });
 
-  it("su una richiesta COMPLETED NON offre «Rigenera» (solo «Ricalcola»)", () => {
+  it("su una richiesta COMPLETED NON offre «Rigenera» (solo «Nuova versione»)", () => {
     getQuery.mockReturnValue({
       isPending: false,
       isError: false,
@@ -282,7 +282,7 @@ describe("DettaglioClient — ricalcolo versionato", () => {
     });
     render(<DettaglioClient id="k1" />);
     expect(screen.queryByRole("button", { name: /rigenera/i })).toBeNull();
-    expect(screen.getByRole("button", { name: /ricalcola/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /nuova versione/i })).toBeTruthy();
   });
 
   it("riga già superata: nessuno dei due pulsanti", () => {
@@ -293,19 +293,78 @@ describe("DettaglioClient — ricalcolo versionato", () => {
     });
     render(<DettaglioClient id="k1" />);
     expect(screen.queryByRole("button", { name: /rigenera/i })).toBeNull();
-    expect(screen.queryByRole("button", { name: /ricalcola/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /nuova versione/i })).toBeNull();
   });
 
-  it("riga già superata: nessun «Ricalcola», ma il link alla versione più recente", () => {
+  it("riga già superata: nessun «Nuova versione», ma il link alla versione più recente", () => {
     getQuery.mockReturnValue({
       isPending: false,
       isError: false,
       data: { ...request, status: "COMPLETED", supersededById: "k2" },
     });
     render(<DettaglioClient id="k1" />);
-    expect(screen.queryByRole("button", { name: /ricalcola/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /nuova versione/i })).toBeNull();
     expect(screen.getByRole("link", { name: /versione più recente/i }).getAttribute("href")).toBe(
       "/richieste/k2",
     );
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// «Modifica componenti» (2026-08-01): la via per cambiare le varianti dopo la
+// creazione, che prima non esisteva — si rifaceva il wizard da capo.
+// ─────────────────────────────────────────────────────────────────────────────
+describe("DettaglioClient — modifica componenti", () => {
+  const conRiga = (patch: Record<string, unknown> = {}) =>
+    getQuery.mockReturnValue({ isPending: false, isError: false, data: { ...request, ...patch } });
+
+  // «Ricalcola» prometteva «rifai lo stesso conto»: il pulsante emette invece un
+  // documento con un numero NUOVO e congela quello corrente.
+  it("il pulsante si chiama «Nuova versione», non più «Ricalcola»", () => {
+    conRiga({ status: "COMPLETED" });
+    render(<DettaglioClient id="k1" />);
+    expect(screen.getByRole("button", { name: /nuova versione/i })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /^ricalcola$/i })).toBeNull();
+  });
+
+  it("«Modifica componenti» porta al wizard sulla richiesta", () => {
+    conRiga({ status: "COMPLETED" });
+    render(<DettaglioClient id="k1" />);
+    expect(
+      screen.getByRole("link", { name: /modifica componenti/i }).getAttribute("href"),
+    ).toBe("/richieste/nuova?da=k1");
+  });
+
+  // È proprio il caso in cui la generazione è fallita e l'agente vuole cambiare
+  // qualcosa: su bozza il router scrive in loco, senza consumare un numero.
+  it("su una bozza «Modifica componenti» c'è comunque", () => {
+    conRiga({ status: "DRAFT" });
+    render(<DettaglioClient id="k1" />);
+    expect(screen.getByRole("link", { name: /modifica componenti/i })).toBeTruthy();
+  });
+
+  it("su una riga superata non si offre nulla da modificare", () => {
+    conRiga({ status: "COMPLETED", supersededById: "k2" });
+    render(<DettaglioClient id="k1" />);
+    expect(screen.queryByRole("link", { name: /modifica componenti/i })).toBeNull();
+  });
+
+  // La vasistas è serie ARTECH ma il suo modulo dichiara `varianti: []`, come il
+  // bilico: filtrare sulla SERIE la lasciava passare, e il link portava a una
+  // schermata che dice «Nessuna variante per questa tipologia» — con il conferma
+  // che creava comunque una versione nuova, consumando un numero e superando la
+  // precedente per zero modifiche.
+  it("la vasistas non offre «Modifica componenti»: il suo modulo non ha varianti", () => {
+    conRiga({ status: "COMPLETED", windowType: "VASISTAS" });
+    render(<DettaglioClient id="k1" />);
+    expect(screen.queryByRole("link", { name: /modifica componenti/i })).toBeNull();
+  });
+
+  // Il modulo TOUR dichiara `varianti: []` e il router rifiuta: offrire il link
+  // sarebbe un pulsante che porta a una schermata senza scelte.
+  it("il bilico non offre «Modifica componenti»: la serie non ha varianti", () => {
+    conRiga({ status: "COMPLETED", series: "TOUR", windowType: "BILICO" });
+    render(<DettaglioClient id="k1" />);
+    expect(screen.queryByRole("link", { name: /modifica componenti/i })).toBeNull();
   });
 });

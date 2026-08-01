@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Calculator, RefreshCw } from "lucide-react";
+import { ArrowLeft, Calculator, RefreshCw, SlidersHorizontal } from "lucide-react";
 import { api } from "@/trpc/react";
 import { formatPrice } from "@/lib/format";
 import {
@@ -16,7 +16,7 @@ import { SCHEMI_TOUR } from "@/server/kit/rules-tour-bilico-legno";
 import { GEOMETRIE, geometriaLabel, type ArtechGeometryId } from "@/server/kit/artech-geometrie";
 import { entrataLabel } from "@/server/kit/types";
 import { variantiSchema } from "@/server/kit/varianti-schema";
-import { scelteNonStandard } from "@/server/kit/artech-varianti";
+import { scelteNonStandard, TIPOLOGIE_CON_VARIANTI } from "@/server/kit/artech-varianti";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { DistintaTable } from "@/components/kit/distinta-table";
 import { RiepilogoSconto } from "@/components/kit/riepilogo-sconto";
@@ -113,16 +113,27 @@ export function DettaglioClient({ id }: { id: string }) {
   // I due pulsanti sono MUTUAMENTE ESCLUSIVI, e non per ordine: «Rigenera»
   // riscrive la distinta in loco (nessuno storico dei componenti), quindi è
   // lecito solo su una bozza che nessuno ha ancora visto. Su tutto il resto
-  // l'unica strada è «Ricalcola», che congela questa versione e ne crea una
+  // l'unica strada è «Nuova versione», che congela questa versione e ne crea una
   // nuova — la stessa invariante è imposta dal router (`kit.generate` risponde
   // CONFLICT), qui si evita di offrire un pulsante che verrebbe rifiutato.
   const puoRigenerare = r.status === "DRAFT";
   const puoRicalcolare = !puoRigenerare && r.supersededById === null;
+  // Si filtra sulla TIPOLOGIA, non sulla serie: la vasistas è ARTECH ma il suo
+  // modulo dichiara `varianti: []` esattamente come il bilico, quindi con un
+  // filtro per serie il link portava a una schermata senza scelte — e il
+  // conferma creava comunque una versione nuova, consumando un numero e
+  // superando la precedente per zero modifiche. La lista sta in
+  // `artech-varianti.ts` ed è la stessa che usa il passo del wizard.
+  // Sulla riga SUPERATA non si opera (come i due pulsanti sopra); sulla bozza sì,
+  // ed è il caso in cui serve di più — la generazione è fallita e l'agente vuole
+  // cambiare qualcosa.
+  const puoModificareComponenti =
+    r.supersededById === null && TIPOLOGIE_CON_VARIANTI.includes(r.windowType);
 
   const distintaVuotaMsg = puoRigenerare
     ? "Distinta non ancora generata. Usa «Rigenera» per calcolare i componenti dal catalogo."
     : puoRicalcolare
-      ? "Nessun componente di questa distinta è a catalogo. Usa «Ricalcola» per rifarla su una nuova versione."
+      ? "Nessun componente di questa distinta è a catalogo. Usa «Nuova versione» per rifarla."
       : "Nessun componente di questa distinta è a catalogo.";
 
   /**
@@ -291,8 +302,26 @@ export function DettaglioClient({ id }: { id: string }) {
                 onClick={() => void handleRicalcola()}
               >
                 <Calculator className="size-4" aria-hidden />
-                Ricalcola
+                {/* Si chiamava «Ricalcola», e la parola prometteva «rifai lo
+                    stesso conto»: il pulsante emette invece un documento con un
+                    numero NUOVO e congela questo. L'agente deve poter prevedere
+                    l'esito prima di premere. */}
+                Nuova versione
               </Button>
+            )}
+            {/* La via per cambiare le VARIANTI dopo la creazione: prima del
+                2026-08-01 non esisteva e si rifaceva il wizard da capo. Compare
+                anche sulle bozze — è il caso in cui la generazione è fallita e
+                l'agente vuole cambiare qualcosa — ma non sulle righe superate,
+                dove non si opera, né sul bilico. */}
+            {puoModificareComponenti && (
+              <Link
+                href={`/richieste/nuova?da=${r.id}`}
+                className="inline-flex items-center gap-1.5 rounded-md border border-line-strong px-3 py-1.5 text-sm font-medium text-ink transition-colors hover:bg-surface-sunken"
+              >
+                <SlidersHorizontal className="size-4" aria-hidden />
+                Modifica componenti
+              </Link>
             )}
           </div>
         </div>
