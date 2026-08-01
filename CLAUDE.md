@@ -530,7 +530,7 @@ alla radio: servirebbe spezzare `RadioOption`); `dedupeRows` last-wins in `map-p
 ogni PR. Spec/piano: `docs/superpowers/{specs,plans}/2026-07-31-varianti-componenti*`.
 
 + **VARIANTI MODIFICABILI DOPO LA CREAZIONE ✅ (branch `claude/verifica-distinte-reali-8zz9mw`,
-PR da aprire)**: la #47 lasciava un difetto dichiarato — le cinque varianti del passo «Componenti»
+**PR #48 APERTA**)**: la #47 lasciava un difetto dichiarato — le cinque varianti del passo «Componenti»
 **non si cambiavano più** dopo la creazione, si rifaceva il wizard da capo. Ora sulla scheda c'è
 **«Modifica componenti»**, che riapre il wizard precompilato; al conferma nasce una **nuova
 versione**. **(0) La verifica funzionale della #47, fatta per prima, ha scoperto un buco**:
