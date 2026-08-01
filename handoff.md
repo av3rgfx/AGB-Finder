@@ -178,6 +178,20 @@
 > - **Postgres in questo container muore da solo**: se un test gated risulta «skippato» senza
 >   ragione, controllare `docker ps` prima di sospettare la variabile d'ambiente. È costato dieci
 >   minuti oggi.
+> - **Lo structural sharing di react-query non regge sulle `Date`.** Qualunque `useEffect` che
+>   idrati uno stato locale da una query il cui payload contiene una `Date` va reso **idempotente**
+>   (un `useRef`), altrimenti un refetch — e con `staleTime: 0` + `refetchOnWindowFocus` basta un
+>   cambio di finestra — riscrive ciò che l'utente ha appena fatto, **in silenzio**. Vale per ogni
+>   schermata futura che precompili un form da `kit.get` o simili.
+> - **Il `QueryClient` del progetto è `new QueryClient()` nudo** (`src/trpc/react.tsx`): nessun
+>   `staleTime`, nessun `refetchOnWindowFocus: false`. Va saputo prima di scrivere una UI che tiene
+>   stato locale accanto a una query.
+> - **Una review di branch trova cose che i gate verdi non vedono.** Quattro difetti reali su un
+>   branch con typecheck, lint, 1.029 test e browser 22/22. Vale la mezz'ora, ogni volta.
+>
+> ### Prompt di apertura della PROSSIMA sessione
+>
+> Sta in fondo a questo file, §«PROMPT PER LA PROSSIMA SESSIONE».
 >
 > ---
 >
@@ -401,7 +415,7 @@
 >   `package.json`: `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 pnpm add -D playwright`, e **rimuoverlo
 >   prima del commit**. Chromium: `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`.
 >
-> ### Prompt di apertura (copiabile)
+> ### Prompt di apertura (STORICO — sessione 2026-07-31, superato)
 >
 > ```
 > Nuova sessione. Riparti leggendo handoff.md (§«RIPRENDI DA QUI») e CLAUDE.md.
@@ -1344,5 +1358,101 @@ Actions** (rete aperta → Neon:5432 ok).
 | 2026-07-11 | **Fase 1f — Task 8 (e2e) VERIFICATO**: login admin reale fornito dall'utente → verifica end-to-end via **API backend** (browser bloccato da challenge Vercel↔proxy sandbox: scoperto e diagnosticato). Passano TUTTI i flussi contro Neon popolato: auth Better Auth (role ADMIN, createdAt=seed) · `dashboard.overview` · `product.search` **testuale+ibrida** (semantica «maniglia con chiave…» → A50107\* per solo vettore vec≈0.72) · **chat tool-use** (Gemini cita 5 codici reali) · **kit ARTECH golden** `KIT-2026-0001` **16 righe/21 pezzi/90,20€** zero warning · `settings.aiKeys.status` (Gemini da env). Creati dati test in staging (1 conv + KIT-2026-0001). **Resta solo Task 9** (docs + scelta fase successiva). | `claude/handoff-review-irs3gv` |
 | 2026-07-12 | **Fase 1g — kit multi-materiale (SDD subagent-driven)**: spec+piano approvati + **LLM Council** (4/4 → Opzione C: `kit-shared` meccanica condivisa, moduli per-materiale isolati). 5 task TDD (7 commit `b51aa11→544d94c`, **PR #15**, gate verdi): (1) fix LEGNO chiusure supplementari opzionali (default off); (2) estrazione `kit-shared.ts` (refactor puro); (3) modulo **PVC provvisorio** (cert ift, `//ASSUNZIONE`) + scheda esperto; (4) **ALLUMINIO gated** — scoperto che il listino 2026 NON ha composizione alluminio («PLANA»=cerniera complanare legno/PVC, non alu, assunzione piano falsificata) → modulo rifiuta + `isActive:false` + domande esperto; (5) colonna `KitRequest.supplementary_closures` + migrazione + wiring `kit.generate` + wizard (PVC on/provvisorio, ALLUMINIO off, toggle). Task 1-3 review individuali *Approved*; Task 4-5 fatti inline (session limit) + review finale inline. **Resta**: merge PR #15 · `migrate deploy`+`db:seed:kit` su Neon al deploy · validazione esperto (`docs/superpowers/kit-assunzioni/`). | `claude/handoff-review-irs3gv` (PR #15) |
 | 2026-07-25 | **BONIFICA KIT ARTECH LEGNO** (8 task TDD, un commit per task, dopo il merge #32): studio di tutti i moduli kit contro il **listino AGB 2026** → dei 4 template attivi, **3 producevano distinte non ordinabili**. **PVC spento** (i 4 codici material-specific esistono solo nelle pagine-certificato ift p0013 (11)/p0395 (393), senza prezzo; altri 7 dedotti per simmetria non esistono affatto) · **battente spento** (schema p0416 (414) = 21 voci, il modulo ne generava 5: mancava la **sospensione superiore**; schema composito → terna cerniere non decidibile) · **pilota corretto** (supporto cerniera `A50801.01.0N`→**`A50805.05.DX/.SX`**, banda cremonese GR02 610, descrizione incontro ribalta 9x18) · **guardia `assertPilotGeometry`** (aria/interasse/battuta/sede erano raccolti e ignorati) · **vasistas riscritto** dallo schema p0418 (416): forbici per **LBB**, via DSS+incontro DSS, dentro le **cerniere** (voci 10-11-12) e il 2° terminale, `sashWeightKg` opzionale per le NB sul peso → golden **13 righe/19 pezzi** · **parser catalogo allargato** ai segmenti alfanumerici (**+1.297 codici a prezzo, 6.191→7.488**) · schede `kit-assunzioni/` riscritte come esito + nuova `legno.md` con l'indice **globale** delle 10 domande per l'esperto. Attive: **anta-ribalta LEGNO + vasistas LEGNO**. Gate: typecheck·lint·**test 589/11 skip**. Verifica browser wizard desktop+375px (8 screenshot). **AZIONI OPS AL MERGE**: «Ops — Neon» completo (migrazione `kit_sash_weight` + **RE-IMPORT catalogo** + `db:seed:kit` + embed) e audit `kit_requests`. | `claude/kit-engine-study-wfo2hq` → PR #33 + #34 mergiate |
-| 2026-08-01 | **CAMBIARE LE VARIANTI DOPO LA CREAZIONE** (8 task TDD): «Modifica componenti» sulla scheda riapre il wizard precompilato su `?da=<id>`; al conferma nasce una nuova versione. Contratto `ricalcola({kitRequestId, variants?})` — assente eredita · `{}` **resetta** (scrive NULL) · oggetto **sostituisce**; il reset non è inventato (le 5 chiavi erano già `.optional()` in uno `.strict()`), dichiararlo impedisce che l'operazione sia a senso unico. Solo «Componenti» editabile — la firma **congela la geometria**, quindi la combinazione mai validata è **irrappresentabile**. Validazione = **motore in memoria prima di ogni scrittura**. Idratazione via **`kitInputFromRequest`**, la stessa del motore (solo `engine.ts` ha `server-only`): niente secondo percorso di lettura. «Ricalcola» → **«Nuova versione»**. `ComponentiRibalta` + `RadioOption` estratte (insieme: separarle chiudeva un ciclo). **Chiuso il buco trovato nella verifica funzionale della #47**: `110,13 €` non era asserito da nessun test, e i tre totali bilico stavano dietro `toBeGreaterThan(0)`. Difetto colto dai test: `??` faceva ricadere il reset sull'ereditarietà. Gate: typecheck·lint·**test 1.025**·build 18 route · catalogo reale 112 · **browser 22/22 desktop e 375px** col ciclo 90,20 → 110,13 → **ritorno a 90,20**. **NESSUNA AZIONE OPS.** Nuova domanda **31** (il numero identifica la richiesta o la versione?). | `claude/verifica-distinte-reali-8zz9mw` (PR da aprire) |
-| 2026-07-31 | **ANTIEFFRAZIONE + VARIANTI COMPONENTE** (10 task TDD, un commit per task): le due domande senza risposta nel listino (il «fungo» è per sede 30? viti inclinate o dritte?) diventano **scelte dell'agente** nel nuovo passo **«Componenti»** del wizard, per indicazione esplicita dell'utente → **domande 2 e 30 CHIUSE** senza essere risposte. Registro `artech-varianti.ts` (**74 codici** scritti per esteso, verificati sul catalogo reale) · colonna `kit_requests.variants JSONB` (migrazione `20260731143758_kit_variants`, nessun backfill, NULL = standard) · **garanzia in due strati** contro la variante inerte (`RuleModule.varianti` obbligatorio + `no-silent-fields` derivato dal modulo) · ciclo di import sciolto col file foglia `varianti-schema.ts` + regola ESLint. Il **fungo resta fuori**: il listino lo lega alla sede 30 nei due versi, che il motore rifiuta a monte. Golden invariato **16 righe/21 pezzi/90,20 €** (ora asseriti anche ordine righe e 16 descrizioni); antieffrazione completa **17/22/110,13 €**. Gate: typecheck·lint·**test 992**·build 18 route · **integration 111 eseguiti** · browser 33+10 check (desktop e 375px). **AZIONE OPS: «Ops — Neon» sul ref del branch PRIMA del merge** — senza la colonna si rompono le **letture** di `kit.get`/`generate`/`ricalcola` **e `dashboard.overview`** (`dashboard.ts:40`, `findMany` senza `select`), cioè la pagina d'ingresso di tutti gli agenti; nessun re-import. **Le varianti non si cambiano dopo la creazione** (si rifà il wizard): da dire agli agenti. | `claude/antieffrazione-feature-dv8d37` (PR da aprire) |
+| 2026-08-01 | **CAMBIARE LE VARIANTI DOPO LA CREAZIONE** (8 task TDD): «Modifica componenti» sulla scheda riapre il wizard precompilato su `?da=<id>`; al conferma nasce una nuova versione. Contratto `ricalcola({kitRequestId, variants?})` — assente eredita · `{}` **resetta** (scrive NULL) · oggetto **sostituisce**; il reset non è inventato (le 5 chiavi erano già `.optional()` in uno `.strict()`), dichiararlo impedisce che l'operazione sia a senso unico. Solo «Componenti» editabile — la firma **congela la geometria**, quindi la combinazione mai validata è **irrappresentabile**. Validazione = **motore in memoria prima di ogni scrittura**. Idratazione via **`kitInputFromRequest`**, la stessa del motore (solo `engine.ts` ha `server-only`): niente secondo percorso di lettura. «Ricalcola» → **«Nuova versione»**. `ComponentiRibalta` + `RadioOption` estratte (insieme: separarle chiudeva un ciclo). **Chiuso il buco trovato nella verifica funzionale della #47**: `110,13 €` non era asserito da nessun test, e i tre totali bilico stavano dietro `toBeGreaterThan(0)`. Difetto colto dai test: `??` faceva ricadere il reset sull'ereditarietà. **Quattro difetti trovati dalla review di branch coi gate tutti verdi**: un **refetch** cancellava le varianti appena scelte (structural sharing di react-query e `Date`), la validazione copriva solo il ramo con `variants` (due righe morte su PVC/battente), su **bozza** la UI prometteva una versione che non nasce, e la **vasistas** passava il filtro per serie pur non avendo varianti. Gate: typecheck·lint·**test 1.035**·build 18 route · catalogo reale 112 · **browser 22/22 desktop e 375px** (rifatto dopo i fix) col ciclo 90,20 → 110,13 → **ritorno a 90,20**. **NESSUNA AZIONE OPS.** Nuova domanda **31** (il numero identifica la richiesta o la versione?). | `claude/verifica-distinte-reali-8zz9mw` (PR da aprire) |
+| 2026-07-31 | **ANTIEFFRAZIONE + VARIANTI COMPONENTE** (10 task TDD, un commit per task): le due domande senza risposta nel listino (il «fungo» è per sede 30? viti inclinate o dritte?) diventano **scelte dell'agente** nel nuovo passo **«Componenti»** del wizard, per indicazione esplicita dell'utente → **domande 2 e 30 CHIUSE** senza essere risposte. Registro `artech-varianti.ts` (**74 codici** scritti per esteso, verificati sul catalogo reale) · colonna `kit_requests.variants JSONB` (migrazione `20260731143758_kit_variants`, nessun backfill, NULL = standard) · **garanzia in due strati** contro la variante inerte (`RuleModule.varianti` obbligatorio + `no-silent-fields` derivato dal modulo) · ciclo di import sciolto col file foglia `varianti-schema.ts` + regola ESLint. Il **fungo resta fuori**: il listino lo lega alla sede 30 nei due versi, che il motore rifiuta a monte. Golden invariato **16 righe/21 pezzi/90,20 €** (ora asseriti anche ordine righe e 16 descrizioni); antieffrazione completa **17/22/110,13 €**. Gate: typecheck·lint·**test 992**·build 18 route · **integration 111 eseguiti** · browser 33+10 check (desktop e 375px). **AZIONE OPS: «Ops — Neon» sul ref del branch PRIMA del merge** — senza la colonna si rompono le **letture** di `kit.get`/`generate`/`ricalcola` **e `dashboard.overview`** (`dashboard.ts:40`, `findMany` senza `select`), cioè la pagina d'ingresso di tutti gli agenti; nessun re-import. **Le varianti non si cambiano dopo la creazione** (si rifà il wizard): da dire agli agenti. | `claude/antieffrazione-feature-dv8d37` → **PR #47 MERGIATA**, ops run `30659737114` |
+
+
+---
+
+## PROMPT PER LA PROSSIMA SESSIONE
+
+```
+Nuova sessione. Riparti leggendo handoff.md (§«RIPRENDI DA QUI») e CLAUDE.md.
+
+WORKFLOW (regole permanenti CLAUDE.md): /using-superpowers → brainstorming →
+/llm-council per dubbi o incongruenze sulle regole di distinta → /impeccable se
+tocchiamo UI (SEMPRE mobile ≤375px + desktop) → /writing-plans → esecuzione TDD;
+/ponytail ogni volta che scrivi codice.
+
+VINCOLI: TypeScript strict, API via tRPC, query via Prisma, UI in italiano,
+codici prodotto in font mono, mobile-first — e soprattutto: il KIT È UN ENGINE
+DETERMINISTICO TypeScript, MAI un LLM.
+
+STATO: verifica tu la PR e i run ops invece di fidarti dell'handoff. La sessione
+scorsa ha chiuso «cambiare le varianti dopo la creazione» sul branch
+claude/verifica-distinte-reali-8zz9mw (PR aperta). NON c'erano migrazioni né
+azioni ops: la colonna `variants` è su Neon dalla #47. Se la PR è ancora aperta,
+il primo passo è mergiarla; se è mergiata, NON serve nessun run ops — basta una
+verifica funzionale al volo (sotto) e si parte col lavoro nuovo.
+
+═══ VERIFICA FUNZIONALE (un minuto) ═══
+/richieste/nuova → aria 12 · interasse 13 · battuta 20 · entrata 15 · mano
+sinistra · chiusure ON → «Genera kit» → devono uscire 16 righe / 21 pezzi /
+90,20 €. Poi sulla scheda: «Modifica componenti» → accendi ANTIEFFRAZIONE →
+«Genera nuova versione» → 17 righe / 22 pezzi / 110,13 € su un NUMERO NUOVO, e
+la vecchia deve dire di essere stata ricalcolata. Infine rifai «Modifica
+componenti» → «Normale» → si torna a 90,20 € (è il reset: prova che
+l'operazione non è a senso unico).
+
+═══ POI, IN ORDINE DI VALORE ═══
+(a) LE TRE DISTINTE REALI di MC, Peruzzi e Fosca — aperta da SEI sessioni, vale
+    più di tutto il resto. I tre clienti sono in anagrafica su Neon con la loro
+    geometria: basta generare la distinta dal wizard e metterla a fianco della
+    foto di un ordine vero (serve un'altezza DIVERSA da 1820, altrimenti la
+    formula «corsa = altezza − 420» resta una retta tirata per un punto solo).
+    Ora servono anche a dire quale SQUADRA ANGOLARE e quale INCONTRO RIBALTA
+    ordinano davvero: le varianti sono scelte che il programma mostra, ma
+    nessuno le ha mai confrontate con un ordine vero.
+(b) DOMANDA 31 (in kit-assunzioni/DOMANDE-APERTE.md): il numero di richiesta
+    identifica la richiesta o la VERSIONE? Oggi ogni ricalcolo conia un numero
+    nuovo, quindi KIT-2026-0042 e 0043 possono essere lo stesso serramento — e
+    da oggi versionare è un'operazione ordinaria. La decide l'ufficio
+    commerciale, non il codice. Se la risposta è «numero stabile + versione»,
+    serve una colonna `version` e una migrazione, e si sblocca il confronto
+    v1→v2 (quanto costa l'antieffrazione su QUEL serramento).
+(c) DOMANDA 4 (sede 18 o sede 30): sbloccarla fa entrare il «nottolino a fungo»,
+    che oggi resta fuori perché il listino lo lega alla sede 30 nei due versi e
+    il motore la rifiuta a monte. Richiede l'incontro DSS 13x30, che a listino
+    non è pubblicato → serve AGB.
+(d) Debiti: preview Vercel rotte su OGNI PR (ipotesi mai smentita: env solo per
+    Production e non per Preview — nessun codice da scrivere, ma senza preview
+    non abbiamo collaudo) · `requestNumber` con `count()+1` su colonna `@unique`
+    (vedi la nota tecnica nei debiti: il retry «da cinque righe» NON funziona) ·
+    «Visualizza nel listino» per singola opzione (ora che `RadioOption` è un
+    file suo costa meno) · `no-silent-fields` non legato a `RULE_MODULES` ·
+    `dedupeRows` last-wins in map-product.ts.
+
+NON rompere il golden: 16 righe / 21 pezzi / 90,20 €, gemello entrata 7,5 a
+96,29 €, antieffrazione completa 17 righe / 22 pezzi / 110,13 €, e i tre bilico
+450,03 / 766,51 / 433,46 €. Il gate su catalogo reale li asserisce TUTTI per
+davvero, insieme all'ordine assoluto delle righe e alle 16 descrizioni.
+
+LISTINO: il PDF AGB 2026 NON è nel container, scaricalo dal link in CLAUDE.md
+(§FILE ESTERNI). Serve poppler-utils (`sudo apt-get update && sudo apt-get
+install -y poppler-utils` — l'update PRIMA, altrimenti il download dà 404).
+Pagina fisica = stampata + 2. Le legende degli schemi stanno DENTRO il disegno:
+nel testo estratto NON compaiono, vanno renderizzate (pdftoppm -r 150 -png) e
+GUARDATE.
+
+AMBIENTE (ti fa risparmiare un'ora):
+- Postgres MUORE da solo in questo container: `docker ps` prima di ogni comando
+  che tocca il DB. Se un test gated risulta «skippato» senza ragione è quello,
+  non la variabile d'ambiente (costato dieci minuti la sessione scorsa).
+  Riavvio: `(setsid nohup dockerd > /tmp/dockerd.log 2>&1 & disown)` poi
+  `docker compose up -d`.
+- Chromium C'È in /opt/pw-browsers; manca solo il pacchetto `playwright`, che
+  NON è dipendenza del progetto. Installalo FUORI dal repo (scratchpad):
+  `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm i playwright`.
+- `pnpm build` scrive nella STESSA .next del server `pnpm dev`: non lanciarli
+  insieme. Rimuovi .next e riavvia con `setsid nohup pnpm dev …`.
+- Prima di prisma/tsx: `set -a; source .env; set +a`. Engine Prisma:
+  `bash scripts/setup-prisma-engines.sh`. Catalogo: `pnpm import:agb <pdf>`
+  (~3 min, 7.488 prodotti), poi `pnpm db:seed` e `pnpm db:seed:kit`.
+- Gate su catalogo reale (senza la variabile passa A VUOTO):
+  `INTEGRATION_DATABASE_URL="$DATABASE_URL" pnpm vitest run
+   src/server/kit/codici-a-listino.integration.test.ts
+   src/server/kit/engine.integration.test.ts`
+- FAI SEMPRE una review indipendente del branch prima di aprire la PR: la
+  sessione scorsa ha trovato QUATTRO difetti reali con typecheck, lint, 1.029
+  test e browser 22/22 tutti verdi.
+```
