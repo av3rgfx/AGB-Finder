@@ -125,7 +125,7 @@ export const kitRouter = createTRPCRouter({
         throw new TRPCError({
           code: "CONFLICT",
           message:
-            "Questa distinta è già stata emessa e non si riscrive: usare «Ricalcola» per " +
+            "Questa distinta è già stata emessa e non si riscrive: usare «Nuova versione» per " +
             "generarne una nuova versione.",
         });
 

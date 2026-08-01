@@ -223,7 +223,10 @@ describe("kit.generate", () => {
     const caller = createCallerFactory(appRouter)(makeCtx(agent));
     await expect(caller.kit.generate({ kitRequestId: "k1" })).rejects.toMatchObject({
       code: "CONFLICT",
-      message: expect.stringContaining("Ricalcola"),
+      // Il messaggio nomina il pulsante che l'agente deve premere: dal
+      // 2026-08-01 si chiama «Nuova versione», perché «Ricalcola» prometteva
+      // «rifai lo stesso conto» mentre emette un documento con un numero nuovo.
+      message: expect.stringContaining("Nuova versione"),
     });
     expect(componentDeleteMany).not.toHaveBeenCalled();
     expect(requestUpdate).not.toHaveBeenCalled();
