@@ -7,6 +7,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 const createMutate = vi.fn();
 const generateMutate = vi.fn();
 const customerCreateMutate = vi.fn();
+const ricalcolaMutate = vi.fn();
 
 /**
  * Prezzi REALI del listino AGB 2026, letti dal catalogo importato (7.488
@@ -60,12 +61,49 @@ type CatalogoQuery = {
 const CATALOGO_PRONTO: CatalogoQuery = { data: PREZZI_CATALOGO, isPending: false, isError: false };
 let catalogoQuery: CatalogoQuery = CATALOGO_PRONTO;
 
+/**
+ * La riga da cui il wizard si idrata in modalità modifica. È la forma che
+ * restituisce `kit.get`: le COLONNE della richiesta, che è ciò che il motore
+ * rilegge — non un input già pronto.
+ */
+const RIGA_EMESSA = {
+  id: "k1",
+  requestNumber: "KIT-2026-0007",
+  status: "COMPLETED",
+  supersededById: null,
+  windowType: "ANTA_RIBALTA",
+  widthMm: 550,
+  heightMm: 1820,
+  material: "LEGNO",
+  finish: "ARGENTO",
+  series: "ARTECH",
+  sashWeightKg: null,
+  geometry: "A12_I13_B20",
+  entrata: "E15",
+  seatConfig: "STANDARD",
+  openingSide: "SINISTRA",
+  openingDir: "TIRARE",
+  supplementaryClosures: true,
+  tourSchema: null,
+  notes: null,
+  variants: null,
+};
+
+type KitGetQuery = { data?: Record<string, unknown>; isPending: boolean; isError: boolean };
+let kitGetQuery: KitGetQuery = { data: undefined, isPending: false, isError: false };
+
 vi.mock("@/trpc/react", () => ({
   api: {
     kit: {
       create: { useMutation: () => ({ mutateAsync: createMutate, isPending: false }) },
       generate: {
         useMutation: () => ({ mutateAsync: generateMutate, isPending: false, error: null }),
+      },
+      // Modalità modifica (2026-08-01): il wizard riaperto su ?da=<id> rilegge
+      // la richiesta e, al conferma, chiama `ricalcola` invece di `create`.
+      get: { useQuery: () => kitGetQuery },
+      ricalcola: {
+        useMutation: () => ({ mutateAsync: ricalcolaMutate, isPending: false, error: null }),
       },
     },
     // Il passo 1 monta ora il selettore cliente: senza queste voci il mock
@@ -129,6 +167,8 @@ afterEach(() => {
   createMutate.mockReset();
   generateMutate.mockReset();
   catalogoQuery = CATALOGO_PRONTO;
+  ricalcolaMutate.mockReset();
+  kitGetQuery = { data: undefined, isPending: false, isError: false };
 });
 
 /**
@@ -1462,5 +1502,105 @@ describe("variantiPerGeometria", () => {
         piastrinoAntieffrazione: true,
       }),
     ).toEqual({ movimentoAngolare: "DUE_NOTTOLINI", piastrinoAntieffrazione: true });
+  });
+});
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Modalità MODIFICA (2026-08-01). Il wizard si riapre su `?da=<id>` per cambiare
+// le sole varianti: geometria, entrata e quote sono congelate, perché cambiarle
+// vuol dire un altro serramento — quindi una richiesta nuova.
+// ─────────────────────────────────────────────────────────────────────────────
+describe("wizard in modalità modifica", () => {
+  const conRiga = (patch: Record<string, unknown> = {}) => {
+    kitGetQuery = { data: { ...RIGA_EMESSA, ...patch }, isPending: false, isError: false };
+  };
+
+  it("idrata dalla richiesta e mostra le specifiche congelate", () => {
+    conRiga();
+    render(<NuovaRichiestaClient daId="k1" />);
+    const testo = document.body.textContent ?? "";
+    expect(testo.includes(geometriaLabel("A12_I13_B20"))).toBe(true);
+    expect(testo.includes("KIT-2026-0007")).toBe(true);
+    // La via d'uscita è SCRITTA, non lasciata indovinare: un campo assente
+    // senza spiegazione è un ticket al supporto.
+    expect(/richiesta nuova/i.test(testo)).toBe(true);
+  });
+
+  it("la geometria non è più una scelta: nessuna radio", () => {
+    conRiga();
+    render(<NuovaRichiestaClient daId="k1" />);
+    expect(screen.queryByRole("group", { name: /geometria/i })).toBeNull();
+  });
+
+  it("il passo «Componenti» è quello di partenza, con le sue scelte", () => {
+    conRiga();
+    render(<NuovaRichiestaClient daId="k1" />);
+    expect(screen.getByRole("radio", { name: /^Antieffrazione$/i })).toBeTruthy();
+  });
+
+  // Se `ricalcola` partisse all'apertura, chi cambia idea e chiude la scheda
+  // lascerebbe la vecchia richiesta superata e congelata, puntando a una bozza
+  // vuota.
+  it("aprire la modifica non chiama ricalcola", () => {
+    conRiga();
+    render(<NuovaRichiestaClient daId="k1" />);
+    expect(ricalcolaMutate).not.toHaveBeenCalled();
+  });
+
+  it("il conferma chiama ricalcola con le varianti scelte, non create", async () => {
+    conRiga();
+    ricalcolaMutate.mockResolvedValue({ id: "k2", requestNumber: "KIT-2026-0012" });
+    generateMutate.mockResolvedValue({});
+    render(<NuovaRichiestaClient daId="k1" />);
+
+    fireEvent.click(screen.getByRole("radio", { name: /^Antieffrazione$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
+    fireEvent.click(screen.getByRole("button", { name: /genera nuova versione/i }));
+
+    await vi.waitFor(() => expect(ricalcolaMutate).toHaveBeenCalled());
+    const arg = ricalcolaMutate.mock.calls[0]![0];
+    expect(arg.kitRequestId).toBe("k1");
+    expect(arg.variants.piastrinoAntieffrazione).toBe(true);
+    // Modificare NON è creare: la richiesta nuova nasce come VERSIONE.
+    expect(createMutate).not.toHaveBeenCalled();
+  });
+
+  // Il reset è ciò che rende l'operazione reversibile: senza, si può accendere
+  // l'antieffrazione e mai più spegnerla.
+  it("senza varianti scelte manda {}, cioè il reset esplicito allo standard", async () => {
+    conRiga({ variants: { piastrinoAntieffrazione: true } });
+    ricalcolaMutate.mockResolvedValue({ id: "k2", requestNumber: "KIT-2026-0012" });
+    generateMutate.mockResolvedValue({});
+    render(<NuovaRichiestaClient daId="k1" />);
+
+    // Ristretta alla fieldset «Sicurezza»: «Normale» è anche il nome di
+    // un'opzione dell'incontro nottolino, e il pannello «Altre varianti» si apre
+    // da sé quando la richiesta parte già fuori standard.
+    fireEvent.click(
+      within(screen.getByRole("group", { name: /sicurezza/i })).getByRole("radio", {
+        name: /normale/i,
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
+    fireEvent.click(screen.getByRole("button", { name: /genera nuova versione/i }));
+
+    await vi.waitFor(() => expect(ricalcolaMutate).toHaveBeenCalled());
+    expect(ricalcolaMutate.mock.calls[0]![0].variants).toEqual({});
+  });
+
+  it("una riga che il motore non sa rileggere mostra il rifiuto, senza conferma", () => {
+    // `geometry: null` è una riga scritta prima del cutover della geometria:
+    // `kitInputFromRequest` la rifiuta, e nessuno può indovinarla.
+    conRiga({ geometry: null });
+    render(<NuovaRichiestaClient daId="k1" />);
+    expect(screen.getByRole("alert").textContent).toMatch(/incoerente/i);
+    expect(screen.queryByRole("button", { name: /genera nuova versione/i })).toBeNull();
+  });
+
+  it("senza `daId` resta il wizard di creazione, con tutti i suoi passi", () => {
+    render(<NuovaRichiestaClient />);
+    expect(screen.getByRole("button", { name: /avanti/i })).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/KIT-2026-0007/);
   });
 });

@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useEffect,
   useId,
   useMemo,
   useState,
@@ -34,6 +35,10 @@ import {
 // `type Varianti` dal file FOGLIA: il registro non ri-esporta più lo schema né i
 // suoi tipi (vedi il commento di testa di `artech-varianti.ts`).
 import { componiVarianti, type Varianti } from "@/server/kit/varianti-schema";
+// La STESSA funzione che usano `kit.generate` e `kit.ricalcola` per rileggere
+// la riga: l'idratazione del wizard in modifica non deve essere un secondo
+// percorso. Importabile dal client — solo `engine.ts` porta `server-only`.
+import { kitInputFromRequest } from "@/server/kit/from-request";
 import { ComponentiRibalta } from "@/components/kit/componenti-ribalta";
 import { RadioOption } from "@/components/kit/radio-option";
 import {
@@ -349,8 +354,9 @@ function makeUpdate<T>(setForm: Dispatch<SetStateAction<FormValues>>): Update<T>
   return (key, value) => setForm((prev) => ({ ...prev, [key]: value }) as FormValues);
 }
 
-export function NuovaRichiestaClient() {
+export function NuovaRichiestaClient({ daId }: { daId?: string } = {}) {
   const router = useRouter();
+  const modifica = daId !== undefined;
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<FormValues>(ARTECH_DEFAULT);
   // Il cliente NON e` un campo del form: non entra in `kitInputSchema` (che e`
@@ -361,17 +367,60 @@ export function NuovaRichiestaClient() {
 
   const create = api.kit.create.useMutation();
   const generate = api.kit.generate.useMutation();
-  const isSubmitting = create.isPending || generate.isPending;
+  const ricalcola = api.kit.ricalcola.useMutation();
+  const partenza = api.kit.get.useQuery({ id: daId ?? "" }, { enabled: modifica });
+  const isSubmitting = create.isPending || generate.isPending || ricalcola.isPending;
 
-  const labels = stepLabels(form.series);
+  /**
+   * L'input di partenza NON si ricava rileggendo le colonne a mano: sarebbe una
+   * **seconda ricostruzione**, parallela a quella che `kit.generate` e
+   * `kit.ricalcola` fanno con `kitInputFromRequest`. Se le due divergessero — un
+   * campo aggiunto dopo, un `NULL` interpretato diversamente — l'agente vedrebbe
+   * a schermo una configurazione che la riga non codifica, e la confermerebbe.
+   * Nessun test se ne accorgerebbe, perché non ci sarebbe niente da confrontare.
+   *
+   * Usare la funzione del motore è possibile perché `from-request.ts` è
+   * importabile dal client: **solo `engine.ts` porta `server-only`**.
+   *
+   * Corollario: il test «prefill === fromRequest» non serve, perché non esistono
+   * due funzioni che possano divergere.
+   */
+  const idratato = useMemo(() => {
+    if (!partenza.data) return null;
+    try {
+      return { input: kitInputFromRequest(partenza.data), errore: null as string | null };
+    } catch (error) {
+      return {
+        input: null,
+        errore:
+          error instanceof Error ? error.message : "Richiesta non rileggibile dal generatore.",
+      };
+    }
+  }, [partenza.data]);
+
+  useEffect(() => {
+    if (idratato?.input) setForm(idratato.input as FormValues);
+  }, [idratato]);
+
+  /**
+   * In modifica i passi sono DUE, non cinque con i primi tre disabilitati.
+   * Le specifiche congelate stanno in una scheda in testa: dicono cosa è fermo,
+   * perché, e dov'è la via d'uscita. Disabilitare i tre passi avrebbe voluto un
+   * flag `readOnly` dentro ~600 righe di form e in ogni campo, per ottenere tre
+   * schermate che l'agente attraversa senza poterci fare nulla.
+   */
+  const labels = modifica ? (["Componenti", "Riepilogo"] as const) : stepLabels(form.series);
   // L'ULTIMO passo è il riepilogo, e non è lo stesso numero nei due rami: 5 su
   // ARTECH (con «Componenti»), 4 sul bilico. Derivarlo dalle etichette invece
   // di cablare un 4 è ciò che tiene i due rami allineati da soli.
   const ultimo = labels.length;
 
   function goNext() {
-    // L'ultimo passo è il riepilogo e non ha schema proprio.
-    const schema = STEP_SCHEMAS[form.series][step - 1];
+    // In modifica il primo passo È «Componenti», che nel wizard di creazione è
+    // il quarto: lo schema va preso da lì, non dalla posizione.
+    const schema = modifica
+      ? STEP_SCHEMAS.ARTECH[3]
+      : STEP_SCHEMAS[form.series][step - 1];
     if (!schema) return;
     const result = schema.safeParse(form);
     if (!result.success) {
@@ -420,6 +469,73 @@ export function NuovaRichiestaClient() {
     }
   }
 
+  /**
+   * Il conferma della modalità modifica. Parte **solo di qui**, mai
+   * all'apertura: se `ricalcola` scattasse aprendo il wizard, un agente che
+   * cambia idea e chiude la scheda lascerebbe la richiesta di partenza
+   * **superata e congelata** — `generate` e `ricalcola` la rifiutano entrambi —
+   * puntando a una bozza vuota.
+   *
+   * Si manda **sempre** `variants`, anche vuoto: `{}` è il reset esplicito allo
+   * standard, ed è ciò che rende l'operazione reversibile. Ometterlo
+   * significherebbe «eredita», cioè non poter più spegnere l'antieffrazione.
+   */
+  async function handleNuovaVersione() {
+    setSubmitError(null);
+    const varianti = componiVarianti((form as ArtechFormValues).variants ?? {}) ?? {};
+    let id: string;
+    try {
+      const nuova = await ricalcola.mutateAsync({ kitRequestId: daId!, variants: varianti });
+      id = nuova.id;
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error ? error.message : "Errore durante il ricalcolo della richiesta.",
+      );
+      return;
+    }
+    try {
+      await generate.mutateAsync({ kitRequestId: id });
+    } catch {
+      // Come sopra: la nuova versione esiste ed è DRAFT, la sua scheda mostra
+      // l'errore e offre «Rigenera».
+    } finally {
+      router.push(`/richieste/${id}`);
+    }
+  }
+
+  // Una riga che il motore non sa rileggere NON si modifica: si rifà. Mostrare
+  // un form idratato a metà significherebbe far confermare all'agente una
+  // configurazione che nessuno ha ricostruito.
+  if (modifica && idratato?.errore)
+    return (
+      <div className="mx-auto flex max-w-3xl flex-col gap-4">
+        <Link
+          href={`/richieste/${daId}`}
+          className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-subtle transition-colors hover:text-brand"
+        >
+          <ArrowLeft className="size-4" aria-hidden /> Torna alla richiesta
+        </Link>
+        <div
+          role="alert"
+          className="rounded-md border border-danger/30 bg-danger/5 p-4 text-sm text-danger"
+        >
+          {idratato.errore}
+        </div>
+        <p className="text-sm text-ink-subtle">
+          Questa richiesta non è modificabile: il generatore non riesce a rileggerne le
+          specifiche. Va rifatta con una <strong>richiesta nuova</strong>.
+        </p>
+      </div>
+    );
+
+  if (modifica && !idratato)
+    return (
+      <div
+        className="mx-auto h-64 max-w-3xl animate-pulse rounded-md border border-line bg-surface-sunken"
+        aria-hidden
+      />
+    );
+
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <Link
@@ -429,7 +545,16 @@ export function NuovaRichiestaClient() {
         <ArrowLeft className="size-4" aria-hidden /> Richieste
       </Link>
 
-      <h1 className="text-xl font-semibold text-ink">Nuova richiesta kit</h1>
+      <h1 className="text-xl font-semibold text-ink">
+        {modifica ? "Modifica componenti" : "Nuova richiesta kit"}
+      </h1>
+
+      {modifica && idratato?.input && partenza.data && (
+        <SpecificheCongelate
+          input={idratato.input as ArtechKitInput}
+          requestNumber={partenza.data.requestNumber}
+        />
+      )}
 
       <ol className="flex items-center gap-2">
         {labels.map((label, index) => {
@@ -483,19 +608,24 @@ export function NuovaRichiestaClient() {
           </div>
         )}
 
-        {step === 1 && (
+        {/* In modifica il passo 1 È «Componenti»: gli altri non esistono, non
+            sono disabilitati. Il ramo di creazione qui sotto resta intatto. */}
+        {modifica && step === 1 && (
+          <Step4Componenti form={form as ArtechFormValues} update={makeUpdate<ArtechFormValues>(setForm)} />
+        )}
+        {!modifica && step === 1 && (
           <div className="flex flex-col gap-8">
             <Step1Tipologia form={form} setForm={setForm} />
             <CustomerPicker value={cliente?.id ?? null} onChange={setCliente} />
           </div>
         )}
-        {step === 2 &&
+        {!modifica && step === 2 &&
           (form.series === "TOUR" ? (
             <Step2DimensioniTour form={form} update={makeUpdate<TourKitInput>(setForm)} />
           ) : (
             <Step2DimensioniArtech form={form} update={makeUpdate<ArtechFormValues>(setForm)} />
           ))}
-        {step === 3 &&
+        {!modifica && step === 3 &&
           (form.series === "TOUR" ? (
             <Step3SchemaFinitura form={form} update={makeUpdate<TourKitInput>(setForm)} />
           ) : (
@@ -520,7 +650,7 @@ export function NuovaRichiestaClient() {
               cliente={cliente}
             />
           ))}
-        {step === 4 && form.series !== "TOUR" && (
+        {!modifica && step === 4 && form.series !== "TOUR" && (
           <Step4Componenti form={form} update={makeUpdate<ArtechFormValues>(setForm)} />
         )}
         {step === ultimo && <StepRiepilogo form={form} cliente={cliente} />}
@@ -536,11 +666,57 @@ export function NuovaRichiestaClient() {
             <ArrowRight className="size-4" aria-hidden />
           </Button>
         ) : (
-          <Button onClick={() => void handleGenera()} loading={isSubmitting}>
-            Genera kit
+          <Button
+            onClick={() => void (modifica ? handleNuovaVersione() : handleGenera())}
+            loading={isSubmitting}
+          >
+            {modifica ? "Genera nuova versione" : "Genera kit"}
           </Button>
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Le specifiche che in modifica NON si toccano. Si alimenta dall'input **già
+ * ricostruito** da `kitInputFromRequest`, non dalla riga grezza: i tipi tornano
+ * da soli (`geometriaLabel` vuole un `ArtechGeometryId`, la colonna è
+ * `string | null`) e soprattutto leggere qui le colonne sarebbe di nuovo una
+ * seconda lettura, cioè ciò che questa modalità è costruita per non avere.
+ *
+ * Il `requestNumber` è l'unico dato che arriva dalla riga e non dall'input,
+ * perché non è un dato del motore: `kitInputSchema` non lo contiene.
+ */
+function SpecificheCongelate({
+  input,
+  requestNumber,
+}: {
+  input: ArtechKitInput;
+  requestNumber: string;
+}) {
+  return (
+    <div className="rounded-md border border-line bg-surface-sunken p-4">
+      <p className="text-sm text-ink">
+        Stai cambiando i componenti di{" "}
+        <span className="font-mono font-semibold">{requestNumber}</span>. Al conferma nascerà
+        una nuova versione con un numero nuovo, e questa smetterà di valere.
+      </p>
+      <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-3">
+        <SummaryItem label="Dimensioni" value={`${input.widthMm} × ${input.heightMm} mm`} />
+        <SummaryItem label="Geometria" value={geometriaLabel(input.geometry)} />
+        <SummaryItem label="Entrata maniglia" value={entrataLabel(input.entrata)} />
+        <SummaryItem label="Mano" value={hingeSideLabel(input.openingSide)} />
+        <SummaryItem label="Finitura" value={input.finish} />
+        <SummaryItem
+          label="Chiusure supplementari"
+          value={input.supplementaryClosures ? "Sì" : "No"}
+        />
+      </dl>
+      <p className="mt-3 text-xs text-ink-subtle">
+        Quote, geometria ed entrata non si cambiano qui: cambiarle vuol dire un altro
+        serramento, quindi una <strong>richiesta nuova</strong>.
+      </p>
     </div>
   );
 }
