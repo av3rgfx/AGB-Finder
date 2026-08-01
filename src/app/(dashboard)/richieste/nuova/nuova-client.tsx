@@ -582,6 +582,28 @@ export function NuovaRichiestaClient({ daId }: { daId?: string } = {}) {
       </div>
     );
 
+  // Senza questo ramo, un `?da=` con l'id di un altro agente (NOT_FOUND) lasciava
+  // la pagina a pulsare all'infinito: `idratato` resta `null` finché non arrivano
+  // dati che non arriveranno mai. La scheda dettaglio gestisce già `isError`; qui
+  // mancava.
+  if (modifica && partenza.isError)
+    return (
+      <div className="mx-auto flex max-w-3xl flex-col gap-4">
+        <Link
+          href="/richieste"
+          className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-subtle transition-colors hover:text-brand"
+        >
+          <ArrowLeft className="size-4" aria-hidden /> Richieste
+        </Link>
+        <div
+          role="alert"
+          className="rounded-md border border-danger/30 bg-danger/5 p-4 text-sm text-danger"
+        >
+          Richiesta non trovata o errore di caricamento.
+        </div>
+      </div>
+    );
+
   if (modifica && !idratato)
     return (
       <div
@@ -592,11 +614,13 @@ export function NuovaRichiestaClient({ daId }: { daId?: string } = {}) {
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
+      {/* In modifica si torna ALLA RICHIESTA, non all'elenco: si è arrivati di
+          lì, e l'elenco costerebbe un secondo clic per ritrovarla. */}
       <Link
-        href="/richieste"
+        href={modifica ? `/richieste/${daId}` : "/richieste"}
         className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-subtle transition-colors hover:text-brand"
       >
-        <ArrowLeft className="size-4" aria-hidden /> Richieste
+        <ArrowLeft className="size-4" aria-hidden /> {modifica ? "Torna alla richiesta" : "Richieste"}
       </Link>
 
       <h1 className="text-xl font-semibold text-ink">
@@ -607,6 +631,7 @@ export function NuovaRichiestaClient({ daId }: { daId?: string } = {}) {
         <SpecificheCongelate
           input={idratato.input as ArtechKitInput}
           requestNumber={partenza.data.requestNumber}
+          emessa={partenza.data.status !== "DRAFT"}
         />
       )}
 
@@ -724,7 +749,11 @@ export function NuovaRichiestaClient({ daId }: { daId?: string } = {}) {
             onClick={() => void (modifica ? handleNuovaVersione() : handleGenera())}
             loading={isSubmitting}
           >
-            {modifica ? "Genera nuova versione" : "Genera kit"}
+            {modifica
+              ? partenza.data?.status !== "DRAFT"
+                ? "Genera nuova versione"
+                : "Rigenera la distinta"
+              : "Genera kit"}
           </Button>
         )}
       </div>
@@ -745,16 +774,24 @@ export function NuovaRichiestaClient({ daId }: { daId?: string } = {}) {
 function SpecificheCongelate({
   input,
   requestNumber,
+  emessa,
 }: {
   input: ArtechKitInput;
   requestNumber: string;
+  /** Falso su una BOZZA, dove il conferma riscrive in loco: vedi sotto. */
+  emessa: boolean;
 }) {
   return (
     <div className="rounded-md border border-line bg-surface-sunken p-4">
       <p className="text-sm text-ink">
         Stai cambiando i componenti di{" "}
-        <span className="font-mono font-semibold">{requestNumber}</span>. Al conferma nascerà
-        una nuova versione con un numero nuovo, e questa smetterà di valere.
+        <span className="font-mono font-semibold">{requestNumber}</span>.{" "}
+        {/* Su una BOZZA il conferma riscrive la distinta IN LOCO: nessuna
+            versione nuova, nessun numero consumato. Promettere il contrario
+            sarebbe la stessa bugia per cui «Ricalcola» è stato rinominato. */}
+        {emessa
+          ? "Al conferma nascerà una nuova versione con un numero nuovo, e questa smetterà di valere."
+          : "È una bozza: al conferma la distinta viene rifatta qui, senza creare una versione nuova."}
       </p>
       <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-3">
         <SummaryItem label="Dimensioni" value={`${input.widthMm} × ${input.heightMm} mm`} />

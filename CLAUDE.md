@@ -559,7 +559,16 @@ e `RadioOption` estratte in `src/components/kit/` — insieme, perché estrarre 
 chiuso un **ciclo** wizard→componenti→wizard; `nuova-client.tsx` da 1.983 a 1.383 righe. **Difetti
 colti dai test**: `variantiFinali ?? request.variants` faceva ricadere il **reset**
 sull'ereditarietà (`??` tratta `null` come nullish) — spegnere l'antieffrazione non avrebbe fatto
-nulla in silenzio. Gate verdi (typecheck·lint·**test 1.025**·build 18 route) · **catalogo reale 112
+nulla in silenzio. **Quattro trovati dalla review di branch, coi gate tutti verdi**: (a) un
+**refetch** di `kit.get` cancellava le varianti appena scelte — lo structural sharing di
+react-query non regge sulle `Date` e il `QueryClient` è nudo (`staleTime: 0` +
+`refetchOnWindowFocus`), quindi bastava cambiare finestra → idratazione **una volta sola**;
+(b) la validazione copriva solo il ramo con `variants`, mentre «Nuova versione» chiama `ricalcola`
+**senza**: su una riga PVC/battente già emessa nascevano **due righe morte** → si valida ogni volta
+che si sta per scrivere; (c) su una **bozza** la UI prometteva una versione che non nasce (il
+router scrive in loco); (d) la **vasistas** passava il filtro per serie pur non avendo varianti →
+si filtra sulla **tipologia**, con un test in `registry.test.ts` che fallisce se un modulo cambia
+idea. Gate verdi (typecheck·lint·**test 1.035**·build 18 route) · **catalogo reale 112
 test** · **browser 22/22 desktop e 22/22 a 375px**, col ciclo intero 90,20 → 110,13 → **ritorno a
 90,20** (la prova che il reset funziona). **🟢 NESSUNA MIGRAZIONE, NESSUNA AZIONE OPS.** Nuova
 **domanda 31**: il numero di richiesta identifica la richiesta o la versione? (`count()+1` su

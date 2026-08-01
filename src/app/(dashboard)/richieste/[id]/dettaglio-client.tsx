@@ -16,7 +16,7 @@ import { SCHEMI_TOUR } from "@/server/kit/rules-tour-bilico-legno";
 import { GEOMETRIE, geometriaLabel, type ArtechGeometryId } from "@/server/kit/artech-geometrie";
 import { entrataLabel } from "@/server/kit/types";
 import { variantiSchema } from "@/server/kit/varianti-schema";
-import { scelteNonStandard } from "@/server/kit/artech-varianti";
+import { scelteNonStandard, TIPOLOGIE_CON_VARIANTI } from "@/server/kit/artech-varianti";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { DistintaTable } from "@/components/kit/distinta-table";
 import { RiepilogoSconto } from "@/components/kit/riepilogo-sconto";
@@ -118,13 +118,17 @@ export function DettaglioClient({ id }: { id: string }) {
   // CONFLICT), qui si evita di offrire un pulsante che verrebbe rifiutato.
   const puoRigenerare = r.status === "DRAFT";
   const puoRicalcolare = !puoRigenerare && r.supersededById === null;
-  // Le varianti componente esistono solo sul ramo ARTECH: il modulo TOUR
-  // dichiara `varianti: []` e `kit.ricalcola` rifiuta una richiesta bilico che
-  // ne porti. Offrire il link lì sarebbe un pulsante che apre una schermata
-  // senza scelte. Sulla riga SUPERATA non si opera (come i due pulsanti sopra);
-  // sulla bozza sì, ed è il caso in cui serve di più — la generazione è fallita
-  // e l'agente vuole cambiare qualcosa.
-  const puoModificareComponenti = r.supersededById === null && r.series !== "TOUR";
+  // Si filtra sulla TIPOLOGIA, non sulla serie: la vasistas è ARTECH ma il suo
+  // modulo dichiara `varianti: []` esattamente come il bilico, quindi con un
+  // filtro per serie il link portava a una schermata senza scelte — e il
+  // conferma creava comunque una versione nuova, consumando un numero e
+  // superando la precedente per zero modifiche. La lista sta in
+  // `artech-varianti.ts` ed è la stessa che usa il passo del wizard.
+  // Sulla riga SUPERATA non si opera (come i due pulsanti sopra); sulla bozza sì,
+  // ed è il caso in cui serve di più — la generazione è fallita e l'agente vuole
+  // cambiare qualcosa.
+  const puoModificareComponenti =
+    r.supersededById === null && TIPOLOGIE_CON_VARIANTI.includes(r.windowType);
 
   const distintaVuotaMsg = puoRigenerare
     ? "Distinta non ancora generata. Usa «Rigenera» per calcolare i componenti dal catalogo."

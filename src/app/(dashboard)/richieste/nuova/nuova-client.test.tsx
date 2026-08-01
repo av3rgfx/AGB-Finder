@@ -1589,6 +1589,44 @@ describe("wizard in modalità modifica", () => {
     expect(ricalcolaMutate.mock.calls[0]![0].variants).toEqual({});
   });
 
+  // Su una BOZZA il router scrive in loco e restituisce lo stesso id: non nasce
+  // nessuna versione e nessun numero viene consumato. Promettere il contrario è
+  // la stessa bugia per cui questo branch ha rinominato «Ricalcola».
+  it("su una bozza non promette una versione nuova", () => {
+    conRiga({ status: "DRAFT" });
+    render(<NuovaRichiestaClient daId="k1" />);
+    const testo = document.body.textContent ?? "";
+    expect(/nascerà una nuova versione/i.test(testo)).toBe(false);
+    expect(/bozza/i.test(testo)).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
+    expect(screen.queryByRole("button", { name: /genera nuova versione/i })).toBeNull();
+    expect(screen.getByRole("button", { name: /rigenera la distinta/i })).toBeTruthy();
+  });
+
+  it("su una richiesta emessa promette la versione nuova, e la mantiene", () => {
+    conRiga({ status: "COMPLETED" });
+    render(<NuovaRichiestaClient daId="k1" />);
+    expect(/nascerà una nuova versione/i.test(document.body.textContent ?? "")).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
+    expect(screen.getByRole("button", { name: /genera nuova versione/i })).toBeTruthy();
+  });
+
+  // `?da=` con l'id di un altro agente → NOT_FOUND. Senza gestirlo la pagina
+  // restava uno scheletro pulsante per sempre, senza dire niente.
+  it("se la richiesta non si carica lo dice, invece di pulsare all'infinito", () => {
+    kitGetQuery = { data: undefined, isPending: false, isError: true };
+    render(<NuovaRichiestaClient daId="k1" />);
+    expect(screen.getByRole("alert").textContent).toMatch(/non trovata|caricamento/i);
+  });
+
+  it("in modifica il link in testa torna alla richiesta, non all'elenco", () => {
+    conRiga();
+    render(<NuovaRichiestaClient daId="k1" />);
+    expect(screen.getByRole("link", { name: /torna alla richiesta/i }).getAttribute("href")).toBe(
+      "/richieste/k1",
+    );
+  });
+
   it("una riga che il motore non sa rileggere mostra il rifiuto, senza conferma", () => {
     // `geometry: null` è una riga scritta prima del cutover della geometria:
     // `kitInputFromRequest` la rifiuta, e nessuno può indovinarla.

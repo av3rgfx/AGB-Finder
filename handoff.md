@@ -88,6 +88,43 @@
 >   (l'empty-state della distinta e il messaggio di `CONFLICT` di `kit.generate`) nominavano
 >   ancora il pulsante vecchio, mandandolo a cercare qualcosa che non c'è più.
 >
+> ### Quattro difetti trovati dalla review di branch, tutti corretti
+>
+> Nessuno dei quattro sarebbe stato visto dai gate: erano tutti verdi.
+>
+> 1. 🔴 **Un refetch di `kit.get` cancellava le varianti appena scelte.** `kit.get` restituisce
+>    campi `Date`, e lo structural sharing di react-query **non regge sulle Date**: con due
+>    payload identici che ne contengono una, `replaceEqualDeep` restituisce un oggetto **nuovo**
+>    (verificato eseguendolo). Il `QueryClient` è `new QueryClient()` nudo → `staleTime: 0` e
+>    `refetchOnWindowFocus: true`: bastava cambiare finestra e tornare. Il form veniva riscritto,
+>    la scelta spariva **in silenzio**, e «Genera nuova versione» avrebbe emesso una versione
+>    identica alla precedente consumando un numero e congelando l'originale per niente. Ora
+>    l'idratazione avviene **una volta sola**.
+> 2. 🔴 **La validazione copriva solo il ramo con `variants`.** Il pulsante «Nuova versione»
+>    chiama `ricalcola` **senza**, quindi su una riga emessa che il motore rifiuta (una COMPLETED
+>    PVC o battente) si creava la versione, si marcava la vecchia superata, e solo dopo `generate`
+>    falliva: **due righe morte**. Ora si valida ogni volta che si sta per **scrivere**; la bozza
+>    senza varianti resta il no-op storico.
+> 3. **Su una bozza la UI prometteva una versione che non nasce.** Il router scrive in loco e
+>    restituisce lo stesso id, ma la scheda diceva «nascerà una nuova versione… e questa smetterà
+>    di valere» e il pulsante era «Genera nuova versione». È la stessa bugia per cui «Ricalcola» è
+>    stato rinominato. Ora su bozza dice «È una bozza: al conferma la distinta viene rifatta qui»
+>    e il pulsante è «Rigenera la distinta».
+> 4. **La vasistas passava il filtro ma non ha varianti.** `puoModificareComponenti` escludeva
+>    solo TOUR, ma la vasistas è ARTECH e il suo modulo dichiara `varianti: []`: il link portava a
+>    una schermata senza scelte e il conferma creava comunque una versione. Ora si filtra sulla
+>    **tipologia** (`TIPOLOGIE_CON_VARIANTI` in `artech-varianti.ts`), e un test in
+>    `registry.test.ts` fa fallire la build se un modulo comincia o smette di dichiarare varianti.
+>
+> Più due minori: un `?da=` non caricabile lasciava la pagina a **pulsare all'infinito** senza
+> messaggio, e il link in testa in modifica tornava all'elenco invece che alla richiesta.
+>
+> **Conseguenza onesta sui test esistenti:** `ricalcola` ora esegue davvero il motore, quindi
+> cinque test che arrivano alla scrittura hanno bisogno di template e prodotti — prima passavano
+> perché il motore non veniva invocato. E il fixture di «copia tutti i campi» era una **vasistas
+> con sede 30 ed entrata 7,5**, cioè una riga **non generabile**: non è più versionabile, ed è il
+> comportamento voluto.
+>
 > ### Il ciclo di import, di nuovo — e chiuso di nuovo
 >
 > `ComponentiRibalta` usa `RadioOption`, che viveva nel wizard: estrarre solo la prima avrebbe
@@ -102,9 +139,9 @@
 > | Gemello entrata 7,5 | **96,29 €** — invariato |
 > | Antieffrazione | **17 / 22 / 110,13 €** — ora **asserito** sul catalogo reale |
 > | Bilico TOUR | **450,03 · 766,51 · 433,46 €** — erano `toBeGreaterThan(0)`, ora esatti |
-> | Test | 996 → **1.025** · build 18 route |
+> | Test | 996 → **1.035** · build 18 route |
 > | Gate su catalogo reale | **112 test eseguiti**, non skippati |
-> | Browser | **22/22 desktop · 22/22 a 375px** |
+> | Browser | **22/22 desktop · 22/22 a 375px** (rifatto dopo i fix della review) |
 >
 > La verifica browser ha percorso il **ciclo intero**: 90,20 € → «Modifica componenti» →
 > antieffrazione → **110,13 € su un numero nuovo**, la vecchia marcata come ricalcolata → di nuovo

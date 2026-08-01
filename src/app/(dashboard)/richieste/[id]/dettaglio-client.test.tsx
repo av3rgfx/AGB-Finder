@@ -349,6 +349,17 @@ describe("DettaglioClient — modifica componenti", () => {
     expect(screen.queryByRole("link", { name: /modifica componenti/i })).toBeNull();
   });
 
+  // La vasistas è serie ARTECH ma il suo modulo dichiara `varianti: []`, come il
+  // bilico: filtrare sulla SERIE la lasciava passare, e il link portava a una
+  // schermata che dice «Nessuna variante per questa tipologia» — con il conferma
+  // che creava comunque una versione nuova, consumando un numero e superando la
+  // precedente per zero modifiche.
+  it("la vasistas non offre «Modifica componenti»: il suo modulo non ha varianti", () => {
+    conRiga({ status: "COMPLETED", windowType: "VASISTAS" });
+    render(<DettaglioClient id="k1" />);
+    expect(screen.queryByRole("link", { name: /modifica componenti/i })).toBeNull();
+  });
+
   // Il modulo TOUR dichiara `varianti: []` e il router rifiuta: offrire il link
   // sarebbe un pulsante che porta a una schermata senza scelte.
   it("il bilico non offre «Modifica componenti»: la serie non ha varianti", () => {
