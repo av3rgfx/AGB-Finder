@@ -75,6 +75,52 @@ describe.runIf(Boolean(url))("KitEngine — integrazione su catalogo reale", () 
     expect(output.lines.some((l) => l.code === "A50122.08.07")).toBe(true);
   });
 
+  // L'antieffrazione completa (movimento a due nottolini + incontri
+  // antieffrazione + piastrino) è la configurazione che il passo «Componenti»
+  // rende raggiungibile con un clic su una distinta già emessa. Fino a qui il
+  // suo totale non era asserito da NESSUN test: quello del modulo
+  // (`rules-artech-legno.test.ts`) conta righe e pezzi ma non vede i prezzi —
+  // i moduli restituiscono `KitLine` senza prezzo, che il motore risolve dopo
+  // contro il catalogo. Il numero viveva solo nei .md, cioè in una fotografia:
+  // il giorno in cui AGB cambia un prezzo, la fotografia resta identica e
+  // sbagliata.
+  it("l'antieffrazione completa fa 17 righe / 22 pezzi / 110,13 €", async () => {
+    const output = await new KitEngine(db).generate({
+      windowType: "ANTA_RIBALTA",
+      widthMm: 550,
+      heightMm: 1820,
+      material: "LEGNO",
+      geometry: "A12_I13_B20",
+      entrata: "E15",
+      seatConfig: "STANDARD",
+      openingSide: "SINISTRA",
+      openingDir: "TIRARE",
+      finish: "ARGENTO",
+      series: "ARTECH",
+      supplementaryClosures: true,
+      variants: {
+        movimentoAngolare: "DUE_NOTTOLINI",
+        incontroNottolino: "ANTIEFFRAZIONE_INCLINATE",
+        piastrinoAntieffrazione: true,
+      },
+    });
+    expect(output.warnings).toEqual([]);
+    expect(output.lines).toHaveLength(17);
+    expect(output.lines.every((line) => line.unitPrice !== null)).toBe(true);
+    expect(output.lines.reduce((n, l) => n + l.quantity, 0)).toBe(22);
+    expect(Number(output.totalPrice).toFixed(2)).toBe("110.13");
+    // I tre codici che l'antieffrazione sostituisce o aggiunge, sul catalogo vero.
+    expect(output.lines.find((l) => l.position === "movimento-angolare")!.code).toBe(
+      "A50302.02.02",
+    );
+    expect(output.lines.find((l) => l.position === "incontri-nottolino")!.code).toBe(
+      "A514SX.05.67",
+    );
+    expect(output.lines.find((l) => l.position === "piastrino-antieffrazione")!.code).toBe(
+      "A20050.00.02",
+    );
+  });
+
   // PVC DISATTIVATO 2026-07-25: la composizione ARTECH PVC non esiste nel
   // listino 2026 (i codici material-specific compaiono solo nelle pagine
   // certificato ift p0013 (11) e p0395 (393), senza prezzo) → template
@@ -156,7 +202,12 @@ describe.runIf(Boolean(url))("KitEngine — integrazione su catalogo reale", () 
     expect(output.warnings).toEqual([]);
     expect(output.lines).toHaveLength(7);
     expect(output.lines.every((line) => line.unitPrice !== null)).toBe(true);
-    expect(output.totalPrice).toBeGreaterThan(0);
+    expect(output.lines.reduce((n, l) => n + l.quantity, 0)).toBe(18);
+    // `toBeGreaterThan(0)` accanto ai tre totali esatti dell'anta-ribalta era la
+    // stessa asimmetria che la #44 ha già chiuso sul golden: un verde che non
+    // verifica. I tre numeri del bilico sono quelli misurati alla #35 e
+    // ri-misurati sul catalogo importato, identici.
+    expect(Number(output.totalPrice).toFixed(2)).toBe("450.03");
   });
 
   it("il bilico 4 lati aggiunge le due aste di mano opposta", async () => {
@@ -170,6 +221,8 @@ describe.runIf(Boolean(url))("KitEngine — integrazione su catalogo reale", () 
     expect(output.warnings).toEqual([]);
     expect(output.lines).toHaveLength(9);
     expect(output.lines.every((line) => line.unitPrice !== null)).toBe(true);
+    expect(output.lines.reduce((n, l) => n + l.quantity, 0)).toBe(20);
+    expect(Number(output.totalPrice).toFixed(2)).toBe("766.51");
   });
 
   it("lo schema 3 aggiunge il kit spessori, anch'esso a catalogo con prezzo", async () => {
@@ -177,6 +230,9 @@ describe.runIf(Boolean(url))("KitEngine — integrazione su catalogo reale", () 
     expect(output.warnings).toEqual([]);
     const spessori = output.lines.find((line) => line.code === "T16635.04.01");
     expect(spessori?.unitPrice).toBeGreaterThan(0);
+    expect(output.lines).toHaveLength(8);
+    expect(output.lines.reduce((n, l) => n + l.quantity, 0)).toBe(19);
+    expect(Number(output.totalPrice).toFixed(2)).toBe("433.46");
   });
 
   it("il bilico esiste solo per il legno: il PVC viene rifiutato", async () => {
