@@ -1598,6 +1598,46 @@ describe("wizard in modalità modifica", () => {
     expect(screen.queryByRole("button", { name: /genera nuova versione/i })).toBeNull();
   });
 
+  // Il riepilogo dice «Cliente: Nessuno» quando `cliente` è null. In modifica
+  // lo stato non si popolerebbe da sé, e la frase sarebbe FALSA: `ricalcola` fa
+  // ereditare customerId e discountPercent alla nuova versione. Uno schermo che
+  // contraddice ciò che il programma fa, proprio prima del conferma.
+  it("in modifica il riepilogo nomina il cliente della richiesta, non «Nessuno»", () => {
+    kitGetQuery = {
+      data: {
+        ...RIGA_EMESSA,
+        customer: { id: "c1", companyName: "Fosca" },
+        discountPercent: 42.5,
+      },
+      isPending: false,
+      isError: false,
+    };
+    render(<NuovaRichiestaClient daId="k1" />);
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
+    const testo = document.body.textContent ?? "";
+    expect(testo.includes("Fosca")).toBe(true);
+    expect(/Cliente[\s\S]{0,20}Nessuno/.test(testo)).toBe(false);
+  });
+
+  // Lo sconto mostrato è quello TIMBRATO sulla richiesta, non quello corrente
+  // dell'anagrafica: è ciò che la nuova versione eredita davvero.
+  it("in modifica mostra lo sconto timbrato sulla richiesta", () => {
+    kitGetQuery = {
+      data: {
+        ...RIGA_EMESSA,
+        customer: { id: "c1", companyName: "Fosca" },
+        discountPercent: 30,
+      },
+      isPending: false,
+      isError: false,
+    };
+    render(<NuovaRichiestaClient daId="k1" />);
+    fireEvent.click(screen.getByRole("button", { name: /avanti/i }));
+    // 30% timbrato, NON il 42,5% che l'anagrafica mockata dà a Fosca.
+    expect(document.body.textContent).toMatch(/30\s*%/);
+    expect(document.body.textContent).not.toMatch(/42,5\s*%/);
+  });
+
   it("senza `daId` resta il wizard di creazione, con tutti i suoi passi", () => {
     render(<NuovaRichiestaClient />);
     expect(screen.getByRole("button", { name: /avanti/i })).toBeTruthy();

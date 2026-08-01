@@ -403,6 +403,36 @@ export function NuovaRichiestaClient({ daId }: { daId?: string } = {}) {
   }, [idratato]);
 
   /**
+   * In modifica il cliente si idrata **dalla riga**, altrimenti il riepilogo
+   * direbbe «Cliente: Nessuno» proprio prima del conferma — e sarebbe falso,
+   * perché `kit.ricalcola` fa ereditare `customerId` e `discountPercent` alla
+   * nuova versione. Uno schermo che contraddice ciò che il programma fa.
+   *
+   * Lo sconto è quello **timbrato sulla richiesta**, non quello corrente
+   * dell'anagrafica: è ciò che la nuova versione erediterà davvero, ed è la
+   * ragione per cui la colonna esiste (ritoccare `Customer.discount` non deve
+   * cambiare il totale di una distinta già mandata).
+   *
+   * `kitGeometry`/`kitEntrata` restano `null`: servono al blocco «Usa il
+   * profilo» del passo 3, che in modifica non esiste.
+   */
+  useEffect(() => {
+    if (!modifica) return;
+    const r = partenza.data;
+    setCliente(
+      r?.customer
+        ? {
+            id: r.customer.id,
+            companyName: r.customer.companyName,
+            discount: r.discountPercent,
+            kitGeometry: null,
+            kitEntrata: null,
+          }
+        : null,
+    );
+  }, [modifica, partenza.data]);
+
+  /**
    * In modifica i passi sono DUE, non cinque con i primi tre disabilitati.
    * Le specifiche congelate stanno in una scheda in testa: dicono cosa è fermo,
    * perché, e dov'è la via d'uscita. Disabilitare i tre passi avrebbe voluto un
