@@ -33,7 +33,7 @@ import {
 } from "@/server/kit/artech-geometrie";
 // `type Varianti` dal file FOGLIA: il registro non ri-esporta più lo schema né i
 // suoi tipi (vedi il commento di testa di `artech-varianti.ts`).
-import type { Varianti } from "@/server/kit/varianti-schema";
+import { componiVarianti, type Varianti } from "@/server/kit/varianti-schema";
 import {
   avvisiVarianti,
   eAntieffrazione,
@@ -270,28 +270,6 @@ const STEP_SCHEMAS = {
     tourInputSchema.pick({ tourSchema: true, finish: true }),
   ],
 } as const;
-
-/**
- * Blocco varianti senza le chiavi vuote — e `undefined` se non ne resta
- * nessuna. `{}` non deve raggiungere il DB: `undefined` significa «lo standard
- * del programma», e il default vive nel REGISTRO, non nel dato persistito
- * (`artech-varianti.ts`). Senza questa normalizzazione, spegnere l'interruttore
- * lascerebbe una colonna `{}` indistinguibile da una scelta.
- *
- * `false` si pota come `undefined`, e non è una simmetria estetica: per il
- * piastrino — l'unica variante booleana — lo standard è «nessun piastrino», che
- * il motore legge da `=== true`. `{ piastrinoAntieffrazione: false }` sarebbe
- * quindi **uno standard materializzato**, cioè esattamente ciò che la potatura
- * esiste per impedire alle altre quattro. Oggi la UI non lo produce (spegnere
- * scrive `undefined`), ma `kit.create` accetta il blocco dal client: la chiusura
- * sta qui, non nella fiducia che nessuno scriva mai `false`.
- */
-function componiVarianti(v: Varianti): Varianti | undefined {
-  const pulite = Object.fromEntries(
-    Object.entries(v).filter(([, valore]) => valore !== undefined && valore !== false),
-  ) as Varianti;
-  return Object.keys(pulite).length === 0 ? undefined : pulite;
-}
 
 /**
  * Quante delle TRE scelte che compongono l'antieffrazione sono attive.

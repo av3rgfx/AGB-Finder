@@ -68,3 +68,31 @@ type AssertNever<T extends never> = T;
 type VarianteMancante = AssertNever<Exclude<keyof Varianti, (typeof VARIANTE_IDS)[number]>>;
 
 export type VarianteId = (typeof VARIANTE_IDS)[number];
+
+/**
+ * Blocco varianti senza le chiavi vuote — e `undefined` se non ne resta nessuna.
+ * `{}` non deve raggiungere il DB: `undefined` significa «lo standard del
+ * programma», e il default vive nel REGISTRO, non nel dato persistito
+ * (`artech-varianti.ts`). Senza questa normalizzazione, spegnere l'interruttore
+ * lascerebbe una colonna `{}` indistinguibile da una scelta.
+ *
+ * `false` si pota come `undefined`, e non è una simmetria estetica: per il
+ * piastrino — l'unica variante booleana — lo standard è «nessun piastrino», che
+ * il motore legge da `=== true`. `{ piastrinoAntieffrazione: false }` sarebbe
+ * quindi **uno standard materializzato**, cioè esattamente ciò che la potatura
+ * esiste per impedire alle altre quattro.
+ *
+ * Vive QUI, e non nel wizard dove è nata, perché dal 2026-08-01 la usano in due:
+ * il form e `kit.ricalcola`, che deve scrivere `NULL` e non `{}`. Due copie
+ * della stessa regola divergono, e la divergenza sarebbe **invisibile**: una
+ * riga con `{}` e una con `NULL` sono indistinguibili sul serramento e diverse
+ * a DB, e il giorno in cui il default cambia si comportano diversamente. È il
+ * difetto che la #47 ha già corretto una volta (la potatura al cambio
+ * geometria), rimesso in circolo da un copia-incolla.
+ */
+export function componiVarianti(v: Varianti): Varianti | undefined {
+  const pulite = Object.fromEntries(
+    Object.entries(v).filter(([, valore]) => valore !== undefined && valore !== false),
+  ) as Varianti;
+  return Object.keys(pulite).length === 0 ? undefined : pulite;
+}
