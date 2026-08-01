@@ -4,6 +4,7 @@ import {
   useEffect,
   useId,
   useMemo,
+  useRef,
   useState,
   type Dispatch,
   type ReactNode,
@@ -398,8 +399,30 @@ export function NuovaRichiestaClient({ daId }: { daId?: string } = {}) {
     }
   }, [partenza.data]);
 
+  /**
+   * L'idratazione avviene UNA VOLTA SOLA, e il guardiano non è prudenza.
+   *
+   * `kit.get` restituisce campi `Date` (`createdAt`, `updatedAt`,
+   * `generatedAt`), e lo structural sharing di react-query **non regge sulle
+   * Date**: con due payload identici che ne contengono una, `replaceEqualDeep`
+   * restituisce un oggetto **nuovo** (verificato eseguendolo). Il `QueryClient`
+   * è `new QueryClient()` nudo (`src/trpc/react.tsx`), quindi `staleTime: 0` e
+   * `refetchOnWindowFocus: true`: basta che l'agente passi a un'altra finestra
+   * e torni perché il refetch consegni un riferimento diverso.
+   *
+   * Senza questo guardiano, quel rimbalzo riscriverebbe il form e le varianti
+   * appena scelte sparirebbero **in silenzio**; peggio, «Genera nuova versione»
+   * emetterebbe una versione identica alla precedente, consumando un numero
+   * `KIT-` e congelando l'originale per niente. È la classe di difetto —
+   * una decisione dell'agente cambiata senza dirglielo — che questa feature
+   * esiste per chiudere.
+   */
+  const idratazioneFatta = useRef(false);
+  const clienteIdratato = useRef(false);
   useEffect(() => {
-    if (idratato?.input) setForm(idratato.input as FormValues);
+    if (idratazioneFatta.current || !idratato?.input) return;
+    setForm(idratato.input as FormValues);
+    idratazioneFatta.current = true;
   }, [idratato]);
 
   /**
@@ -417,7 +440,8 @@ export function NuovaRichiestaClient({ daId }: { daId?: string } = {}) {
    * profilo» del passo 3, che in modifica non esiste.
    */
   useEffect(() => {
-    if (!modifica) return;
+    if (!modifica || clienteIdratato.current || !partenza.data) return;
+    clienteIdratato.current = true;
     const r = partenza.data;
     setCliente(
       r?.customer

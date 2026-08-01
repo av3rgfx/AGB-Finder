@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, cleanup, fireEvent, within } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent, within, act } from "@testing-library/react";
 
 const push = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
@@ -1638,7 +1638,44 @@ describe("wizard in modalità modifica", () => {
     expect(document.body.textContent).not.toMatch(/42,5\s*%/);
   });
 
-  it("senza `daId` resta il wizard di creazione, con tutti i suoi passi", () => {
+  // IL DIFETTO PIÙ GRAVE trovato in review, e non è ipotetico: `kit.get`
+  // restituisce campi `Date` (createdAt/updatedAt/generatedAt) e lo structural
+  // sharing di react-query NON regge sulle Date — con due payload IDENTICI che
+  // ne contengono una, `replaceEqualDeep` restituisce un oggetto NUOVO
+  // (verificato eseguendolo). Il QueryClient è `new QueryClient()` nudo, quindi
+  // `staleTime: 0` e `refetchOnWindowFocus: true`: basta cambiare finestra e
+  // tornare perché il refetch produca un riferimento nuovo. Se l'idratazione
+  // riscrivesse il form a ogni cambio di riferimento, le scelte appena fatte
+  // sparirebbero IN SILENZIO — e «Genera nuova versione» emetterebbe una
+  // versione identica alla precedente, consumando un numero e congelando
+  // l'originale per niente.
+  it("un refetch con dati identici NON azzera le varianti appena scelte", () => {
+    const dati = () => ({
+      ...RIGA_EMESSA,
+      createdAt: new Date("2026-08-01T00:00:00Z"),
+      updatedAt: new Date("2026-08-01T00:00:00Z"),
+    });
+    kitGetQuery = { data: dati(), isPending: false, isError: false };
+    const { rerender } = render(<NuovaRichiestaClient daId="k1" />);
+
+    const anti = () =>
+      within(screen.getByRole("group", { name: /sicurezza/i })).getByRole("radio", {
+        name: /antieffrazione/i,
+      }) as HTMLInputElement;
+    fireEvent.click(anti());
+    expect(anti().checked).toBe(true);
+
+    // Il refetch: stesso contenuto, oggetto NUOVO — ciò che react-query
+    // consegna davvero quando il payload contiene una Date.
+    act(() => {
+      kitGetQuery = { data: dati(), isPending: false, isError: false };
+    });
+    rerender(<NuovaRichiestaClient daId="k1" />);
+
+    expect(anti().checked).toBe(true);
+  });
+
+  it("senza `daId` resta il wizard di creazione, e non entra in modalità modifica", () => {
     render(<NuovaRichiestaClient />);
     expect(screen.getByRole("button", { name: /avanti/i })).toBeTruthy();
     expect(document.body.textContent).not.toMatch(/KIT-2026-0007/);

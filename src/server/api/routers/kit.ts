@@ -267,10 +267,31 @@ export const kitRouter = createTRPCRouter({
       // Se il rifiuto arrivasse dopo, resterebbe una richiesta superata che
       // punta a una riga non generabile — e la vecchia sarebbe congelata,
       // perché `generate` e `ricalcola` la rifiutano entrambi.
-      if (sostituisce) {
+      // Si valida SEMPRE, non solo quando arrivano varianti nuove. Una prima
+      // versione limitava il controllo al ramo `sostituisce`, e lasciava aperto
+      // proprio il caso più comune: il pulsante «Nuova versione» della scheda
+      // chiama `ricalcola` **senza** varianti, quindi su una riga già emessa che
+      // il motore oggi rifiuta — una COMPLETED PVC o battente, disattivati dalla
+      // bonifica del 2026-07-25 — si creava la nuova versione, si marcava la
+      // vecchia `supersededById`, e solo dopo `generate` falliva: due righe
+      // morte, con la vecchia congelata perché `generate` e `ricalcola` la
+      // rifiutano entrambi. Il costo è una generazione in memoria per ricalcolo:
+      // nessuna scrittura, `KitEngine.generate` è in sola lettura.
+      // Si valida quando si sta per SCRIVERE, e questo è l'unico criterio:
+      // - riga già emessa → nascerà una versione, quindi sempre;
+      // - bozza CON varianti → si scrive la colonna, quindi sì;
+      // - bozza SENZA varianti → `ricalcola` non tocca niente e restituisce lo
+      //   stesso id (è il no-op storico): validare qui trasformerebbe
+      //   un'operazione innocua in un errore, e l'errore vero lo mostra
+      //   comunque il `generate` che il chiamante fa subito dopo.
+      const stascrivendo = sostituisce || request.status !== "DRAFT";
+      if (stascrivendo) {
         const prova = (() => {
           try {
-            return kitInputFromRequest({ ...request, variants: variantiFinali });
+            return kitInputFromRequest({
+              ...request,
+              variants: sostituisce ? variantiFinali : request.variants,
+            });
           } catch (error) {
             return toTRPC(error);
           }
