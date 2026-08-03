@@ -49,6 +49,24 @@ describe("TopBar — il reparto corrente", () => {
     expect(screen.getByLabelText(/reparto MANIGLIE/i)).toBeTruthy();
   });
 
+  it("NON esiste più il campo di ricerca finto, né la campanella finta", () => {
+    // Erano due controlli decorativi: nessun handler, e nessun sistema di
+    // notifiche in tutta l'app. Il campo era il peggiore, perché sulla pagina
+    // «Disponibilità» sedeva SOPRA quello vero e a 375px l'agente ne trovava
+    // due impilati, con quello d'istinto morto.
+    //
+    // PRIMA di affermare un'assenza, questo test dimostra di guardare nel posto
+    // giusto: se la TopBar non renderizzasse affatto, l'assenza sarebbe vera e
+    // il test passerebbe a vuoto.
+    renderBar();
+    expect(screen.getByLabelText(/apri menu di navigazione/i)).toBeTruthy();
+    expect(screen.getByText("Marco Bianchi")).toBeTruthy();
+
+    expect(screen.queryByRole("searchbox")).toBeNull();
+    expect(screen.queryByLabelText("Cerca")).toBeNull();
+    expect(screen.queryByLabelText("Notifiche")).toBeNull();
+  });
+
   it("il pulsante apre ancora il drawer di navigazione", () => {
     // L'etichetta si è aggiunta a un pulsante che aveva già un compito: se lo
     // rompesse, a 375px l'app resterebbe senza navigazione.

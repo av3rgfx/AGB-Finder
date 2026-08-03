@@ -125,6 +125,11 @@ Tailwind CSS 3 · Vitest · pnpm. Deploy target: Vercel + Neon + Upstash.
   pre-installati. Lanciare con
   `executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome"`,
   **mai** `npx playwright install`.
+- **`pnpm build` mentre gira `pnpm dev` ROMPE il dev server**: condividono la
+  cartella `.next`, e la build di produzione la sovrascrive → il server continua
+  a rispondere 200 sulle pagine ma serve **404 su tutti i chunk**, quindi il
+  browser mostra l'HTML senza JavaScript e ogni verifica fallisce in modo
+  misterioso. Fermare `dev` prima di `build`; per ripartire, `rm -rf .next`.
 - Comandi prisma/tsx: fare `set -a; source .env; set +a` prima (per gli engine).
 
 ## TESTING / GATE

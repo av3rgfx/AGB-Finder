@@ -105,20 +105,34 @@
 >   Il vincolo unique le farebbe esplodere comunque, ma a metà import e con un errore di
 >   driver muto.
 >
-> ### 🔴 Il difetto che ho trovato col browser e NON ho corretto
+> ### ✅ Due controlli finti nella TopBar, trovati col browser e RIMOSSI
 >
-> **La ricerca nella TopBar è finta.** `topbar.tsx` monta un `<input type="search">` con
-> placeholder «Cerca prodotti, kit, codici…» e **nessun `onChange`, nessun form, nessun
-> handler**: è in produzione da sempre e non fa niente. L'ho scoperto cadendoci dentro —
-> il mio script di verifica ci ha digitato dentro credendolo il campo della pagina.
+> **La ricerca nella TopBar era finta.** `topbar.tsx` montava un `<input type="search">`
+> con placeholder «Cerca prodotti, kit, codici…» e **nessun `onChange`, nessun form,
+> nessun handler**: in produzione da sempre, non faceva niente. L'ho scoperto cadendoci
+> dentro — il mio script di verifica ci ha digitato credendolo il campo della pagina.
 >
-> Sulla pagina `/maniglie` diventa dannoso: **due campi di ricerca impilati**, e quello più
-> in alto e più prominente è quello che non funziona (misurato: `trovati 2`). È la stessa
-> classe di difetto chiusa otto volte — un controllo che promette e non mantiene.
+> Non era inerte: sulla pagina «Disponibilità» sedeva **sopra** il campo vero, e a 375px
+> l'agente si trovava **due caselle impilate** con quella d'istinto morta (misurato:
+> `trovati 2`). È la stessa classe di difetto chiusa otto volte da questo progetto.
 >
-> **Non l'ho corretto perché è il guscio dei serramenti**, che l'utente ha chiesto
-> esplicitamente di non toccare. Le opzioni: (a) rimuoverlo, (b) farlo funzionare
-> instradandolo alla ricerca del reparto corrente, (c) lasciarlo. **Decisione dell'utente.**
+> **Controllando, anche la campanella delle notifiche era finta**: nessun handler, e in
+> tutta l'app non esiste alcun sistema di notifiche (grep: zero riscontri). Rimossi
+> entrambi su decisione dell'utente.
+>
+> **Perché rimuovere e non far funzionare.** Una ricerca globale avrebbe senso, ed è anzi
+> il posto in cui vive la domanda che attraversa i due reparti («questo è ordinabile
+> oggi?»): digitare un codice e finire nel reparto giusto, qualunque sia — che è
+> letteralmente il criterio con cui il council ha deciso di tenere un repo solo. Ma è una
+> **feature da progettare**, non un handler da attaccare a una casella rimasta morta per
+> mesi senza che nessuno la reclamasse; e quel silenzio è il dato più forte che abbiamo
+> sul suo valore attuale. Segnata come lavoro futuro deliberato.
+>
+> La sentinella (`topbar.test.tsx`) **dimostra prima di guardare nel posto giusto** —
+> asserisce che la TopBar renderizzi davvero — e solo dopo afferma l'assenza: altrimenti,
+> il giorno che il componente non montasse, l'assenza sarebbe vera e il test passerebbe a
+> vuoto. Browser **12/12** su desktop e 375px, serramenti inclusi (l'archivio AGB ha
+> ancora il suo campo, i filtri e la scorciatoia `/`).
 >
 > ### Altre cose viste col browser
 >

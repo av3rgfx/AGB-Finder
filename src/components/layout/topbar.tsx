@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
-import { Search, Bell, ChevronDown, LogOut, Menu, X } from "lucide-react";
+import { ChevronDown, LogOut, Menu, X } from "lucide-react";
 import { Sidebar } from "./sidebar";
 import { repartoDaPathname } from "@/lib/reparti";
 
@@ -68,28 +68,24 @@ export function TopBar({ name, initials, role }: TopBarProps) {
         )}
       </button>
 
-      <div className="relative min-w-0 flex-1 sm:max-w-md">
-        <Search
-          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-subtle"
-          aria-hidden
-        />
-        <input
-          type="search"
-          aria-label="Cerca"
-          placeholder="Cerca prodotti, kit, codici…"
-          className="h-10 w-full rounded bg-surface-sunken pl-9 pr-3 text-sm text-ink placeholder:text-ink-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/25"
-        />
-      </div>
+      {/* Qui stavano un campo di ricerca e una campanella delle notifiche. Erano
+          DECORATIVI: nessun `onChange`, nessun form, nessun handler, e nessun
+          sistema di notifiche in tutta l'app. Rimossi il 2026-08-04.
+
+          Il campo non era inerte: sulla pagina «Disponibilità» sedeva SOPRA il
+          campo di ricerca vero, più in alto e più prominente, e a 375px l'agente
+          si trovava due caselle impilate di cui quella d'istinto non funzionava.
+          È la stessa classe di difetto che questo progetto ha chiuso otto volte
+          — un controllo che promette qualcosa e non la mantiene.
+
+          Una ricerca globale AVREBBE senso, ed è anzi il posto in cui vive la
+          domanda che attraversa i due reparti («questo è ordinabile oggi?»):
+          digitare un codice e finire nel reparto giusto, qualunque sia. Ma è una
+          feature da progettare, non un handler da attaccare a una casella che è
+          rimasta morta per mesi senza che nessuno la reclamasse. */}
+      <div className="flex-1" />
 
       <div className="flex shrink-0 items-center gap-1 sm:gap-2">
-        <button
-          type="button"
-          aria-label="Notifiche"
-          className="hidden size-10 place-items-center rounded text-ink-muted transition-colors hover:bg-surface-sunken sm:grid"
-        >
-          <Bell className="size-5" />
-        </button>
-
         <div className="relative">
           <button
             type="button"
