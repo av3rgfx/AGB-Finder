@@ -68,8 +68,11 @@ Trovato dal council e **verificato**: `src/server/catalog/map-product.ts:11,75` 
 |---|---|
 | UI | `product-card.tsx:36` · `product-row.tsx:12` · `product-detail.tsx:80-81` · `inline-products.tsx:60-63` — pallino verde «Disponibile» |
 | Semantico | `rag.ts:67-68`, `rag.ts:230` — trasportato nelle due proiezioni raw SQL |
-| **Assistente AI** | `chat/tools.ts:96,123-124` — `available` e `stock` passati a **Gemini**, che può affermarlo al cliente |
+| **Assistente AI** | `chat/tools.ts:96,123-124` — `available` e `stock` passati a **Gemini**, che può affermarlo al cliente. E `tools.ts:41,64` **offre al modello** il filtro `inStockOnly` |
+| **Filtro «Solo disponibili»** | `product-filters.tsx:83-91` (la casella) · `active-filter-chips.tsx:46-48` (il chip attivo) · `archivio-search-params.ts:6,31,48` (il param URL `stock=1`) · `product.ts:13` · `rag.ts:11,85` (`p.is_available = true`) |
 | Kit | `kit.ts:457` — selezionato sulle righe di distinta, **mai mostrato** |
+
+**Il quinto canale è il peggiore, ed è stato trovato scrivendo il piano, non la spec:** l'agente può **spuntare una casella** che dice «Solo disponibili», vedere comparire il chip del filtro attivo, e ricevere tutti e 7.488 i prodotti. Un pallino che mente lo si può ignorare; un filtro che si è scelti di applicare, no.
 
 C'è pure `@@index([isAvailable])` in `schema.prisma`: un indice su una costante.
 
