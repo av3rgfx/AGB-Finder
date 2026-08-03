@@ -24,7 +24,9 @@
     "split:listino": "tsx --env-file-if-exists=.env scripts/split-listino.ts",
     "extract:images": "tsx --env-file-if-exists=.env scripts/extract-listino-images.ts",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "db:seed:maniglie": "tsx --env-file-if-exists=.env prisma/seed-maniglie.ts",
+    "import:listino": "tsx --env-file-if-exists=.env scripts/import-listino.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -51,6 +53,7 @@
     "remark-gfm": "^4.0.1",
     "superjson": "^2.2.2",
     "tailwind-merge": "^3.6.0",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "zod": "^3.24.0"
   },
   "devDependencies": {

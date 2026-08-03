@@ -48,6 +48,7 @@ model User {
   kitRequests   KitRequest[]   @relation("KitRequestAgent")
   activityLogs  ActivityLog[]
   settings      Settings[]
+  stockImports  StockImport[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -715,4 +716,131 @@ model SyncLog {
   @@index([status])
   @@index([createdAt])
   @@map("sync_logs")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 10. REPARTO MANIGLIE — archivio pronta consegna
+//
+// Tabelle PROPRIE: il dominio maniglie non tocca `Product`. Verdetto
+// /llm-council del 2026-08-03 (A′ — stesso repo, dominio affiancato): si
+// condividono repo, deploy, un solo Better Auth e lo stesso database fisico;
+// NON si condivide l'identità del prodotto. La migrazione multi-fornitore di
+// `Product` (agbCode @unique, ProductImage.agbCode @id, 128 occorrenze in 22
+// file) si farà alla marca #3, con quattro cataloghi sul tavolo a dirne la
+// forma — non oggi, indovinandola su uno.
+// ═══════════════════════════════════════════════════════════════
+
+/// Un articolo a listino: ciò che è ORDINABILE. Sorgente: il listino xlsx.
+model Article {
+  id String @id @default(cuid())
+
+  /// `COLOMBO` oggi. Le altre marche (HOPPE, OLIVARI, DND, GHIDINI…) arrivano
+  /// qui, non in tabelle nuove: la divisione del reparto è per merce, non per
+  /// fornitore.
+  brand String
+
+  /// Come scritto a listino, coi separatori: `0CD41R-CM`.
+  code String
+
+  /// Soli [A-Z0-9] maiuscoli: `0CD41RCM`. LA CHIAVE DI AGGANCIO fra le tre
+  /// fonti, che scrivono lo stesso codice in tre modi. Zero collisioni
+  /// verificate sui 3.456 codici del listino.
+  codeNorm String @map("code_norm")
+
+  /// Descrizione del listino (troncata a 35 caratteri alla fonte, e con refusi
+  /// digitati a mano: `BOCCEHTTA`, `ROBOCINQUQ` — di qui il ramo trigram).
+  name String
+
+  /// Le due metà del prezzo, salvate separate perché il *temporary surcharge*
+  /// del 3,5% è temporaneo per definizione: il giorno che sparisce serve sapere
+  /// quale metà togliere. Il TOTALE è derivato e non si persiste mai (stessa
+  /// regola di `KitRequest.totalPrice`).
+  priceList Decimal  @map("price_list") @db.Decimal(12, 2)
+  surcharge Decimal? @db.Decimal(12, 2)
+
+  ean String?
+
+  /// Strato FACOLTATIVO, arricchito dopo da uno script che legge il catalogo
+  /// PDF. Una marca senza catalogo funziona lo stesso, con articoli senza foto;
+  /// l'archivio non dipende dal catalogo per essere utile.
+  catalogPage Int?    @map("catalog_page")
+  /// URL su Vercel Blob PUBBLICO (`colombo/<codeNorm>.jpg`), mai byte in
+  /// Postgres: le 7.082 foto AGB dentro il DB sono la causa unica dei tre
+  /// limiti di piattaforma più caldi.
+  imageUrl String? @map("image_url")
+
+  /// Data dell'ultimo import di listino che conteneva il codice. Esiste per il
+  /// listino nuovo che sta arrivando: l'import fa `upsert`, quindi i codici che
+  /// COLOMBO toglie NON verrebbero cancellati e resterebbero a schermo identici
+  /// agli altri, senza che nulla dica che non sono più ordinabili — la stessa
+  /// forma del difetto della disponibilità falsa. Con questa colonna «non più a
+  /// listino» è una cosa che si vede.
+  lastListingAt DateTime @map("last_listing_at")
+
+  stockLines StockLine[]
+
+  /// Ricerca: solo Postgres (tsvector + trigram). Niente embedding, niente RAG —
+  /// i codici COLOMBO nello stesso indice semantico farebbero citare maniglie a
+  /// domande sui serramenti, e peserebbero su Gemini, provider unico.
+  searchVector Unsupported("tsvector")? @map("search_vector")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([brand, code])
+  @@unique([brand, codeNorm])
+  @@index([brand])
+  @@map("articles")
+}
+
+/// Un caricamento della pronta consegna. NON una colonna booleana su Article:
+/// (a) i 23 orfani sono fatti SENZA articolo, e una colonna li cancellerebbe;
+/// (b) lo storico risponde a «cosa è sempre esaurito?», che non è retrofittabile;
+/// (c) `Product.isAvailable` insegna cosa succede a un flag deciso dal programma.
+model StockImport {
+  id    String @id @default(cuid())
+  brand String
+
+  fileName     String   @map("file_name")
+  importedAt   DateTime @default(now()) @map("imported_at")
+  importedById String   @map("imported_by_id")
+  importedBy   User     @relation(fields: [importedById], references: [id])
+
+  rowCount     Int @map("row_count")
+  matchedCount Int @map("matched_count")
+  orphanCount  Int @map("orphan_count")
+
+  /// Annullamento: l'import resta a DB e smette di valere, così il precedente
+  /// torna in vigore. Si annulla SOLO l'ultimo — cancellare un import qualunque
+  /// della storia sarebbe riscrivere il passato, la stessa ragione per cui nel
+  /// kit una distinta emessa genera una versione invece di riscriversi.
+  cancelledAt DateTime? @map("cancelled_at")
+
+  lines StockLine[]
+
+  @@index([brand, cancelledAt, importedAt])
+  @@map("stock_imports")
+}
+
+/// Una riga del file di pronta consegna.
+model StockLine {
+  id       String      @id @default(cuid())
+  importId String      @map("import_id")
+  import   StockImport @relation(fields: [importId], references: [id], onDelete: Cascade)
+
+  /// Come scritto nel file: serve il giorno che una normalizzazione va rivista,
+  /// ed è ciò che Andrea rilegge nel suo gestionale.
+  rawCode  String @map("raw_code")
+  codeNorm String @map("code_norm")
+
+  /// `null` = ORFANO: codice a magazzino che il listino non conosce. Non è un
+  /// ripiego — è ciò che li farà riagganciare DA SOLI quando arriverà il listino
+  /// aggiornato, senza ricaricare a mano ogni pronta consegna passata.
+  articleId String?  @map("article_id")
+  article   Article? @relation(fields: [articleId], references: [id])
+
+  @@index([importId])
+  @@index([articleId])
+  @@index([codeNorm])
+  @@map("stock_lines")
 }
