@@ -9,14 +9,14 @@
 
 | Campo | Valore |
 |-------|--------|
-| **Data** | 2026-08-01 — **CAMBIARE LE VARIANTI DOPO LA CREAZIONE**: completo e verificato, **PR #48 APERTA** |
-| **Fase in corso** | Fase 1 — MVP Gestionale |
-| **Sotto-fase** | Kit engine: le varianti del passo «Componenti» diventano modificabili su una richiesta già emessa |
-| **Branch git** | `claude/verifica-distinte-reali-8zz9mw` (ripartito da `main` dopo il merge della #47) |
-| **Stato deploy** | **LIVE e allineato**: la #47 è mergiata e le sue ops sono state eseguite (run `30659737114`, sul ref del branch **48 minuti prima del merge** → disservizio zero). |
-| **🟢 Azione ops** | **NESSUNA.** Nessuna migrazione: la colonna `variants` esiste dalla #47 ed è già su Neon. Nessun re-import: nessun codice nuovo. |
-| **Verifica funzionale #47** | ✅ fatta a inizio sessione sul catalogo reale e dal wizard: antieffrazione **17 righe / 22 pezzi / 110,13 €**, zero warning. |
-| **Aperto** | le **tre distinte reali** (sesta sessione) · domanda 31 (numero richiesta o versione?) · domanda 4 · domanda 29 · preview Vercel rotte · mail ad AGB · audit `kit_requests` · `dedupeRows` |
+| **Data** | 2026-08-03 — **NUOVO DOMINIO «MANIGLIE»: quesito architetturale, spec, piano ed esecuzione del passo 0** |
+| **Fase in corso** | Fase 1 — MVP Gestionale · **si apre un secondo dominio** |
+| **Sotto-fase** | Archivio pronta consegna COLOMBO — **passo 0 completato** (cancellata la disponibilità falsa) |
+| **Branch git** | `claude/colombo-handles-catalog-3ado13` (da `main`) — **pushato, PR aperta** |
+| **Stato deploy** | **LIVE e allineato**: nessuna migrazione in questo branch, nessuna azione ops. |
+| **🟢 Azione ops** | **NESSUNA.** Le colonne `isAvailable`/`stockQuantity` restano a schema coi loro default: si sono rimossi i *lettori*, non le colonne. Nessun re-import. |
+| **Gate** | typecheck · lint · **1045 test** (118 skip) · build 18 route · **browser 10/10** (desktop e 375px) |
+| **Aperto** | il **selettore di programma** (prima schermata) · i passi 1-4 del dominio maniglie · le **tre distinte reali** (settima sessione) · Vercel Pro entro sabato 08/08 · storage Neon da misurare |
 
 ---
 
@@ -24,17 +24,160 @@
 
 | Campo | Valore |
 |-------|--------|
-| **Data** | 2026-07-31 — **ANTIEFFRAZIONE + VARIANTI COMPONENTE** — **PR #47 MERGIATA** |
+| **Data** | 2026-08-01 — **CAMBIARE LE VARIANTI DOPO LA CREAZIONE** — **PR #48 MERGIATA** |
 | **Fase in corso** | Fase 1 — MVP Gestionale |
-| **Sotto-fase** | Kit engine: passo «Componenti» — le scelte che il motore prendeva da sé diventano scelte dell'agente |
-| **Branch git** | `claude/antieffrazione-feature-dv8d37` (ripartito da `main`) — **non pushato** |
-| **Stato deploy** | **LIVE ma NON allineato al branch**: c'è **una migrazione da applicare** (`20260731143758_kit_variants`). Ultimi run: `30614027728` e `30618326143` (31/07, entrambi verdi). |
-| **🔴 Azione ops** | **«Ops — Neon» sul ref del branch, PRIMA del merge** — vedi §RIPRENDI DA QUI. Nessun re-import necessario. |
-| **Aperto** | le **tre distinte reali** (quinta sessione) · domanda 29 · domanda 4 (sede 30 → sblocca il fungo) · preview Vercel rotte · mail ad AGB · audit `kit_requests` · `dedupeRows` |
+| **Sotto-fase** | Kit engine: le varianti del passo «Componenti» diventano modificabili su una richiesta già emessa |
+| **Branch git** | `claude/verifica-distinte-reali-8zz9mw` |
+| **Stato deploy** | LIVE e allineato. |
+| **Azione ops** | Nessuna. |
+| **Aperto** | le tre distinte reali · domanda 31 · domanda 4 · domanda 29 · preview Vercel rotte · mail ad AGB · audit `kit_requests` · `dedupeRows` |
 
 ---
 
 > **▶ RIPRENDI DA QUI**
+>
+> ### Cosa è successo (2026-08-03)
+>
+> L'utente **non** ha continuato lo sviluppo: ha portato un **quesito progettuale**. Andrea,
+> addetto al rifornimento magazzino, ha chiesto un software che dica se una maniglia è **in
+> pronta consegna** o **da ordinare**. La domanda era: aggiungerlo a UFPtrade o farne uno
+> separato?
+>
+> ### Il verdetto: A′ — stesso repo, dominio affiancato, identità intatta
+>
+> `/llm-council` (5 advisor + 5 peer review + chairman): **tre per l'integrazione, uno per il
+> repo separato, uno che demolisce entrambe le versioni ingenue**; monorepo scartato
+> all'unanimità. Il criterio che decide **non** è «utenti in comune», né «riuso di codice»,
+> né «rischio di deploy» — sono costi, non discriminanti. È: **esiste una domanda che
+> l'agente farà davanti al cliente e che attraversa i due domini, con una risposta sola?**
+> Sì: *questo è ordinabile oggi?*
+>
+> Si condividono repo, deploy, **un solo Better Auth**, layout e **lo stesso database**.
+> **NON** si condivide la tabella `Product`: le maniglie hanno tabelle proprie. La
+> migrazione multi-fornitore di `Product` (`agbCode @unique`, `ProductImage.agbCode @id`,
+> `LISTINO_TOTAL_PAGES` scalare — **128 occorrenze in 22 file**) si rimanda alla **marca #3**,
+> quando ci saranno quattro cataloghi a dire che forma deve avere.
+>
+> ### Il difetto già in produzione che il council ha trovato per caso, ed è il passo 0
+>
+> `map-product.ts:11,75` scriveva `isAvailable: true` e `stockQuantity: 0` come **tipi
+> letterali costanti** per tutti e 7.488 i prodotti. Non era inerte: usciva da **sei canali**
+> — pallino «Disponibile» nell'archivio, badge nella chat, **i campi passati a Gemini**
+> (quindi affermabili a voce a un cliente), le proiezioni SQL, un `select` nel kit, e —
+> scoperto scrivendo il piano, il peggiore — **una casella «Solo disponibili»** con chip e
+> parametro URL, che l'agente poteva spuntare ricevendo comunque tutti e 7.488 i prodotti.
+> Un pallino che mente lo si ignora; un filtro che hai scelto tu, no.
+>
+> **Fatto e verificato:** 7 task TDD + 7 review + review finale di branch. Zero occorrenze
+> nel codice di produzione; restano i **quattro test sentinella** che asseriscono l'assenza.
+>
+> ### 🟢 Azioni ops: NESSUNA
+>
+> Nessuna migrazione, nessun re-import, nessun seed. `import-catalog.ts` fa spread
+> dell'oggetto in Prisma: togliendo i due campi subentrano i **default di schema**, quindi
+> **il dato a DB non cambia**. Si merge e basta.
+>
+> ### ▶ LA PROSSIMA SESSIONE: il selettore di programma, poi i passi 1-4
+>
+> Decisione dell'utente a fine sessione: **la prima schermata dopo il login diventa un
+> selettore** — oggi **FINESTRE** e **MANIGLIE**, domani forse altre — per rendere visibile
+> il distacco fra i due programmi. **La sezione finestre non si tocca.** Sul disegno delle
+> schermate maniglie: **carta bianca**, allo stile del software esistente.
+>
+> ⚠️ **La tensione da sciogliere per prima:** un selettore *è* una modifica al guscio di
+> navigazione — cambia dove atterra il login, aggiunge un livello di route, tocca la
+> sidebar. Nessuna funzionalità delle finestre cambia, **ma il loro contenitore sì**. Tre
+> strade in spec §8.0; da portare a `/llm-council` e `/impeccable` **prima** di scrivere
+> codice.
+>
+> ### I fatti sui dati, misurati e non assunti (non rifarli)
+>
+> - **Tre fonti, tre popolazioni che non si contengono**: listino xlsx **3.456 codici** con
+>   prezzo ed EAN completi · pronta consegna xls **201 codici** · catalogo PDF.
+> - **Lo stesso codice è scritto in tre modi**: `0CD41R-CM` (listino) · `0CD41RCM` (magazzino)
+>   · `CD 41 R` spaziato (catalogo). Normalizzando a `[A-Z0-9]` il listino **non ha
+>   collisioni**: è una chiave sicura. **178 match su 201.**
+> - **I 23 orfani (11%) non sono refusi.** 18 esistono nel catalogo e mancano solo dal listino
+>   **perché il listino fornito è vecchio** (Andrea sta procurando quello nuovo) · 2 sono
+>   refusi del magazzino **non correggibili in automatico** (`0CD63CM` ha **due** codici
+>   giusti) · 3 sono spazzatura (`XALL`, `XMP`, `XGRATZ7SX`).
+> - **Il catalogo giusto è `ER MAN 2026`, non `RR`**: 261 pagine, 725 immagini JPEG, copre
+>   l'**85%** dei codici contro il 57% di RR, ed è un **sovrainsieme** (ER ∪ RR = ER). Il 15%
+>   che resta fuori è minuteria (bocchette, rosette, viti) che nessun catalogo fotografa.
+>   URL: `download.colombodesign.com/download/maniglie/pdf/ER MAN 2026_100726.pdf`.
+> - **Il testo di quei PDF si decodifica con uno shift costante di +29 byte** (font CorelDRAW
+>   senza ToUnicode). Senza quello sembrano illeggibili.
+> - **Il prezzo «già sommato» non è mostrabile com'è**: il **96%** delle righe della colonna
+>   `SOMMA` ha più di 2 decimali, il 36% ne ha 13-16 per errori float di Excel. Si arrotonda a
+>   2 in `Decimal`. Verificato che salvare le due metà e sommarle dà lo stesso risultato su
+>   **tutte e 3.456** le righe.
+> - **Il listino ha refusi digitati a mano** (`BOCCEHTTA`, `ROBOCINQUQ`): la ricerca full-text
+>   non li trova, il ramo **trigram** sì.
+>
+> ### Le risposte di Andrea (già raccolte, non richiederle)
+>
+> Quantità: **non servono** (le cerca sul gestionale) · frequenza import: **da due volte
+> l'anno a ogni giorno** → **nessuna soglia «dato vecchio»**, si mostra la data e basta ·
+> formato file: **solo `.xls`** · credenziali area download COLOMBO: **non disponibili** →
+> foto estratte dal PDF · prezzo: **quello sommato** · gli orfani: **nascosti all'agente ma
+> conservati** (righe `StockLine` con `articleId = null`: è ciò che li farà riagganciare da
+> soli al listino nuovo).
+>
+> ### 🔴 Vincolo di piattaforma da non dimenticare
+>
+> **Vercel Hobby vieta l'uso commerciale** (Fair Use Guidelines: *«restricted to
+> non-commercial personal use only»*, e commerciale include *«a paid employee»*). Un
+> gestionale usato da 15-20 dipendenti ci ricade: rischio **sospensione**, non
+> rallentamento. **L'utente passa a Pro entro sabato 2026-08-08.** Pro si paga per membro
+> del *team di sviluppo*, non per utente dell'app.
+>
+> Capacità a 20 utenti: invocazioni 12% · CPU 25% · banda CDN 5% ✅; **Fast Origin Transfer
+> 40%** ⚠️ · **storage Neon 72-80%** 🔴 (stimato) · egress Neon 40% ⚠️. I tre punti caldi
+> hanno **una sola causa**: le 7.082 foto AGB stanno **dentro Postgres** e ogni miniatura fa
+> Neon → funzione → browser. Da qui: **le foto COLOMBO nascono su Vercel Blob**.
+> **Da misurare (10 secondi, dashboard Neon → Storage):** se supera i 400 MB su 500, le foto
+> AGB vanno spostate su Blob **prima** di aggiungere COLOMBO.
+>
+> ### Debito e residui dichiarati di questa sessione
+>
+> - **`product.getById`/`getByCode` fanno `findUnique` senza `select`**: i due campi arrivano
+>   ancora al browser. La scheda prodotto è **l'unico punto** dove il pallino tornerebbe con
+>   una riga sola e tutti i gate verdi. Chi tocca `product-detail.tsx` lo sappia.
+> - **Il dato a DB continua a mentire**: `is_available` ha `DEFAULT true`. Sono spariti i
+>   lettori, non l'affermazione. Chiuderla davvero (droppare colonne + `@@index([isAvailable])`,
+>   che oggi è **un indice su una costante**) è materia della migrazione del passo 1.
+> - **Esistono DUE `DESIGN.md`**: quello di root (vivo, corretto in questa sessione) e
+>   `ufptrade/ufptrade-design/DESIGN.md`, fermo alla Fase 1c, che alla riga 22 dice ancora
+>   «out of stock». Non aggiornato di proposito: **il problema è il doppione, non la riga**.
+> - `product-detail.tsx` e `product-filters.tsx` **non hanno file di test**: sono le due sole
+>   superfici toccate senza sentinella.
+>
+> ### Lezioni operative nuove
+>
+> - **Il container perde la copia locale del repo a metà lavoro.** È successo davvero: i
+>   commit erano già sul remoto e si è recuperato con `git reset --hard origin/<branch>`.
+>   **Pushare presto.** La scratchpad invece si perde e basta (l'ER PDF va riscaricato).
+> - **Docker muore da solo, più volte per sessione.** Se un comando sul DB fallisce,
+>   `setsid nohup dockerd … & disown` + `docker start ufptrade-db` prima di sospettare altro.
+> - **`prisma/seed-catalog.ts` dà 50 prodotti veri senza il PDF**: è ciò che rende possibile
+>   la verifica browser in locale. Ma le distinte kit citano codici che lì non esistono →
+>   la scheda richiesta mostra «Codice … non a listino»: **è un artefatto del seed, non una
+>   regressione.**
+> - **SheetJS non si installa da npm**: il registry è fermo alla 0.18.5 del 2022 con CVE mai
+>   corrette lì. Si prende dal CDN: `pnpm add https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`.
+> - **Un gate «grep non deve trovare nulla» è quasi sempre sbagliato**: trova i test
+>   sentinella che asseriscono l'assenza. Il gate giusto esclude i `*.test.*`.
+> - **Un test che verifica un'assenza deve prima dimostrare di guardare nel posto giusto.**
+>   Una sentinella cliccava «il primo bottone che trova»: se domani un bottone la precede, la
+>   lista non si apre, il badge non compare perché non c'è nulla, e il test **passa a vuoto**.
+>
+> ### Prompt di apertura della PROSSIMA sessione
+>
+> In fondo a questo file, §«PROMPT PER LA PROSSIMA SESSIONE».
+>
+> ---
+>
+> ### (Sessione precedente, 2026-08-01)
 >
 > ### Cosa è stato fatto (2026-08-01)
 >
@@ -1365,6 +1508,92 @@ Actions** (rete aperta → Neon:5432 ok).
 ---
 
 ## PROMPT PER LA PROSSIMA SESSIONE
+
+```
+Nuova sessione. Riparti leggendo handoff.md (§«RIPRENDI DA QUI») e CLAUDE.md.
+
+WORKFLOW (regole permanenti CLAUDE.md): /using-superpowers → brainstorming →
+/llm-council per dubbi, incongruenze o scelte architetturali → /impeccable per
+OGNI schermata (SEMPRE mobile ≤375px + desktop) → /writing-plans → esecuzione
+TDD con subagent-driven-development; /ponytail ogni volta che scrivi codice.
+
+VINCOLI: TypeScript strict, API via tRPC, query via Prisma (raw SQL solo in
+RAGEngine), UI in italiano, codici prodotto in font mono, mobile-first. E la
+regola che vale doppio adesso: NON TOCCARE LA SEZIONE FINESTRE. Catalogo AGB,
+assistente, kit, clienti restano esattamente come sono.
+
+CONTESTO: la sessione scorsa ha aperto un SECONDO DOMINIO. Andrea (magazzino)
+ha chiesto un archivio delle maniglie che dica se una sono in pronta consegna
+o da ordinare. Il /llm-council ha deciso: STESSO REPO, dominio affiancato,
+tabelle proprie, MAI la tabella Product. Spec completa e già approvata in
+docs/superpowers/specs/2026-08-03-archivio-pronta-consegna-design.md — leggila
+per intera prima di propormi qualcosa: contiene i dati veri misurati (3.456
+codici a listino, 201 in pronta consegna, 23 orfani già classificati, il
+catalogo ER MAN 2026 all'85%, il prezzo da arrotondare a 2 decimali) e le
+risposte di Andrea, che NON vanno richieste.
+
+Il passo 0 è FATTO e mergiato (o in PR): cancellata la disponibilità falsa che
+l'app affermava su tutti e 7.488 i prodotti AGB.
+
+SI COMINCIA DA QUI — IL SELETTORE DI PROGRAMMA.
+Voglio che la prima schermata dopo il login sia un selettore fra i programmi:
+oggi «FINESTRE» (tutto l'esistente) e «MANIGLIE» (il nuovo), domani forse
+altri. Serve a rendere visibile il distacco fra i due mondi.
+
+Prima di scrivere codice: la spec §8.0 elenca TRE strade (route selettore
+sopra l'esistente / due gruppi di route affiancati / commutatore in sidebar) e
+la tensione da sciogliere — un selettore È una modifica al guscio di
+navigazione, quindi le finestre non cambiano funzionalità ma cambiano
+contenitore. Portalo a /llm-council, poi a /impeccable per il disegno, mobile
+375px e desktop, e solo dopo /writing-plans.
+
+POI, il dominio maniglie, nell'ordine della spec §11:
+ 1. modello dati (Article + StockImport + StockLine) e import listino da script
+    ops — È L'UNICA MIGRAZIONE, e va lanciata sul ref del branch PRIMA del
+    merge (lezione della PR #40: venti minuti di produzione rotta)
+ 2. ricerca e scheda articolo — due stati per l'agente, la data dell'ultimo
+    import sempre accanto, il prezzo arrotondato a 2 decimali
+ 3. upload della pronta consegna in-app (route ADMIN, .xls con SheetJS dal CDN,
+    riepilogo con gli orfani PRIMA di confermare, annulla ultimo import)
+ 4. arricchimento da catalogo ER: pagina + foto su VERCEL BLOB, mai in Postgres
+
+Sul disegno delle schermate maniglie hai CARTA BIANCA, a un vincolo: stesso
+stile del software esistente (DESIGN.md).
+
+DA VERIFICARE ALL'INIZIO, non a metà:
+ - lo storage attuale su Neon (dashboard → Storage). Se supera 400 MB su 500,
+   le foto AGB vanno spostate su Blob PRIMA di aggiungere COLOMBO.
+ - se il passaggio a Vercel Pro è stato fatto (era previsto per sabato 08/08):
+   Hobby VIETA l'uso commerciale, e questo è un gestionale aziendale.
+ - se Andrea ha portato il LISTINO AGGIORNATO: quello che abbiamo è vecchio, e
+   col nuovo 18 dei 23 orfani spariscono da soli.
+
+AMBIENTE (costa tempo se lo scopri dopo):
+ - il container arriva senza node_modules e senza .env: `pnpm install`, poi
+   `cp .env.example .env` con segreti veri, poi
+   `bash scripts/setup-prisma-engines.sh`, poi `pnpm prisma generate`.
+ - Docker MUORE da solo più volte per sessione:
+   `setsid nohup dockerd > /tmp/dockerd.log 2>&1 & disown` e `docker start
+   ufptrade-db` prima di sospettare qualunque altra cosa.
+ - `bash scripts/dev-bootstrap.sh` monta Postgres+Redis, migra e semina;
+   `pnpm db:seed:catalog` dà 50 prodotti veri SENZA il PDF da 39 MB.
+ - le distinte kit in locale mostrano «Codice … non a listino»: è il seed da 50
+   prodotti, NON una regressione.
+ - Playwright non è nel progetto: `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 pnpm add
+   -D playwright`, Chromium in /opt/pw-browsers/chromium-1194/chrome-linux/chrome,
+   e RIMUOVILO prima di committare.
+ - PUSHA PRESTO: il container ha perso la copia locale del repo a metà sessione.
+
+NON ROMPERE: il golden del kit resta 16 righe / 21 pezzi / 90,20 €, gemello a
+entrata 7,5 96,29 €, antieffrazione 17 / 22 / 110,13 €, bilico 450,03 · 766,51
+· 433,46 €. E fai SEMPRE una review indipendente del branch prima della PR: in
+questa sessione ne ha trovati di reali con tutti i gate verdi.
+```
+
+---
+
+## PROMPT (STORICO — sessione 2026-08-01, superato)
+
 
 ```
 Nuova sessione. Riparti leggendo handoff.md (§«RIPRENDI DA QUI») e CLAUDE.md.

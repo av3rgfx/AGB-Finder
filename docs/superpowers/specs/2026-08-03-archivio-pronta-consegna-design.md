@@ -431,11 +431,41 @@ più interessante che questo sistema accumulerà.)*
 
 ## 8. UI
 
+### 8.0 Il selettore di programma — decisione dell'utente del 2026-08-03
+
+**La prima schermata dopo il login diventa un selettore**: oggi due voci, **FINESTRE**
+(tutto ciò che esiste: catalogo AGB, assistente, kit, clienti) e **MANIGLIE** (il nuovo
+dominio); domani probabilmente altre. Volontà esplicita dell'utente, e la ragione è di
+prodotto, non tecnica: **rendere visibile il distacco**. Chi entra per il magazzino non
+deve attraversare il mondo dei serramenti, e chi entra per i serramenti non deve vedere
+comparire voci che non lo riguardano.
+
+Corollario dichiarato dall'utente: **la sezione finestre non si tocca**, deve restare
+com'è.
+
+> ⚠️ **Tensione da sciogliere alla prossima sessione, non da decidere qui.** Un selettore
+> *è* una modifica al guscio di navigazione: cambia dove atterra il login, aggiunge un
+> livello di route sopra l'esistente e tocca la sidebar. Cioè: **nessuna funzionalità
+> delle finestre cambia, ma il loro contenitore sì.** Le strade sono almeno tre —
+> (a) una route `/` che fa da selettore e lascia intatti i percorsi attuali;
+> (b) due gruppi di route affiancati (`/(finestre)/…` e `/(maniglie)/…`), con la sidebar
+> che mostra solo il gruppo corrente e un modo per tornare al selettore;
+> (c) un commutatore dentro la sidebar, senza schermata dedicata.
+> La (b) è la più pulita per il futuro ed è anche quella che tocca più file esistenti.
+> **Da portare a `/llm-council` e a `/impeccable`** (mobile ≤375px *e* desktop) prima di
+> scrivere codice, insieme alla domanda su cosa vede chi ha accesso a un solo programma.
+
+### 8.1 Le schermate del dominio maniglie
+
 Sezione di navigazione separata. **Mobile-first e verificata a ≤375px** prima di dirsi
 conclusa (regola inviolabile di `CLAUDE.md`): l'agente che fa questa domanda è in piedi
 davanti a un cliente, col telefono in mano — è il caso d'uso principale, non un
 adattamento. Codici in **JetBrains Mono**, UI in italiano, `/impeccable` in fase di
 progettazione delle schermate.
+
+**Carta bianca sul disegno** (utente, 2026-08-03), a un vincolo: **stesso stile del
+software esistente** — token, tipografia, componenti e densità di `DESIGN.md`. Il
+dominio è nuovo, il linguaggio visivo no.
 
 Schermate: **ricerca** (campo + risultati con badge e data) · **scheda articolo**
 (codice, nome, **prezzo totale arrotondato a 2 decimali**, EAN, stato, foto se c'è,
