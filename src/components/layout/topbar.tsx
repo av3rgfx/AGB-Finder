@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import { Search, Bell, ChevronDown, LogOut, Menu, X } from "lucide-react";
 import { Sidebar } from "./sidebar";
+import { repartoDaPathname } from "@/lib/reparti";
 
 export interface TopBarProps {
   name: string;
@@ -17,6 +18,7 @@ export function TopBar({ name, initials, role }: TopBarProps) {
   const [navOpen, setNavOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
+  const reparto = repartoDaPathname(pathname ?? "/dashboard");
 
   // Chiudi il drawer al cambio di rotta (i link della Sidebar navigano).
   useEffect(() => {
@@ -46,14 +48,24 @@ export function TopBar({ name, initials, role }: TopBarProps) {
 
   return (
     <header className="flex h-16 items-center gap-2 border-b border-line bg-surface px-4 sm:gap-4 sm:px-6">
+      {/* Il pulsante che apre il menu porta scritto DOVE SEI. A 375px la
+          sidebar vive dentro il drawer, quindi senza questa etichetta sapere in
+          che reparto si è costerebbe un tocco: nessuno spazio nuovo occupato,
+          bersaglio più grande, e il distacco fra i due mondi è visibile su ogni
+          schermata. Su desktop non serve: lo dice la sidebar, sempre a video. */}
       <button
         type="button"
         onClick={() => setNavOpen(true)}
-        aria-label="Apri menu di navigazione"
+        aria-label={
+          reparto ? `Apri menu di navigazione — reparto ${reparto.nome}` : "Apri menu di navigazione"
+        }
         aria-expanded={navOpen}
-        className="grid size-10 shrink-0 place-items-center rounded text-ink-muted transition-colors hover:bg-surface-sunken md:hidden"
+        className="flex h-10 shrink-0 items-center gap-1.5 rounded px-2 text-ink-muted transition-colors hover:bg-surface-sunken md:hidden"
       >
-        <Menu className="size-5" />
+        <Menu className="size-5 shrink-0" aria-hidden />
+        {reparto && (
+          <span className="text-[11px] font-bold tracking-[0.07em] text-ink">{reparto.nome}</span>
+        )}
       </button>
 
       <div className="relative min-w-0 flex-1 sm:max-w-md">
