@@ -110,21 +110,25 @@ tutto il modello.
 **zero collisioni** (verificato su tutti e 3.456 i codici): è quindi una chiave sicura.
 Applicata alla pronta consegna: **178 match su 201**.
 
-### 4.2 I 23 orfani (11%) — cosa sono davvero
+### 4.2 I 23 orfani (11%) — cosa sono, secondo Andrea
 
 Codici che Andrea ha fisicamente a magazzino e che il listino **non conosce**.
-Non sono refusi. Verificati uno per uno nel catalogo decodificato:
+Verificati uno per uno nel catalogo decodificato, e **poi confermati da Andrea**
+(risposte del 2026-08-03):
 
-| Classe | Codici | Prova |
+| Classe | Codici | Cosa sono |
 |---|---|---|
-| **Esistono a catalogo, non a listino** | `0ID81R*` · `0ID91R*` · `0ID82*` · `0ID92*` · `0AM15*` · `0AM25*` · `0AM41*` · `0AM42*` · `0CB16ZB*` · `0LC45*` · `0LC55*` · `0ID45*` · `0ID55*` | `ID 81` pag. 63 · `ID 91` pag. 65 · `AM 15` pag. 89 · `AM 41` pag. 43 e 112 · `CB 16` pag. 101 · `LC 55` pag. 92 · `ID 45`/`ID 55` pag. 90 |
-| **Forme abbreviate dal magazzino** | `0CD63CM`, `0CD63NM` | a listino esistono solo `0CD63FP-CM`, `0CD63GB-CM`… (il segmento centrale manca) |
-| **Codici interni UFP** | `XALL` · `XMP` · `XGRATZ7SX` | assenti da **entrambe** le fonti (`XGRATZ-7` e `XGRATZ-SX` esistono separati: il `7SX` è una combinazione che COLOMBO non vende come codice unico) |
+| **Il listino è vecchio** (18 codici) | `0ID81R*` · `0ID91R*` · `0ID82*` · `0ID92*` · `0AM15*` · `0AM25*` · `0AM41*` · `0AM42*` · `0CB16ZB*` · `0LC45*` · `0LC55*` · `0ID45*` · `0ID55*` · `0CD81RSYCB*` · `0CD42IM*` · `0CD42M*` | prodotti **veri**: esistono nel catalogo (`ID 81` pag. 63 · `AM 15` pag. 89 · `CB 16` pag. 101 · `LC 55` pag. 92…). Andrea: *«il listino che ti ho fornito è un vecchio modello, proverò a procurarmi quello aggiornato»* → **problema transitorio**, si riagganciano da soli al prossimo import di listino |
+| **Refusi del magazzino** (2) | `0CD63CM`, `0CD63NM` | Andrea conferma: i codici giusti sono `0CD63FP-CM` **e** `0CD63GB-CM`. **Due** codici giusti per uno sbagliato → **non correggibile automaticamente**: sono due bocchette diverse e solo chi guarda lo scaffale sa quale c'è. Si corregge a monte, nel gestionale |
+| **Spazzatura** (3) | `XALL` · `XMP` · `XGRATZ7SX` | Andrea: *«totalmente sbagliati, non saprei dirti il perché della loro presenza. Ignorali»* |
+
+**Il programma non può distinguere le tre classi**: per il codice sono tutte
+«non trovato a listino». Solo Andrea lo sa.
 
 **Conseguenza sul modello:** se la pronta consegna è una **tabella di righe datate**
 invece di una colonna sul prodotto, gli orfani **esistono per costruzione** — sono
-righe di giacenza che non trovano un articolo. Non c'è nulla da «gestire»: c'è solo da
-decidere cosa vede l'agente (§7.2).
+righe di giacenza che non trovano un articolo (`articleId = null`). Non c'è nulla da
+«gestire»: c'è solo da decidere chi li vede, ed è deciso (§7.3).
 
 ### 4.3 Copertura del catalogo — usare **ER MAN 2026**, non RR
 
@@ -235,15 +239,33 @@ Una riga per (marca, codice). Sorgente: il listino xlsx.
 | `ean` | String? | |
 | `catalogPage` | Int? | pagina **fisica** del catalogo, se esiste |
 | `imageUrl` | String? | URL Blob della foto, se esiste |
+| `lastListingAt` | DateTime | data dell'ultimo import di listino che conteneva il codice |
 
 Vincoli: `@@unique([brand, code])` · `@@unique([brand, codeNorm])` (le collisioni sono
 verificate assenti: se un giorno ne comparisse una, il vincolo la fa esplodere
 all'import invece di far agganciare in silenzio la riga sbagliata) · indice su `brand`.
 
-Il prezzo è spezzato in `priceList` + `surcharge` e **non** salvato già sommato: il
-surcharge è temporaneo per definizione, e il giorno che sparisce serve sapere quale
-metà toglier via. Il totale è derivato, mai persistito — stessa regola di `totalPrice`
-nel kit.
+**Il prezzo.** Andrea: *«nel listino è presente il prezzo già sommato e l'agente deve
+vedere quello»*. Si mostra il totale, ma **si salvano le due metà**: il surcharge è
+*temporary* per definizione, e il giorno che sparisce serve sapere quale metà togliere.
+Verificato che le due cose coincidono: su **tutte e 3.456 le righe**, arrotondare le due
+metà e sommarle dà lo stesso risultato della colonna `SOMMA` arrotondata (zero
+differenze). Il totale resta **derivato, mai persistito** — stessa regola di
+`totalPrice` nel kit.
+
+**L'arrotondamento va dichiarato, perché il file non è mostrabile così com'è:** il
+**96%** delle righe della colonna `SOMMA` ha più di due decimali (`104,535`), e il 36%
+ne ha 13-16 per errori di virgola mobile di Excel (`99,25649999999999`). Si mostra a
+**due decimali, arrotondamento standard** (104,535 → 104,54). Il calcolo si fa in
+`Decimal`, mai in `float`.
+
+**`lastListingAt` esiste per il listino nuovo, che sta arrivando.** L'import è
+idempotente e fa `upsert`: quando arriverà il listino aggiornato, i codici che COLOMBO
+ha tolto **non verrebbero cancellati** e resterebbero a schermo identici agli altri,
+senza che nulla dica che non sono più ordinabili — la stessa forma del difetto trovato
+in produzione al §3. Con questa colonna, «non più a listino» è una cosa che si vede:
+`lastListingAt` < `MAX(lastListingAt)` della marca. Nessuna cancellazione, nessuna
+tabella in più, e costa zero perché entra nella stessa migrazione.
 
 ### 6.2 `StockImport` e `StockLine` — la pronta consegna
 
@@ -331,13 +353,28 @@ nuovo più grosso della release.
 5. può **annullare l'ultimo import** se ha sbagliato file
 
 Il riepilogo prima della conferma non è un vezzo: è ciò che impedisce di pubblicare a
-dieci agenti il file della marca sbagliata, e ciò che rende gli orfani **visibili** ad
-Andrea a ogni giro invece che scartati in silenzio.
+dieci agenti il file della marca sbagliata, ed è **esattamente ciò che Andrea ha
+chiesto** (*«ogni volta che viene importato un file con codici inesistenti, devono
+essere ignorati, magari con un avviso prima di importare»*).
 
-**Formato del file.** Il file di oggi è `.xls` (BIFF, vecchio formato). Decisione:
-accettare `.xlsx` e `.csv` con una libreria sola, e chiedere ad Andrea il «salva con
-nome» se esporta `.xls`. Se risultasse un attrito reale per lui, si aggiunge il
-supporto `.xls` — ma non si porta una dipendenza in più per un'ipotesi.
+**Formato del file: `.xls`, e non è negoziabile.** Andrea: *«il formato del file è
+soltanto .xls»*. È il vecchio binario BIFF, e in JavaScript lo legge una libreria sola:
+**SheetJS**. Con un dettaglio che va saputo prima e non scoperto dopo:
+
+> Sul registry npm `xlsx` è fermo alla **0.18.5 (2022)**, con vulnerabilità note e mai
+> corrette lì (prototype pollution, ReDoS). Le versioni sane esistono **solo** sul CDN
+> di SheetJS. Verificato il 2026-08-03: `cdn.sheetjs.com` risponde 200 e la **0.20.3**
+> è disponibile (la 0.21 non esiste).
+>
+> Si installa così, pinnata:
+> `pnpm add https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`
+>
+> **Va scritto in `CLAUDE.md` §AMBIENTE**, accanto al pin di pnpm 10: è la stessa classe
+> di trappola — un `pnpm add xlsx` distratto reinstalla la versione vulnerabile.
+
+Mitigazione del rischio residuo: il file lo carica un **ADMIN autenticato**, non
+internet, e pesa 35 KB. Si parsa **solo la prima colonna**, ignorando fogli, formule e
+tutto il resto.
 
 ### 7.3 Ricerca
 
@@ -346,24 +383,46 @@ testuale esistente. **Niente embedding, niente RAG**: i 3.456 codici COLOMBO nel
 stesso indice semantico farebbero citare maniglie a domande sui serramenti, e
 peserebbero su Gemini, provider unico con 429 già ricorrenti.
 
-I tre stati, che devono essere **tre e non due**:
+**Due stati per l'agente, un terzo che vede solo Andrea:**
 
-| Stato | Quando | Cosa vede l'agente |
+| Stato | Quando | Chi lo vede |
 |---|---|---|
-| **In pronta consegna** | è nell'ultimo import valido | badge verde + **data dell'ultimo import** |
-| **Da ordinare** | è a listino, non nell'import | badge neutro + data |
-| **A magazzino, scheda mancante** | è nell'import, **non** a listino (i 23 orfani) | badge verde + avviso **«prezzo non a listino 02/26 — chiedi all'ufficio acquisti»** |
+| **In pronta consegna** | è nell'ultimo import valido | agente — badge verde + **data dell'ultimo import** |
+| **Da ordinare** | è a listino, non nell'import | agente — badge neutro + data |
+| **Orfano** | è nell'import, **non** a listino | **solo Andrea**, nel riepilogo pre-conferma e nella scheda dell'import |
 
-Il terzo stato è la differenza fra battere la telefonata e perderla: rispondere «non
-trovato» su una maniglia che è sullo scaffale uccide la fiducia il primo giorno.
+**Perché gli orfani non li vede l'agente** (decisione dell'utente del 2026-08-03, dopo
+le risposte di Andrea): la spec nasceva con tre stati visibili, per non rispondere «non
+trovato» su una maniglia che è sullo scaffale. Andrea però ha chiarito che dei 23 solo
+5 sono errori veri e i restanti 18 mancano **perché il listino è vecchio** — cioè il
+problema scade da solo al prossimo import di listino. Mostrare all'agente un prodotto
+senza prezzo, quando nella maggioranza dei casi il prezzo esiste e arriverà, è peggio
+che non mostrarlo: lo mette in condizione di promettere una cosa che non sa quotare.
 
-### 7.4 La data, sempre accanto alla risposta
+**Ma le righe orfane si conservano, e non è un ripiego.** `StockLine` le tiene con
+`articleId = null` e il loro `codeNorm`. Conseguenza: quando arriverà il listino
+aggiornato e l'articolo nascerà, **l'aggancio avviene da solo** — nessun file da
+ricaricare, nessuna storia da ricostruire. Buttarle all'import significherebbe
+ricaricare a mano ogni pronta consegna passata.
+
+### 7.4 La data, sempre accanto alla risposta — e nessuna soglia
 
 **Nessuna disponibilità si mostra senza la data dell'ultimo import.** Un agente che
-promette la consegna sulla base di un Excel di due settimane fa non ha un bug: ha un
-cliente arrabbiato. E se l'import è più vecchio di una soglia, l'avviso è **visibile
-all'agente**, non solo ad Andrea — perché è l'agente a rischiare la promessa, e Andrea
-che salta un giro non se ne accorge da solo.
+promette la consegna sulla base di un file di due settimane fa non ha un bug: ha un
+cliente arrabbiato.
+
+**Ma nessun avviso a soglia.** La spec nasceva con «se l'import è più vecchio di N
+giorni, avvisa». La risposta di Andrea la smonta: *«la frequenza sarà molto varia e non
+frequente. Potrà capitare che venga aggiornato un paio di volte all'anno, come potrebbe
+essere aggiornato tutti i giorni»* — perché si aggiorna **quando si decide di tenere a
+magazzino qualcosa che di solito non si tiene**. Non esiste un ritmo, quindi non esiste
+una soglia: un allarme che scatta legittimamente per sei mesi diventa rumore, e il
+giorno che conterebbe davvero nessuno lo guarda più.
+
+Si mostra **la data, che è un fatto**; il giudizio lo dà l'agente, che sa se quella
+maniglia gira o no. *(Il rovescio della stessa risposta: se ogni import è la traccia di
+una decisione di magazzino, allora lo **storico** — §6.2 — non è archeologia, è il dato
+più interessante che questo sistema accumulerà.)*
 
 ---
 
@@ -376,9 +435,9 @@ adattamento. Codici in **JetBrains Mono**, UI in italiano, `/impeccable` in fase
 progettazione delle schermate.
 
 Schermate: **ricerca** (campo + risultati con badge e data) · **scheda articolo**
-(codice, nome, prezzo listino + surcharge, EAN, stato, foto se c'è, «vedi nel catalogo»
-se c'è la pagina) · **import** (ADMIN: carica, riepilogo, conferma, annulla ultimo) ·
-**storico import** (ADMIN).
+(codice, nome, **prezzo totale arrotondato a 2 decimali**, EAN, stato, foto se c'è,
+«vedi nel catalogo» se c'è la pagina) · **import** (ADMIN: carica, riepilogo con gli
+orfani elencati, conferma, annulla ultimo) · **storico import** (ADMIN).
 
 Foto assenti (**513 codici, il 15%** — bocchette, rosette, viti, molle: minuteria che
 nessun catalogo fotografa): **segnaposto neutro**, nessun messaggio d'errore. Il dato
@@ -394,35 +453,38 @@ la foto non è ciò che l'agente sta cercando.
   ogni marca avrà il suo formato e il suo lavoro
 - La migrazione multi-fornitore di `Product` (§2)
 - Spostare le 7.082 foto AGB da Postgres a Blob
-- Quantità in giacenza (§10, domanda 1)
-- Tabella di alias per i codici interni (`XALL`, `XMP`): tre casi, si guardano quando
-  Andrea dice cosa sono
+- **Quantità in giacenza** — chiusa da Andrea: *«non serve segnarle, all'agente basta
+  sapere che è in pronta consegna, poi va a cercare le quantità sul gestionale
+  aziendale»*. Nessuna colonna, e non si aggiunge «per il futuro»: un campo che nessuno
+  scrive è il difetto pagato sette volte da questo progetto
+- **Correzione automatica dei refusi** (`0CD63CM` → `0CD63FP-CM`): impossibile, sono
+  **due** codici giusti per uno sbagliato (§4.2). Si corregge nel gestionale
+- Tabella di alias per i codici interni (`XALL`, `XMP`, `XGRATZ7SX`): Andrea dice di
+  ignorarli, e non sa da dove vengano
 - Qualunque uso dell'assistente AI sul dominio magazzino
 
 ---
 
 ## 10. Domande aperte
 
-1. **Le quantità.** Il gestionale di Andrea può esportare anche i pezzi? «Ce ne sono 2»
-   non è «ce ne sono 200». **Chiesto ad Andrea, in attesa.** Nessuna colonna viene
-   aggiunta prima della risposta: un campo che nessuno scrive è il difetto pagato sette
-   volte. Aggiungerla poi è un `ALTER TABLE ADD COLUMN`, come `entrata` e `variants`.
-2. ✅ **CHIUSA** — il secondo catalogo esiste ed è **`ER MAN 2026`** (§4.3): copre
-   l'85% contro il 57% di RR, e il residuo è minuteria senza foto per natura.
-   **Resta aperta la coda che ne è nata:** l'area download di COLOMBO ha tre colonne
-   — **ARCHIVIO FOTOGRAFICO**, **LISTINO**, **3D** — che nella pagina pubblica sono
-   **completamente vuote** (zero link nell'HTML): sono dietro il login rivenditori.
-   UFP è rivenditore COLOMBO, quindi le credenziali dovrebbero esistere. Se ci sono, e
-   se dietro c'è ciò che i titoli promettono, **due pezzi di questo progetto si
-   semplificano**: le foto arriverebbero già ritagliate invece che estratte da un PDF,
-   e il listino sarebbe scaricabile alla fonte invece che atteso via mail. **Da
-   chiedere ad Andrea.** Non blocca nulla: il design (§6.3) è già indifferente
-   all'origine delle foto.
-3. **`XALL`, `XMP`, `XGRATZ7SX`**: cosa sono? Assenti da entrambe le fonti COLOMBO.
-4. **Ogni quanto Andrea importa?** Determina la soglia oltre cui il dato è «vecchio»
-   (§7.4).
-5. **Lo storage Neon attuale** (§4.4): se supera i 400 MB, le foto AGB vanno spostate
-   prima di aggiungere COLOMBO, non dopo.
+**Chiuse dalle risposte di Andrea (2026-08-03):** quantità (no, §9) · frequenza degli
+import (nessuna soglia, §7.4) · formato del file (solo `.xls`, §7.2) · credenziali area
+download (*«per adesso non c'è modo di averle, dovremmo estrarre le foto dal
+catalogo»* → §6.3 invariato) · i 23 orfani (§4.2) · il prezzo (§6.1) · cadenza del
+listino (*«per adesso non è rilevante»*).
+
+Restano:
+
+1. **Il listino aggiornato.** Quello fornito è *«un vecchio modello»* e Andrea sta
+   provando a procurarsi quello nuovo. Non blocca: l'import è idempotente, e
+   `lastListingAt` (§6.1) fa sì che il ricambio non lasci zombie. **Quando arriva, 18
+   dei 23 orfani spariscono da soli.**
+2. **Lo storage Neon attuale** (§4.4): se supera i 400 MB, le foto AGB vanno spostate
+   su Blob **prima** di aggiungere COLOMBO, non dopo. Dieci secondi sulla dashboard
+   Neon; è l'unico numero della §4.4 che è stimato e non misurato.
+3. **Le credenziali COLOMBO, in futuro.** Oggi non ci sono, ma se un giorno saltano
+   fuori, l'archivio fotografico ufficiale rimpiazzerebbe l'estrazione dal PDF — che
+   resta il pezzo più fragile del piano. Riaprire la domanda, non il design.
 
 ---
 
@@ -432,7 +494,7 @@ la foto non è ciò che l'agente sta cercando.
 |---|---|---|
 | 0 | **Cancellare la disponibilità falsa** (§3) — PR a sé, indipendente | no |
 | 1 | Modello dati + import listino da script ops | **sì** |
-| 2 | Ricerca e scheda articolo (i tre stati, la data) | no |
+| 2 | Ricerca e scheda articolo (i due stati dell'agente, la data, il prezzo arrotondato) | no |
 | 3 | Upload pronta consegna + riepilogo + conferma + annulla | no |
 | 4 | Arricchimento da catalogo: pagina + foto su Blob | no |
 
