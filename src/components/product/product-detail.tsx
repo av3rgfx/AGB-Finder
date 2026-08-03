@@ -6,7 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { api } from "@/trpc/react";
 import { pushViewed } from "@/lib/recently-viewed";
 import { formatPrice } from "@/lib/format";
-import { AvailabilityDot, ProductCard } from "./product-card";
+import { ProductCard } from "./product-card";
 import { CopyCodeButton } from "./copy-code-button";
 import { ProductImage } from "./product-image";
 import { ListinoButton } from "@/components/listino/listino-button";
@@ -75,10 +75,6 @@ export function ProductDetail({ id }: { id: string }) {
             </span>
             <span className="rounded bg-surface-sunken px-2 py-0.5 text-xs text-ink-muted">
               {p.category.name}
-            </span>
-            <span className="inline-flex items-center gap-1.5 text-xs text-ink-subtle">
-              <AvailabilityDot available={p.isAvailable} />
-              {p.isAvailable ? "Disponibile" : "Non disponibile"}
             </span>
           </div>
           <h1 className="text-xl font-semibold text-ink">{p.name}</h1>

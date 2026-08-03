@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { formatPrice } from "@/lib/format";
-import { cn } from "@/lib/utils";
 import { ProductThumb } from "./product-thumb";
 import { ListinoButton } from "@/components/listino/listino-button";
 
@@ -10,21 +9,7 @@ export interface ProductSummary {
   name: string;
   basePrice: number;
   categoryName: string;
-  isAvailable: boolean;
   listinoPage?: number | null;
-}
-
-export function AvailabilityDot({ available }: { available: boolean }) {
-  return (
-    <span
-      role="img"
-      aria-label={available ? "Disponibile" : "Non disponibile"}
-      className={cn(
-        "inline-block size-2 shrink-0 rounded-full",
-        available ? "bg-success" : "bg-line-strong",
-      )}
-    />
-  );
 }
 
 export function ProductCard({ product }: { product: ProductSummary }) {
@@ -33,7 +18,6 @@ export function ProductCard({ product }: { product: ProductSummary }) {
       <ProductThumb code={product.agbCode} variant="card" />
       <div className="flex items-center justify-between gap-2">
         <span className="font-mono text-xs text-ink-subtle">{product.agbCode}</span>
-        <AvailabilityDot available={product.isAvailable} />
       </div>
       <h3 className="line-clamp-2 text-sm font-medium text-ink transition-colors group-hover:text-brand">
         {product.name}
