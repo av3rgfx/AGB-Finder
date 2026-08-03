@@ -93,7 +93,7 @@ disponibilità AGB vera.
 |---|---|---|
 | **Listino `LP 02-26`** (xlsx) | ciò che è **ordinabile** | 3.456 codici unici · prezzo, surcharge 3,5%, somma, EAN · **zero prezzi mancanti, zero EAN mancanti** · descrizioni troncate a 35 caratteri |
 | **Pronta consegna** (xls) | ciò che è **sullo scaffale** | 201 codici, una sola colonna |
-| **Catalogo `RR MAN 2026`** (pdf) | ciò che COLOMBO **mostra** | 132 pagine · 437 immagini **JPEG** · testo recuperabile con **shift costante di +29 byte** (font CorelDRAW senza ToUnicode) |
+| **Catalogo `ER MAN 2026`** (pdf) | ciò che COLOMBO **mostra** | 261 pagine · 725 immagini **JPEG** · testo recuperabile con **shift costante di +29 byte** (font CorelDRAW senza ToUnicode) · scelto fra i quattro cataloghi maniglie pubblicati, vedi §4.3 |
 
 **Nessuna delle tre è contenuta nelle altre.** È il fatto strutturale su cui poggia
 tutto il modello.
@@ -126,22 +126,38 @@ invece di una colonna sul prodotto, gli orfani **esistono per costruzione** — 
 righe di giacenza che non trovano un articolo. Non c'è nulla da «gestire»: c'è solo da
 decidere cosa vede l'agente (§7.2).
 
-### 4.3 Copertura del catalogo
+### 4.3 Copertura del catalogo — usare **ER MAN 2026**, non RR
 
-Incrocio per **nome commerciale** (l'incrocio per prefisso di codice sottostima: dava
-per assenti ROBOT, ROBOQUATTRO, ROBOCINQUE, MACH, che ci sono):
+Il `RR MAN 2026` fornito all'inizio copriva solo il 57% dei codici. Cercando la
+differenza (47 linee commerciali assenti in blocco: PETER, LARA, MILLA, PEGASO,
+CAMEO, SIRIO…) è emerso che l'area download di COLOMBO
+(`download.colombodesign.com/?lang=it`) pubblica **quattro cataloghi maniglie**.
+Scaricati e misurati tutti e quattro:
 
-- **49 linee presenti** nel `RR MAN 2026` → 1.524 codici
-- **47 linee assenti** → **547 codici (16%)**: PETER (41) · ALATO (37) · ROBODUE (30) ·
-  CAMEO (30) · LARA (28) · MILLA (28) · SIRIO (24) · MOSTRINA (24) · FLESSA (22) ·
-  GAIA (21) · OLLY (21) · HEIDI (20) · PEGASO (16) · POMOLO (18)
-- 1.384 codici (40%) hanno una descrizione che inizia con un **tipo generico**
-  (bocchetta, rosetta, placca, nottolino): in buona parte compaiono comunque nelle
-  pagine tecniche di famiglia (es. `SE 19 BZG` a pag. 43)
+| Catalogo | Pagine | Immagini | Codici del listino con pagina tecnica |
+|---|---|---|---|
+| `RR MAN 2026` | 133 | 437 | 1.962 — **57%** |
+| **`ER MAN 2026`** | **261** | **725** | **2.943 — 85%** |
+| `Vision2026_maniglie` | 16 | — | 415 codici per nome |
+| `MOOD_brochure_2025` | 36 | — | 403 codici per nome |
 
-Nomi propri assenti in blocco = probabilmente **un secondo catalogo** (collezione
-classica o precedente). L'utente sta verificando sul sito COLOMBO. **Non bloccante**:
-vedi §6.3 — il catalogo è uno strato facoltativo.
+**ER è un sovrainsieme**: da solo copre tutti i nomi commerciali coperti dagli altri tre
+messi insieme (71 su 96), e l'unione `ER ∪ RR` non aggiunge **nulla** (2.943 = 2.943).
+Solo 4 famiglie compaiono in RR e non in ER (`BL22`, `RS120`, `RS121`, `YQ115`),
+probabilmente rumore d'estrazione.
+
+→ **Il catalogo di riferimento è `ER MAN 2026_100726.pdf`.** RR non serve.
+Stessa codifica: testo con shift **+29**, codici in forma spaziata.
+
+**Il 15% che resta fuori non è un catalogo mancante:** 513 codici, e sono
+bocchette (281), rosette (47), movimenti (33), kit (28), placche (27), viti (21),
+quadri (14), molle, rondelle, bussole. Minuteria e ricambi, che nessun catalogo
+fotografa uno per uno. **La ricerca di ulteriori cataloghi è chiusa.**
+
+**Difetto del listino, scoperto per strada:** le descrizioni sono digitate a mano e
+contengono refusi — `BOCCEHTTA` (2 codici), `ROBOCINQUQ` (1). Conta per la ricerca per
+nome: la sola ricerca full-text non li trova. Il ramo **trigram** (`pg_trgm`), che il
+progetto usa già, li recupera — motivo in più per non fare a meno di quel ramo (§7.3).
 
 ### 4.4 Vincoli di piattaforma (verificati sulle fonti ufficiali, 2026-08-03)
 
@@ -261,11 +277,15 @@ nel kit una distinta emessa non si riscrive ma genera una versione.
 `catalogPage` e `imageUrl` sono **nullable e arricchiti dopo**, da uno script che legge
 un PDF di catalogo e aggancia per codice. Conseguenze volute:
 
-- il giorno che arriva il secondo catalogo COLOMBO è **un altro giro dello stesso
-  script**, non una modifica al modello;
+- il giorno che arriva un altro catalogo è **un altro giro dello stesso script**, non
+  una modifica al modello — è già successo in questa sessione, passando da RR a ER;
 - una marca che non ha catalogo con foto funziona lo stesso — avrà articoli senza foto;
 - l'archivio **non dipende** dal catalogo per essere utile: la fonte di verità è
-  listino + pronta consegna, che sono completi.
+  listino + pronta consegna, che sono completi;
+- **se COLOMBO fornisce le credenziali rivenditore** (§10, domanda 2) e l'archivio
+  fotografico ufficiale risulta utilizzabile, cambia solo **da dove arrivano i byte**:
+  `imageUrl` e la tabella restano identici, e lo script di estrazione dal PDF diventa
+  il ripiego invece che la strada maestra.
 
 ### 6.4 Le foto stanno su Vercel Blob, non in Postgres
 
@@ -360,10 +380,10 @@ Schermate: **ricerca** (campo + risultati con badge e data) · **scheda articolo
 se c'è la pagina) · **import** (ADMIN: carica, riepilogo, conferma, annulla ultimo) ·
 **storico import** (ADMIN).
 
-Foto assenti (i 547 codici — il 16% — delle linee non coperte, più ogni altro codice a
-cui l'aggancio non trova una pagina): **segnaposto neutro**,
-nessun messaggio d'errore — il dato che conta c'è tutto lo stesso. *(In attesa
-dell'esito della caccia al secondo catalogo: se salta fuori, la quota cala.)*
+Foto assenti (**513 codici, il 15%** — bocchette, rosette, viti, molle: minuteria che
+nessun catalogo fotografa): **segnaposto neutro**, nessun messaggio d'errore. Il dato
+che conta — codice, nome, prezzo, disponibilità — c'è tutto lo stesso, e per una vite
+la foto non è ciò che l'agente sta cercando.
 
 ---
 
@@ -387,9 +407,17 @@ dell'esito della caccia al secondo catalogo: se salta fuori, la quota cala.)*
    non è «ce ne sono 200». **Chiesto ad Andrea, in attesa.** Nessuna colonna viene
    aggiunta prima della risposta: un campo che nessuno scrive è il difetto pagato sette
    volte. Aggiungerla poi è un `ALTER TABLE ADD COLUMN`, come `entrata` e `variants`.
-2. **Il secondo catalogo COLOMBO.** 47 linee (547 codici) assenti dal `RR MAN 2026`:
-   PETER, ALATO, ROBODUE, CAMEO, LARA, MILLA, SIRIO, MOSTRINA, FLESSA, GAIA, OLLY,
-   HEIDI, PEGASO, POMOLO. **L'utente sta verificando sul sito COLOMBO.**
+2. ✅ **CHIUSA** — il secondo catalogo esiste ed è **`ER MAN 2026`** (§4.3): copre
+   l'85% contro il 57% di RR, e il residuo è minuteria senza foto per natura.
+   **Resta aperta la coda che ne è nata:** l'area download di COLOMBO ha tre colonne
+   — **ARCHIVIO FOTOGRAFICO**, **LISTINO**, **3D** — che nella pagina pubblica sono
+   **completamente vuote** (zero link nell'HTML): sono dietro il login rivenditori.
+   UFP è rivenditore COLOMBO, quindi le credenziali dovrebbero esistere. Se ci sono, e
+   se dietro c'è ciò che i titoli promettono, **due pezzi di questo progetto si
+   semplificano**: le foto arriverebbero già ritagliate invece che estratte da un PDF,
+   e il listino sarebbe scaricabile alla fonte invece che atteso via mail. **Da
+   chiedere ad Andrea.** Non blocca nulla: il design (§6.3) è già indifferente
+   all'origine delle foto.
 3. **`XALL`, `XMP`, `XGRATZ7SX`**: cosa sono? Assenti da entrambe le fonti COLOMBO.
 4. **Ogni quanto Andrea importa?** Determina la soglia oltre cui il dato è «vecchio»
    (§7.4).
