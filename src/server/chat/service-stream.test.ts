@@ -126,8 +126,6 @@ describe("generateStream — un round tool poi risposta finale", () => {
         shortDescription: null,
         basePrice: 12.5,
         priceUnit: "EUR",
-        isAvailable: true,
-        stockQuantity: 3,
         listinoPage: 42,
       },
     ]);
@@ -156,8 +154,6 @@ describe("generateStream — un round tool poi risposta finale", () => {
         shortDescription: null,
         basePrice: 12.5,
         priceUnit: "EUR",
-        isAvailable: true,
-        stockQuantity: 3,
         listinoPage: 42,
       },
     ]);
