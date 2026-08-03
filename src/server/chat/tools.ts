@@ -38,7 +38,6 @@ export const TOOL_DECLARATIONS: ToolDeclaration[] = [
             "Filtro materiale, es. ACCIAIO, ZAMA. Esclude i prodotti senza materiale specificato: usalo solo se il materiale è essenziale per l'utente.",
         },
         priceMax: { type: "number", description: "Prezzo massimo in EUR" },
-        inStockOnly: { type: "boolean", description: "Solo prodotti disponibili" },
       },
       required: ["query"],
     },
@@ -61,7 +60,6 @@ const searchArgs = z.object({
   limit: z.number().int().min(1).max(10).default(5),
   material: z.string().min(1).max(50).optional(),
   priceMax: z.number().nonnegative().optional(),
-  inStockOnly: z.boolean().optional(),
 });
 
 const codeArgs = z.object({ agbCode: z.string().trim().min(1).max(20) });
@@ -93,7 +91,6 @@ export async function executeTool(
           name: hit.name,
           shortDescription: hit.shortDescription,
           price: hit.basePrice,
-          available: hit.isAvailable,
           category: hit.categoryName,
         })),
       },
@@ -120,8 +117,6 @@ export async function executeTool(
         shortDescription: product.shortDescription,
         price: Number(product.basePrice),
         priceUnit: product.priceUnit,
-        available: product.isAvailable,
-        stock: product.stockQuantity,
         category: product.category.name,
         specifications: product.specifications,
       },

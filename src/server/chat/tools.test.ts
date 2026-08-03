@@ -17,8 +17,6 @@ const hit = {
   shortDescription: "Cerniere · ACCIAIO",
   basePrice: 51.59,
   priceUnit: "EUR",
-  isAvailable: true,
-  stockQuantity: 0,
   categoryId: "c1",
   categoryName: "Cerniere",
   textScore: 0.6,
@@ -78,8 +76,6 @@ describe("executeTool — get_product_by_code", () => {
       shortDescription: null,
       basePrice: { toString: () => "10.5" },
       priceUnit: "EUR",
-      isAvailable: true,
-      stockQuantity: 3,
       specifications: { materiale: "ACCIAIO" },
       category: { name: "Serrature" },
     });
@@ -104,5 +100,37 @@ describe("executeTool — tool sconosciuto", () => {
   it("ritorna un errore parlante", async () => {
     const execution = await executeTool(db, "boh", {});
     expect(execution.output).toMatchObject({ error: expect.stringContaining("boh") });
+  });
+});
+
+describe("nessuna disponibilità verso il modello", () => {
+  it("get_product_by_code non restituisce né available né stock", async () => {
+    findUnique.mockResolvedValueOnce({
+      id: "p1",
+      agbCode: "E10073.10.16",
+      name: "COMPACT DX",
+      shortDescription: "Cerniere · ACCIAIO",
+      basePrice: 51.59,
+      priceUnit: "EUR",
+      specifications: {},
+      category: { name: "Cerniere" },
+    });
+    const result = await executeTool(db, "get_product_by_code", { agbCode: "E10073.10.16" });
+    const output = result.output as Record<string, unknown>;
+    expect("available" in output).toBe(false);
+    expect("stock" in output).toBe(false);
+  });
+
+  it("search_products non restituisce available", async () => {
+    queryRaw.mockResolvedValueOnce([hit]).mockResolvedValueOnce([{ total: 1 }]);
+    const result = await executeTool(db, "search_products", { query: "cerniera" });
+    const output = result.output as { results: Record<string, unknown>[] };
+    expect("available" in output.results[0]!).toBe(false);
+  });
+
+  it("non offre al modello il filtro inStockOnly", () => {
+    const tool = TOOL_DECLARATIONS.find((t) => t.name === "search_products")!;
+    const props = tool.parameters.properties as Record<string, unknown>;
+    expect("inStockOnly" in props).toBe(false);
   });
 });
