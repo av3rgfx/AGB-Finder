@@ -8,8 +8,6 @@ export const CHAT_PRODUCT_SELECT = {
   shortDescription: true,
   basePrice: true,
   priceUnit: true,
-  isAvailable: true,
-  stockQuantity: true,
   listinoPage: true,
 } as const;
 
@@ -20,8 +18,6 @@ export interface ChatProductSummary {
   shortDescription: string | null;
   basePrice: number;
   priceUnit: string;
-  isAvailable: boolean;
-  stockQuantity: number;
   listinoPage: number | null;
 }
 

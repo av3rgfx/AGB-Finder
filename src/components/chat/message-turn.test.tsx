@@ -26,8 +26,6 @@ const product: ChatProductSummary = {
   shortDescription: null,
   basePrice: 51.59,
   priceUnit: "EUR",
-  isAvailable: true,
-  stockQuantity: 4,
   listinoPage: null,
 };
 

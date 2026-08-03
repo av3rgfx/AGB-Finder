@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, screen, cleanup, fireEvent } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 vi.mock("next/link", () => ({
   default: ({ href, children, ...props }: { href: string; children: React.ReactNode }) => (
@@ -30,8 +31,6 @@ const product: ChatProductSummary = {
   shortDescription: "Cerniere · ACCIAIO",
   basePrice: 51.59,
   priceUnit: "EUR",
-  isAvailable: true,
-  stockQuantity: 4,
   listinoPage: 418,
 };
 
@@ -59,7 +58,6 @@ describe("InlineProducts", () => {
     expect(screen.getByText("E10073.10.16")).toBeTruthy();
     expect(screen.getByText("COMPACT DX").closest("a")?.getAttribute("href")).toBe("/archivio/p1");
     expect(screen.getByText(/51,59/)).toBeTruthy();
-    expect(screen.getByText(/disponibile/i)).toBeTruthy();
   });
 
   it("il codice AGB è reso in monospace", () => {
@@ -81,9 +79,10 @@ describe("InlineProducts", () => {
     expect(screen.queryByLabelText(/visualizza .* nel listino/i)).toBeNull();
   });
 
-  it("prodotto non disponibile mostra il badge corretto", () => {
-    render(<InlineProducts products={[{ ...product, isAvailable: false }]} />);
-    fireEvent.click(screen.getByRole("button", { name: /1 prodotto/ }));
-    expect(screen.getByText("Non disponibile")).toBeTruthy();
+  it("non mostra alcun badge di disponibilità", async () => {
+    const user = userEvent.setup();
+    const { container } = render(<InlineProducts products={[product]} />);
+    await user.click(container.querySelector("button")!);
+    expect(container.textContent?.includes("Disponibile")).toBe(false);
   });
 });

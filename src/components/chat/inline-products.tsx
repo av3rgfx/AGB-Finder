@@ -54,14 +54,6 @@ export function InlineProducts({ products }: InlineProductsProps) {
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <CopyCodeButton code={product.agbCode} />
-                  <span
-                    className={cn(
-                      "rounded-full px-2 py-0.5 text-xs font-medium",
-                      product.isAvailable ? "bg-success/10 text-success" : "bg-danger/10 text-danger",
-                    )}
-                  >
-                    {product.isAvailable ? "Disponibile" : "Non disponibile"}
-                  </span>
                 </div>
                 <Link
                   href={`/archivio/${product.id}`}
