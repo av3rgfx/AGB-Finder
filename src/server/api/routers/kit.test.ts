@@ -305,7 +305,7 @@ describe("kit.list / kit.get", () => {
           sortOrder: 0,
           ruleId: "r1",
           ruleDescription: "Test Rule",
-          product: { id: "p1", agbCode: "X", name: "N", isAvailable: true, listinoPage: 418 },
+          product: { id: "p1", agbCode: "X", name: "N", listinoPage: 418 },
         },
       ],
     });
@@ -318,7 +318,7 @@ describe("kit.list / kit.get", () => {
           components: expect.objectContaining({
             include: expect.objectContaining({
               product: expect.objectContaining({
-                select: { id: true, agbCode: true, name: true, isAvailable: true, listinoPage: true },
+                select: { id: true, agbCode: true, name: true, listinoPage: true },
               }),
             }),
           }),
