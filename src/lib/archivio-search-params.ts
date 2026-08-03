@@ -3,7 +3,6 @@ export interface ArchivioFilters {
   priceMin?: number;
   priceMax?: number;
   material?: string;
-  inStockOnly?: boolean;
 }
 
 export interface ArchivioSearchState {
@@ -28,7 +27,6 @@ export function parseSearchState(sp: URLSearchParams): ArchivioSearchState {
   if (pmax !== undefined) filters.priceMax = pmax;
   const mat = sp.get("mat");
   if (mat) filters.material = mat;
-  if (sp.get("stock") === "1") filters.inStockOnly = true;
 
   const pRaw = Number(sp.get("p"));
   const page = Number.isInteger(pRaw) && pRaw >= 1 ? pRaw : 1;
@@ -45,7 +43,6 @@ export function buildSearchQueryString(state: ArchivioSearchState): string {
   if (f.priceMin !== undefined) sp.set("pmin", String(f.priceMin));
   if (f.priceMax !== undefined) sp.set("pmax", String(f.priceMax));
   if (f.material) sp.set("mat", f.material);
-  if (f.inStockOnly) sp.set("stock", "1");
   if (state.page > 1) sp.set("p", String(state.page));
   return sp.toString();
 }

@@ -70,8 +70,6 @@ describe("toProductData", () => {
       sku: "B00590.15.03",
       basePrice: "1.23",
       priceUnit: "EUR",
-      isAvailable: true,
-      stockQuantity: 0,
       categorySlug: "serrature",
       shortDescription: "Serrature · Incontri - Sicurezza · ACCIAIO",
     });
@@ -90,6 +88,12 @@ describe("toProductData", () => {
 
   it("porta la pagina fisica in listinoPage", () => {
     expect(toProductData(row({ page: 418 })).listinoPage).toBe(418);
+  });
+
+  it("non inventa la disponibilità: il mapper non scrive quelle colonne", () => {
+    const data = toProductData(row({}));
+    expect("isAvailable" in data).toBe(false);
+    expect("stockQuantity" in data).toBe(false);
   });
 });
 

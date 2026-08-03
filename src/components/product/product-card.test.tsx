@@ -16,7 +16,6 @@ const product = {
   name: "Larghezza 22 mm Ottonato lucido 238 mm",
   basePrice: 1.23,
   categoryName: "Serrature",
-  isAvailable: true,
 };
 
 describe("ProductCard", () => {
@@ -37,13 +36,15 @@ describe("ProductCard", () => {
     expect(screen.getByText(/1,23/)).toBeDefined();
   });
 
-  it("espone lo stato di disponibilità in modo accessibile", () => {
-    render(<ProductCard product={{ ...product, isAvailable: false }} />);
-    expect(screen.getByLabelText("Non disponibile")).toBeDefined();
-  });
-
   it("con listinoPage mostra il pulsante listino", () => {
     render(<ProductCard product={{ ...product, listinoPage: 42 }} />);
     expect(screen.getByLabelText("Visualizza B00590.15.03 nel listino")).toBeDefined();
+  });
+
+  it("non fa alcuna affermazione sulla disponibilità", () => {
+    const { container } = render(<ProductCard product={product} />);
+    expect(container.textContent?.includes("Disponibile")).toBe(false);
+    expect(container.querySelector('[aria-label="Disponibile"]')).toBeNull();
+    expect(container.querySelector('[aria-label="Non disponibile"]')).toBeNull();
   });
 });

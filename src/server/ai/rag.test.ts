@@ -14,8 +14,6 @@ const hit = {
   shortDescription: "Cerniere · Per porte a filo · ACCIAIO",
   basePrice: 51.59,
   priceUnit: "EUR",
-  isAvailable: true,
-  stockQuantity: 0,
   categoryId: "c1",
   categoryName: "Cerniere",
   textScore: 0.6,
@@ -65,13 +63,11 @@ describe("RAGEngine.search — degradazione tsvector-only", () => {
       priceMin: 10,
       priceMax: 100,
       material: "acciaio",
-      inStockOnly: true,
     });
     const query = sqlOf(queryRaw.mock.calls[0]!);
     expect(query.sql).toContain("category_id");
     expect(query.sql).toContain("base_price");
     expect(query.sql).toContain("specifications");
-    expect(query.sql).toContain("is_available");
     expect(query.values).toEqual(expect.arrayContaining(["c1", 10, 100, "%acciaio%"]));
     expect(query.sql).not.toContain("acciaio"); // il valore vive nei parametri
   });
@@ -140,5 +136,22 @@ describe("RAGEngine.getRelated", () => {
     expect(query.sql).toContain("category_id");
     expect(query.sql).toContain("<>");
     expect(query.values).toEqual(expect.arrayContaining(["p1", 4]));
+  });
+});
+
+describe("nessuna colonna di disponibilità nelle proiezioni", () => {
+  it("search non seleziona is_available né stock_quantity", async () => {
+    await new RAGEngine(db).search("cerniera");
+    const query = sqlOf(queryRaw.mock.calls[0]!);
+    expect(query.sql).not.toContain("is_available");
+    expect(query.sql).not.toContain("stock_quantity");
+  });
+
+  it("getRelated non seleziona is_available", async () => {
+    queryRaw.mockReset();
+    queryRaw.mockResolvedValueOnce([]);
+    await new RAGEngine(db).getRelated("p1");
+    const query = sqlOf(queryRaw.mock.calls[0]!);
+    expect(query.sql).not.toContain("is_available");
   });
 });

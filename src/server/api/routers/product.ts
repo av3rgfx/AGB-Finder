@@ -10,7 +10,6 @@ const searchFiltersInput = z.object({
   priceMin: z.number().nonnegative().optional(),
   priceMax: z.number().nonnegative().optional(),
   material: z.string().min(1).max(50).optional(),
-  inStockOnly: z.boolean().optional(),
 });
 
 const searchInput = z.object({

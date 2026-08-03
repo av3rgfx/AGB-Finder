@@ -122,8 +122,6 @@ describe("chat.get", () => {
         shortDescription: null,
         basePrice: { toString: () => "2.5" },
         priceUnit: "EUR",
-        isAvailable: true,
-        stockQuantity: 0,
         listinoPage: 12,
       },
       {
@@ -133,8 +131,6 @@ describe("chat.get", () => {
         shortDescription: null,
         basePrice: { toString: () => "9" },
         priceUnit: "EUR",
-        isAvailable: true,
-        stockQuantity: 1,
         listinoPage: null,
       },
     ]);

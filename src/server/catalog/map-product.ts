@@ -8,8 +8,6 @@ export interface ProductUpsertData {
   shortDescription: string;
   basePrice: string; // Prisma Decimal accetta stringhe: niente float
   priceUnit: "EUR";
-  isAvailable: true;
-  stockQuantity: 0;
   specifications: Record<string, unknown>;
   categorySlug: string;
   listinoPage: number | null;
@@ -72,8 +70,6 @@ export function toProductData(row: ParsedRow): ProductUpsertData {
       .join(" · "),
     basePrice: (row.priceCents / 100).toFixed(2),
     priceUnit: "EUR",
-    isAvailable: true,
-    stockQuantity: 0,
     specifications,
     categorySlug: slugifyCategory(row.category),
     listinoPage: row.page,

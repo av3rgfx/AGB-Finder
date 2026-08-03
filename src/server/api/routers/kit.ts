@@ -454,7 +454,6 @@ export const kitRouter = createTRPCRouter({
                   id: true,
                   agbCode: true,
                   name: true,
-                  isAvailable: true,
                   listinoPage: true,
                 },
               },

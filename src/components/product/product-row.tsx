@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { formatPrice } from "@/lib/format";
-import { AvailabilityDot, type ProductSummary } from "./product-card";
+import { type ProductSummary } from "./product-card";
 import { ProductThumb } from "./product-thumb";
 import { ListinoButton } from "@/components/listino/listino-button";
 
@@ -9,7 +9,6 @@ export function ProductRow({ product }: { product: ProductSummary }) {
     <div className="group relative grid grid-cols-[auto_auto_1fr_auto] items-center gap-3 border-b border-line bg-surface px-3 py-2.5 transition-colors last:border-b-0 hover:bg-surface-sunken sm:grid-cols-[40px_140px_1fr_auto_auto_auto] sm:gap-4 sm:px-4 sm:py-3">
       <ProductThumb code={product.agbCode} variant="row" />
       <span className="flex items-center gap-1.5 text-xs text-ink-subtle">
-        <AvailabilityDot available={product.isAvailable} />
         <span className="truncate font-mono">{product.agbCode}</span>
       </span>
       <span className="truncate text-sm font-medium text-ink">{product.name}</span>

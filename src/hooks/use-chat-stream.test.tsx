@@ -51,8 +51,6 @@ describe("applyChatEvent (riduttore puro)", () => {
             shortDescription: null,
             basePrice: 1,
             priceUnit: "PZ",
-            isAvailable: true,
-            stockQuantity: 1,
             listinoPage: 3,
           },
         ],

@@ -16,7 +16,6 @@ const base = {
   name: "Cerniera X",
   basePrice: 1.23,
   categoryName: "Serrature",
-  isAvailable: true,
 };
 
 describe("ProductRow", () => {
@@ -33,5 +32,12 @@ describe("ProductRow", () => {
   it("con listinoPage mostra il pulsante listino", () => {
     render(<ProductRow product={{ ...base, listinoPage: 42 }} />);
     expect(screen.getByLabelText("Visualizza B00590.15.03 nel listino")).toBeDefined();
+  });
+
+  it("non fa alcuna affermazione sulla disponibilità", () => {
+    const { container } = render(<ProductRow product={base} />);
+    expect(container.textContent?.includes("Disponibile")).toBe(false);
+    expect(container.querySelector('[aria-label="Disponibile"]')).toBeNull();
+    expect(container.querySelector('[aria-label="Non disponibile"]')).toBeNull();
   });
 });

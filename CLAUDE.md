@@ -575,3 +575,59 @@ test** · **browser 22/22 desktop e 22/22 a 375px**, col ciclo intero 90,20 → 
 colonna `@unique`; verificato che nessun `kitRequest.delete` esista, quindi la collisione
 deterministica non è raggiungibile). Spec/piano:
 `docs/superpowers/{specs,plans}/2026-08-01-varianti-dopo-creazione*`.
+
++ **NUOVO DOMINIO «MANIGLIE» — quesito architetturale, spec e passo 0 ✅ (branch
+`claude/colombo-handles-catalog-3ado13`, PR aperta)**: non uno sviluppo, ma una **domanda**.
+Andrea, addetto al rifornimento magazzino, ha chiesto un archivio che dica se una maniglia è **in
+pronta consegna** o **da ordinare**, partendo da COLOMBO e con **almeno altre tre marche** in
+arrivo. Aggiungerlo a UFPtrade o farne un software separato? **`/llm-council`** (5 advisor + 5 peer
+review + chairman): tre per l'integrazione, uno per il repo separato, uno che demolisce entrambe le
+versioni ingenue; **monorepo scartato all'unanimità**. Verdetto **A′ — stesso repo, dominio
+affiancato, identità del prodotto intatta**. Il criterio che decide **non** è «utenti in comune» né
+«riuso» né «rischio di deploy» (sono costi): è **«esiste una domanda che l'agente farà davanti al
+cliente e che attraversa i due domini, con una risposta sola?»** — sì: *questo è ordinabile oggi?*
+L'argomento del dissenziente («ogni `ALTER TABLE` mette a rischio il generatore di distinte») è
+caduto su due fatti verificati nel repo: la premessa «entità condivise: zero» è falsa, e la finestra
+di disservizio è **già chiusa** dalla PR #44 (ops sul ref del branch prima del merge). Si condividono
+repo, deploy, **un solo Better Auth** e **lo stesso DB**; **non** si condivide `Product`. La
+migrazione multi-fornitore (`agbCode @unique`, `ProductImage.agbCode @id`, `LISTINO_TOTAL_PAGES`
+scalare — **128 occorrenze in 22 file**) si rimanda alla **marca #3**.
+**Il council ha trovato per caso un difetto già in produzione, che è diventato il passo 0**:
+`map-product.ts:11,75` scriveva `isAvailable: true` e `stockQuantity: 0` come **tipi letterali
+costanti** per tutti e 7.488 i prodotti, e usciva da **sei canali** — pallino nell'archivio, badge
+nella chat, **i campi passati a Gemini** (affermabili a voce a un cliente), le proiezioni SQL, un
+`select` nel kit, e — scoperto scrivendo il piano, il peggiore — **una casella «Solo disponibili»**
+con chip e param URL, che l'agente spuntava ricevendo comunque tutti e 7.488 i prodotti. Un pallino
+che mente lo si ignora; un filtro che hai scelto tu, no. **7 task TDD + 7 review + review finale di
+branch**: zero occorrenze nel codice di produzione, restano i **4 test sentinella**. Gate:
+typecheck · lint · **test 1.045** · build 18 route · **browser 10/10** (desktop e 375px, screenshot
+guardati). **🟢 NESSUNA MIGRAZIONE, NESSUNA AZIONE OPS**: le colonne restano a schema coi default,
+si sono rimossi i *lettori* — `import-catalog.ts` fa spread in Prisma, quindi il dato a DB non
+cambia. **Residui dichiarati**: `product.getById/getByCode` (`findUnique` senza `select`) spediscono
+ancora i due campi al browser → la scheda prodotto è l'unico punto dove il pallino tornerebbe con
+una riga sola e i gate verdi; `is_available` ha ancora `DEFAULT true` (spariti i lettori, non
+l'affermazione: droppare colonne e `@@index([isAvailable])`, oggi **un indice su una costante**, è
+materia della migrazione del passo 1); esistono **due `DESIGN.md`** e quello in
+`ufptrade/ufptrade-design/` è fermo alla Fase 1c.
+**I dati, misurati e non assunti**: tre fonti che **non si contengono** (listino 3.456 codici con
+prezzo ed EAN completi · pronta consegna 201 · catalogo PDF) e **lo stesso codice scritto in tre
+modi** (`0CD41R-CM` / `0CD41RCM` / `CD 41 R`) — normalizzando a `[A-Z0-9]` il listino **non ha
+collisioni**, 178 match su 201. I **23 orfani non sono refusi**: 18 esistono a catalogo e mancano
+solo dal listino **perché il listino è vecchio**, 2 sono refusi con **due** codici giusti ciascuno
+(non correggibili in automatico), 3 sono spazzatura. Il catalogo giusto è **`ER MAN 2026`** (261
+pagine, 725 JPEG, **85%** contro il 57% di `RR`, ed è un **sovrainsieme**); il testo di quei PDF si
+decodifica con uno **shift costante di +29 byte**. Il «prezzo già sommato» **non è mostrabile com'è**
+(96% delle righe con più di 2 decimali, 36% con 13-16 per errori float di Excel) → si arrotonda a 2
+in `Decimal`, e salvare le due metà dà lo stesso risultato su **tutte e 3.456** le righe.
+**🔴 Vincolo di piattaforma**: **Vercel Hobby vieta l'uso commerciale** (*«restricted to
+non-commercial personal use only»*, e la definizione include *«a paid employee»*) → rischio
+sospensione; **passaggio a Pro deciso per il 2026-08-08**. La capacità a 20 utenti regge, ma
+**storage Neon 72-80%** e **Fast Origin Transfer 40%** hanno **una sola causa**: le 7.082 foto AGB
+stanno **dentro Postgres**. Da qui la decisione: **le foto COLOMBO nascono su Vercel Blob**.
+**▶ PROSSIMA SESSIONE — IL SELETTORE DI PROGRAMMA**: la prima schermata dopo il login diventa un
+selettore (**FINESTRE** / **MANIGLIE**, estendibile), per rendere visibile il distacco. **La sezione
+finestre non si tocca.** ⚠️ Ma un selettore *è* una modifica al **guscio di navigazione**: le
+finestre non cambiano funzionalità, cambiano contenitore — tre strade in spec §8.0, da portare a
+`/llm-council` e `/impeccable` **prima** di scrivere codice. Poi i passi 1-4 (modello dati + import
+listino — **unica migrazione** · ricerca e scheda · upload pronta consegna · foto da catalogo).
+Spec/piano: `docs/superpowers/{specs,plans}/2026-08-03-*`.

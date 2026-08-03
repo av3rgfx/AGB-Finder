@@ -20,8 +20,6 @@ export interface ChatProductSummary {
   shortDescription: string | null;
   basePrice: number;
   priceUnit: string;
-  isAvailable: boolean;
-  stockQuantity: number;
   listinoPage: number | null;
 }
 

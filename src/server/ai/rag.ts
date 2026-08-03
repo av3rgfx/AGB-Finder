@@ -8,7 +8,6 @@ export interface SearchFilters {
   priceMin?: number;
   priceMax?: number;
   material?: string;
-  inStockOnly?: boolean;
 }
 
 export interface SearchOptions {
@@ -23,8 +22,6 @@ export interface SearchHit {
   shortDescription: string | null;
   basePrice: number;
   priceUnit: string;
-  isAvailable: boolean;
-  stockQuantity: number;
   listinoPage: number | null;
   categoryId: string;
   categoryName: string;
@@ -45,7 +42,6 @@ export interface RelatedHit {
   name: string;
   basePrice: number;
   categoryName: string;
-  isAvailable: boolean;
 }
 
 export interface UnembeddedProduct {
@@ -64,8 +60,6 @@ const HIT_PROJECTION = Prisma.sql`
   p.short_description   AS "shortDescription",
   p.base_price::float8  AS "basePrice",
   p.price_unit          AS "priceUnit",
-  p.is_available        AS "isAvailable",
-  p.stock_quantity      AS "stockQuantity",
   p.listino_page        AS "listinoPage",
   p.category_id         AS "categoryId",
   c.name                AS "categoryName"`;
@@ -82,7 +76,6 @@ function buildFilterSql(filters: SearchFilters): Prisma.Sql {
       Prisma.sql`p.specifications->>'materiale' ILIKE ${"%" + filters.material + "%"}`,
     );
   }
-  if (filters.inStockOnly) conditions.push(Prisma.sql`p.is_available = true`);
   return conditions.length === 0
     ? Prisma.empty
     : Prisma.sql`AND ${Prisma.join(conditions, " AND ")}`;
@@ -226,8 +219,7 @@ export class RAGEngine {
              p.agb_code           AS "agbCode",
              p.name,
              p.base_price::float8 AS "basePrice",
-             c.name               AS "categoryName",
-             p.is_available       AS "isAvailable"
+             c.name               AS "categoryName"
       FROM products src
       JOIN products p ON p.category_id = src.category_id AND p.id <> src.id
       JOIN product_categories c ON c.id = p.category_id
