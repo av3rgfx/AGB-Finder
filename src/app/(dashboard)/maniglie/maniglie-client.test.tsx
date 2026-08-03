@@ -11,8 +11,16 @@ vi.mock("next/navigation", () => ({
 }));
 
 const searchQuery = vi.fn();
+const stockInfoQuery = vi.fn<(...args: unknown[]) => { data?: { importedAt: Date | null } }>(
+  () => ({}),
+);
 vi.mock("@/trpc/react", () => ({
-  api: { article: { search: { useQuery: (...args: unknown[]) => searchQuery(...args) } } },
+  api: {
+    article: {
+      search: { useQuery: (...args: unknown[]) => searchQuery(...args) },
+      stockInfo: { useQuery: (...args: unknown[]) => stockInfoQuery(...args) },
+    },
+  },
 }));
 
 import { ManiglieClient } from "./maniglie-client";
@@ -73,10 +81,55 @@ beforeEach(() => {
   sp = new URLSearchParams("");
   replace.mockReset();
   searchQuery.mockReset().mockReturnValue(risultati());
+  stockInfoQuery.mockReset().mockReturnValue({});
   vi.useRealTimers();
 });
 
 afterEach(cleanup);
+
+/**
+ * «Nessuna disponibilità si mostra senza la data dell'ultimo import» è una
+ * regola inviolabile della spec, e vale in tutti e tre gli stati della pagina —
+ * non solo quando ci sono risultati. La data è l'unica cosa che dice all'agente
+ * se fidarsi, e saperlo PRIMA di cercare gli risparmia una ricerca inutile.
+ */
+describe("ManiglieClient — la data c'è sempre", () => {
+  // Senza ricerca attiva la query è `enabled: false` e NON ha dati: il mock
+  // deve dire la stessa cosa, altrimenti questi test passerebbero leggendo la
+  // data dei risultati e non proverebbero nulla.
+  const senzaRicerca = () =>
+    searchQuery.mockReturnValue({
+      data: undefined,
+      isPending: false,
+      isError: false,
+      isFetching: false,
+    });
+
+  it("prima ancora di cercare, appena aperta la pagina", () => {
+    senzaRicerca();
+    stockInfoQuery.mockReturnValue({ data: { importedAt: IMPORTATO } });
+    render(<ManiglieClient />);
+    expect(screen.getByText("Cerca un articolo")).toBeTruthy();
+    expect(screen.getByText(/28 luglio 2026/)).toBeTruthy();
+  });
+
+  it("non inventa una data se la pronta consegna non è mai stata caricata", () => {
+    senzaRicerca();
+    stockInfoQuery.mockReturnValue({ data: { importedAt: null } });
+    render(<ManiglieClient />);
+    expect(screen.getByText(/Nessuna pronta consegna caricata/i)).toBeTruthy();
+  });
+
+  it("quando i risultati arrivano, la data viene da loro e non resta duplicata", () => {
+    stockInfoQuery.mockReturnValue({ data: { importedAt: new Date("2020-01-01") } });
+    sp = new URLSearchParams("q=cd41");
+    render(<ManiglieClient />);
+    // Una sola fascia a schermo, ed è quella dei risultati: se restassero
+    // entrambe, l'agente leggerebbe due date diverse per lo stesso dato.
+    expect(screen.getAllByText(/aggiornata al/i)).toHaveLength(1);
+    expect(screen.getByText(/28 luglio 2026/)).toBeTruthy();
+  });
+});
 
 describe("ManiglieClient — ricerca", () => {
   it("prima di cercare invita a cercare, senza interrogare il server", () => {

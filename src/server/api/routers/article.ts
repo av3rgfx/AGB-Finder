@@ -108,6 +108,20 @@ export const articleRouter = createTRPCRouter({
       };
     }),
 
+  /**
+   * Solo la data dell'ultimo import: serve alla schermata PRIMA che si cerchi
+   * qualcosa. «Di quando è questo dato?» è una domanda che l'agente ha già
+   * aprendo la pagina, e saperlo prima di investire una ricerca è ciò che gli
+   * dice se fidarsi. `null` = nessuna pronta consegna mai caricata: non si
+   * inventa una data.
+   */
+  stockInfo: agentProcedure
+    .input(z.object({ brand: z.string().trim().min(1).max(50).default("COLOMBO") }))
+    .query(async ({ ctx, input }) => {
+      const imp = await currentStockImport(ctx.db, input.brand);
+      return { importedAt: imp?.importedAt ?? null };
+    }),
+
   getById: agentProcedure
     .input(z.object({ id: z.string().min(1) }))
     .query(async ({ ctx, input }) => {

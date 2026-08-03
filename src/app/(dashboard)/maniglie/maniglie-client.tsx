@@ -62,6 +62,11 @@ export function ManiglieClient() {
     },
   );
 
+  // La data dell'ultimo import, indipendente dalla ricerca: la pagina la mostra
+  // anche appena aperta, quando non c'è ancora nulla da datare ma c'è già una
+  // domanda a cui rispondere.
+  const stockInfo = api.article.stockInfo.useQuery({}, { staleTime: 5 * 60_000 });
+
   const hits = search.data?.hits ?? [];
   const total = search.data?.total ?? 0;
   const cercando = committed.length > 0;
@@ -81,11 +86,17 @@ export function ManiglieClient() {
       />
 
       {/* LA DATA STA QUI, UNA VOLTA SOLA: è una proprietà dell'import, non
-          della riga. Presente anche a zero risultati. */}
+          della riga — ripeterla su venti righe identiche sarebbe rumore.
+          È presente SEMPRE: prima di cercare (`stockInfo`), coi risultati e a
+          zero risultati. «Di quando è questo dato?» non dipende dall'aver
+          trovato qualcosa, e un agente che promette la consegna sulla base di
+          un file di due settimane fa non ha un bug, ha un cliente arrabbiato. */}
       {search.data ? (
         <StockDate importedAt={search.data.stockUpdates[0]?.importedAt ?? null} />
       ) : cercando && search.isPending ? (
         <div className="h-10 animate-pulse rounded bg-surface-sunken" aria-hidden />
+      ) : stockInfo.data ? (
+        <StockDate importedAt={stockInfo.data.importedAt} />
       ) : null}
 
       <section aria-label="Risultati" aria-busy={search.isFetching} className="flex flex-col gap-3">

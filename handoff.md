@@ -9,14 +9,14 @@
 
 | Campo | Valore |
 |-------|--------|
-| **Data** | 2026-08-03 — **NUOVO DOMINIO «MANIGLIE»: quesito architetturale, spec, piano ed esecuzione del passo 0** |
-| **Fase in corso** | Fase 1 — MVP Gestionale · **si apre un secondo dominio** |
-| **Sotto-fase** | Archivio pronta consegna COLOMBO — **passo 0 completato** (cancellata la disponibilità falsa) |
-| **Branch git** | `claude/colombo-handles-catalog-3ado13` (da `main`) — **pushato, PR aperta** |
-| **Stato deploy** | **LIVE e allineato**: nessuna migrazione in questo branch, nessuna azione ops. |
-| **🟢 Azione ops** | **NESSUNA.** Le colonne `isAvailable`/`stockQuantity` restano a schema coi loro default: si sono rimossi i *lettori*, non le colonne. Nessun re-import. |
-| **Gate** | typecheck · lint · **1045 test** (118 skip) · build 18 route · **browser 10/10** (desktop e 375px) |
-| **Aperto** | il **selettore di programma** (prima schermata) · i passi 1-4 del dominio maniglie · le **tre distinte reali** (settima sessione) · Vercel Pro entro sabato 08/08 · storage Neon da misurare |
+| **Data** | 2026-08-04 — **REPARTO MANIGLIE (passi 1-3) + SELETTORE DI REPARTO** |
+| **Fase in corso** | Fase 1 — MVP Gestionale · **il secondo dominio è vivo** |
+| **Sotto-fase** | Archivio pronta consegna COLOMBO — passi **1, 2 e 3 fatti**; passo 4 (foto da catalogo) NON fatto |
+| **Branch git** | `claude/program-selector-yxw8zd` (da `main`, dopo il merge #49) — **pushato** |
+| **Stato deploy** | ⚠️ **NON allineato**: c'è UNA migrazione da applicare. |
+| **🔴 Azione ops** | **UN run di «Ops — Neon» sul REF DEL BRANCH, PRIMA del merge** — migrazione `20260803182947_maniglie_articles_stock` (tre tabelle nuove: `articles`, `stock_imports`, `stock_lines`). Nessun re-import, nessun seed obbligatorio, nessun `embed`. Il raggio è però più largo del solito: **`/` non è più un redirect ma una pagina vera** e `login-form`/`route-guard` ci puntano — se il deploy arrivasse prima della migrazione, la pagina `/maniglie` fallirebbe in lettura (tabelle assenti). Lanciare nella stessa finestra, come per la #44 (disservizio zero). |
+| **Gate** | typecheck · lint · **1212 test** (131 skip) · build **22 route** (erano 18) · **browser 77/81** (desktop e 375px, screenshot guardati) · **integrazione 13/13 su Postgres vero** |
+| **Aperto** | **passo 4** (pagina + foto da catalogo ER su Blob) · i **tre file di Andrea** (non sono nel repo) · la **finta ricerca in TopBar** (sotto) · Vercel Pro entro sabato 08/08 · storage Neon da misurare · le tre distinte reali |
 
 ---
 
@@ -35,6 +35,135 @@
 ---
 
 > **▶ RIPRENDI DA QUI**
+>
+> ### Cosa è successo (2026-08-04)
+>
+> Il reparto maniglie esiste: modello dati, import listino, ricerca, scheda, upload della
+> pronta consegna. E la prima schermata dopo il login è il **selettore di reparto**.
+>
+> ### Il council ha scartato tutte e tre le strade della spec §8.0
+>
+> `/llm-council` (5 advisor + 5 peer review + chairman). La **(b)** — due route group
+> affiancati — è caduta su un fatto **riprodotto eseguendo `next build`** con il Next
+> 15.5.20 installato: due gruppi fratelli che risolvono lo stesso path fanno fallire la
+> build (`E28`, *«two parallel pages that resolve to the same path»*). Il punto che la spec
+> non sapeva: **i route group non entrano nell'URL, quindi separano il LAYOUT e non il
+> NAMESPACE**. E l'assistente, `/utenti` e `/impostazioni` sono già trasversali ai due
+> reparti: sotto la (b) andrebbero collocati in uno o duplicati. Non è né fatale né gratis:
+> è **inerte**.
+>
+> Adottata la **(a) + un segmento URL vero** `(dashboard)/maniglie/…` — l'opzione che
+> nessun advisor aveva proposto. Asimmetria dichiarata: **nessun prefisso = serramenti**,
+> `/maniglie/*` = maniglie. Zero rinomine, segnalibri vivi, «le finestre non si toccano»
+> vero alla lettera.
+>
+> **ZERO COOKIE.** Il reparto si deduce dall'URL. Ricordarlo sarebbe l'ottava occorrenza
+> della classe «valore deciso dal programma e mai dichiarato», e il rimedio non è
+> «scriverlo a schermo», è **non ricordare**.
+>
+> ### Le parole (decisione dell'utente, che ha capovolto il council)
+>
+> Il council proponeva i **marchi nudi** (AGB / COLOMBO) perché «MANIGLIE» è ambiguo — e
+> l'ambiguità è vera e verificata: `recent-searches.tsx:5` suggerisce «maniglia» fra le
+> ricerche **dell'archivio AGB**, la cremonese *è* la maniglia della finestra (69
+> occorrenze in `src/`). Ma l'utente ha portato un dato nuovo: il reparto ospiterà
+> **almeno cinque marche** (COLOMBO, HOPPE, OLIVARI, DND, GHIDINI). Quindi COLOMBO non è
+> il *nome* del reparto, è un suo **contenuto**, e la tessera andrebbe rinominata alla
+> seconda marca — cioè il difetto che si voleva evitare.
+>
+> Esito: tessere **SERRAMENTI / MANIGLIE**, **marchio nel sottotitolo** (cresce senza
+> rinomine), parola **«reparto»** e mai «programma», e la sezione di ricerca maniglie si
+> chiama **«Disponibilità»** e non «Archivio» — due sezioni omonime manderebbero l'agente
+> in quella sbagliata.
+>
+> ### La decisione di disegno che regge tutto: la data sta UNA VOLTA SOLA
+>
+> La spec impone che nessuna disponibilità si mostri senza la data dell'ultimo import. Ma
+> la data è una proprietà **dell'import**, identica su ogni riga: ripeterla su venti righe
+> sarebbe N volte lo stesso dato. Vive in una fascia sotto il campo di ricerca — presente
+> **prima di cercare**, **coi risultati** e **a zero risultati**. Sulla scheda invece sta
+> attaccata al badge, perché lì l'articolo è uno solo. Nessuna data finta: se non c'è
+> import si scrive «Nessuna pronta consegna caricata».
+>
+> **«Da ordinare» NON è rosso**: è il caso normale (3.278 su 3.456). Un allarme su tre
+> righe su quattro smette di essere un allarme in due giorni.
+>
+> ### Il ramo trigram si è guadagnato il posto, sul DB vero
+>
+> Cercando «bocchetta» si trova **`BOCCEHTTA CD41`**, il refuso digitato a mano dal
+> fornitore, subito **dopo** le due bocchette scritte giuste. Con un `ILIKE` quell'articolo
+> sarebbe irraggiungibile: un pezzo che è sullo scaffale e non si trova è esattamente ciò
+> che riporta l'agente al telefono. C'è un test d'integrazione che lo blinda.
+>
+> ### Due controlli nuovi, che prima non esistevano
+>
+> - **L'invariante del prezzo diventa permanente.** «prezzo + surcharge ricostruisce la
+>   colonna SOMMA» era una misurazione fatta una volta sulle 3.456 righe: ora l'import lo
+>   ricontrolla a ogni passaggio e lo segnala. Se il listino nuovo lo rompe si vede allo
+>   script, non in bocca a un agente davanti a un cliente.
+> - **Le collisioni di codice normalizzato si trovano prima di scrivere**, e dicono quali.
+>   Il vincolo unique le farebbe esplodere comunque, ma a metà import e con un errore di
+>   driver muto.
+>
+> ### 🔴 Il difetto che ho trovato col browser e NON ho corretto
+>
+> **La ricerca nella TopBar è finta.** `topbar.tsx` monta un `<input type="search">` con
+> placeholder «Cerca prodotti, kit, codici…» e **nessun `onChange`, nessun form, nessun
+> handler**: è in produzione da sempre e non fa niente. L'ho scoperto cadendoci dentro —
+> il mio script di verifica ci ha digitato dentro credendolo il campo della pagina.
+>
+> Sulla pagina `/maniglie` diventa dannoso: **due campi di ricerca impilati**, e quello più
+> in alto e più prominente è quello che non funziona (misurato: `trovati 2`). È la stessa
+> classe di difetto chiusa otto volte — un controllo che promette e non mantiene.
+>
+> **Non l'ho corretto perché è il guscio dei serramenti**, che l'utente ha chiesto
+> esplicitamente di non toccare. Le opzioni: (a) rimuoverlo, (b) farlo funzionare
+> instradandolo alla ricerca del reparto corrente, (c) lasciarlo. **Decisione dell'utente.**
+>
+> ### Altre cose viste col browser
+>
+> - Idratazione disallineata **osservata una volta** su desktop durante una sequenza di
+>   navigazione, **non riproducibile** su caricamento pulito di nessuna delle 7 pagine.
+>   Registrata come tale: non risolta, non negata.
+> - I 404/500 in console erano artefatti del dev server in hot-reload mentre modificavo
+>   file: zero risposte ≥ 400 su una sessione pulita.
+> - Due miei test browser **passavano per il motivo sbagliato** (leggevano la pagina dei
+>   risultati credendola la scheda, perché `networkidle` ritorna prima che la query del
+>   client si risolva). Corretti aspettando il **contenuto**.
+>
+> ### Cosa NON è stato fatto, e perché
+>
+> - **Passo 4** (pagina di catalogo + foto su Blob): serve il PDF `ER MAN 2026`, che non è
+>   nel repo.
+> - **L'import vero del listino**: `pnpm import:listino COLOMBO <file.xlsx>` è scritto e
+>   testato, ma **i tre file di Andrea non ci sono** (la scratchpad si perde col container).
+>   Il seed `pnpm db:seed:maniglie` dà 20 articoli inventati **della forma misurata** (le
+>   tre grafie, i due refusi, tre orfani) per lavorare senza.
+> - **Lo skip del selettore quando i reparti sono uno solo** (suggerito dal council): oggi
+>   la lista è sempre di 2 per tutti (`MAGAZZINO` è fuori scope), quindi sarebbe codice
+>   morto. Da fare quando esisterà un utente con un reparto solo.
+>
+> ### Debito dichiarato
+>
+> - `article.search` fa `resolveStock` con un giro per marca: con 5 marche sono 5+5 query.
+>   Irrilevante a 3.456 articoli e una marca, da rivedere alla terza.
+> - Le due schermate maniglie **duplicano ~12 righe** di gestione foto (miniatura e foto
+>   grande): un `article-image.tsx` condiviso le unificherebbe.
+> - `CopyCodeButton` fissa `text-sm` e non accetta `className`: sulla scheda il codice non
+>   può essere più grande senza toccare un componente del reparto serramenti.
+>
+> ### La regola sul raw SQL è stata riscritta, non aggirata
+>
+> Diceva «solo per pgvector, nel solo `RAGEngine`». Era **già disattesa** da
+> `src/server/chat/tools.ts`, e la ricerca articoli (tsvector + trigram, senza pgvector,
+> non esprimibile in Prisma) l'ha resa insostenibile alla lettera. Riscritta in `CLAUDE.md`
+> per dire ciò che davvero protegge — **il confinamento in moduli di ricerca nominati** —
+> con l'elenco completo dei due moduli. La regola di business (la disponibilità) resta
+> fuori dal raw SQL, in `stock-status.ts`, tutta Prisma.
+>
+> ---
+>
+> ### (Sessione precedente, 2026-08-03)
 >
 > ### Cosa è successo (2026-08-03)
 >

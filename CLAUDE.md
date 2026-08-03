@@ -47,8 +47,22 @@ Tailwind CSS 3 · Vitest · pnpm. Deploy target: Vercel + Neon + Upstash.
 ## REGOLE INVIOLABILI
 - TypeScript strict sempre.
 - Tutte le API via **tRPC** (mai `fetch` diretto dal client).
-- Tutte le query via **Prisma**. **Raw SQL solo per pgvector**, incapsulato nel
-  solo modulo `RAGEngine` (`$queryRaw`/`$executeRaw`) — e nelle migrazioni.
+- Tutte le query via **Prisma**. **Raw SQL confinato in moduli di ricerca nominati**
+  (`$queryRaw`/`$executeRaw`) — e nelle migrazioni. Ne esistono **due, ed è l'elenco
+  completo**: `src/server/ai/rag.ts` (RAGEngine, ibrida AGB con pgvector) e
+  `src/server/maniglie/search.ts` (articoli COLOMBO: `tsvector` + trigram, **senza**
+  pgvector, non esprimibili in Prisma). *Nessun raw SQL nei router.* ⚠️ La regola
+  diceva «solo per pgvector, nel solo RAGEngine»: era già disattesa da
+  `src/server/chat/tools.ts`, e la ricerca articoli l'ha resa insostenibile alla
+  lettera. Riscritta per dire ciò che davvero protegge (il confinamento), non un
+  luogo unico. **La regola di business NON sta nel raw SQL**: la disponibilità vive
+  in `stock-status.ts`, tutta in Prisma.
+- **Reparti**: l'app ha due mondi affiancati — **SERRAMENTI** (nessun prefisso di
+  rotta) e **MANIGLIE** (`/maniglie/*`). `src/lib/reparti.ts` è la fonte unica; il
+  reparto si deduce dall'**URL**, mai da un cookie o da `localStorage`. `/` è la
+  schermata di scelta, attraversata a ogni login. La parola è **«reparto»**, mai
+  «programma». Il **marchio sta nel sottotitolo** (il reparto maniglie ospiterà
+  COLOMBO, HOPPE, OLIVARI, DND, GHIDINI…): la tessera non si rinomina mai.
 - UI **in italiano**. Codici prodotto in **font monospace** (JetBrains Mono).
 - **Ogni design UI/UX si fa per MOBILE *e* desktop, mai solo desktop.** Ogni pagina o
   componente nuovo/modificato va progettato e implementato **responsive** (mobile-first),
@@ -97,6 +111,20 @@ Tailwind CSS 3 · Vitest · pnpm. Deploy target: Vercel + Neon + Upstash.
 - **Docker**: `bash scripts/dev-bootstrap.sh` (avvia daemon + Postgres/Redis +
   migrate + seed).
 - **Import PDF**: richiede `poppler-utils` (`pdftotext`).
+- **SheetJS NON si installa da npm.** Sul registry `xlsx` è fermo alla **0.18.5
+  (2022)**, con vulnerabilità note e mai corrette lì (prototype pollution, ReDoS).
+  Le versioni sane esistono **solo** sul CDN di SheetJS, e si installa pinnata:
+  `pnpm add https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`. È la stessa
+  classe di trappola del pin a pnpm 10: un `pnpm add xlsx` distratto reinstalla
+  la versione vulnerabile. Serve all'import listino e alla pronta consegna.
+- **`dev-bootstrap.sh`**: la copia di `.env` deve stare **PRIMA** di
+  `setup-prisma-engines.sh`, che crea lui `.env` per scriverci i path `PRISMA_*` —
+  se sta dopo non scatta mai e `migrate deploy` muore con `P1012` su ogni
+  container nuovo (corretto il 2026-08-04).
+- **Verifica browser**: Playwright dal registry non combacia con i browser
+  pre-installati. Lanciare con
+  `executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome"`,
+  **mai** `npx playwright install`.
 - Comandi prisma/tsx: fare `set -a; source .env; set +a` prima (per gli engine).
 
 ## TESTING / GATE
