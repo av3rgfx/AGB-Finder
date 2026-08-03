@@ -43,10 +43,6 @@ export function ActiveFilterChips({
       aria: `Materiale ${filters.material}`,
     });
   }
-  if (filters.inStockOnly) {
-    chips.push({ keys: ["inStockOnly"], label: "Solo disponibili", aria: "Solo disponibili" });
-  }
-
   if (chips.length === 0) return null;
 
   return (

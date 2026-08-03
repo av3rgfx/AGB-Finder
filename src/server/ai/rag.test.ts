@@ -65,13 +65,11 @@ describe("RAGEngine.search — degradazione tsvector-only", () => {
       priceMin: 10,
       priceMax: 100,
       material: "acciaio",
-      inStockOnly: true,
     });
     const query = sqlOf(queryRaw.mock.calls[0]!);
     expect(query.sql).toContain("category_id");
     expect(query.sql).toContain("base_price");
     expect(query.sql).toContain("specifications");
-    expect(query.sql).toContain("is_available");
     expect(query.values).toEqual(expect.arrayContaining(["c1", 10, 100, "%acciaio%"]));
     expect(query.sql).not.toContain("acciaio"); // il valore vive nei parametri
   });

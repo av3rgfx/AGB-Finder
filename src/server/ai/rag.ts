@@ -8,7 +8,6 @@ export interface SearchFilters {
   priceMin?: number;
   priceMax?: number;
   material?: string;
-  inStockOnly?: boolean;
 }
 
 export interface SearchOptions {
@@ -82,7 +81,6 @@ function buildFilterSql(filters: SearchFilters): Prisma.Sql {
       Prisma.sql`p.specifications->>'materiale' ILIKE ${"%" + filters.material + "%"}`,
     );
   }
-  if (filters.inStockOnly) conditions.push(Prisma.sql`p.is_available = true`);
   return conditions.length === 0
     ? Prisma.empty
     : Prisma.sql`AND ${Prisma.join(conditions, " AND ")}`;

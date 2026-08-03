@@ -80,16 +80,6 @@ export function ProductFilters({
         />
       </label>
 
-      <label className="flex items-center gap-2 text-sm text-ink">
-        <input
-          type="checkbox"
-          className="size-4 accent-brand"
-          checked={filters.inStockOnly ?? false}
-          onChange={(e) => set({ inStockOnly: e.target.checked || undefined })}
-        />
-        Solo disponibili
-      </label>
-
       {hasActive && (
         <Button variant="ghost" size="sm" onClick={() => onChange({})}>
           Azzera filtri

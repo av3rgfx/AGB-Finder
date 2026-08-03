@@ -18,14 +18,13 @@ describe("ActiveFilterChips", () => {
   it("mostra i chip attivi con nome categoria risolto", () => {
     render(
       <ActiveFilterChips
-        filters={{ categoryId: "c1", inStockOnly: true }}
+        filters={{ categoryId: "c1" }}
         categoryName={(id) => (id === "c1" ? "Cerniere" : undefined)}
         onRemove={noop}
         onClearAll={noop}
       />,
     );
     expect(screen.getByText(/Categoria: Cerniere/)).toBeDefined();
-    expect(screen.getByText(/Solo disponibili/)).toBeDefined();
   });
 
   it("il ✕ del prezzo rimuove entrambe le chiavi; 'Azzera tutto' chiama onClearAll", () => {
