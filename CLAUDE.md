@@ -657,7 +657,30 @@ non-commercial personal use only»*, e la definizione include *«a paid employee
 sospensione; **passaggio a Pro deciso per il 2026-08-08**. La capacità a 20 utenti regge, ma
 **storage Neon 72-80%** e **Fast Origin Transfer 40%** hanno **una sola causa**: le 7.082 foto AGB
 stanno **dentro Postgres**. Da qui la decisione: **le foto COLOMBO nascono su Vercel Blob**.
-**▶ PROSSIMA SESSIONE — IL SELETTORE DI PROGRAMMA**: la prima schermata dopo il login diventa un
++ **REPARTO MANIGLIE (passi 1-3) + SELETTORE DI REPARTO ✅** (branch `claude/program-selector-yxw8zd`):
+tre tabelle nuove (`articles`, `stock_imports`, `stock_lines`, **mai** `Product`), parser del listino,
+script ops `import:listino`, ricerca (tsvector + trigram: «bocchetta» trova il refuso `BOCCEHTTA` del
+fornitore), scheda articolo, upload della pronta consegna con riepilogo/annullamento, e la schermata `/`
+di scelta reparto. Disponibilità **derivata** dall'ultimo import non annullato, mai un flag. Verdetto
+`/llm-council`: route group scartati su un fatto riprodotto (`E28`: separano il layout, non il
+namespace) → segmento URL vero `/maniglie/*`, **zero cookie**. Rimossi dalla TopBar **due controlli
+finti** (ricerca senza handler + campanella senza sistema di notifiche). Gate: typecheck · lint · **1213
+test** · build 22 route · browser 77/81 + 12/12. **AZIONE OPS ESEGUITA** (run `30848665038`, 2026-08-03
+20:05→20:17Z, 15/15 verdi, lanciata **sul ref del branch prima del merge**: finestra di disservizio zero).
+
+**▶ PROSSIMA SESSIONE — «SFOGLIA», IL CATALOGO SENZA DIGITARE.** Analisi conclusa, **zero codice**:
+`docs/superpowers/specs/2026-08-04-catalogo-maniglie-sfoglia-design.md`. Il bisogno è reale (`article.search`
+impone `query.min(1)`: **non esiste alcun percorso che elenchi qualcosa senza scrivere**), ma l'albero
+marca→sottocategoria→prodotto **non è costruibile**: il sito COLOMBO non pubblica mai un codice ordinabile
+(`MD 11 R-RY` vs `0MD11R-CM` → normalizzati **non combaciano**), il codice ordinabile *è* la finitura
+(1 foto ogni 4 codici, tetto 21%; il maniglione Mood ha 12 finiture con la stessa foto), e l'albero è già
+falsificato dentro COLOMBO (faccette diverse per collezione). **Fonte unica: la PRIMA PAROLA della
+descrizione del listino** — copre 3.456 su 3.456, un `GROUP BY` in `search.ts`, zero migrazioni, e
+l'etichetta è la parola di COLOMBO, non una nostra deduzione. 🔴 **BLOCCATO dai tre file di Andrea**: il
+dominio gira su 20 articoli **inventati**, e uno sfoglio su venti righe scelte da noi non dice nulla sugli
+altri 3.436. Prima dell'UI, le **cinque misure** di §7.
+
+**▶ SESSIONE PRECEDENTE — IL SELETTORE DI PROGRAMMA**: la prima schermata dopo il login diventa un
 selettore (**FINESTRE** / **MANIGLIE**, estendibile), per rendere visibile il distacco. **La sezione
 finestre non si tocca.** ⚠️ Ma un selettore *è* una modifica al **guscio di navigazione**: le
 finestre non cambiano funzionalità, cambiano contenitore — tre strade in spec §8.0, da portare a

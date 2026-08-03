@@ -16,7 +16,7 @@
 | **Stato deploy** | **Neon ALLINEATO**: la migrazione è già applicata. Manca solo il merge. |
 | **🟢 Azione ops** | **ESEGUITA.** Run «Ops — Neon» **`30848665038`** del 2026-08-03 20:05→20:17Z, lanciato **sul ref del branch** (`8f60bba`) e non su `main`: **15/15 passi verdi**. Migrazione `20260803182947_maniglie_articles_stock` applicata (tre tabelle: `articles`, `stock_imports`, `stock_lines`) · import catalogo AGB · seed admin/kit/clienti · embed **1 secondo** (niente da fare: nessun codice nuovo, come atteso). Lanciata PRIMA del merge, quindi finestra di disservizio **zero** — il precedente da evitare sono i venti minuti della PR #40. ⚠️ Il seed di sviluppo `db:seed:maniglie` NON è nel workflow, ed è giusto: quei 20 articoli sono inventati e non devono arrivare in produzione. Al merge non resta nulla da fare. |
 | **Gate** | typecheck · lint · **1212 test** (131 skip) · build **22 route** (erano 18) · **browser 77/81** (desktop e 375px, screenshot guardati) · **integrazione 13/13 su Postgres vero** |
-| **Aperto** | **passo 4** (pagina + foto da catalogo ER su Blob) · i **tre file di Andrea** (non sono nel repo) · la **finta ricerca in TopBar** (sotto) · Vercel Pro entro sabato 08/08 · storage Neon da misurare · le tre distinte reali |
+| **Aperto** | ⭐ **«Sfoglia»** (catalogo senza digitare — analisi conclusa, spec pronta, **bloccata dai file**) · **passo 4** (pagina + foto da catalogo ER su Blob) · 🔴 i **tre file di Andrea** (non sono nel repo: bloccano tutto il resto) · Vercel Pro entro sabato 08/08 · storage Neon da misurare · le tre distinte reali |
 
 ---
 
@@ -35,6 +35,66 @@
 ---
 
 > **▶ RIPRENDI DA QUI**
+>
+> ## ⭐ LA PROSSIMA SESSIONE: «SFOGLIA» — il catalogo senza digitare
+>
+> L'utente ha visto il reparto maniglie e ha chiesto **un catalogo digitalizzato**: marche
+> coi loghi al posto dei nomi → sottocategorie → prodotti, sfogliabile a vista senza
+> scrivere nulla. **Analisi conclusa, zero codice scritto.** Spec completa:
+> `docs/superpowers/specs/2026-08-04-catalogo-maniglie-sfoglia-design.md`.
+>
+> **Verdetto: il bisogno è reale e verificato, l'albero non è costruibile.** Va rovesciato
+> in **una schermata sola, un livello solo**.
+>
+> **Il vuoto è vero, ed è nel codice:** `article.search` impone `query.min(1)` e il client
+> non chiama la query finché non digiti — **non esiste alcun percorso che elenchi qualcosa
+> senza scrivere**. «Disponibilità» è letteralmente una casella bianca.
+>
+> **Le tre scoperte che cambiano il disegno:**
+>
+> 1. **Il sito COLOMBO non pubblica MAI un codice ordinabile** (verificato leggendolo):
+>    mostra `MD 11 R-RY`, il listino scrive `0MD11R-CM` → normalizzati danno `MD11RRY` e
+>    `0MD11RCM`, **non combaciano**. La chiave con zero collisioni su 3.456 codici non
+>    aggancia il sito → **lo scraping è morto**, non rimandato.
+> 2. **3.456 tessere non sono un catalogo.** Il codice ordinabile *è* la finitura, e la
+>    finitura è ciò che il catalogo non fotografa: 725 immagini per 2.943 codici = **1 foto
+>    ogni 4**, tetto 21% (AGB è 0,95 — 4,5× meglio). Il maniglione Mood ha **12 finiture** =
+>    12 tessere con la stessa foto, distinte da due lettere di cui **non abbiamo la
+>    tabella** (COLOMBO non pubblica sigla→finitura da nessuna parte, verificato). A 375px:
+>    3.456 codici = **576 schermate**, 96 modelli = **16**.
+> 3. **L'albero è già falsificato dentro COLOMBO**: *Contemporanee* espone 5 gruppi,
+>    *Antologhia* 4 piatte e diverse. Le sottocategorie sono **faccette, non livelli**.
+>
+> **La fonte da usare, e l'unica: la PRIMA PAROLA della descrizione del listino**
+> (`MANIGLIA`, `BOCCHETTA`, `POMOLO`, `ROSETTA`, `VITE`…). Copre **3.456 su 3.456**, costa
+> un `GROUP BY` dentro `search.ts` (già autorizzato al raw SQL), **zero migrazioni**, e
+> l'etichetta è **la parola scritta da COLOMBO** — non una nostra deduzione, quindi non
+> riapre la classe di difetto chiusa otto volte. Due tracce convergenti la sostengono: la
+> spec precedente ha già classificato così i 513 codici scoperti («bocchette 281, rosette
+> 47, movimenti 33, viti 21…») e non aveva altro campo per farlo.
+>
+> **🔴 IL PREREQUISITO BLOCCANTE.** Il dominio gira su **20 articoli inventati**
+> (`prisma/seed-maniglie.ts`, dichiarati tali). Un prototipo di sfoglio su venti righe
+> scelte da noi funzionerà benissimo e **non dirà nulla sugli altri 3.436**. Servono i
+> **tre file di Andrea**: listino aggiornato `.xlsx`, pronta consegna `.xls`, catalogo
+> `ER MAN 2026_100726.pdf`. Prima di scrivere UI, **le cinque misure di §7** sul file vero
+> — in particolare: **quante prime parole distinte esistono?** ≤ 40 e la strada regge, ~300
+> e muore.
+>
+> **Cosa NON fare** (§9 della spec): niente regexp sul codice (`0CD63CM` si parsifica e non
+> esiste; `RS120` produce la famiglia inventata `RS12`); niente scraping; **niente
+> schermata «scegli la marca» finché la marca è una** — sarebbe un bivio con un ramo solo,
+> lo stesso motivo per cui si è rifiutato lo skip del selettore di reparto.
+>
+> **I loghi**: il rischio legale temuto non è quello vero (uso descrittivo, art. 21 CPI, va
+> bene). Si perde su altro: vanno **chiesti alle marche** e committati come **SVG locali**,
+> mai puntati al CDN altrui; e **logo + nome, mai logo al posto del nome**.
+>
+> **Sei domande aperte per l'utente** in §10 della spec. La più importante: **chi sfoglia,
+> Andrea o l'agente col cliente davanti?** Sono due prodotti diversi, e uno dei due oggi
+> non è costruibile.
+>
+> ---
 >
 > ### Cosa è successo (2026-08-04)
 >
