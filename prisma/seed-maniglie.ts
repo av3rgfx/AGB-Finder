@@ -9,10 +9,9 @@
  *
  *   pnpm db:seed:maniglie
  */
+import { pathToFileURL } from "node:url";
 import { PrismaClient, Prisma } from "@prisma/client";
 import { normalizeArticleCode } from "../src/server/maniglie/code-norm";
-
-const prisma = new PrismaClient();
 
 const D = (v: string) => new Prisma.Decimal(v);
 
@@ -60,7 +59,7 @@ const PRONTA_CONSEGNA = [
   "XGRATZ7SX",
 ];
 
-async function main() {
+export async function seedManiglie(prisma: PrismaClient) {
   const brand = "COLOMBO";
   const now = new Date();
 
@@ -122,9 +121,15 @@ async function main() {
   console.log("✓ fatto");
 }
 
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(() => prisma.$disconnect());
+const isDirectRun =
+  Boolean(process.argv[1]) && import.meta.url === pathToFileURL(process.argv[1]!).href;
+
+if (isDirectRun) {
+  const db = new PrismaClient();
+  seedManiglie(db)
+    .catch((e) => {
+      console.error(e);
+      process.exitCode = 1;
+    })
+    .finally(() => void db.$disconnect());
+}
