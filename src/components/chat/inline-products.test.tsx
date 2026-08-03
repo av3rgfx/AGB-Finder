@@ -82,7 +82,10 @@ describe("InlineProducts", () => {
   it("non mostra alcun badge di disponibilità", async () => {
     const user = userEvent.setup();
     const { container } = render(<InlineProducts products={[product]} />);
-    await user.click(container.querySelector("button")!);
+    await user.click(screen.getByRole("button", { name: /1 prodotto/ }));
+    // La lista deve essere davvero espansa, altrimenti l'assenza del badge
+    // qui sotto sarebbe vera solo perché non c'è nulla da guardare.
+    expect(screen.getByText("E10073.10.16")).toBeTruthy();
     expect(container.textContent?.includes("Disponibile")).toBe(false);
   });
 });

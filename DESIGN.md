@@ -17,9 +17,9 @@
 - **N50** (bg-primary): `#FAF9F7`
 
 ### Semantic
-- **Success**: `#2D7A3A` — positive stock, confirmation
-- **Warning**: `#B38600` — low stock, attention
-- **Error**: `#B32424` — out of stock, validation errors
+- **Success**: `#2D7A3A` — completed/approved states, confirmation
+- **Warning**: `#B38600` — non-blocking notices (kit engine warnings, discount over threshold)
+- **Error**: `#B32424` — rejected states, validation errors
 - **Info**: `#2468A8` — links, informational tags
 
 ### Surface
@@ -95,7 +95,7 @@
 - User: N100 (surface-sunken) bg, right-aligned compact pill
 - Streaming: typing cursor while text streams; inline tool-status chips ("Sto cercando nel catalogo…")
 - Product code blocks / codes: mono font, copy button, subtle bg
-- Cited products: **inline cards below the AI answer** (thumbnail, mono code + copy, name, price, availability badge, archivio/listino links), via an expandable "N prodotti" chip
+- Cited products: **inline cards below the AI answer** (thumbnail, mono code + copy, name, price, archivio/listino links), via an expandable "N prodotti" chip
 - Message actions (below completed AI answer): Copia, Rigenera
 > Supersedes the previous bubble + 3px left-border treatment (side-stripe accents are an anti-pattern; bubbles cramped tables/code).
 

@@ -91,7 +91,7 @@ describe("toProductData", () => {
   });
 
   it("non inventa la disponibilità: il mapper non scrive quelle colonne", () => {
-    const data = toProductData(row({})) as unknown as Record<string, unknown>;
+    const data = toProductData(row({}));
     expect("isAvailable" in data).toBe(false);
     expect("stockQuantity" in data).toBe(false);
   });
