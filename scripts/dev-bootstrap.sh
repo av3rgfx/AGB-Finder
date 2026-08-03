@@ -10,10 +10,13 @@ if ! docker info >/dev/null 2>&1; then
   for _ in $(seq 1 15); do docker info >/dev/null 2>&1 && break; sleep 1; done
 fi
 
+# PRIMA degli engine: `setup-prisma-engines.sh` CREA .env per scriverci dentro i
+# path PRISMA_*, quindi se la copia stesse dopo non scatterebbe mai e mancherebbero
+# DATABASE_URL/DIRECT_URL → `migrate deploy` muore con P1012 su ogni container nuovo.
+[ -f .env ] || cp .env.example .env
+
 echo "▶ Prisma engines…"
 bash scripts/setup-prisma-engines.sh
-
-[ -f .env ] || cp .env.example .env
 
 echo "▶ services…"
 docker compose up -d
