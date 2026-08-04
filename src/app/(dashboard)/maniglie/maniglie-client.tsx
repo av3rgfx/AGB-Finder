@@ -16,6 +16,7 @@ import {
   SenzaFamiglia,
   SfogliaFamiglie,
   SfogliaGruppi,
+  SoloPronta,
 } from "@/components/maniglie/sfoglia";
 import { formatPrice } from "@/lib/format";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
@@ -35,6 +36,9 @@ export function ManiglieClient() {
   const committed = (searchParams.get("q") ?? "").trim();
   const tipo = (searchParams.get("tipo") ?? "").trim();
   const famiglia = (searchParams.get("fam") ?? "").trim();
+  // Il filtro sta nell'URL come tutto il resto: si condivide, il tasto indietro
+  // lo spegne, e nessuno stato nascosto decide cosa l'agente sta guardando.
+  const soloPronta = searchParams.get("pronta") === "1";
   const page = Math.max(1, Number(searchParams.get("p") ?? "1") || 1);
 
   const [queryInput, setQueryInput] = useState(committed);
@@ -73,13 +77,13 @@ export function ManiglieClient() {
 
   // Livello 1: i gruppi. Solo quando non si sta né cercando né sfogliando.
   const gruppi = api.article.browseGroups.useQuery(
-    {},
+    { soloPronta },
     { enabled: !cercando && !tipo, staleTime: 5 * 60_000 },
   );
 
   // Livello 2: le famiglie del gruppo. Non serve se si è già scesi a una.
   const famiglie = api.article.browseFamilies.useQuery(
-    { tipo },
+    { tipo, soloPronta },
     { enabled: sfogliando && !famiglia, staleTime: 5 * 60_000 },
   );
 
@@ -90,7 +94,9 @@ export function ManiglieClient() {
 
   const search = api.article.search.useQuery(
     {
-      ...(cercando ? { query: committed } : { tipo, ...(famiglia ? { famiglia } : {}) }),
+      ...(cercando
+        ? { query: committed }
+        : { tipo, soloPronta, ...(famiglia ? { famiglia } : {}) }),
       limit: PAGE_SIZE,
       offset: (page - 1) * PAGE_SIZE,
     },
@@ -120,7 +126,27 @@ export function ManiglieClient() {
     [pathname, router, searchParams],
   );
 
-  useScrollRestore(`${committed}|${tipo}|${famiglia}|${page}`, Boolean(search.data ?? gruppi.data));
+  /**
+   * Accendere o spegnere il filtro riparte da pagina 1: restare alla pagina 7 di
+   * un elenco che si è ristretto da 338 a 12 codici significa vedere una
+   * schermata vuota e credere che non ci sia niente.
+   */
+  const setSoloPronta = useCallback(
+    (v: boolean) => {
+      const next = new URLSearchParams(searchParams.toString());
+      if (v) next.set("pronta", "1");
+      else next.delete("pronta");
+      next.delete("p");
+      const qs = next.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
+
+  useScrollRestore(
+    `${committed}|${tipo}|${famiglia}|${page}|${soloPronta}`,
+    Boolean(search.data ?? gruppi.data),
+  );
 
   // Una fonte sola per «di quando è questo dato»: i risultati quando ci sono
   // (portano la data dell'import che li ha valutati), `stockInfo` altrimenti.
@@ -158,7 +184,18 @@ export function ManiglieClient() {
         <div className="h-10 animate-pulse rounded bg-surface-sunken" aria-hidden />
       )}
 
-      {sfogliando ? <FiltriSfoglia tipo={tipo} famiglia={famiglia} /> : null}
+      {/* Il filtro sta qui e non dentro l'elenco dei gruppi: vale a TUTTI i
+          livelli dello sfoglio, quindi si accende e si vede anche da dentro un
+          gruppo. Compare solo se una giacenza esiste — `stockInfo.importedAt`
+          è la stessa e unica fonte della data mostrata sopra, non una seconda
+          affermazione sullo stesso fatto. */}
+      {!cercando && stockInfo.data?.importedAt ? (
+        <SoloPronta value={soloPronta} onChange={setSoloPronta} />
+      ) : null}
+
+      {sfogliando ? (
+        <FiltriSfoglia tipo={tipo} famiglia={famiglia} soloPronta={soloPronta} />
+      ) : null}
 
       <section
         aria-label={sfogliando ? "Sfoglia" : "Risultati"}
@@ -171,7 +208,7 @@ export function ManiglieClient() {
           ) : gruppi.isError ? (
             <Errore titolo="Gruppi non caricati" />
           ) : (
-            <SfogliaGruppi groups={gruppi.data?.groups ?? []} />
+            <SfogliaGruppi groups={gruppi.data?.groups ?? []} soloPronta={soloPronta} />
           )
         ) : sfogliando && !famiglia && famiglie.isPending ? (
           <SkeletonList />
@@ -181,7 +218,11 @@ export function ManiglieClient() {
           <>
             {sfogliando && !famiglia && famiglie.data && famiglie.data.families.length > 0 ? (
               <>
-                <SfogliaFamiglie tipo={tipo} families={famiglie.data.families} />
+                <SfogliaFamiglie
+                  tipo={tipo}
+                  families={famiglie.data.families}
+                  soloPronta={soloPronta}
+                />
                 {famiglie.data.loose.length > 0 ? (
                   <>
                     <SenzaFamiglia count={famiglie.data.loose.length} />

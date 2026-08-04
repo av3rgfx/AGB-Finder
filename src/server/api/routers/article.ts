@@ -9,7 +9,11 @@ import {
 } from "@/server/maniglie/search";
 import { splitGroup, filterByFamily } from "@/server/maniglie/browse";
 import { articleTotal } from "@/server/maniglie/price";
-import { availableArticleIds, currentStockImport } from "@/server/maniglie/stock-status";
+import {
+  allAvailableArticleIds,
+  availableArticleIds,
+  currentStockImport,
+} from "@/server/maniglie/stock-status";
 import { matchStockCodes } from "@/server/maniglie/stock-file";
 
 /**
@@ -90,6 +94,8 @@ export const searchInputSchema = z
     query: z.string().trim().min(1, "Inserisci un termine di ricerca").max(200).optional(),
     tipo: z.string().trim().min(1).max(100).optional(),
     famiglia: z.string().trim().min(1).max(100).optional(),
+    /** Filtro «solo pronta consegna». Vive nello sfoglio, non nella ricerca. */
+    soloPronta: z.boolean().default(false),
     brand: z.string().trim().min(1).max(50).default("COLOMBO"),
     limit: z.number().int().min(1).max(50).default(20),
     offset: z.number().int().min(0).default(0),
@@ -99,7 +105,27 @@ export const searchInputSchema = z
   })
   .refine((v) => !v.famiglia || Boolean(v.tipo), {
     message: "La famiglia esiste solo dentro un gruppo.",
+  })
+  .refine((v) => !v.soloPronta || Boolean(v.tipo), {
+    // Il filtro appartiene allo sfoglio: nella ricerca per testo non compare, e
+    // accettarlo lì significherebbe restringere in silenzio dei risultati che
+    // l'agente ha chiesto scrivendo.
+    message: "Il filtro «solo pronta consegna» vale solo sfogliando.",
   });
+
+/**
+ * Gli id in pronta consegna, o `undefined` se non si filtra. `[]` è un valore
+ * legittimo e diverso da `undefined`: significa «filtro acceso, nulla di
+ * disponibile», e i chiamanti devono restituire zero risultati invece di tutto.
+ *
+ * Senza un import di giacenza NON si filtra e non si finge: non esiste una
+ * risposta a «cosa è pronto», e la fascia della data lo dice già a schermo.
+ */
+async function prontaIds(db: PrismaClient, brand: string, solo: boolean) {
+  if (!solo) return undefined;
+  const imp = await currentStockImport(db, brand);
+  return imp ? await allAvailableArticleIds(db, imp.id) : [];
+}
 
 /**
  * Una pagina di codici presi SFOGLIANDO, non cercando. Le righe del gruppo si
@@ -110,9 +136,21 @@ export const searchInputSchema = z
  */
 async function browseSlice(
   db: PrismaClient,
-  input: { brand: string; tipo?: string; famiglia?: string; limit: number; offset: number },
+  input: {
+    brand: string;
+    tipo?: string;
+    famiglia?: string;
+    soloPronta: boolean;
+    limit: number;
+    offset: number;
+  },
 ) {
-  const all = await articleIdsByFirstWord(db, input.brand, input.tipo!);
+  const all = await articleIdsByFirstWord(
+    db,
+    input.brand,
+    input.tipo!,
+    await prontaIds(db, input.brand, input.soloPronta),
+  );
   const selected = input.famiglia ? filterByFamily(all, input.tipo!, input.famiglia) : all;
   const page = selected.slice(input.offset, input.offset + input.limit);
 
@@ -150,9 +188,18 @@ export const articleRouter = createTRPCRouter({
    * questo dato» ne esiste una fonte sola.
    */
   browseGroups: agentProcedure
-    .input(z.object({ brand: z.string().trim().min(1).max(50).default("COLOMBO") }))
+    .input(
+      z.object({
+        brand: z.string().trim().min(1).max(50).default("COLOMBO"),
+        soloPronta: z.boolean().default(false),
+      }),
+    )
     .query(async ({ ctx, input }) => ({
-      groups: await browseFirstWords(ctx.db, input.brand),
+      groups: await browseFirstWords(
+        ctx.db,
+        input.brand,
+        await prontaIds(ctx.db, input.brand, input.soloPronta),
+      ),
     })),
 
   /**
@@ -169,10 +216,16 @@ export const articleRouter = createTRPCRouter({
       z.object({
         brand: z.string().trim().min(1).max(50).default("COLOMBO"),
         tipo: z.string().trim().min(1).max(100),
+        soloPronta: z.boolean().default(false),
       }),
     )
     .query(async ({ ctx, input }) => {
-      const rows = await articleIdsByFirstWord(ctx.db, input.brand, input.tipo);
+      const rows = await articleIdsByFirstWord(
+        ctx.db,
+        input.brand,
+        input.tipo,
+        await prontaIds(ctx.db, input.brand, input.soloPronta),
+      );
       const { families, loose } = splitGroup(rows, input.tipo);
 
       // Senza famiglie il gruppo non è diviso: le sue righe si impaginano con

@@ -95,7 +95,7 @@ beforeEach(() => {
   sp = new URLSearchParams("");
   replace.mockReset();
   searchQuery.mockReset().mockReturnValue(risultati());
-  stockInfoQuery.mockReset().mockReturnValue({});
+  stockInfoQuery.mockReset().mockReturnValue({ data: { importedAt: IMPORTATO } });
   browseGroupsQuery
     .mockReset()
     .mockReturnValue({ data: { groups: GRUPPI }, isPending: false, isError: false, isFetching: false });
@@ -518,5 +518,140 @@ describe("ManiglieClient — sfoglio", () => {
     const fascia = screen.getByText(/aggiornata al/i).closest("p");
     expect(fascia?.className).toContain("sticky");
     expect(fascia?.className).toContain("top-0");
+  });
+});
+
+/**
+ * IL FILTRO «SOLO PRONTA CONSEGNA». La ragione per cui esiste è un numero: sul
+ * listino vero sono 178 codici su 3.456, il 5,2%. Sfogliando senza filtro, 19
+ * codici su 20 non sono ordinabili oggi — ed è la domanda letterale di Andrea.
+ */
+describe("ManiglieClient — solo pronta consegna", () => {
+  it("il filtro c'è, ed è spento finché non lo si accende", () => {
+    render(<ManiglieClient />);
+    const casella = screen.getByLabelText("Solo pronta consegna") as HTMLInputElement;
+    expect(casella.checked).toBe(false);
+    expect(browseGroupsQuery.mock.calls[0]?.[0]).toMatchObject({ soloPronta: false });
+  });
+
+  it("NON compare se nessuna pronta consegna è mai stata caricata", () => {
+    // Un interruttore che non può rispondere è peggio della sua assenza: senza
+    // import non esiste una risposta a «cosa è pronto», e non si finge. La fonte
+    // è la stessa della data mostrata sopra, non una seconda affermazione.
+    stockInfoQuery.mockReturnValue({ data: { importedAt: null } });
+    render(<ManiglieClient />);
+    expect(screen.queryByLabelText("Solo pronta consegna")).toBeNull();
+  });
+
+  it("non compare mentre si CERCA: il filtro appartiene allo sfoglio", () => {
+    sp = new URLSearchParams("q=cd41");
+    render(<ManiglieClient />);
+    expect(screen.queryByLabelText("Solo pronta consegna")).toBeNull();
+  });
+
+  it("è raggiungibile anche da DENTRO un gruppo, non solo dal primo livello", () => {
+    sp = new URLSearchParams("tipo=LARA");
+    browseFamiliesQuery.mockReturnValue({
+      data: { families: [{ family: "CB71R", count: 2 }], loose: [], total: 2 },
+      isPending: false,
+      isError: false,
+      isFetching: false,
+    });
+    render(<ManiglieClient />);
+    expect(screen.getByLabelText("Solo pronta consegna")).toBeTruthy();
+  });
+
+  it("accendendolo lo scrive nell'URL, non in uno stato nascosto", () => {
+    render(<ManiglieClient />);
+    fireEvent.click(screen.getByLabelText("Solo pronta consegna"));
+    expect(replace).toHaveBeenCalledWith("/maniglie?pronta=1", { scroll: false });
+  });
+
+  it("acceso, lo dice al server", () => {
+    sp = new URLSearchParams("pronta=1");
+    render(<ManiglieClient />);
+    expect(browseGroupsQuery.mock.calls[0]?.[0]).toMatchObject({ soloPronta: true });
+  });
+
+  it("acceso, DICHIARA che il numero conta un altro insieme", () => {
+    // Un numero che cambia significato in silenzio è la classe di difetto
+    // chiusa otto volte, e qui cambierebbe di venti volte.
+    sp = new URLSearchParams("pronta=1");
+    render(<ManiglieClient />);
+    expect(screen.getByText(/il numero è quanti codici in pronta consegna/i)).toBeTruthy();
+  });
+
+  it("resta acceso scendendo di livello, e RESTA VISIBILE", () => {
+    // Uno stato nascosto che toglie 19 righe su 20 farebbe concludere
+    // all'agente che il catalogo non ha quell'articolo.
+    sp = new URLSearchParams("tipo=LARA&pronta=1");
+    browseFamiliesQuery.mockReturnValue({
+      data: { families: [{ family: "CB71R", count: 2 }], loose: [], total: 2 },
+      isPending: false,
+      isError: false,
+      isFetching: false,
+    });
+    render(<ManiglieClient />);
+    expect(browseFamiliesQuery.mock.calls[0]?.[0]).toMatchObject({ tipo: "LARA", soloPronta: true });
+    const casella = screen.getByLabelText("Solo pronta consegna") as HTMLInputElement;
+    expect(casella.checked).toBe(true);
+  });
+
+  it("spegnerlo da dentro un gruppo non fa perdere il gruppo", () => {
+    sp = new URLSearchParams("tipo=LARA&pronta=1");
+    browseFamiliesQuery.mockReturnValue({
+      data: { families: [{ family: "CB71R", count: 2 }], loose: [], total: 2 },
+      isPending: false,
+      isError: false,
+      isFetching: false,
+    });
+    render(<ManiglieClient />);
+    fireEvent.click(screen.getByLabelText("Solo pronta consegna"));
+    expect(replace).toHaveBeenCalledWith("/maniglie?tipo=LARA", { scroll: false });
+  });
+
+  it("i link dei gruppi se lo portano dietro", () => {
+    sp = new URLSearchParams("pronta=1");
+    render(<ManiglieClient />);
+    expect(screen.getByText("LARA").closest("a")?.getAttribute("href")).toBe(
+      "/maniglie?tipo=LARA&pronta=1",
+    );
+  });
+
+  it("arriva anche al terzo livello", () => {
+    sp = new URLSearchParams("tipo=LARA&fam=CB71R&pronta=1");
+    render(<ManiglieClient />);
+    expect(searchQuery.mock.calls[0]?.[0]).toMatchObject({
+      tipo: "LARA",
+      famiglia: "CB71R",
+      soloPronta: true,
+    });
+  });
+
+  it("accenderlo riparte da pagina 1", () => {
+    // Restare alla pagina 7 di un elenco sceso da 338 a 12 codici significa
+    // vedere una schermata vuota e credere che non ci sia niente.
+    sp = new URLSearchParams("tipo=LARA&p=7");
+    browseFamiliesQuery.mockReturnValue({
+      data: { families: [], loose: [], total: 12 },
+      isPending: false,
+      isError: false,
+      isFetching: false,
+    });
+    render(<ManiglieClient />);
+    fireEvent.click(screen.getByLabelText("Solo pronta consegna"));
+    expect(replace).toHaveBeenCalledWith("/maniglie?tipo=LARA&pronta=1", { scroll: false });
+  });
+
+  it("se non c'è nulla in pronta consegna lo dice, invece di sembrare rotto", () => {
+    sp = new URLSearchParams("pronta=1");
+    browseGroupsQuery.mockReturnValue({
+      data: { groups: [], prontaDisponibile: true },
+      isPending: false,
+      isError: false,
+      isFetching: false,
+    });
+    render(<ManiglieClient />);
+    expect(screen.getByText("Nessun articolo in pronta consegna.")).toBeTruthy();
   });
 });

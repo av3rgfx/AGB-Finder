@@ -88,7 +88,7 @@ function RigaSfoglia({
  * la fa l'occhio di chi guarda. Filtra SOLO le 114 etichette già in memoria:
  * nessuna query, e non è la ricerca articoli — quella sta sopra ed è un'altra cosa.
  */
-export function SfogliaGruppi({ groups }: { groups: Gruppo[] }) {
+export function SfogliaGruppi({ groups, soloPronta }: { groups: Gruppo[]; soloPronta: boolean }) {
   const [filtro, setFiltro] = useState("");
   const cerca = filtro.trim().toUpperCase();
   const visibili = cerca ? groups.filter((g) => g.word.includes(cerca)) : groups;
@@ -104,9 +104,13 @@ export function SfogliaGruppi({ groups }: { groups: Gruppo[] }) {
             compresi, e chi le legge deve saperlo. E il numero è quanti CODICI,
             non quanti modelli: dirlo evita che «338» prometta 338 oggetti
             diversi quando le descrizioni distinte sono 160. */}
+        {/* Col filtro acceso il numero sul chip conta un altro insieme. Dirlo
+            NON è pignoleria: un numero che cambia significato senza dirlo è la
+            classe di difetto che il progetto ha chiuso otto volte, e qui
+            cambierebbe di venti volte (178 pronti su 3.456). */}
         <p className="text-xs text-ink-subtle">
           {groups.length} gruppi in ordine alfabetico, per la prima parola della descrizione a
-          listino. Il numero è quanti codici.
+          listino. Il numero è quanti codici{soloPronta ? " in pronta consegna" : ""}.
         </p>
       </div>
 
@@ -124,16 +128,46 @@ export function SfogliaGruppi({ groups }: { groups: Gruppo[] }) {
 
       {visibili.length === 0 ? (
         <p className="rounded-md border border-dashed border-line-strong bg-surface p-6 text-center text-sm text-ink-subtle">
-          Nessun gruppo contiene «{filtro.trim()}». Per cercare un articolo usa il campo qui sopra.
+          {cerca
+            ? `Nessun gruppo contiene «${filtro.trim()}»${soloPronta ? " fra quelli in pronta consegna" : ""}. Per cercare un articolo usa il campo qui sopra.`
+            : "Nessun articolo in pronta consegna."}
         </p>
       ) : (
         <ul className="grid list-none grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
           {visibili.map((g) => (
-            <ChipGruppo key={g.word} gruppo={g} />
+            <ChipGruppo key={g.word} gruppo={g} soloPronta={soloPronta} />
           ))}
         </ul>
       )}
     </section>
+  );
+}
+
+/**
+ * Il filtro «solo pronta consegna».
+ *
+ * Compare soltanto se una giacenza è stata caricata: senza, la domanda «cosa è
+ * pronto» non ha risposta, e un interruttore che non può rispondere è peggio
+ * della sua assenza.
+ *
+ * È una casella e non un chip di filtro, perché non nasce da ciò che c'è a
+ * schermo: restringe TUTTI e tre i livelli e resta acceso mentre si scende. Per
+ * la stessa ragione sta FUORI dall'elenco dei gruppi e la disegna la pagina, a
+ * ogni livello: se vivesse solo al primo, da dentro un gruppo non si potrebbe né
+ * accendere né vedere che è acceso — e uno stato invisibile che toglie 19 righe
+ * su 20 fa concludere all'agente che il catalogo non ha quell'articolo.
+ */
+export function SoloPronta({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label className="flex min-h-[44px] w-fit cursor-pointer items-center gap-2.5 rounded-md border border-line bg-surface px-3 py-2 transition-colors duration-150 hover:bg-surface-sunken">
+      <input
+        type="checkbox"
+        checked={value}
+        onChange={(e) => onChange(e.target.checked)}
+        className="size-4 rounded border-line-strong text-brand accent-brand"
+      />
+      <span className="text-sm font-medium text-ink">Solo pronta consegna</span>
+    </label>
   );
 }
 
@@ -144,11 +178,11 @@ export function SfogliaGruppi({ groups }: { groups: Gruppo[] }) {
  * Troncare qui significherebbe rendere illeggibile proprio l'unica cosa che il
  * chip contiene.
  */
-function ChipGruppo({ gruppo }: { gruppo: Gruppo }) {
+function ChipGruppo({ gruppo, soloPronta }: { gruppo: Gruppo; soloPronta: boolean }) {
   return (
     <li>
       <Link
-        href={`/maniglie?tipo=${encodeURIComponent(gruppo.word)}`}
+        href={`/maniglie?tipo=${encodeURIComponent(gruppo.word)}${soloPronta ? "&pronta=1" : ""}`}
         aria-label={`${gruppo.word}, ${conteggio(gruppo.count)}`}
         className="flex h-full min-h-[56px] flex-col justify-center gap-0.5 rounded-md border border-line bg-surface px-3 py-2 transition-colors duration-150 hover:border-line-strong hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
       >
@@ -164,13 +198,21 @@ function ChipGruppo({ gruppo }: { gruppo: Gruppo }) {
 }
 
 /** Livello 2: le famiglie di un gruppo. */
-export function SfogliaFamiglie({ tipo, families }: { tipo: string; families: Famiglia[] }) {
+export function SfogliaFamiglie({
+  tipo,
+  families,
+  soloPronta,
+}: {
+  tipo: string;
+  families: Famiglia[];
+  soloPronta: boolean;
+}) {
   return (
     <ul className="list-none overflow-hidden rounded-md border border-line">
       {families.map((f) => (
         <RigaSfoglia
           key={f.family}
-          href={`/maniglie?tipo=${encodeURIComponent(tipo)}&fam=${encodeURIComponent(f.family)}`}
+          href={`/maniglie?tipo=${encodeURIComponent(tipo)}&fam=${encodeURIComponent(f.family)}${soloPronta ? "&pronta=1" : ""}`}
           label={f.family}
           count={f.count}
           mono
@@ -205,22 +247,32 @@ export function SenzaFamiglia({ count }: { count: number }) {
  * filtri attivi sono chip con la ✕, e la ✕ è un link — quindi il tasto indietro
  * del telefono funziona senza che noi lo si gestisca.
  */
-export function FiltriSfoglia({ tipo, famiglia }: { tipo: string; famiglia: string }) {
+export function FiltriSfoglia({
+  tipo,
+  famiglia,
+  soloPronta,
+}: {
+  tipo: string;
+  famiglia: string;
+  soloPronta: boolean;
+}) {
   if (!tipo) return null;
+  const coda = soloPronta ? "?pronta=1" : "";
   return (
     <nav aria-label="Dove sei" className="flex flex-wrap items-center gap-2">
+
       <Chip
         label={tipo}
         // Togliere il gruppo porta all'elenco dei gruppi; togliendolo cade anche
         // la famiglia, che senza il suo gruppo non individua nulla.
-        href="/maniglie"
+        href={`/maniglie${coda}`}
         removeLabel={`Togli il gruppo ${tipo}`}
       />
       {famiglia ? (
         <Chip
           label={famiglia}
           mono
-          href={`/maniglie?tipo=${encodeURIComponent(tipo)}`}
+          href={`/maniglie?tipo=${encodeURIComponent(tipo)}${soloPronta ? "&pronta=1" : ""}`}
           removeLabel={`Togli la famiglia ${famiglia}`}
         />
       ) : null}

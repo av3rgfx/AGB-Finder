@@ -33,6 +33,31 @@ export async function currentStockImport(
 }
 
 /**
+ * TUTTI gli articoli in pronta consegna secondo quell'import.
+ *
+ * L'eccezione dichiarata al «si interroga per sottoinsieme» qui sotto: serve al
+ * filtro «solo pronta consegna», che deve restringere un raggruppamento
+ * sull'INTERO listino e non su una pagina di venti righe. Il costo è quello che
+ * è misurato, non quello che si teme: sul file vero di Andrea sono **178
+ * articoli su 3.456**, cioè il 5,2% — la lista che esce di qui è corta per
+ * costruzione, perché è corta la pronta consegna.
+ *
+ * Resta Prisma, ed è il punto: la REGOLA («in pronta consegna» = riga
+ * dell'ultimo import non annullato) non entra in un `$queryRaw`. Al raw SQL del
+ * raggruppamento arriva solo una lista di id già decisa qui.
+ */
+export async function allAvailableArticleIds(
+  db: PrismaClient,
+  importId: string,
+): Promise<string[]> {
+  const lines = await db.stockLine.findMany({
+    where: { importId, articleId: { not: null } },
+    select: { articleId: true },
+  });
+  return lines.map((l) => l.articleId!).filter(Boolean);
+}
+
+/**
  * Fra gli articoli dati, quali sono in pronta consegna secondo quell'import.
  * Si interroga per sottoinsieme e non per intero listino: la pagina mostra 20
  * righe, non 3.456.

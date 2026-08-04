@@ -129,6 +129,11 @@ export async function searchArticleIds(
  * sia ROBOT o ROBOTRE — atterra esattamente in mezzo ai due. La fusione la fa
  * l'occhio di chi guarda; noi non indoviniamo niente.
  *
+ * `onlyIds` è il filtro «solo pronta consegna»: la REGOLA di disponibilità NON
+ * entra qui: la applica `stock-status.ts` in Prisma e a questo raw SQL arriva
+ * solo una lista di id già decisa. `[]` significa «nessun articolo disponibile»
+ * e restituisce zero gruppi — che è diverso da `undefined`, cioè «non filtrare».
+ *
  * L'ordinamento si fa in TypeScript e non in SQL di proposito: `ORDER BY` usa la
  * COLLATION del database, che può differire fra il Postgres locale e Neon, e
  * l'ordine adesso è una promessa fatta a schermo. (Misurato: oggi i due ordini
@@ -137,12 +142,15 @@ export async function searchArticleIds(
 export async function browseFirstWords(
   db: PrismaClient,
   brand: string,
+  onlyIds?: string[],
 ): Promise<{ word: string; count: number }[]> {
+  if (onlyIds && onlyIds.length === 0) return [];
   const rows = await db.$queryRaw<{ word: string; n: bigint }[]>`
     SELECT ${Prisma.raw(SQL_FIRST_WORD.replace(/\bname\b/, "a.name"))} AS word,
            COUNT(*)::bigint AS n
     FROM articles a
     WHERE a.brand = ${brand}
+      ${onlyIds ? Prisma.sql`AND a.id IN (${Prisma.join(onlyIds)})` : Prisma.empty}
     GROUP BY 1
   `;
   return rows
@@ -160,12 +168,15 @@ export async function articleIdsByFirstWord(
   db: PrismaClient,
   brand: string,
   word: string,
+  onlyIds?: string[],
 ): Promise<{ id: string; code: string; codeNorm: string; name: string }[]> {
+  if (onlyIds && onlyIds.length === 0) return [];
   return db.$queryRaw<{ id: string; code: string; codeNorm: string; name: string }[]>`
     SELECT a.id, a.code, a.code_norm AS "codeNorm", a.name
     FROM articles a
     WHERE a.brand = ${brand}
       AND ${Prisma.raw(SQL_FIRST_WORD.replace(/\bname\b/, "a.name"))} = ${word}
+      ${onlyIds ? Prisma.sql`AND a.id IN (${Prisma.join(onlyIds)})` : Prisma.empty}
     ORDER BY a.code ASC
   `;
 }

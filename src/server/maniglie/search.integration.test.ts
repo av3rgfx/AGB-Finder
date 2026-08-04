@@ -1,9 +1,13 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { PrismaClient } from "@prisma/client";
 import { seedManiglie } from "../../../prisma/seed-maniglie";
-import { searchArticleIds, browseFirstWords } from "./search";
+import { searchArticleIds, browseFirstWords, articleIdsByFirstWord } from "./search";
 import { firstWord } from "./taxonomy";
-import { currentStockImport, availableArticleIds } from "./stock-status";
+import {
+  currentStockImport,
+  availableArticleIds,
+  allAvailableArticleIds,
+} from "./stock-status";
 
 const url = process.env.INTEGRATION_DATABASE_URL;
 
@@ -264,5 +268,63 @@ describe.runIf(Boolean(url))("sfoglio — il GROUP BY SQL e la funzione TypeScri
     if (words.includes("ROS.") && words.includes("ROSETTA")) {
       expect(dist("ROS.", "ROSETTA")).toBe(1);
     }
+  });
+});
+
+describe.runIf(Boolean(url))("sfoglio — il filtro «solo pronta consegna»", () => {
+  let db: PrismaClient;
+
+  beforeAll(async () => {
+    db = new PrismaClient({ datasourceUrl: url });
+    await ensureAdmin(db);
+    await seedManiglie(db);
+  }, 30_000);
+
+  afterAll(async () => {
+    await db.$disconnect();
+  });
+
+  it("restringe i gruppi a quelli che hanno almeno un articolo pronto", async () => {
+    const imp = await currentStockImport(db, "COLOMBO");
+    const pronti = await allAvailableArticleIds(db, imp!.id);
+    expect(pronti.length).toBeGreaterThan(0);
+
+    const tutti = await browseFirstWords(db, "COLOMBO");
+    const soloPronti = await browseFirstWords(db, "COLOMBO", pronti);
+
+    expect(soloPronti.length).toBeGreaterThan(0);
+    expect(soloPronti.length).toBeLessThanOrEqual(tutti.length);
+    // Ogni conteggio filtrato è ≤ del suo totale, e mai maggiore: se lo fosse,
+    // il filtro starebbe contando righe di giacenza invece che articoli.
+    const totali = new Map(tutti.map((g) => [g.word, g.count]));
+    for (const g of soloPronti) {
+      expect(g.count).toBeLessThanOrEqual(totali.get(g.word) ?? 0);
+    }
+    // La somma dei filtrati è esattamente il numero di articoli pronti.
+    expect(soloPronti.reduce((n, g) => n + g.count, 0)).toBe(new Set(pronti).size);
+  });
+
+  it("un elenco di id VUOTO dà zero gruppi, non tutti", async () => {
+    // `[]` significa «filtro acceso, niente disponibile» ed è diverso da
+    // `undefined`, che significa «non filtrare». Confonderli mostrerebbe
+    // l'intero catalogo a chi ha chiesto solo ciò che è pronto.
+    expect(await browseFirstWords(db, "COLOMBO", [])).toEqual([]);
+    expect(await articleIdsByFirstWord(db, "COLOMBO", "MANIGLIA", [])).toEqual([]);
+  });
+
+  it("dentro un gruppo restituisce solo le righe pronte", async () => {
+    const imp = await currentStockImport(db, "COLOMBO");
+    const pronti = new Set(await allAvailableArticleIds(db, imp!.id));
+    const righe = await articleIdsByFirstWord(db, "COLOMBO", "MANIGLIA", [...pronti]);
+    expect(righe.length).toBeGreaterThan(0);
+    for (const r of righe) expect(pronti.has(r.id)).toBe(true);
+  });
+
+  it("gli ORFANI non entrano: sono righe di giacenza senza articolo a listino", async () => {
+    const imp = await currentStockImport(db, "COLOMBO");
+    const pronti = await allAvailableArticleIds(db, imp!.id);
+    const righe = await db.stockLine.count({ where: { importId: imp!.id } });
+    const orfani = await db.stockLine.count({ where: { importId: imp!.id, articleId: null } });
+    expect(pronti.length).toBe(righe - orfani);
   });
 });
