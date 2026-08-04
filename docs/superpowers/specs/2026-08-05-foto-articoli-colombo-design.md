@@ -230,6 +230,22 @@ reale. Il modulo lo scrive.
 
 ---
 
+## 6.1 Esito in produzione
+
+| | |
+|---|---|
+| PR | **#54** (foto + filtro colori) · **#55** (fix `NEON_DIRECT_URL`) · **#56** (pomoli generici) — mergiate |
+| run ops | `30948429475` (228 foto, 1.995 articoli, 18 min) · `30958928985` (12 foto, **2.118 articoli**, 7,5 min) |
+| migrazioni | **nessuna**, in tutta la sessione |
+| in produzione | **2.118 / 3.456 = 61,3%**, 240 file su Blob privato |
+
+L'idempotenza è **provata, non dichiarata**: il secondo run ha stampato
+`12 caricate · 228 già presenti`. Il secret del database si chiama
+`NEON_DIRECT_URL` e non `DATABASE_URL`: il primo run è morto in **zero secondi**
+alla guardia, dicendo quale variabile fosse vuota.
+
+---
+
 ## 7. Aperto
 
 1. **SPIDER / MILLA / TRAMA** (66 codici): quale archivio è MR11 e quale MR15?
@@ -238,3 +254,9 @@ reale. Il modulo lo scrive.
 3. `articles.image_url` conserva una **chiave**, non un URL: il nome della colonna
    resta ereditato. Rinominarla è una migrazione, e l'utente ne ha appena escluso
    una che non serviva.
+4. La scrittura di `image_url` è **1.995 `update` singoli in una transazione**:
+   sono i 4 minuti più lenti di ogni run ops. Un `updateMany` per chiave li
+   ridurrebbe a pochi secondi.
+5. I **pomoli dei modelli** (`bold_45`, `daytona_45`, `drop_45`, `mapo_45`,
+   `Moon_45`, `spider_45`) restano fuori: quale serie sia il pomolo non è scritto.
+   Rientrano se COLOMBO risponde alla domanda 1.
