@@ -1,0 +1,40 @@
+name: Ops — Foto COLOMBO (archivio → Vercel Blob privato)
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Solo il conteggio: non tocca né Blob né database"
+        type: boolean
+        required: false
+        default: false
+jobs:
+  foto:
+    runs-on: ubuntu-latest
+    # L'archivio è 3,5 GB, ma si scaricano solo le ~228 foto scelte, una voce di
+    # zip alla volta. Il grosso del tempo è conversione e upload.
+    timeout-minutes: 60
+    env:
+      BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
+      COLOMBO_DOWNLOAD_PASSWORD: ${{ secrets.COLOMBO_DOWNLOAD_PASSWORD }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Enable corepack (pnpm 10)
+        run: corepack enable
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+      - name: Prisma generate
+        run: pnpm prisma generate
+      - name: Foto COLOMBO → Blob privato + articles.image_url
+        run: |
+          test -n "$COLOMBO_DOWNLOAD_PASSWORD" || { echo "::error::Secret COLOMBO_DOWNLOAD_PASSWORD mancante"; exit 1; }
+          test -n "$BLOB_READ_WRITE_TOKEN" || { echo "::error::Secret BLOB_READ_WRITE_TOKEN mancante"; exit 1; }
+          test -n "$DATABASE_URL" || { echo "::error::Secret DATABASE_URL mancante"; exit 1; }
+          pnpm foto:colombo ${{ inputs.dry_run && '--dry-run' || '' }}
+      - name: Verifica
+        run: |
+          echo "::notice::Aprire /maniglie?tipo=FEDRA&fam=AC11R: otto righe, otto miniature. Un gruppo scoperto (?tipo=BOCCHETTA) deve mostrare i segnaposto neutri, senza errori."
