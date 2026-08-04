@@ -1,4 +1,4 @@
-import { normalizeArticleCode } from "./code-norm";
+import { firstWord, secondToken, familyTokenIndex, tokenMatchesCode } from "./taxonomy";
 
 /**
  * Le cinque misure di §7 della spec «Sfoglia», su un listino vero.
@@ -83,36 +83,6 @@ export interface ListinoMeasures {
   };
 }
 
-/** Prima parola della descrizione, in maiuscolo. Spazi multipli collassati. */
-export function firstWord(name: string): string {
-  return name.trim().toUpperCase().split(/\s+/)[0] ?? "";
-}
-
-/** Secondo token della descrizione, in maiuscolo. `null` se la descrizione ha una parola sola. */
-export function secondToken(name: string): string | null {
-  const parts = name.trim().toUpperCase().split(/\s+/);
-  return parts.length >= 2 ? parts[1]! : null;
-}
-
-/**
- * Indice del token della descrizione che compare nel codice — la famiglia,
- * ovunque stia. `null` se nessuno la contiene.
- *
- * Nel listino vero la posizione NON è fissa (`FEDRA AC11R …` è al secondo posto,
- * `PLACCA PEGASO PL70 …` al terzo, `PLACCA Y PER AM113 …` al quarto): dipende da
- * quante parole di nome commerciale la precedono. Trovarla per intersezione col
- * codice non è dedurre una grammatica — che è ciò che §9 della spec vieta — ma
- * far combaciare due campi che COLOMBO ha scritto entrambi.
- */
-export function familyTokenIndex(name: string, codeNorm: string): number | null {
-  const tokens = name.trim().toUpperCase().split(/\s+/);
-  for (let i = 0; i < tokens.length; i++) {
-    const norm = normalizeArticleCode(tokens[i]!);
-    if (norm.length >= MIN_FAMILY_LEN && codeNorm.includes(norm)) return i;
-  }
-  return null;
-}
-
 /**
  * Coda dopo l'ULTIMO separatore del codice. `null` quando il codice non ha
  * separatori — la coda non esiste, e non è la stringa vuota: `0CD41RCB` è un
@@ -142,12 +112,6 @@ function group(entries: { word: string; example: string }[]): WordGroup[] {
   return [...map.values()].sort((a, b) => b.count - a.count || a.word.localeCompare(b.word));
 }
 
-/**
- * Un token di un carattere solo aggancerebbe quasi qualunque codice per puro
- * caso: sotto i due caratteri non si conta come famiglia.
- */
-const MIN_FAMILY_LEN = 2;
-
 export function measureListino(articles: MeasuredArticle[]): ListinoMeasures {
   const total = articles.length;
 
@@ -168,6 +132,7 @@ export function measureListino(articles: MeasuredArticle[]): ListinoMeasures {
   const perWord = new Map<string, { word: string; total: number; matched: number }>();
   const positions = new Map<number, number>();
   let familyFound = 0;
+  let secondTokenMatched = 0;
 
   for (const a of articles) {
     const head = firstWord(a.name);
@@ -176,9 +141,9 @@ export function measureListino(articles: MeasuredArticle[]): ListinoMeasures {
 
     // §7(b) alla lettera: il SECONDO token, e solo quello.
     const token = secondToken(a.name);
-    const norm = token ? normalizeArticleCode(token) : "";
-    if (token && norm.length >= MIN_FAMILY_LEN && a.codeNorm.includes(norm)) {
+    if (token && tokenMatchesCode(token, a.codeNorm)) {
       row.matched++;
+      secondTokenMatched++;
     } else if (token) {
       counterExamples.push({ code: a.code, name: a.name, token });
     }
@@ -216,8 +181,8 @@ export function measureListino(articles: MeasuredArticle[]): ListinoMeasures {
       irregularWhitespace: articles.filter((a) => /\s\s|\t/.test(a.name.trim())).length,
     },
     secondTokenIsFamily: {
-      matched: familyEntries.length,
-      ratio: total === 0 ? 0 : familyEntries.length / total,
+      matched: secondTokenMatched,
+      ratio: total === 0 ? 0 : secondTokenMatched / total,
       byFirstWord: [...perWord.values()]
         .map((r) => ({ ...r, ratio: r.matched / r.total }))
         .sort((a, b) => b.total - a.total || a.word.localeCompare(b.word)),
