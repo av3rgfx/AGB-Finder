@@ -16,6 +16,7 @@ const stockInfoQuery = vi.fn<(...args: unknown[]) => { data?: { importedAt: Date
 );
 const browseGroupsQuery = vi.fn<(...args: unknown[]) => Record<string, unknown>>(() => ({}));
 const browseFamiliesQuery = vi.fn<(...args: unknown[]) => Record<string, unknown>>(() => ({}));
+const finitureQuery = vi.fn<(...args: unknown[]) => Record<string, unknown>>(() => ({}));
 vi.mock("@/trpc/react", () => ({
   api: {
     article: {
@@ -23,6 +24,7 @@ vi.mock("@/trpc/react", () => ({
       stockInfo: { useQuery: (...args: unknown[]) => stockInfoQuery(...args) },
       browseGroups: { useQuery: (...args: unknown[]) => browseGroupsQuery(...args) },
       browseFamilies: { useQuery: (...args: unknown[]) => browseFamiliesQuery(...args) },
+      finiture: { useQuery: (...args: unknown[]) => finitureQuery(...args) },
     },
   },
 }));
@@ -94,6 +96,7 @@ const GRUPPI = [
 beforeEach(() => {
   sp = new URLSearchParams("");
   replace.mockReset();
+  finitureQuery.mockReset().mockReturnValue({ data: { finiture: [] } });
   searchQuery.mockReset().mockReturnValue(risultati());
   stockInfoQuery.mockReset().mockReturnValue({ data: { importedAt: IMPORTATO } });
   browseGroupsQuery
@@ -664,5 +667,102 @@ describe("ManiglieClient — solo pronta consegna", () => {
     });
     render(<ManiglieClient />);
     expect(screen.getByText("Nessun articolo in pronta consegna.")).toBeTruthy();
+  });
+});
+
+describe("ManiglieClient — filtro finitura", () => {
+  const FINITURE = [
+    { codice: "CR", nome: "Cromo", colore: "#EAE7E6", count: 493 },
+    { codice: "CM", nome: "Cromat", colore: "#D6D4D4", count: 592 },
+  ];
+
+  beforeEach(() => {
+    finitureQuery.mockReturnValue({ data: { finiture: FINITURE } });
+  });
+
+  it("offre le finiture presenti, col nome e quante ne contengono", () => {
+    render(<ManiglieClient />);
+    expect(screen.getByRole("button", { name: /Cromat/ }).textContent).toMatch(/Cromat.*592/);
+  });
+
+  it("sceglierne una la scrive nell'URL e riparte da pagina 1", () => {
+    sp = new URLSearchParams("tipo=FEDRA&p=3");
+    render(<ManiglieClient />);
+    fireEvent.click(screen.getByRole("button", { name: /Cromo/ }));
+    expect(replace).toHaveBeenCalledWith("/maniglie?tipo=FEDRA&finitura=CR", { scroll: false });
+  });
+
+  it("rivotare la stessa finitura la toglie", () => {
+    sp = new URLSearchParams("tipo=FEDRA&finitura=CR");
+    render(<ManiglieClient />);
+    fireEvent.click(screen.getByRole("button", { name: /Cromo/ }));
+    expect(replace).toHaveBeenCalledWith("/maniglie?tipo=FEDRA", { scroll: false });
+  });
+
+  it("la finitura scelta passa a tutte e tre le domande dello sfoglio", () => {
+    sp = new URLSearchParams("tipo=FEDRA&finitura=CR");
+    render(<ManiglieClient />);
+    expect(browseFamiliesQuery.mock.calls[0]?.[0]).toMatchObject({ finitura: "CR" });
+    expect(searchQuery.mock.calls[0]?.[0]).toMatchObject({ finitura: "CR" });
+  });
+
+  it("l'elenco delle finiture NON si restringe con quella già scelta", () => {
+    // Un filtro che cancella le proprie alternative è un vicolo cieco.
+    sp = new URLSearchParams("tipo=FEDRA&finitura=CR");
+    render(<ManiglieClient />);
+    expect(finitureQuery.mock.calls[0]?.[0]).toEqual({ soloPronta: false, tipo: "FEDRA" });
+  });
+
+  it("cercando per testo il filtro non compare e non si chiede", () => {
+    // Restringere in silenzio ciò che l'agente ha chiesto scrivendo è la stessa
+    // ragione per cui «solo pronta consegna» non vale nella ricerca.
+    sp = new URLSearchParams("q=fedra");
+    render(<ManiglieClient />);
+    expect(screen.queryByText("Finitura")).toBeNull();
+    expect(finitureQuery.mock.calls[0]?.[1]).toMatchObject({ enabled: false });
+  });
+
+  it("senza finiture da offrire il controllo non c'è", () => {
+    finitureQuery.mockReturnValue({ data: { finiture: [] } });
+    render(<ManiglieClient />);
+    expect(screen.queryByText("Finitura")).toBeNull();
+  });
+});
+
+describe("ManiglieClient — il numero dichiara di cosa parla", () => {
+  beforeEach(() => {
+    finitureQuery.mockReturnValue({
+      data: { finiture: [{ codice: "OL", nome: "Oroplus", colore: "#F8EAB4", count: 377 }] },
+    });
+    browseGroupsQuery.mockReturnValue({ data: { groups: [{ word: "FEDRA", count: 7 }] } });
+  });
+
+  it("col filtro acceso lo dice, col nome della finitura e non col codice", () => {
+    sp = new URLSearchParams("finitura=OL");
+    render(<ManiglieClient />);
+    expect(screen.getByText(/Il numero è quanti codici/).textContent).toMatch(
+      /nella finitura Oroplus/,
+    );
+  });
+
+  it("coi due filtri accesi li dice entrambi", () => {
+    sp = new URLSearchParams("finitura=OL&pronta=1");
+    render(<ManiglieClient />);
+    expect(screen.getByText(/Il numero è quanti codici/).textContent).toMatch(
+      /in pronta consegna e nella finitura Oroplus/,
+    );
+  });
+
+  it("scendendo in un gruppo il filtro non si spegne da solo", () => {
+    sp = new URLSearchParams("finitura=OL");
+    render(<ManiglieClient />);
+    const link = screen.getByRole("link", { name: /FEDRA/ });
+    expect(link.getAttribute("href")).toBe("/maniglie?tipo=FEDRA&finitura=OL");
+  });
+
+  it("senza filtri la frase resta pulita", () => {
+    sp = new URLSearchParams("");
+    render(<ManiglieClient />);
+    expect(screen.getByText(/Il numero è quanti codici/).textContent).toMatch(/codici\.$/);
   });
 });

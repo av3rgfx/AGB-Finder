@@ -764,9 +764,19 @@ model Article {
   /// PDF. Una marca senza catalogo funziona lo stesso, con articoli senza foto;
   /// l'archivio non dipende dal catalogo per essere utile.
   catalogPage Int?    @map("catalog_page")
-  /// URL su Vercel Blob PUBBLICO (`colombo/<codeNorm>.jpg`), mai byte in
-  /// Postgres: le 7.082 foto AGB dentro il DB sono la causa unica dei tre
-  /// limiti di piattaforma più caldi.
+  /// CHIAVE su Vercel Blob **PRIVATO**, senza suffisso di formato:
+  /// `maniglie/colombo/<archivio>/<nome-file>`. I due WebP sono `-320` (miniatura
+  /// di riga) e `-900` (scheda), e i byte passano sempre da `/api/article-image`,
+  /// dietro auth: sono foto di un fornitore, e `public/` è escluso perché il repo
+  /// è pubblico. Mai byte in Postgres: le 7.082 foto AGB dentro il DB sono la
+  /// causa unica dei tre limiti di piattaforma più caldi.
+  ///
+  /// La scrive `pnpm foto:colombo` (mappatura in `foto-archivio.ts`). NULL =
+  /// nessuna foto, che per il 42% dei codici è la normalità — minuteria e
+  /// accessoristica che nessun catalogo fotografa una per una.
+  ///
+  /// Il nome della colonna dice «url» ed è ereditato: rinominarlo costerebbe una
+  /// migrazione per un fatto che questo commento già chiarisce.
   imageUrl String? @map("image_url")
 
   /// Data dell'ultimo import di listino che conteneva il codice. Esiste per il

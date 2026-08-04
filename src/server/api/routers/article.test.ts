@@ -148,6 +148,92 @@ describe("article.search", () => {
   });
 });
 
+describe("il filtro delle finiture", () => {
+  it("non si applica cercando per testo: chi scrive un codice vuole quel codice", async () => {
+    await expect(
+      caller(agent).article.search({ query: "fedra", finitura: "CR" }),
+    ).rejects.toThrow(/finitura vale solo sfogliando/);
+  });
+
+  it("offre solo le finiture presenti, non tutte e trentuno", async () => {
+    articleFindMany.mockResolvedValue([
+      { code: "0AC11R-CR" },
+      { code: "0AC11R-CM" },
+      { code: "0AC11RY-CR" },
+      { code: "0CD41R-CR8" }, // bicolore, non pubblicato fra le 31
+    ]);
+    const res = await caller(agent).article.finiture({});
+    expect(res.finiture.map((f) => [f.codice, f.count])).toEqual([
+      ["CR", 2],
+      ["CM", 1],
+    ]);
+  });
+
+  it("il numero conta l'insieme che si ha davanti, non un altro", async () => {
+    // Con «solo pronta consegna» acceso, l'elenco delle finiture conta i codici
+    // pronti: un numero che cambia significato senza dirlo è la classe di
+    // difetto che questo reparto ha già chiuso.
+    stockImportFindFirst.mockResolvedValue({ id: "imp1", importedAt: new Date("2026-08-01") });
+    stockLineFindMany.mockResolvedValue([{ articleId: "a1" }]);
+    articleFindMany.mockResolvedValue([{ code: "0AC11R-CR" }]);
+
+    const res = await caller(agent).article.finiture({ soloPronta: true });
+    expect(res.finiture).toEqual([
+      { codice: "CR", nome: "Cromo", colore: "#EAE7E6", count: 1 },
+    ]);
+    // La lista di id passa al `where`, non una regola dentro la query.
+    expect(articleFindMany.mock.calls.at(-1)?.[0]?.where).toEqual({
+      brand: "COLOMBO",
+      id: { in: ["a1"] },
+    });
+  });
+
+  it("senza nulla in pronta consegna non offre finiture, invece di offrirle tutte", async () => {
+    stockImportFindFirst.mockResolvedValue(null);
+    const res = await caller(agent).article.finiture({ soloPronta: true });
+    expect(res.finiture).toEqual([]);
+  });
+});
+
+describe("la foto: dalla chiave a DB all'URL della route", () => {
+  const CHIAVE = "maniglie/colombo/01-fedra/fedra-1ol";
+
+  it("la chiave non esce mai grezza verso il browser", async () => {
+    // A DB c'è la CHIAVE Blob (store privato): il browser deve ricevere solo un
+    // percorso della nostra applicazione, che passa dall'auth.
+    vi.mocked(searchArticleIds).mockResolvedValue({ hits: [{ id: "a1", score: 1 }], total: 1 });
+    articleFindMany.mockResolvedValue([article({ imageUrl: CHIAVE })]);
+
+    const res = await caller(agent).article.search({ query: "fedra" });
+    expect(res.hits[0]!.imageUrl).toBe(
+      "/api/article-image?k=maniglie%2Fcolombo%2F01-fedra%2Ffedra-1ol&size=320",
+    );
+  });
+
+  it("senza foto l'URL è null: nessuna richiesta sprecata per il 42% scoperto", async () => {
+    vi.mocked(searchArticleIds).mockResolvedValue({ hits: [{ id: "a1", score: 1 }], total: 1 });
+    articleFindMany.mockResolvedValue([article({ imageUrl: null })]);
+
+    const res = await caller(agent).article.search({ query: "vite" });
+    expect(res.hits[0]!.imageUrl).toBeNull();
+  });
+
+  it("la scheda riceve anche il formato grande", async () => {
+    articleFindUnique.mockResolvedValue(article({ imageUrl: CHIAVE }));
+    const res = await caller(agent).article.getById({ id: "a1" });
+    expect(res.imageUrl).toContain("size=320");
+    expect(res.imageUrlLarge).toBe(
+      "/api/article-image?k=maniglie%2Fcolombo%2F01-fedra%2Ffedra-1ol&size=900",
+    );
+  });
+
+  it("senza foto anche il formato grande è null", async () => {
+    articleFindUnique.mockResolvedValue(article({ imageUrl: null }));
+    const res = await caller(agent).article.getById({ id: "a1" });
+    expect(res.imageUrlLarge).toBeNull();
+  });
+});
+
 describe("article.getById", () => {
   it("espone ENTRAMBE le metà del prezzo, oltre al totale", async () => {
     // Il surcharge è temporaneo per definizione: deve essere leggibile.

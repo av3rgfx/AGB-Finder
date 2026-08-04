@@ -15,6 +15,7 @@ import {
   currentStockImport,
 } from "@/server/maniglie/stock-status";
 import { matchStockCodes } from "@/server/maniglie/stock-file";
+import { contaFiniture, finituraDiCodice } from "@/server/maniglie/finiture";
 
 /**
  * Reparto maniglie — ricerca e scheda articolo.
@@ -41,6 +42,18 @@ const ARTICLE_FIELDS = {
 
 type ArticleRow = Prisma.ArticleGetPayload<{ select: typeof ARTICLE_FIELDS }>;
 
+/**
+ * `articles.image_url` conserva la CHIAVE Blob, non un URL: il file sta su uno
+ * store PRIVATO e i byte passano sempre da `/api/article-image`, che è dietro
+ * auth. Il browser vede solo un percorso della nostra applicazione.
+ *
+ * `null` quando la foto non c'è — il 42% dei codici, che è minuteria che nessun
+ * catalogo fotografa: così la pagina non spende una richiesta per scoprirlo.
+ */
+function urlFoto(chiave: string | null, size: 320 | 900): string | null {
+  return chiave === null ? null : `/api/article-image?k=${encodeURIComponent(chiave)}&size=${size}`;
+}
+
 function toSummary(a: ArticleRow, inStock: boolean) {
   return {
     id: a.id,
@@ -51,7 +64,8 @@ function toSummary(a: ArticleRow, inStock: boolean) {
     total: articleTotal(a.priceList, a.surcharge).toNumber(),
     ean: a.ean,
     catalogPage: a.catalogPage,
-    imageUrl: a.imageUrl,
+    /** Miniatura: è la misura del posto che le righe hanno già (44px, retina). */
+    imageUrl: urlFoto(a.imageUrl, 320),
     inStock,
   };
 }
@@ -96,6 +110,8 @@ export const searchInputSchema = z
     famiglia: z.string().trim().min(1).max(100).optional(),
     /** Filtro «solo pronta consegna». Vive nello sfoglio, non nella ricerca. */
     soloPronta: z.boolean().default(false),
+    /** Filtro per finitura, una delle 31 pubblicate. Come sopra: solo sfogliando. */
+    finitura: z.string().trim().min(1).max(8).optional(),
     brand: z.string().trim().min(1).max(50).default("COLOMBO"),
     limit: z.number().int().min(1).max(50).default(20),
     offset: z.number().int().min(0).default(0),
@@ -111,6 +127,10 @@ export const searchInputSchema = z
     // accettarlo lì significherebbe restringere in silenzio dei risultati che
     // l'agente ha chiesto scrivendo.
     message: "Il filtro «solo pronta consegna» vale solo sfogliando.",
+  })
+  .refine((v) => !v.finitura || Boolean(v.tipo), {
+    // Stessa ragione: chi scrive un codice vuole quel codice, non il suo colore.
+    message: "Il filtro della finitura vale solo sfogliando.",
   });
 
 /**
@@ -128,6 +148,42 @@ async function prontaIds(db: PrismaClient, brand: string, solo: boolean) {
 }
 
 /**
+ * Gli id dei codici di una finitura, o `undefined` se non si filtra.
+ *
+ * La REGOLA — «qual è la finitura di un codice» — resta in TypeScript, come la
+ * disponibilità: al raw SQL arriva al massimo una lista di id già decisa. Sono
+ * 3.456 righe di due colonne, la stessa scala della query della giacenza.
+ */
+async function finituraIds(db: PrismaClient, brand: string, finitura: string | undefined) {
+  if (!finitura) return undefined;
+  const rows = await db.article.findMany({ where: { brand }, select: { id: true, code: true } });
+  return rows.filter((r) => finituraDiCodice(r.code) === finitura).map((r) => r.id);
+}
+
+/**
+ * I due filtri insieme. `undefined` = non filtrare; `[]` = filtro acceso e
+ * nessun risultato, che è un valore DIVERSO e i chiamanti lo distinguono.
+ */
+function intersecaIds(a: string[] | undefined, b: string[] | undefined) {
+  if (a === undefined) return b;
+  if (b === undefined) return a;
+  const set = new Set(b);
+  return a.filter((id) => set.has(id));
+}
+
+/** Gli id che sopravvivono a entrambi i filtri dello sfoglio. */
+async function idsFiltrati(
+  db: PrismaClient,
+  brand: string,
+  input: { soloPronta: boolean; finitura?: string },
+) {
+  return intersecaIds(
+    await prontaIds(db, brand, input.soloPronta),
+    await finituraIds(db, brand, input.finitura),
+  );
+}
+
+/**
  * Una pagina di codici presi SFOGLIANDO, non cercando. Le righe del gruppo si
  * leggono tutte (al massimo 338: MANIGLIONE) perché il filtro per famiglia è una
  * regola TypeScript e non una `WHERE`; poi si affetta.
@@ -141,6 +197,7 @@ async function browseSlice(
     tipo?: string;
     famiglia?: string;
     soloPronta: boolean;
+    finitura?: string;
     limit: number;
     offset: number;
   },
@@ -149,7 +206,7 @@ async function browseSlice(
     db,
     input.brand,
     input.tipo!,
-    await prontaIds(db, input.brand, input.soloPronta),
+    await idsFiltrati(db, input.brand, input),
   );
   const selected = input.famiglia ? filterByFamily(all, input.tipo!, input.famiglia) : all;
   const page = selected.slice(input.offset, input.offset + input.limit);
@@ -192,15 +249,50 @@ export const articleRouter = createTRPCRouter({
       z.object({
         brand: z.string().trim().min(1).max(50).default("COLOMBO"),
         soloPronta: z.boolean().default(false),
+        finitura: z.string().trim().min(1).max(8).optional(),
       }),
     )
     .query(async ({ ctx, input }) => ({
       groups: await browseFirstWords(
         ctx.db,
         input.brand,
-        await prontaIds(ctx.db, input.brand, input.soloPronta),
+        await idsFiltrati(ctx.db, input.brand, input),
       ),
     })),
+
+  /**
+   * Le finiture DA OFFRIRE, con quante ne contengono.
+   *
+   * Non le 31 sempre: quelle presenti nel contesto che si sta guardando — tutto
+   * il catalogo, oppure il gruppo che si sta sfogliando. Offrire una scelta che
+   * dà uno schermo vuoto è offrire un filtro che non filtra, e dentro FEDRA le
+   * finiture vere sono cinque, non trentuno.
+   *
+   * Rispetta «solo pronta consegna» (il numero conta l'insieme che si ha davanti)
+   * ma NON la finitura scelta: un filtro non può cancellare le proprie
+   * alternative, o sceglierne una sarebbe un vicolo cieco.
+   */
+  finiture: agentProcedure
+    .input(
+      z.object({
+        brand: z.string().trim().min(1).max(50).default("COLOMBO"),
+        tipo: z.string().trim().min(1).max(100).optional(),
+        soloPronta: z.boolean().default(false),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const soloIds = await prontaIds(ctx.db, input.brand, input.soloPronta);
+      if (input.tipo) {
+        const rows = await articleIdsByFirstWord(ctx.db, input.brand, input.tipo, soloIds);
+        return { finiture: contaFiniture(rows.map((r) => r.code)) };
+      }
+      if (soloIds?.length === 0) return { finiture: [] };
+      const rows = await ctx.db.article.findMany({
+        where: { brand: input.brand, ...(soloIds ? { id: { in: soloIds } } : {}) },
+        select: { code: true },
+      });
+      return { finiture: contaFiniture(rows.map((r) => r.code)) };
+    }),
 
   /**
    * SFOGLIO, livello 2: le famiglie di un gruppo. `families` vuoto significa che
@@ -217,6 +309,7 @@ export const articleRouter = createTRPCRouter({
         brand: z.string().trim().min(1).max(50).default("COLOMBO"),
         tipo: z.string().trim().min(1).max(100),
         soloPronta: z.boolean().default(false),
+        finitura: z.string().trim().min(1).max(8).optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -224,7 +317,7 @@ export const articleRouter = createTRPCRouter({
         ctx.db,
         input.brand,
         input.tipo,
-        await prontaIds(ctx.db, input.brand, input.soloPronta),
+        await idsFiltrati(ctx.db, input.brand, input),
       );
       const { families, loose } = splitGroup(rows, input.tipo);
 
@@ -319,6 +412,9 @@ export const articleRouter = createTRPCRouter({
       const { inStock, updates } = await resolveStock(ctx.db, [row]);
       return {
         ...toSummary(row, inStock.has(row.id)),
+        /** La scheda disegna la foto grande: 320px su un riquadro da 192 CSS px
+            sarebbe sgranata su ogni schermo retina. */
+        imageUrlLarge: urlFoto(row.imageUrl, 900),
         /** Le due metà, per la scheda: il surcharge è temporaneo e va poter essere letto. */
         priceList: row.priceList.toNumber(),
         surcharge: row.surcharge === null ? null : row.surcharge.toNumber(),

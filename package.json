@@ -27,7 +27,8 @@
     "format:check": "prettier --check .",
     "db:seed:maniglie": "tsx --env-file-if-exists=.env prisma/seed-maniglie.ts",
     "import:listino": "tsx --env-file-if-exists=.env scripts/import-listino.ts",
-    "measure:listino": "tsx scripts/measure-listino.ts"
+    "measure:listino": "tsx scripts/measure-listino.ts",
+    "foto:colombo": "tsx --env-file-if-exists=.env scripts/foto-colombo.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -74,6 +75,7 @@
     "prettier": "^3.4.0",
     "prettier-plugin-tailwindcss": "^0.6.11",
     "prisma": "^6.5.0",
+    "sharp": "^0.35.3",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",

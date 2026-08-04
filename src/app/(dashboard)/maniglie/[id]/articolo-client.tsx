@@ -33,7 +33,7 @@ export function ArticoloClient({ id }: { id: string }) {
       <IndietroLink />
 
       <div className="flex flex-col gap-5 rounded-md border border-line bg-surface p-4 shadow-card sm:flex-row sm:items-start sm:gap-6 sm:p-6">
-        <Foto url={a.imageUrl} />
+        <Foto url={a.imageUrlLarge} />
 
         <div className="flex min-w-0 flex-1 flex-col gap-3">
           <div className="flex flex-wrap items-center gap-2">
@@ -101,7 +101,11 @@ function Riga({ label, value }: { label: string; value: ReactNode }) {
   );
 }
 
-/** Foto d'articolo: assente o non caricata → segnaposto neutro, mai un errore. */
+/**
+ * Foto d'articolo, servita da `/api/article-image` (Blob privato, dietro auth).
+ * Assente o non caricata → segnaposto neutro, mai un errore: il 42% dei codici
+ * una foto non ce l'ha, ed è la normalità.
+ */
 function Foto({ url }: { url: string | null }) {
   const [failed, setFailed] = useState(false);
   const box = "h-40 w-40 shrink-0 rounded border border-line object-contain sm:h-48 sm:w-48";
@@ -116,7 +120,7 @@ function Foto({ url }: { url: string | null }) {
     );
   }
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- foto su Vercel Blob, URL esterno non ottimizzabile
+    // eslint-disable-next-line @next/next/no-img-element -- sorgente dinamica dietro auth, non da ottimizzare
     <img
       src={url}
       alt=""
