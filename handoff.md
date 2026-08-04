@@ -116,10 +116,16 @@
 >    scheda), non con un compromesso unico. ⚠️ Lo store Blob è **privato**: i byte
 >    passano da una route Node e pesano su Fast Origin Transfer.
 > 3. **Vercel Pro entro sabato 08/08** (Hobby vieta l'uso commerciale).
-> 4. Debito noto: il nome commerciale **non è ancora un canale di ricerca** —
->    `article.search` cerca su codice, nome ed EAN, e il nome del listino contiene
->    già LARA/PETER/FEDRA, quindi cercare «lara» funziona **per caso** (via trigram
->    sul campo `name`), non per disegno.
+> 4. **NON è un debito, è già fatto** (verificato eseguendo, dopo che l'avevo
+>    scritto al contrario): il nome commerciale **è già un canale di ricerca**.
+>    `search_vector` indicizza `name` con peso A, e il nome del listino contiene
+>    LARA/PETER/FEDRA — quindi «lara» → 28, «fedra» → 35, «peter» → 106,
+>    «robot» → **446**. La ricerca copre **più** dello sfoglio: il gruppo ROBOT ha
+>    129 codici, ma 446 descrizioni contengono «ROBOT» perché `MANIGLIONE ROBOT
+>    CD16/A` lo mette al SECONDO token. Sfoglio e ricerca sono complementari, e la
+>    ricerca è quella esaustiva — lo sfoglio non pretende di esserlo (dichiara «per
+>    la prima parola della descrizione»). Se mai servisse, il passo piccolo è un
+>    «vedi tutti i 446 che contengono ROBOT» dal gruppo; oggi si ottiene digitando.
 >
 > ### Cosa è successo (2026-08-04)
 >
