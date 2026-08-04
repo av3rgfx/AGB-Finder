@@ -142,20 +142,18 @@ async function browseSlice(
 
 export const articleRouter = createTRPCRouter({
   /**
-   * SFOGLIO, livello 1: i gruppi con quanti codici ciascuno, più la data
-   * dell'ultimo import. La data viaggia con i gruppi perché la schermata la
-   * mostra sopra l'elenco: chiederla a parte significherebbe disegnare lo
-   * sfoglio prima di sapere di quando è il dato che promette.
+   * SFOGLIO, livello 1: i gruppi, con quanti codici ciascuno.
+   *
+   * NON restituisce la data dell'ultimo import, anche se la schermata la mostra
+   * sopra l'elenco: quella la dà già `stockInfo`, e due procedure che affermano
+   * la stessa data sono due affermazioni che possono divergere. Di «quando è
+   * questo dato» ne esiste una fonte sola.
    */
   browseGroups: agentProcedure
     .input(z.object({ brand: z.string().trim().min(1).max(50).default("COLOMBO") }))
-    .query(async ({ ctx, input }) => {
-      const [groups, imp] = await Promise.all([
-        browseFirstWords(ctx.db, input.brand),
-        currentStockImport(ctx.db, input.brand),
-      ]);
-      return { groups, importedAt: imp?.importedAt ?? null };
-    }),
+    .query(async ({ ctx, input }) => ({
+      groups: await browseFirstWords(ctx.db, input.brand),
+    })),
 
   /**
    * SFOGLIO, livello 2: le famiglie di un gruppo. `families` vuoto significa che

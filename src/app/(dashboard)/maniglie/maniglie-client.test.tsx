@@ -14,11 +14,15 @@ const searchQuery = vi.fn();
 const stockInfoQuery = vi.fn<(...args: unknown[]) => { data?: { importedAt: Date | null } }>(
   () => ({}),
 );
+const browseGroupsQuery = vi.fn<(...args: unknown[]) => Record<string, unknown>>(() => ({}));
+const browseFamiliesQuery = vi.fn<(...args: unknown[]) => Record<string, unknown>>(() => ({}));
 vi.mock("@/trpc/react", () => ({
   api: {
     article: {
       search: { useQuery: (...args: unknown[]) => searchQuery(...args) },
       stockInfo: { useQuery: (...args: unknown[]) => stockInfoQuery(...args) },
+      browseGroups: { useQuery: (...args: unknown[]) => browseGroupsQuery(...args) },
+      browseFamilies: { useQuery: (...args: unknown[]) => browseFamiliesQuery(...args) },
     },
   },
 }));
@@ -77,11 +81,25 @@ function risultati(over: Record<string, unknown> = {}) {
   };
 }
 
+/** I gruppi veri del listino COLOMBO, coi loro conteggi veri. */
+const GRUPPI = [
+  { word: "MANIGLIONE", count: 338 },
+  { word: "BOCCHETTA", count: 288 },
+  { word: "KIT", count: 139 },
+  { word: "LARA", count: 28 },
+];
+
 beforeEach(() => {
   sp = new URLSearchParams("");
   replace.mockReset();
   searchQuery.mockReset().mockReturnValue(risultati());
   stockInfoQuery.mockReset().mockReturnValue({});
+  browseGroupsQuery
+    .mockReset()
+    .mockReturnValue({ data: { groups: GRUPPI }, isPending: false, isError: false, isFetching: false });
+  browseFamiliesQuery
+    .mockReset()
+    .mockReturnValue({ data: undefined, isPending: false, isError: false, isFetching: false });
   vi.useRealTimers();
 });
 
@@ -109,7 +127,7 @@ describe("ManiglieClient — la data c'è sempre", () => {
     senzaRicerca();
     stockInfoQuery.mockReturnValue({ data: { importedAt: IMPORTATO } });
     render(<ManiglieClient />);
-    expect(screen.getByText("Cerca un articolo")).toBeTruthy();
+    expect(screen.getByText("Sfoglia il catalogo")).toBeTruthy();
     expect(screen.getByText(/28 luglio 2026/)).toBeTruthy();
   });
 
@@ -132,10 +150,8 @@ describe("ManiglieClient — la data c'è sempre", () => {
 });
 
 describe("ManiglieClient — ricerca", () => {
-  it("prima di cercare invita a cercare, senza interrogare il server", () => {
+  it("prima di cercare NON interroga la ricerca", () => {
     render(<ManiglieClient />);
-    expect(screen.getByText("Cerca un articolo")).toBeTruthy();
-    expect(screen.getByText("0CD41R-CM").className).toContain("font-mono");
     expect(searchQuery.mock.calls[0]?.[1]).toMatchObject({ enabled: false });
   });
 
@@ -238,19 +254,16 @@ describe("ManiglieClient — ricerca", () => {
 
   // Con 3.456 codici un totale grande e venti righe a schermo si contraddicono:
   // lo si dice invece di lasciarlo intuire.
-  it("dice quante righe sta mostrando quando il totale è più grande", () => {
-    sp = new URLSearchParams("q=maniglia");
-    searchQuery.mockReturnValue(
-      risultati({
-        data: {
-          hits: articoli,
-          total: 214,
-          stockUpdates: [{ brand: "COLOMBO", importedAt: IMPORTATO }],
-        },
-      }),
-    );
+  it("con più risultati della pagina, la paginazione dice dove si è", () => {
+    // Prima non c'era: il client mandava `limit` e mai `offset`, quindi cercare
+    // «maniglione» mostrava 20 righe su 338 senza alcun modo di vedere le altre.
+    sp = new URLSearchParams("q=cd41");
+    searchQuery.mockReturnValue(risultati({ data: { hits: articoli, total: 214, stockUpdates: [] } }));
     render(<ManiglieClient />);
-    expect(screen.getByText(/214 articoli · mostrati i primi 3/)).toBeTruthy();
+    expect(screen.getByText("214 articoli")).toBeTruthy();
+    expect(screen.getByLabelText("Paginazione")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Successiva" }).hasAttribute("disabled")).toBe(false);
+    expect(screen.getByRole("button", { name: "Precedente" }).hasAttribute("disabled")).toBe(true);
   });
 
   it("in caricamento mostra uno skeleton, non uno spinner", () => {
@@ -339,5 +352,127 @@ describe("ManiglieClient — URL e debounce", () => {
     rerender(<ManiglieClient />);
     expect((screen.getByRole("searchbox") as HTMLInputElement).value).toBe("rosetta");
     expect(replace).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * SFOGLIO. La denuncia da cui nasce: `article.search` imponeva `query.min(1)` e
+ * il client non chiamava nulla finché non si digitava, quindi NON esisteva alcun
+ * percorso che elencasse qualcosa senza scrivere. «Disponibilità» era una
+ * casella bianca, e rispondeva solo a chi già conosceva il codice.
+ */
+describe("ManiglieClient — sfoglio", () => {
+  it("appena aperta la pagina elenca i gruppi, senza che si sia digitato nulla", () => {
+    render(<ManiglieClient />);
+    expect(screen.getByText("Sfoglia il catalogo")).toBeTruthy();
+    expect(screen.getByText("MANIGLIONE")).toBeTruthy();
+    expect(screen.getByText("338 codici")).toBeTruthy();
+    expect(searchQuery.mock.calls[0]?.[1]).toMatchObject({ enabled: false });
+  });
+
+  it("dichiara da dove vengono le etichette", () => {
+    // Sono parole di COLOMBO, refusi compresi. Senza l'origine a schermo
+    // sembrerebbero una classificazione nostra.
+    render(<ManiglieClient />);
+    expect(screen.getByText(/prima parola della descrizione a listino/i)).toBeTruthy();
+  });
+
+  it("ogni gruppo porta al proprio livello 2 via URL, non via stato nascosto", () => {
+    render(<ManiglieClient />);
+    const link = screen.getByText("LARA").closest("a");
+    expect(link?.getAttribute("href")).toBe("/maniglie?tipo=LARA");
+  });
+
+  it("dentro un gruppo mostra le famiglie, in mono perché sono pezzi di codice", () => {
+    sp = new URLSearchParams("tipo=LARA");
+    browseFamiliesQuery.mockReturnValue({
+      data: { families: [{ family: "CB71R", count: 8 }], loose: [], total: 8 },
+      isPending: false,
+      isError: false,
+      isFetching: false,
+    });
+    render(<ManiglieClient />);
+    expect(screen.getByText("CB71R").className).toContain("font-mono");
+    expect(screen.getByText("8 codici")).toBeTruthy();
+    // Il livello 3 non si chiede finché non si sceglie una famiglia.
+    expect(searchQuery.mock.calls[0]?.[1]).toMatchObject({ enabled: false });
+  });
+
+  it("i codici SENZA famiglia restano raggiungibili, sotto le famiglie", () => {
+    // Su 114 gruppi veri, SETTANTA hanno copertura parziale: mostrare le sole
+    // famiglie renderebbe irraggiungibili codici che hanno prezzo e giacenza.
+    sp = new URLSearchParams("tipo=LARA");
+    browseFamiliesQuery.mockReturnValue({
+      data: { families: [{ family: "CB71R", count: 8 }], loose: [articoli[0]], total: 9 },
+      isPending: false,
+      isError: false,
+      isFetching: false,
+    });
+    render(<ManiglieClient />);
+    expect(screen.getByText("Senza famiglia")).toBeTruthy();
+    expect(screen.getByText(/il listino non lega a una famiglia/i)).toBeTruthy();
+    expect(screen.getByText("MANIGLIA ROBOQUATTRO")).toBeTruthy();
+  });
+
+  it("un gruppo senza famiglie salta il livello 2 e mostra i codici", () => {
+    // KIT: 139 codici e zero famiglie. Un livello che non divide nulla sarebbe
+    // un tocco in più per vedere la stessa identica lista.
+    sp = new URLSearchParams("tipo=KIT");
+    browseFamiliesQuery.mockReturnValue({
+      data: { families: [], loose: [], total: 139 },
+      isPending: false,
+      isError: false,
+      isFetching: false,
+    });
+    render(<ManiglieClient />);
+    expect(searchQuery.mock.calls[0]?.[0]).toMatchObject({ tipo: "KIT" });
+    expect(searchQuery.mock.calls[0]?.[1]).toMatchObject({ enabled: true });
+    expect(screen.getByText("MANIGLIA ROBOQUATTRO")).toBeTruthy();
+  });
+
+  it("scelta la famiglia chiede i codici di quella famiglia", () => {
+    sp = new URLSearchParams("tipo=LARA&fam=CB71R");
+    render(<ManiglieClient />);
+    expect(searchQuery.mock.calls[0]?.[0]).toMatchObject({ tipo: "LARA", famiglia: "CB71R" });
+    expect(searchQuery.mock.calls[0]?.[1]).toMatchObject({ enabled: true });
+  });
+
+  it("i chip dicono dove si è, e la ✕ è un link (così il tasto indietro funziona)", () => {
+    sp = new URLSearchParams("tipo=LARA&fam=CB71R");
+    render(<ManiglieClient />);
+    expect(screen.getByLabelText("Togli il gruppo LARA").getAttribute("href")).toBe("/maniglie");
+    expect(screen.getByLabelText("Togli la famiglia CB71R").getAttribute("href")).toBe(
+      "/maniglie?tipo=LARA",
+    );
+  });
+
+  it("l'offset segue la pagina dell'URL: era il debito dichiarato", () => {
+    sp = new URLSearchParams("tipo=LARA&fam=CB71R&p=3");
+    render(<ManiglieClient />);
+    expect(searchQuery.mock.calls[0]?.[0]).toMatchObject({ offset: 40, limit: 20 });
+  });
+
+  it("digitare abbandona lo sfoglio invece di cercare dentro un gruppo invisibile", async () => {
+    sp = new URLSearchParams("tipo=LARA&fam=CB71R");
+    render(<ManiglieClient />);
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "peruzzi" } });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 350));
+    });
+    expect(replace).toHaveBeenCalledWith("/maniglie?q=peruzzi", { scroll: false });
+  });
+
+  it("la fascia della data è sticky: in una lista lunga il pallino verde non resta senza data", () => {
+    stockInfoQuery.mockReturnValue({ data: { importedAt: IMPORTATO } });
+    searchQuery.mockReturnValue({
+      data: undefined,
+      isPending: false,
+      isError: false,
+      isFetching: false,
+    });
+    render(<ManiglieClient />);
+    const fascia = screen.getByText(/aggiornata al/i).closest("p");
+    expect(fascia?.className).toContain("sticky");
+    expect(fascia?.className).toContain("top-0");
   });
 });
