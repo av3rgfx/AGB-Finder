@@ -108,9 +108,23 @@ export function SfogliaGruppi({ groups, soloPronta }: { groups: Gruppo[]; soloPr
             NON è pignoleria: un numero che cambia significato senza dirlo è la
             classe di difetto che il progetto ha chiuso otto volte, e qui
             cambierebbe di venti volte (178 pronti su 3.456). */}
+        {/* «per la prima parola della descrizione a listino» è diventato FALSO
+            con la curatela: ROSETTA raccoglie anche le righe scritte `ROS.`, e
+            ROBOCINQUE S è un pezzo del gruppo ROBOCINQUE. Descriveva un
+            meccanismo che non è più quello, ed era la stessa forma del difetto
+            che questo reparto ha già corretto una volta (una sezione chiamata
+            «Disponibilità» che nominava un attributo falso 95 volte su 100). */}
         <p className="text-xs text-ink-subtle">
-          {groups.length} gruppi in ordine alfabetico, per la prima parola della descrizione a
-          listino. Il numero è quanti codici{soloPronta ? " in pronta consegna" : ""}.
+          {groups.length} gruppi in ordine alfabetico, come li nomina COLOMBO. Il numero è quanti
+          codici{soloPronta ? " in pronta consegna" : ""}.
+        </p>
+        {/* Ciò che il programma ha deciso e che senza questa riga non direbbe:
+            cinque categorie non si sfogliano affatto. Chi cercasse una vite qui
+            e non la trovasse concluderebbe che non la trattiamo — mentre è a
+            magazzino e la ricerca la restituisce. È la classe «valore deciso dal
+            programma e mai dichiarato», che qui costerebbe una telefonata. */}
+        <p className="text-xs text-ink-subtle">
+          Viti, dadi, chiavi e rondelle non si sfogliano: si trovano scrivendole nella ricerca.
         </p>
       </div>
 
