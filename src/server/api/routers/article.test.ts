@@ -148,6 +148,53 @@ describe("article.search", () => {
   });
 });
 
+describe("il filtro delle finiture", () => {
+  it("non si applica cercando per testo: chi scrive un codice vuole quel codice", async () => {
+    await expect(
+      caller(agent).article.search({ query: "fedra", finitura: "CR" }),
+    ).rejects.toThrow(/finitura vale solo sfogliando/);
+  });
+
+  it("offre solo le finiture presenti, non tutte e trentuno", async () => {
+    articleFindMany.mockResolvedValue([
+      { code: "0AC11R-CR" },
+      { code: "0AC11R-CM" },
+      { code: "0AC11RY-CR" },
+      { code: "0CD41R-CR8" }, // bicolore, non pubblicato fra le 31
+    ]);
+    const res = await caller(agent).article.finiture({});
+    expect(res.finiture.map((f) => [f.codice, f.count])).toEqual([
+      ["CR", 2],
+      ["CM", 1],
+    ]);
+  });
+
+  it("il numero conta l'insieme che si ha davanti, non un altro", async () => {
+    // Con «solo pronta consegna» acceso, l'elenco delle finiture conta i codici
+    // pronti: un numero che cambia significato senza dirlo è la classe di
+    // difetto che questo reparto ha già chiuso.
+    stockImportFindFirst.mockResolvedValue({ id: "imp1", importedAt: new Date("2026-08-01") });
+    stockLineFindMany.mockResolvedValue([{ articleId: "a1" }]);
+    articleFindMany.mockResolvedValue([{ code: "0AC11R-CR" }]);
+
+    const res = await caller(agent).article.finiture({ soloPronta: true });
+    expect(res.finiture).toEqual([
+      { codice: "CR", nome: "Cromo", colore: "#EAE7E6", count: 1 },
+    ]);
+    // La lista di id passa al `where`, non una regola dentro la query.
+    expect(articleFindMany.mock.calls.at(-1)?.[0]?.where).toEqual({
+      brand: "COLOMBO",
+      id: { in: ["a1"] },
+    });
+  });
+
+  it("senza nulla in pronta consegna non offre finiture, invece di offrirle tutte", async () => {
+    stockImportFindFirst.mockResolvedValue(null);
+    const res = await caller(agent).article.finiture({ soloPronta: true });
+    expect(res.finiture).toEqual([]);
+  });
+});
+
 describe("la foto: dalla chiave a DB all'URL della route", () => {
   const CHIAVE = "maniglie/colombo/01-fedra/fedra-1ol";
 

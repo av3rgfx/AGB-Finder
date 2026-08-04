@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { FINITURE, FINITURE_PER_CODICE, finituraDiCodice } from "./finiture";
+import { contaFiniture, FINITURE, FINITURE_PER_CODICE, finituraDiCodice } from "./finiture";
 
 describe("finiture ufficiali COLOMBO", () => {
   it("sono trentuno, come la pagina 13 del catalogo", () => {
@@ -38,5 +38,31 @@ describe("finiture ufficiali COLOMBO", () => {
   it("l'indice per codice ha una voce per finitura", () => {
     expect(FINITURE_PER_CODICE.get("OL")?.nome).toBe("Oroplus");
     expect(FINITURE_PER_CODICE.size).toBe(31);
+  });
+});
+
+describe("conteggio per finitura", () => {
+  it("conta solo le code ufficiali, nell'ordine in cui COLOMBO le pubblica", () => {
+    const n = contaFiniture([
+      "0AC11R-CR",
+      "0AC11R-CM",
+      "0AC11RY-CR",
+      "0CD41R-OL",
+      "0CD41R-CR8", // bicolore: non è fra le 31
+      "CB22DKSMSXCR8", // senza trattino
+    ]);
+    expect(n).toEqual([
+      { codice: "OL", nome: "Oroplus", colore: "#F8EAB4", count: 1 },
+      { codice: "CR", nome: "Cromo", colore: "#EAE7E6", count: 2 },
+      { codice: "CM", nome: "Cromat", colore: "#D6D4D4", count: 1 },
+    ]);
+  });
+
+  it("una finitura senza codici non compare: sceglierla darebbe uno schermo vuoto", () => {
+    expect(contaFiniture(["0AC11R-CR"]).map((f) => f.codice)).toEqual(["CR"]);
+  });
+
+  it("su un elenco vuoto non c'è niente da offrire", () => {
+    expect(contaFiniture([])).toEqual([]);
   });
 });

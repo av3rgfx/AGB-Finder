@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ChevronRight, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Palette, X } from "lucide-react";
 
 /**
  * SFOGLIO — il catalogo COLOMBO senza digitare nulla.
@@ -30,7 +30,40 @@ export interface Famiglia {
   count: number;
 }
 
+/**
+ * La finitura scelta: il CODICE va negli URL, il NOME nelle frasi. Tenerli
+ * insieme evita che un chiamante metta «CM» in una frase italiana o «Cromat» in
+ * un parametro.
+ */
+export type FinituraScelta = { codice: string; nome: string } | null;
+
 const conteggio = (n: number) => `${n} ${n === 1 ? "codice" : "codici"}`;
+
+/**
+ * I filtri di pagina, in coda a ogni link dello sfoglio. Una regola sola e non
+ * quattro: scendere di livello non deve spegnere in silenzio un filtro che si è
+ * acceso, e con quattro copie sparse basta dimenticarne una perché l'insieme
+ * cambi senza che nessuno l'abbia chiesto.
+ */
+function codaFiltri(soloPronta: boolean, finitura: FinituraScelta): string {
+  const p = new URLSearchParams();
+  if (soloPronta) p.set("pronta", "1");
+  if (finitura) p.set("finitura", finitura.codice);
+  return p.toString();
+}
+
+/**
+ * La frase che dichiara di cosa sia il numero mostrato. Il numero che cambia
+ * insieme senza dirlo è la classe di difetto che questo progetto ha già chiuso
+ * otto volte: qui cambia di venti volte col filtro della pronta consegna (178
+ * pronti su 3.456) e di sei col colore più raro.
+ */
+function insiemeContato(soloPronta: boolean, finitura: FinituraScelta): string {
+  const parti: string[] = [];
+  if (soloPronta) parti.push("in pronta consegna");
+  if (finitura) parti.push(`nella finitura ${finitura.nome}`);
+  return parti.length ? ` ${parti.join(" e ")}` : "";
+}
 
 /**
  * Riga di navigazione: etichetta, quanti codici contiene, e dove porta.
@@ -88,7 +121,15 @@ function RigaSfoglia({
  * la fa l'occhio di chi guarda. Filtra SOLO le 114 etichette già in memoria:
  * nessuna query, e non è la ricerca articoli — quella sta sopra ed è un'altra cosa.
  */
-export function SfogliaGruppi({ groups, soloPronta }: { groups: Gruppo[]; soloPronta: boolean }) {
+export function SfogliaGruppi({
+  groups,
+  soloPronta,
+  finitura,
+}: {
+  groups: Gruppo[];
+  soloPronta: boolean;
+  finitura: FinituraScelta;
+}) {
   const [filtro, setFiltro] = useState("");
   const cerca = filtro.trim().toUpperCase();
   const visibili = cerca ? groups.filter((g) => g.word.includes(cerca)) : groups;
@@ -116,7 +157,7 @@ export function SfogliaGruppi({ groups, soloPronta }: { groups: Gruppo[]; soloPr
             «Disponibilità» che nominava un attributo falso 95 volte su 100). */}
         <p className="text-xs text-ink-subtle">
           {groups.length} gruppi in ordine alfabetico, come li nomina COLOMBO. Il numero è quanti
-          codici{soloPronta ? " in pronta consegna" : ""}.
+          codici{insiemeContato(soloPronta, finitura)}.
         </p>
         {/* Ciò che il programma ha deciso e che senza questa riga non direbbe:
             cinque categorie non si sfogliano affatto. Chi cercasse una vite qui
@@ -143,13 +184,13 @@ export function SfogliaGruppi({ groups, soloPronta }: { groups: Gruppo[]; soloPr
       {visibili.length === 0 ? (
         <p className="rounded-md border border-dashed border-line-strong bg-surface p-6 text-center text-sm text-ink-subtle">
           {cerca
-            ? `Nessun gruppo contiene «${filtro.trim()}»${soloPronta ? " fra quelli in pronta consegna" : ""}. Per cercare un articolo usa il campo qui sopra.`
+            ? `Nessun gruppo contiene «${filtro.trim()}»${insiemeContato(soloPronta, finitura) ? ` fra quelli${insiemeContato(soloPronta, finitura)}` : ""}. Per cercare un articolo usa il campo qui sopra.`
             : "Nessun articolo in pronta consegna."}
         </p>
       ) : (
         <ul className="grid list-none grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
           {visibili.map((g) => (
-            <ChipGruppo key={g.word} gruppo={g} soloPronta={soloPronta} />
+            <ChipGruppo key={g.word} gruppo={g} coda={codaFiltri(soloPronta, finitura)} />
           ))}
         </ul>
       )}
@@ -192,11 +233,11 @@ export function SoloPronta({ value, onChange }: { value: boolean; onChange: (v: 
  * Troncare qui significherebbe rendere illeggibile proprio l'unica cosa che il
  * chip contiene.
  */
-function ChipGruppo({ gruppo, soloPronta }: { gruppo: Gruppo; soloPronta: boolean }) {
+function ChipGruppo({ gruppo, coda }: { gruppo: Gruppo; coda: string }) {
   return (
     <li>
       <Link
-        href={`/maniglie?tipo=${encodeURIComponent(gruppo.word)}${soloPronta ? "&pronta=1" : ""}`}
+        href={`/maniglie?tipo=${encodeURIComponent(gruppo.word)}${coda ? `&${coda}` : ""}`}
         aria-label={`${gruppo.word}, ${conteggio(gruppo.count)}`}
         className="flex h-full min-h-[56px] flex-col justify-center gap-0.5 rounded-md border border-line bg-surface px-3 py-2 transition-colors duration-150 hover:border-line-strong hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
       >
@@ -216,17 +257,20 @@ export function SfogliaFamiglie({
   tipo,
   families,
   soloPronta,
+  finitura,
 }: {
   tipo: string;
   families: Famiglia[];
   soloPronta: boolean;
+  finitura: FinituraScelta;
 }) {
+  const coda = codaFiltri(soloPronta, finitura);
   return (
     <ul className="list-none overflow-hidden rounded-md border border-line">
       {families.map((f) => (
         <RigaSfoglia
           key={f.family}
-          href={`/maniglie?tipo=${encodeURIComponent(tipo)}&fam=${encodeURIComponent(f.family)}${soloPronta ? "&pronta=1" : ""}`}
+          href={`/maniglie?tipo=${encodeURIComponent(tipo)}&fam=${encodeURIComponent(f.family)}${coda ? `&${coda}` : ""}`}
           label={f.family}
           count={f.count}
           mono
@@ -265,13 +309,16 @@ export function FiltriSfoglia({
   tipo,
   famiglia,
   soloPronta,
+  finitura,
 }: {
   tipo: string;
   famiglia: string;
   soloPronta: boolean;
+  finitura: FinituraScelta;
 }) {
   if (!tipo) return null;
-  const coda = soloPronta ? "?pronta=1" : "";
+  const filtri = codaFiltri(soloPronta, finitura);
+  const coda = filtri ? `?${filtri}` : "";
   return (
     <nav aria-label="Dove sei" className="flex flex-wrap items-center gap-2">
 
@@ -286,7 +333,7 @@ export function FiltriSfoglia({
         <Chip
           label={famiglia}
           mono
-          href={`/maniglie?tipo=${encodeURIComponent(tipo)}${soloPronta ? "&pronta=1" : ""}`}
+          href={`/maniglie?tipo=${encodeURIComponent(tipo)}${coda.replace("?", "&")}`}
           removeLabel={`Togli la famiglia ${famiglia}`}
         />
       ) : null}
@@ -316,5 +363,110 @@ function Chip({
         <X className="size-3.5" aria-hidden />
       </Link>
     </span>
+  );
+}
+
+export interface FinituraOpzione {
+  codice: string;
+  nome: string;
+  colore: string;
+  count: number;
+}
+
+/**
+ * FILTRO FINITURA — la quattordicesima riga di Andrea.
+ *
+ * Sul listino vero l'88,7% dei codici (3.065 su 3.456) ha come coda una delle 31
+ * finiture che COLOMBO pubblica. Le altre code sono bicolori (`CR8` =
+ * CROMO/CROMAT) e misure: non compaiono, perché inventare una categoria sulle
+ * code non riconosciute è ciò che la scheda misure vieta.
+ *
+ * Sta dentro un `<details>` NATIVO e non dietro uno stato React: nel catalogo
+ * intero le finiture presenti sono 28, che aperte occupano mezzo schermo a
+ * 375px — e il filtro, per definizione, è spento quasi sempre. Il tag nativo dà
+ * gratis tastiera, `aria-expanded` e lo stato di apertura; una disclosure scritta
+ * a mano sarebbe più codice e meno accessibile.
+ *
+ * Il pallino è DECORATIVO: il colore è campionato dalle pastiglie di catalogo,
+ * non dichiarato da COLOMBO, e a portare il significato è il nome. Chi non
+ * distingue i colori legge «Cromat» e ha la stessa informazione.
+ */
+export function FiltroFinitura({
+  opzioni,
+  value,
+  onChange,
+}: {
+  opzioni: FinituraOpzione[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  if (opzioni.length === 0) return null;
+  const scelta = opzioni.find((o) => o.codice === value);
+
+  return (
+    <details className="w-full rounded-md border border-line bg-surface sm:w-fit">
+      <summary className="flex min-h-[44px] cursor-pointer list-none items-center gap-2.5 px-3 py-2 transition-colors duration-150 hover:bg-surface-sunken">
+        {scelta ? (
+          <Pastiglia colore={scelta.colore} />
+        ) : (
+          <Palette className="size-4 text-ink-subtle" aria-hidden />
+        )}
+        <span className="text-sm font-medium text-ink">
+          {scelta ? `Finitura: ${scelta.nome}` : "Finitura"}
+        </span>
+        <ChevronDown className="ml-auto size-4 text-ink-subtle" aria-hidden />
+      </summary>
+
+      <div className="border-t border-line p-2">
+        {/* Due colonne a 375px: i nomi sono parole intere («Strawberry Red»), e
+            a una colonna l'elenco diventerebbe una lista da scorrere. */}
+        <ul className="grid list-none grid-cols-2 gap-1 sm:grid-cols-4">
+          {scelta ? (
+            <li className="col-span-full">
+              <button
+                type="button"
+                onClick={() => onChange("")}
+                className="flex min-h-[36px] w-full items-center rounded px-2 text-sm text-ink-muted transition-colors duration-150 hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+              >
+                Tutte le finiture
+              </button>
+            </li>
+          ) : null}
+          {opzioni.map((o) => {
+            const attiva = o.codice === value;
+            return (
+              <li key={o.codice}>
+                <button
+                  type="button"
+                  aria-pressed={attiva}
+                  onClick={() => onChange(attiva ? "" : o.codice)}
+                  className={`flex min-h-[36px] w-full items-center gap-2 rounded px-2 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
+                    attiva ? "bg-brand-light font-medium text-ink" : "text-ink hover:bg-surface-sunken"
+                  }`}
+                >
+                  <Pastiglia colore={o.colore} />
+                  <span className="min-w-0 flex-1 truncate text-sm">{o.nome}</span>
+                  <span className="shrink-0 text-xs tabular-nums text-ink-subtle">{o.count}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </details>
+  );
+}
+
+/**
+ * Il bordo non è decorazione: `White` è `#FFFEF2` e su fondo bianco sparirebbe,
+ * lasciando una pastiglia invisibile accanto a un nome.
+ */
+function Pastiglia({ colore }: { colore: string }) {
+  return (
+    <span
+      aria-hidden
+      className="size-4 shrink-0 rounded-full border border-line-strong"
+      style={{ backgroundColor: colore }}
+    />
   );
 }

@@ -71,3 +71,28 @@ export function finituraDiCodice(code: string): string | null {
   const coda = code.slice(i + 1).toUpperCase();
   return FINITURE_PER_CODICE.has(coda) ? coda : null;
 }
+
+export interface FinituraCount extends Finitura {
+  count: number;
+}
+
+/**
+ * Quante volte ciascuna finitura ufficiale compare in coda a un elenco di codici,
+ * **nell'ordine in cui COLOMBO le pubblica** — che è l'ordine per trattamento
+ * (PVD, galvanico, a polvere), non l'alfabetico né la numerosità.
+ *
+ * Le finiture senza codici NON compaiono: offrire una scelta che dà uno schermo
+ * vuoto è la stessa cosa che offrire un filtro che non filtra.
+ *
+ * Chi chiama passa i codici del contesto in cui l'elenco verrà mostrato (tutto il
+ * catalogo, oppure il gruppo che si sta sfogliando): così il numero accanto al
+ * nome conta l'insieme che si ha davanti, e non un altro.
+ */
+export function contaFiniture(codes: string[]): FinituraCount[] {
+  const n = new Map<string, number>();
+  for (const code of codes) {
+    const f = finituraDiCodice(code);
+    if (f) n.set(f, (n.get(f) ?? 0) + 1);
+  }
+  return FINITURE.filter((f) => n.has(f.codice)).map((f) => ({ ...f, count: n.get(f.codice)! }));
+}

@@ -13,6 +13,7 @@ import { StockBadge } from "@/components/maniglie/stock-badge";
 import { StockDate } from "@/components/maniglie/stock-date";
 import {
   FiltriSfoglia,
+  FiltroFinitura,
   SenzaFamiglia,
   SfogliaFamiglie,
   SfogliaGruppi,
@@ -39,6 +40,9 @@ export function ManiglieClient() {
   // Il filtro sta nell'URL come tutto il resto: si condivide, il tasto indietro
   // lo spegne, e nessuno stato nascosto decide cosa l'agente sta guardando.
   const soloPronta = searchParams.get("pronta") === "1";
+  // La finitura è un filtro come gli altri: sta nell'URL, quindi si condivide e
+  // il tasto indietro la spegne. `""` = tutte.
+  const finitura = (searchParams.get("finitura") ?? "").trim();
   const page = Math.max(1, Number(searchParams.get("p") ?? "1") || 1);
 
   const [queryInput, setQueryInput] = useState(committed);
@@ -77,13 +81,13 @@ export function ManiglieClient() {
 
   // Livello 1: i gruppi. Solo quando non si sta né cercando né sfogliando.
   const gruppi = api.article.browseGroups.useQuery(
-    { soloPronta },
+    { soloPronta, ...(finitura ? { finitura } : {}) },
     { enabled: !cercando && !tipo, staleTime: 5 * 60_000 },
   );
 
   // Livello 2: le famiglie del gruppo. Non serve se si è già scesi a una.
   const famiglie = api.article.browseFamilies.useQuery(
-    { tipo, soloPronta },
+    { tipo, soloPronta, ...(finitura ? { finitura } : {}) },
     { enabled: sfogliando && !famiglia, staleTime: 5 * 60_000 },
   );
 
@@ -96,7 +100,12 @@ export function ManiglieClient() {
     {
       ...(cercando
         ? { query: committed }
-        : { tipo, soloPronta, ...(famiglia ? { famiglia } : {}) }),
+        : {
+            tipo,
+            soloPronta,
+            ...(famiglia ? { famiglia } : {}),
+            ...(finitura ? { finitura } : {}),
+          }),
       limit: PAGE_SIZE,
       offset: (page - 1) * PAGE_SIZE,
     },
@@ -111,6 +120,17 @@ export function ManiglieClient() {
   // mostra anche appena aperta, quando non c'è ancora nulla da datare ma c'è
   // già una domanda a cui rispondere.
   const stockInfo = api.article.stockInfo.useQuery({}, { staleTime: 5 * 60_000 });
+
+  // Le finiture DA OFFRIRE: quelle presenti nel contesto che si sta guardando —
+  // dentro FEDRA sono cinque, non ventotto. Non si chiedono cercando per testo,
+  // dove il filtro non vale.
+  const finitureQuery = api.article.finiture.useQuery(
+    { soloPronta, ...(tipo ? { tipo } : {}) },
+    { enabled: !cercando, staleTime: 5 * 60_000 },
+  );
+  const opzioniFinitura = finitureQuery.data?.finiture ?? [];
+  /** Il codice sta nell'URL, il nome nelle frasi: si tengono insieme. */
+  const finituraScelta = opzioniFinitura.find((o) => o.codice === finitura) ?? null;
 
   const hits = search.data?.hits ?? [];
   const total = search.data?.total ?? 0;
@@ -143,8 +163,25 @@ export function ManiglieClient() {
     [pathname, router, searchParams],
   );
 
+  /**
+   * Cambiare finitura riparte da pagina 1, come il filtro della pronta consegna:
+   * restare alla pagina 7 di un elenco che si è ristretto significa vedere una
+   * schermata vuota e credere che non ci sia niente.
+   */
+  const setFinitura = useCallback(
+    (v: string) => {
+      const next = new URLSearchParams(searchParams.toString());
+      if (v) next.set("finitura", v);
+      else next.delete("finitura");
+      next.delete("p");
+      const qs = next.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
+
   useScrollRestore(
-    `${committed}|${tipo}|${famiglia}|${page}|${soloPronta}`,
+    `${committed}|${tipo}|${famiglia}|${page}|${soloPronta}|${finitura}`,
     Boolean(search.data ?? gruppi.data),
   );
 
@@ -189,12 +226,26 @@ export function ManiglieClient() {
           gruppo. Compare solo se una giacenza esiste — `stockInfo.importedAt`
           è la stessa e unica fonte della data mostrata sopra, non una seconda
           affermazione sullo stesso fatto. */}
-      {!cercando && stockInfo.data?.importedAt ? (
-        <SoloPronta value={soloPronta} onChange={setSoloPronta} />
+      {!cercando ? (
+        <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
+          {stockInfo.data?.importedAt ? (
+            <SoloPronta value={soloPronta} onChange={setSoloPronta} />
+          ) : null}
+          <FiltroFinitura
+            opzioni={opzioniFinitura}
+            value={finitura}
+            onChange={setFinitura}
+          />
+        </div>
       ) : null}
 
       {sfogliando ? (
-        <FiltriSfoglia tipo={tipo} famiglia={famiglia} soloPronta={soloPronta} />
+        <FiltriSfoglia
+          tipo={tipo}
+          famiglia={famiglia}
+          soloPronta={soloPronta}
+          finitura={finituraScelta}
+        />
       ) : null}
 
       <section
@@ -208,7 +259,11 @@ export function ManiglieClient() {
           ) : gruppi.isError ? (
             <Errore titolo="Gruppi non caricati" />
           ) : (
-            <SfogliaGruppi groups={gruppi.data?.groups ?? []} soloPronta={soloPronta} />
+            <SfogliaGruppi
+              groups={gruppi.data?.groups ?? []}
+              soloPronta={soloPronta}
+              finitura={finituraScelta}
+            />
           )
         ) : sfogliando && !famiglia && famiglie.isPending ? (
           <SkeletonList />
@@ -222,6 +277,7 @@ export function ManiglieClient() {
                   tipo={tipo}
                   families={famiglie.data.families}
                   soloPronta={soloPronta}
+                  finitura={finituraScelta}
                 />
                 {famiglie.data.loose.length > 0 ? (
                   <>
