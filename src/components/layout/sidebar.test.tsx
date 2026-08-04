@@ -62,7 +62,7 @@ describe("Sidebar — reparto corrente", () => {
   it("nel reparto maniglie NON mostra le voci dei serramenti", () => {
     pathname.mockReturnValue("/maniglie");
     render(<Sidebar role="ADMIN" />);
-    expect(screen.getByText("Disponibilità")).toBeTruthy();
+    expect(screen.getByText("Catalogo")).toBeTruthy();
     for (const label of ["Archivio", "Assistente", "Richieste Kit", "Clienti"]) {
       expect(screen.queryByText(label), `${label} non deve comparire`).toBeNull();
     }
@@ -70,7 +70,7 @@ describe("Sidebar — reparto corrente", () => {
 
   it("nei serramenti NON mostra le voci delle maniglie", () => {
     render(<Sidebar role="ADMIN" />);
-    expect(screen.queryByText("Disponibilità")).toBeNull();
+    expect(screen.queryByText("Catalogo")).toBeNull();
     expect(screen.getByText("Archivio")).toBeTruthy();
   });
 

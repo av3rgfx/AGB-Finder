@@ -29,12 +29,19 @@ const NAV_SERRAMENTI: NavItemProps[] = [
 ];
 
 /**
- * «Disponibilità», non «Archivio»: due sezioni di ricerca con lo stesso nome in
- * due reparti manderebbero l'agente in quello sbagliato. Ed è la domanda
- * letterale di Andrea, non un sinonimo di «cerca».
+ * «Catalogo», non «Archivio»: due sezioni con lo stesso nome in due reparti
+ * manderebbero l'agente in quello sbagliato, e «Archivio» è già il catalogo AGB
+ * del reparto serramenti.
+ *
+ * E non più «Disponibilità», che era giusto finché la pagina era una casella di
+ * ricerca sulla giacenza: «disponibilità» nomina un ATTRIBUTO, e su 3.456 codici
+ * quell'attributo è falso 95 volte su 100 (178 articoli in pronta consegna, il
+ * 5,2%). L'etichetta prometteva una stanza di cose pronte e contiene un
+ * catalogo. La domanda di Andrea non si perde: vive nel pallino di ogni riga,
+ * che è dove lui guarda comunque.
  */
 const NAV_MANIGLIE: NavItemProps[] = [
-  { href: "/maniglie", label: "Disponibilità", icon: Search },
+  { href: "/maniglie", label: "Catalogo", icon: Search },
 ];
 
 // Lo storico dei caricamenti vive DENTRO la pagina di import, sotto il

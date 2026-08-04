@@ -87,7 +87,7 @@ function IndietroLink() {
       href="/maniglie"
       className="inline-flex w-fit items-center gap-1.5 rounded text-sm text-ink-subtle transition-colors duration-150 hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
     >
-      <ArrowLeft className="size-4" aria-hidden /> Disponibilità
+      <ArrowLeft className="size-4" aria-hidden /> Catalogo
     </Link>
   );
 }
