@@ -1,8 +1,13 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import type { Prisma } from "@prisma/client";
+import type { Prisma, PrismaClient } from "@prisma/client";
 import { adminProcedure, agentProcedure, createTRPCRouter } from "@/server/api/trpc";
-import { searchArticleIds } from "@/server/maniglie/search";
+import {
+  searchArticleIds,
+  browseFirstWords,
+  articleIdsByFirstWord,
+} from "@/server/maniglie/search";
+import { splitGroup, filterByFamily } from "@/server/maniglie/browse";
 import { articleTotal } from "@/server/maniglie/price";
 import { availableArticleIds, currentStockImport } from "@/server/maniglie/stock-status";
 import { matchStockCodes } from "@/server/maniglie/stock-file";
@@ -68,19 +73,148 @@ async function resolveStock(db: Parameters<typeof currentStockImport>[0], rows: 
   return { inStock, updates };
 }
 
+/**
+ * Un input per due strade: si digita (`query`) OPPURE si sfoglia (`tipo`, ed
+ * eventualmente `famiglia`). Tutto ciò che viene dopo è in comune —
+ * `resolveStock`, `toSummary`, la data dell'import, la riga a schermo — quindi
+ * un secondo endpoint avrebbe duplicato la parte che conta.
+ *
+ * Nessuno dei due presente = «dammi tutto», cioè 3.456 righe senza che la
+ * schermata possa dire di quale insieme si stiano vedendo venti elementi.
+ * `famiglia` senza `tipo` non individua nulla: la famiglia è definita DENTRO un
+ * gruppo, e la regola che scarta la famiglia degenere ha bisogno della parola
+ * del gruppo per funzionare.
+ */
+export const searchInputSchema = z
+  .object({
+    query: z.string().trim().min(1, "Inserisci un termine di ricerca").max(200).optional(),
+    tipo: z.string().trim().min(1).max(100).optional(),
+    famiglia: z.string().trim().min(1).max(100).optional(),
+    brand: z.string().trim().min(1).max(50).default("COLOMBO"),
+    limit: z.number().int().min(1).max(50).default(20),
+    offset: z.number().int().min(0).default(0),
+  })
+  .refine((v) => Boolean(v.query) || Boolean(v.tipo), {
+    message: "Serve un termine di ricerca oppure un gruppo da sfogliare.",
+  })
+  .refine((v) => !v.famiglia || Boolean(v.tipo), {
+    message: "La famiglia esiste solo dentro un gruppo.",
+  });
+
+/**
+ * Una pagina di codici presi SFOGLIANDO, non cercando. Le righe del gruppo si
+ * leggono tutte (al massimo 338: MANIGLIONE) perché il filtro per famiglia è una
+ * regola TypeScript e non una `WHERE`; poi si affetta.
+ *
+ * Restituisce la stessa forma di `search`: la schermata dei risultati è una sola.
+ */
+async function browseSlice(
+  db: PrismaClient,
+  input: { brand: string; tipo?: string; famiglia?: string; limit: number; offset: number },
+) {
+  const all = await articleIdsByFirstWord(db, input.brand, input.tipo!);
+  const selected = input.famiglia ? filterByFamily(all, input.tipo!, input.famiglia) : all;
+  const page = selected.slice(input.offset, input.offset + input.limit);
+
+  if (page.length === 0) {
+    const imp = await currentStockImport(db, input.brand);
+    return {
+      hits: [],
+      total: selected.length,
+      stockUpdates: imp ? [{ brand: input.brand, importedAt: imp.importedAt }] : [],
+    };
+  }
+
+  const rows = await db.article.findMany({
+    where: { id: { in: page.map((r) => r.id) } },
+    select: ARTICLE_FIELDS,
+  });
+  const byId = new Map(rows.map((r: ArticleRow) => [r.id, r]));
+  const ordered = page.map((r) => byId.get(r.id)).filter((r): r is ArticleRow => Boolean(r));
+
+  const { inStock, updates } = await resolveStock(db, ordered);
+  return {
+    hits: ordered.map((r) => toSummary(r, inStock.has(r.id))),
+    total: selected.length,
+    stockUpdates: updates,
+  };
+}
+
 export const articleRouter = createTRPCRouter({
-  /** Ricerca: codice, nome, EAN. Prezzi visibili a tutti (decisione utente). */
-  search: agentProcedure
+  /**
+   * SFOGLIO, livello 1: i gruppi con quanti codici ciascuno, più la data
+   * dell'ultimo import. La data viaggia con i gruppi perché la schermata la
+   * mostra sopra l'elenco: chiederla a parte significherebbe disegnare lo
+   * sfoglio prima di sapere di quando è il dato che promette.
+   */
+  browseGroups: agentProcedure
+    .input(z.object({ brand: z.string().trim().min(1).max(50).default("COLOMBO") }))
+    .query(async ({ ctx, input }) => {
+      const [groups, imp] = await Promise.all([
+        browseFirstWords(ctx.db, input.brand),
+        currentStockImport(ctx.db, input.brand),
+      ]);
+      return { groups, importedAt: imp?.importedAt ?? null };
+    }),
+
+  /**
+   * SFOGLIO, livello 2: le famiglie di un gruppo. `families` vuoto significa che
+   * il gruppo una famiglia non ce l'ha — 21 gruppi su 114 — e la schermata salta
+   * al livello 3 invece di mostrare un livello che non divide nulla.
+   *
+   * `loose` non è un dettaglio: su 70 gruppi su 114 la copertura è PARZIALE, e
+   * quei codici vanno raggiunti. La schermata li mostra SOTTO le famiglie, come
+   * righe articolo — non come una categoria che non hanno.
+   */
+  browseFamilies: agentProcedure
     .input(
       z.object({
-        query: z.string().trim().min(1, "Inserisci un termine di ricerca").max(200),
         brand: z.string().trim().min(1).max(50).default("COLOMBO"),
-        limit: z.number().int().min(1).max(50).default(20),
-        offset: z.number().int().min(0).default(0),
+        tipo: z.string().trim().min(1).max(100),
       }),
     )
     .query(async ({ ctx, input }) => {
-      const { hits, total } = await searchArticleIds(ctx.db, input);
+      const rows = await articleIdsByFirstWord(ctx.db, input.brand, input.tipo);
+      const { families, loose } = splitGroup(rows, input.tipo);
+
+      // Senza famiglie il gruppo non è diviso: le sue righe si impaginano con
+      // `search({tipo})`, e restituirle anche qui sarebbe la stessa lista per
+      // due strade — con KIT vorrebbe dire 139 schede in una risposta che la
+      // schermata non userebbe.
+      if (families.length === 0) {
+        return { families, loose: [], total: rows.length };
+      }
+
+      // Con le famiglie, invece, i codici sciolti si mostrano SOTTO di esse
+      // nella stessa schermata: sono al massimo qualche decina (il caso peggiore
+      // del listino vero è BOCCHETTA con 38 su 288) e nasconderli dietro una
+      // voce «Altro» significherebbe dare un nome di categoria a ciò che una
+      // categoria non ce l'ha.
+      const rowsLoose = await ctx.db.article.findMany({
+        where: { id: { in: loose.map((r) => r.id) } },
+        select: ARTICLE_FIELDS,
+      });
+      const byId = new Map(rowsLoose.map((r) => [r.id, r]));
+      const ordered = loose.map((r) => byId.get(r.id)).filter((r): r is ArticleRow => Boolean(r));
+      const { inStock } = await resolveStock(ctx.db, ordered);
+
+      return {
+        families,
+        loose: ordered.map((r) => toSummary(r, inStock.has(r.id))),
+        total: rows.length,
+      };
+    }),
+
+  /** Ricerca: codice, nome, EAN. Prezzi visibili a tutti (decisione utente). */
+  search: agentProcedure
+    .input(searchInputSchema)
+    .query(async ({ ctx, input }) => {
+      if (input.tipo) return browseSlice(ctx.db, input);
+
+      const { hits, total } = await searchArticleIds(ctx.db, {
+        ...input,
+        query: input.query!,
+      });
       if (hits.length === 0) {
         // La data si mostra anche senza risultati: è la risposta alla domanda
         // «di quando è questo dato?», che non dipende dall'aver trovato qualcosa.
