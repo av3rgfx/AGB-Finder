@@ -161,6 +161,29 @@ manifest da tenere allineato, nessun elenco di nomi del fornitore nel repo pubbl
 | **coperti** | **1.995 / 3.456 = 57,7%** |
 | senza foto | 1.461 (42,3%) |
 
+### 4.1 I pomoli generici (aggiunta del 2026-08-05, dopo il primo run ops)
+
+`02_Pomoli` raccoglie i pomoli di mezzo catalogo e il suo nome non dice a quale
+gruppo appartenga ciascuno — ma il nome del FILE sì, e l'indice del listino
+COLOMBO stampa accanto a ognuno la sua serie («130 round ID25», «128 robot CD45»…).
+Stessa qualità di prova delle righe ROBOT CD41/CD75. Nasce `FILE_MODELLO`, dodici
+righe con chiave `archivio/nome-file`, che vince su `ARCHIVI[archivio]`.
+
+| Gruppo | Prima | Dopo |
+|---|---|---|
+| ROBOT | 65/129 | **111/129** (resta il solo CD42 «senza mov.») |
+| ROUND | 0/20 | **20/20** |
+| SQUARE | 0/23 | **23/23** |
+| CUT | 0/11 | **11/11** |
+| PUSH | 0/5 | **5/5** |
+| POMOLO | 0/18 | **18/18** — il listino scrive «POMOLO ONE …» (CC15) e «POMOLO ONE Q …» (CC25), i file «pomolo one strawberry red» e «pomolo one q lime green» |
+| **totale** | 1.995 (57,7%) | **2.118 (61,3%)**, con 240 foto |
+
+**Restano fuori di proposito** `bold_45`, `daytona_45`, `drop_45`, `mapo_45`,
+`Moon_45`, `spider_45`: sono pomoli di modelli che hanno già il loro archivio di
+maniglia, quei gruppi sono coperti al 100%, e quale serie sia il pomolo non è
+scritto da nessuna parte.
+
 I gruppi che restano scoperti sono la minuteria e l'accessoristica che nessun
 catalogo fotografa una per una — BOCCHETTA 290, MANIGLIONE 240 (dei 338: 98 sono
 coperti dal gradino 3), NOTTOLINO 148, KIT 104, ROSETTA 86 — più i 66 codici di

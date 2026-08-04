@@ -5,6 +5,7 @@ import {
   abbinaFoto,
   ARCHIVI,
   chiaveFoto,
+  FILE_MODELLO,
   varianteZero,
   type FotoArchivio,
 } from "./foto-archivio";
@@ -55,11 +56,34 @@ describe.skipIf(!attivo)("foto ↔ catalogo vero", () => {
     expect(foto.length).toBeGreaterThan(600);
   });
 
-  it("copre almeno il 55% dei codici", () => {
+  it("copre almeno il 60% dei codici", () => {
     const quota = abbinati.size / articoli.length;
-    // Misurato: 57,7% (1.995 su 3.456). Il pavimento sta sotto di poco apposta —
+    // Misurato: 61,3% (2.118 su 3.456). Il pavimento sta sotto di poco apposta —
     // deve accorgersi di un calo, non tollerarlo.
-    expect(quota).toBeGreaterThan(0.55);
+    expect(quota).toBeGreaterThan(0.6);
+  });
+
+  it("ogni file dichiarato esiste davvero nell'archivio", () => {
+    // Un refuso nel nome del file non farebbe fallire nulla: quel gruppo
+    // resterebbe semplicemente senza foto, e nessun conteggio andrebbe a zero.
+    const nomi = new Set(foto.map((f) => `${f.archivio}/${f.nome}`));
+    for (const chiave of Object.keys(FILE_MODELLO)) {
+      expect(nomi.has(chiave), chiave).toBe(true);
+    }
+  });
+
+  it("i pomoli generici sono coperti per intero", () => {
+    const per = (g: string) => {
+      const r = articoli.filter((a) => browseLabel(a.name) === g);
+      return `${r.filter((a) => abbinati.has(a.id)).length}/${r.length}`;
+    };
+    expect(per("ROUND")).toBe("20/20");
+    expect(per("SQUARE")).toBe("23/23");
+    expect(per("CUT")).toBe("11/11");
+    expect(per("PUSH")).toBe("5/5");
+    expect(per("POMOLO")).toBe("18/18");
+    // ROBOT: resta fuori il solo CD42 «senza mov.», che non ha una foto.
+    expect(per("ROBOT")).toBe("111/129");
   });
 
   it("ogni etichetta della tabella esiste davvero fra quelle dello sfoglio", () => {
