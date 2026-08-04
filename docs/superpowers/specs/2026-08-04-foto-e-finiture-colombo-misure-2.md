@@ -229,7 +229,84 @@ resta cercabile; cambia solo **come la si elenca**.
 
 ---
 
-## 7. Riproducibilità
+## 7. L'AREA DOWNLOAD COLOMBO — e perché supera tutto il resto
+
+Andrea ha fornito la password dell'area riservata (`download.colombodesign.com`,
+form a sola password). Quattro sezioni; per MANIGLIE: 12 cataloghi, 6 listini PDF,
+i file 3D e un **archivio fotografico ufficiale**.
+
+### 7.1 L'archivio fotografico
+
+**79 zip, 3,3 GB compressi, 707 foto, 4,15 GB scompattate.** Indice preso per
+intero con richieste **Range** sulla central directory dei zip: pochi MB invece di
+3,3 GB. Le foto sono **5315×5315 CMYK**, prodotto **pulito su fondo bianco** —
+esattamente ciò che serve a un catalogo, e di qualità di stampa.
+
+Questo **supera** l'estrazione dal PDF di §2: quei 441 scatti a 305×110 px erano
+il ripiego, questi sono gli originali. Ma **impone** un passo di elaborazione, che
+§2 diceva di non fare: un JPEG **CMYK il browser non lo mostra**.
+
+### 7.2 Come sono nominate — misurato sui 707 nomi
+
+| | foto | col **codice** nel nome | con la **finitura** |
+|---|---|---|---|
+| 73 archivi di **modello** | 552 | **2%** | — |
+| 6 archivi **accessori** | 155 | **62%** | — |
+| **totale** | **707** | **15%** | **39%** · 52% ha **solo il modello** |
+
+Il codice sta nei nomi degli accessori (`ar14_OL.jpg`, `PB1304.jpg`,
+`ID313Q cromo matte.jpg`), cioè **proprio nelle sezioni che per nome commerciale
+erano irraggiungibili** (§2). Negli archivi di modello no: `alato cromo.jpg`,
+`Alatò_1CR.jpg`, `robot4_45.jpg`.
+
+**La foto è del modello, non del codice, e non è un limite dell'archivio**: è cosa
+è una foto. L'Alatò esiste in 4 finiture e 5 varianti (rosetta, yale, RSM, DK/SM)
+e COLOMBO fotografa **la maniglia**. Aggancio a tre gradini, tutti scritti da
+COLOMBO: **cartella → modello** (707/707, è l'etichetta, non un titolo da
+decifrare) · **+ finitura** dove sta nel nome (39%) · **+ codice** dove COLOMBO
+l'ha scritto. Chi non arriva a nessuno dei tre resta **senza foto**.
+
+⚠️ I nomi delle cartelle sono **sigle interne**: `Robot1`=Robot, `Robot2`=Robodue,
+`Robot4`=Roboquattro, `Robot5S`=Robocinque S. Serve una tabella di ~10 traduzioni,
+**da verificare sul listino**, non da indovinare.
+
+🟢 **Riscontro non cercato**: `01_Robot4.zip` e `01_Robot4S.zip` sono archivi
+**separati** (idem Robot5/Robot5S), e il listino elenca «roboquattro» e
+«roboquattro S» come voci distinte. La divisione chiesta da Andrea è **come il
+fornitore stesso organizza la propria merce**.
+
+### 7.3 Il peso, misurato su 45 foto vere (127 MB di originali)
+
+| | miniatura 320px | scheda 900px |
+|---|---|---|
+| JPEG q82 | 6,2 KB medi | 33,2 KB medi |
+| **WebP q80** | **2,8 KB medi** | **15,8 KB medi** |
+
+Su tutte e 707: **2 MB** di miniature + **11 MB** di schede = **13 MB** su Blob,
+da 4,15 GB di partenza. Griglia da 40 tessere: **120 KB**. Il vincolo del Fast
+Origin Transfer è sciolto.
+
+### 7.4 Il listino dell'area download NON è quello in produzione
+
+`Listino-Price list 0625 rel1.pdf` — 256 pagine, edizione **06/25**, mentre la
+produzione ha `LP 02-26`. Testo **in chiaro** (nessuno shift, a differenza del
+catalogo). Contiene due cose utili:
+
+- **p16: la matrice modello × finitura** (17 colonne `OL OM HPS/1 CR CM VL VM GL
+  GM NI BR BA UB OA NM BI`) — la fonte autorevole di «quali finiture esistono per
+  quale modello», dichiarata dal fornitore e non dedotta dalle code dei codici;
+- le pagine prodotto danno **codice famiglia + tipologia + finitura + prezzo**
+  (`JP11 R Ø50 · MANIGLIA SU ROSETTA · cromo 80,00 · cromat 92,10`).
+
+**Ma l'«indice dei codici» (p241+) è testo convertito in curve**: 36 caratteri
+estraibili su una pagina intera, zero immagini. Non c'è modo di ricavarne
+l'elenco dei codici senza OCR. **L'xlsx `LP 02-26` resta necessario** per: la
+percentuale di copertura · le 14 righe di Andrea sulle stringhe vere · la tabella
+di traduzione delle sigle di §7.2.
+
+---
+
+## 8. Riproducibilità
 
 ```bash
 curl -sSL "https://drive.usercontent.google.com/download?id=1G3ucgkGbVwAMub_74C-mvVs-tvNGq1Hj&export=download&confirm=t" -o ermanm.pdf
