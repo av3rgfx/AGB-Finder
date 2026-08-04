@@ -170,14 +170,23 @@ SPIDER, MILLA e TRAMA che §3.1 dichiara.
 
 ---
 
-## 5. Le 31 finiture come modulo
+## 5. Le 31 finiture come modulo — e il filtro colori (fatto)
 
 `src/server/maniglie/finiture.ts`: codice, nome, colore esadecimale — dalla pagina
 13 del catalogo `ER MAN 2026`. Foglia, senza dipendenze. Due consumatori:
 
 1. il parser dei nomi file (riconosce la coda `_1OL`);
-2. il **filtro colori** chiesto da Andrea, prossimo passo: **3.065 codici su 3.456
-   (88,7%)** hanno come coda una delle 31.
+2. il **filtro colori** chiesto da Andrea — **fatto in questa sessione**: 3.065
+   codici su 3.456 (88,7%) hanno come coda una delle 31.
+
+Il filtro offre le finiture **presenti nel contesto**, non le 31 sempre: nel
+catalogo intero sono **28**, dentro FEDRA sono **cinque**. Una scelta che dà uno
+schermo vuoto non è un filtro. E l'elenco **non si restringe** con la finitura già
+scelta: un filtro che cancella le proprie alternative è un vicolo cieco.
+
+Sta in un `<details>` nativo (46px chiuso, misurati) accanto a «solo pronta
+consegna», la regola resta in TypeScript come la disponibilità, e i due filtri si
+intersecano prima di arrivare al raw SQL.
 
 ⚠️ Il colore è **campionato dalle pastiglie di catalogo**, non dichiarato da
 COLOMBO: va bene per un pallino in un filtro, non per rappresentare la finitura

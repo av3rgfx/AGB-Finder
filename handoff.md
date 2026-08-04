@@ -9,13 +9,13 @@
 
 | Campo | Valore |
 |-------|--------|
-| **Data** | 2026-08-04 — **MISURE SULLE FOTO + CURATELA DELLO SFOGLIO (le 14 righe di Andrea)** |
+| **Data** | 2026-08-05 — **LE FOTO DEGLI ARTICOLI COLOMBO + IL FILTRO COLORI** |
 | **Fase in corso** | Fase 1 — MVP Gestionale · reparto maniglie |
-| **Sotto-fase** | Andrea ha usato il catalogo vero e ha mandato 14 correzioni: **13 fatte** (la 14ª è il filtro colori). Le **foto** sono misurate ma **non implementate**: sono la prossima sessione. |
-| **Branch git** | `claude/foto-catalogo-maniglie-8sua1k` (da `main`, dopo il merge #52) — **pushato**, 7 commit |
-| **Stato deploy** | 🟢 **NESSUNA MIGRAZIONE, NESSUNA AZIONE OPS.** La curatela si applica **a lettura**: niente colonne, niente re-import. |
-| **Gate** | typecheck · lint · **1336 test** · build 22 route · **integrazione 29/29 su Postgres vero col listino VERO (3.456 codici)** · **browser 54/54** (desktop e 375px, screenshot guardati) |
-| **Aperto** | ⭐ **LE FOTO** (misure fatte, zero codice) · le 2 domande per Andrea (§«DA CHIEDERE») · Vercel Pro entro sabato 08/08 · le tre distinte reali (MC, Peruzzi, Fosca) |
+| **Sotto-fase** | Le foto dall'archivio ufficiale COLOMBO alla scheda e alle righe, e la 14ª riga di Andrea (il filtro colori). |
+| **Branch git** | `claude/ufptrade-foto-maniglie-a6bc3s` (da `main`, dopo il merge #53) |
+| **Stato deploy** | 🟢 **NESSUNA MIGRAZIONE.** 🔴 **Serve un run ops** («Ops — Foto COLOMBO») e **un secret nuovo**: `COLOMBO_DOWNLOAD_PASSWORD`. |
+| **Gate** | typecheck · lint · **1.414 test** · build 23 route · **integrazione 7/7 sul catalogo vero** · **browser 28/28 + 20/20** (desktop e 375px) |
+| **Aperto** | le 3 domande per COLOMBO/Andrea (§«DA CHIEDERE») · Vercel Pro entro 08/08 · le tre distinte reali (MC, Peruzzi, Fosca) |
 
 ---
 
@@ -23,186 +23,124 @@
 
 | Campo | Valore |
 |-------|--------|
-| **Data** | 2026-08-04 — **«SFOGLIA»: il catalogo maniglie senza digitare** |
-| **Fase in corso** | Fase 1 — MVP Gestionale · il secondo dominio si sfoglia |
-| **Sotto-fase** | Catalogo COLOMBO a tre livelli + filtro pronta consegna |
-| **Branch git** | `claude/maniglie-catalogo-browse-cgxvjr` — **PR #51 e #52 MERGIATE** |
-| **Stato deploy** | **NESSUNA MIGRAZIONE.** I gruppi si calcolano a lettura. |
-| **🟢 Azione ops** | **ESEGUITA**: run «Ops — Neon» **`30903709865`**, sul ref del branch prima del merge. Il workflow ora importa anche il **listino COLOMBO**: serviva, perché `articles` in produzione era **VUOTA**. |
-| **Gate** | typecheck · lint · **1307 test** · build 22 route · **integrazione 21/21** · **browser 22+22+38+5** |
+| **Data** | 2026-08-04 — **MISURE SULLE FOTO + CURATELA DELLO SFOGLIO (le 14 righe di Andrea)** |
+| **Branch git** | `claude/foto-catalogo-maniglie-8sua1k` — **PR #53 MERGIATA** |
+| **Stato deploy** | 🟢 nessuna migrazione, nessuna azione ops |
+| **Gate** | typecheck · lint · 1336 test · integrazione 29/29 · browser 54/54 |
 
 ---
 
 > **▶ RIPRENDI DA QUI**
 >
-> ## LE FOTO. Tutto misurato, zero codice scritto.
+> ## LE FOTO CI SONO. Manca solo il run ops.
 >
-> Questa sessione ha fatto due cose: ha **misurato** le foto fino in fondo (e i
-> numeri sono buoni), e ha **eseguito la curatela** che Andrea ha chiesto dopo
-> aver usato il catalogo vero. Le foto sono la prossima sessione, e non manca
-> più nessun dato per farle.
+> ### 🔴 AZIONI OPS (in questo ordine, senza fretta)
 >
-> ### 🔑 I FILE: ora sono TUTTI raggiungibili da soli
+> 1. **Secret nuovo** su GitHub: `COLOMBO_DOWNLOAD_PASSWORD` (la password dell'area
+>    download COLOMBO, che l'utente ha; **non è scritta in nessun file di questo repo
+>    e non va scritta**).
+> 2. Lanciare **«Ops — Foto COLOMBO»** (`workflow_dispatch`). Con `dry_run` acceso
+>    stampa solo i conteggi e non tocca niente.
+> 3. Verificare in produzione `/maniglie?tipo=FEDRA&fam=AC11R` (otto righe, otto
+>    miniature, cinque colori diversi) e `?tipo=BOCCHETTA` (segnaposto neutri).
 >
-> - **Cartella Drive MANIGLIE** — riuso **autorizzato dall'utente**, registrata in
->   `CLAUDE.md`: contiene listino (`LP 02-26`, 3.456 codici, **è quello in
->   produzione**), pronta consegna, `ER MAN 2026` e `RR MAN 2026`. Gli id si
->   ricavano dall'HTML della cartella, il download è
->   `https://drive.usercontent.google.com/download?id=<id>&export=download&confirm=t`.
-> - **Area download COLOMBO** (`download.colombodesign.com`, form a **sola
->   password** — la password la fornisce l'utente, **non è scritta da nessuna
->   parte e non va scritta**). Lì c'è l'**archivio fotografico ufficiale**.
-> - **Ambiente**: `bash scripts/dev-bootstrap.sh`, poi
->   `pnpm import:listino COLOMBO <listino.xlsx>` per avere i **3.456 codici veri**
->   in locale — è ciò che rende il gate d'integrazione una verifica e non un
->   rituale su venti righe finte.
+> **L'ordine merge/ops qui è indifferente** e non c'è finestra di disservizio:
+> senza le foto su Blob `image_url` resta NULL e la UI disegna il segnaposto, cioè
+> esattamente ciò che si vede oggi. È la prima volta in cinque sessioni che non c'è
+> niente da sincronizzare col merge.
 >
-> ### 📸 LE FOTO — tutte le misure, da NON rifare
+> ### 📸 COS'È STATO FATTO
 >
-> **La sorgente è l'archivio ufficiale, non il PDF.** 79 zip, 3,3 GB compressi,
-> **707 foto**, 4,15 GB scompattate, **5315×5315 CMYK**, prodotto **pulito su
-> fondo bianco**. L'indice di tutti e 79 si prende con richieste **Range** sulla
-> central directory: pochi MB invece di 3,3 GB (script riproducibile in §9 della
-> scheda misure).
+> **1.995 codici su 3.456 (57,7%) hanno una foto**, con **228 file** su Vercel Blob
+> privato. Tre gradini, tutti cose che ha scritto COLOMBO: il **codice** nel nome
+> del file (322 codici — raggiunge maniglioni, pomoli e bocchette, irraggiungibili
+> per nome di modello) · la **finitura** (994 — l'agente vede il colore che il
+> cliente comprerà) · la foto del **modello** (679).
 >
-> | Sorgente | Codici coperti | % |
-> |---|---|---|
-> | archivi di **modello** (68 zip → 59 gruppi) | 1.853 | **53,6%** |
-> | **accessori**, col codice scritto nel nome del file | +297 | +8,6% |
-> | **totale prudente** | **2.146** | **62,1%** |
-> | accessori, agganciando anche i nomi di modello scritti nelle descrizioni | +528 | |
-> | **totale ottimistico** | **2.394** | **69,3%** |
+> **Quattro cose che la scheda misure diceva e che eseguendo si sono rivelate false**
+> (dettaglio in `docs/superpowers/specs/2026-08-05-foto-articoli-colombo-design.md` §1):
+> le 707 foto **non** sono tutte «5315×5315 pulite su bianco» — **69 sono scatti
+> d'ambiente** su fondo colorato (`Robo4_def.jpg`: 8268×7087, **34 MB**) e vanno
+> scartate · il «39% con la finitura nel nome» contava le parole per esteso in **due
+> lingue**, il codice ufficiale sta in **143 file** · il «codice nel nome» intero sta
+> in **29 file**, non 62% · e soprattutto **la cartella da sola non basta**: sette
+> gruppi di listino hanno **due archivi** ciascuno.
 >
-> **L'aggancio ha tre gradini, tutti scritti da COLOMBO:**
-> 1. **cartella → modello** — vale per tutte e 707 (`01_Alato/` *è* l'etichetta);
-> 2. **+ finitura** dove sta nel nome (39% dei file: `Alatò_1CR.jpg`, `alato cromo.jpg`);
-> 3. **+ codice** dove COLOMBO l'ha scritto (**62% degli accessori**: `ar14_OL.jpg`,
->    `PB1304.jpg`, `ID313Q cromo matte.jpg`) — ed è lì che serviva, perché
->    maniglioni, pomoli, bocchette e complementi per nome commerciale erano
->    **irraggiungibili**.
+> 🔴 **La scoperta che ha cambiato il disegno**: **«ZERO» è un prodotto a listino**
+> (156 codici, `ROBOQUATTRO ID41RSB ZERO`) e l'archivio lo nomina in 71 file. La
+> foto liscia su un articolo ZERO non è una foto approssimata: è un'altra rosetta.
+> Il filtro sulla variante confronta due parole scritte da COLOMBO in due posti.
 >
-> Chi non arriva a nessuno dei tre **resta senza foto** (vincolo dell'utente:
-> niente foto→codice inventate).
+> **Dove NON si indovina**: SPIDER, MILLA e TRAMA hanno due archivi ciascuno
+> (MR11/MR15, LC31/LC41, LC71/LC81) e **nessuna fonte di COLOMBO li accoppia** →
+> **66 codici restano senza foto**, dichiarato nella tabella con la ragione. La
+> serie sbagliata darebbe una foto che esiste, si vede benissimo, ed è di un altro
+> prodotto: nessun errore, nessun warning, nessuno se ne accorge.
 >
-> **Il peso, misurato su 45 foto vere (127 MB di originali):**
+> ### 🎨 IL FILTRO COLORI (la 14ª riga di Andrea) — FATTO
 >
-> | | miniatura 320px | scheda 900px |
-> |---|---|---|
-> | JPEG q82 | 6,2 KB medi | 33,2 KB medi |
-> | **WebP q80** | **2,8 KB medi** | **15,8 KB medi** |
+> Offre le finiture **presenti nel contesto**: 28 nel catalogo intero, **cinque
+> dentro FEDRA**. Non le 31 sempre — una scelta che dà uno schermo vuoto non è un
+> filtro. E l'elenco **non si restringe** con quella già scelta: un filtro che
+> cancella le proprie alternative è un vicolo cieco. `<details>` nativo, 46px
+> chiuso, la regola in TypeScript come la disponibilità.
 >
-> Tutte e 707: **2 MB** di miniature + **11 MB** di schede = **13 MB su Blob**,
-> da 4,15 GB. Griglia da 40 tessere: **120 KB**. Il vincolo Fast Origin Transfer
-> è sciolto. ⚠️ La conversione **non è un'ottimizzazione, è obbligatoria**: un
-> JPEG **CMYK** il browser non lo mostra.
+> **Un difetto l'hanno trovato gli screenshot, non i test**: col filtro acceso il
+> numero sui gruppi contava un altro insieme e la frase non lo diceva. Corretto, e
+> le quattro copie sparse di «&pronta=1» nei link sono diventate **una regola sola**
+> — scendere di livello non deve spegnere un filtro in silenzio.
 >
-> ⚠️ **Le cartelle usano sigle interne**: `Robot1`=Robot, `Robot2`=Robodue,
-> `Robot3`=Robotre, `Robot4`=Roboquattro, `Robot5S`=Robocinque S. Serve una
-> tabella di ~10 traduzioni, **da verificare sul listino**. E **5 archivi non
-> agganciano nulla** — `00a_Laconica`, `00b_Robot6`, `00c_Robot6S`, `00d_Halo`,
-> `00e_Kubo`: **non è un difetto**, sono prodotti nuovi a catalogo 2026 e non
-> ancora a listino. Si aggancieranno da soli.
+> ### 🧰 COME FUNZIONA, in due righe
 >
-> **Le quattro decisioni di §5 della scheda misure, con la raccomandazione data:**
-> (1) mappare a livello **modello/famiglia**, e **niente foto al livello 1** dello
-> sfoglio (le chip alfabetiche le ha decise il council su una misura: da ~14
-> schermate a 5,8 a 375px — riempirle di immagini rifà il danno). Foto al
-> **livello 2** e sulla **scheda articolo**. (2) **Due formati, nessun ritocco
-> creativo**: 320px e 900px WebP. (3) **Vercel Blob privato dietro la route Node**,
-> come `/api/product-image`; **mai** in `public/`, il repo è pubblico e sono foto
-> di un fornitore. (4) `catalog_edition` accanto a `catalog_page` (valore
-> `ER MAN 2026`) — **una sola colonna, una sola migrazione, nessuna tabella
-> nuova**: `imageUrl` esiste già a schema e un articolo ha una foto sola. Va
-> corretto il commento a schema, che dice «Blob **PUBBLICO**» mentre è privato.
+> `pnpm foto:colombo` **non scarica i 3,5 GB**: legge l'indice dei 79 zip con
+> richieste **Range** sulle central directory e scarica solo le 228 foto scelte, una
+> voce di zip alla volta (`zip-range.ts`, 80 righe, zero dipendenze). Converte col
+> `sharp` (devDependency, mai nel bundle) — e la conversione **non è
+> un'ottimizzazione**: un JPEG **CMYK** il browser non lo disegna affatto. È
+> idempotente: ciò che è già su Blob si salta, quindi rilanciarlo dopo un listino
+> nuovo costa la sola rilettura degli indici.
 >
-> **Cosa NON rifare** (sta in `docs/superpowers/specs/2026-08-04-foto-e-finiture-colombo-misure-2.md`):
-> le misure sul PDF `ER MAN 2026` sono superate dall'archivio, ma restano vere e
-> documentate — 92 scatti d'ambiente, 441 scatti prodotto a 305×110, il testo
-> cifrato da uno **shift di +29 per byte**, e le **31 finiture ufficiali** (p13
-> stampata = p14 del file) con nome e colore campionato. Quelle servono ancora,
-> perché sono la **fonte del filtro colori**.
+> `articles.image_url` conserva la **chiave** dello store privato, e i byte passano
+> da `/api/article-image` dietro auth. **Nessuna colonna nuova** (decisione utente):
+> `catalog_edition` sarebbe nata accanto a `catalog_page`, che è NULL su tutte e
+> 3.456 le righe — la stessa forma della «disponibilità falsa» cancellata il 03/08.
 >
-> ### 🎨 IL FILTRO COLORI (la 14ª riga di Andrea, non fatta)
+> ### 🔎 Tre cose imparate eseguendo
 >
-> **88,7%** dei codici (3.065 su 3.456) ha come coda una delle **31 finiture
-> ufficiali**. Le code distinte sono **57**, non 133. Le non riconosciute sono
-> quasi tutte **bicolori** (`CR8` = CROMO/CROMAT 33 · `OL9` = OROPLUS/OROMAT 24 ·
-> `CM5` 20) più **237 codici senza trattino**. La tabella completa delle 31, con
-> colore in esadecimale, è in §5 della scheda misure. **Non inventare categorie
-> sulle altre 102 code.**
+> 1. **Il login all'area download non emette cookie**: la POST *è* la pagina, e i
+>    file sotto `/download` non sono protetti affatto. Il primo codice conservava un
+>    cookie inesistente e restituiva zero archivi.
+> 2. **`\b` non è un confine di parola dopo un `_`**: `03_Mood ocean` passava il
+>    filtro degli scatti d'ambiente. Trovato dal test, corretto dividendo per parole.
+> 3. **Il gate va provato rotto**: dichiarando `01_Spider_m → SPIDER` la guardia
+>    d'integrazione va in rosso col codice preciso. Senza quella prova sarebbe un
+>    rituale.
 >
-> Fonte in più, autorevole: il **listino PDF dell'area download** (`Listino-Price
-> list 0625 rel1.pdf`, 256 pagine, **testo in chiaro**) ha a **pagina 16 la
-> matrice modello × finitura**, cioè quali finiture esistono per quale modello,
-> dichiarate dal fornitore. ⚠️ È l'edizione **06/25**, più vecchia di `LP 02-26`,
-> e il suo «indice dei codici» è **testo convertito in curve** (36 caratteri
-> estraibili su una pagina intera): non è una sorgente di codici.
+> ### ❓ DA CHIEDERE
 >
-> ### ✅ COSA È STATO FATTO — la curatela di Andrea (13 righe su 14)
+> 1. **A COLOMBO** — quale archivio fotografico corrisponde a quale serie:
+>    `01_Spider_m/_p` → MR11 o MR15? `01_Milla_1/_2` → LC31 o LC41?
+>    `01_Trama_1/_2` → LC71 o LC81? Sono 66 codici che oggi restano senza foto.
+> 2. **Ad Andrea** (aperte dalla sessione scorsa) — la sua lista di fusioni non è
+>    esaustiva: `MANIG.`/`MANIGLIA`/`MANIGLIONE`… (otto etichette), `PL.`/`PLACCA`…
+>    (quattro), più `COPRIAVVOLG.`, `LUNDCREM`, `HEIDI/PETER`, `RG`. E `RONDELLE`
+>    (2 codici) è lasciata dentro pur essendo la stessa cosa di `RONDELLA`.
 >
-> **114 gruppi → 102.** BOCCHETTA 288→291, ROSETTA 47→105, e `ROBOCINQUE S` e
-> `ROBOQUATTRO S` come voci proprie. Modulo `src/server/maniglie/curatela.ts`
-> (`browseLabel`, `sourceFirstWords`, `foldBrowseGroups`), applicato **a lettura**
-> in `browseFirstWords` e `articleIdsByFirstWord`.
+> ### ▶ E LE COSE CHE NON SONO CODICE
 >
-> - **NON all'import**: riscrivere `articles.name` cancellerebbe la parola di
->   COLOMBO e farebbe sparire `BOCCEHTTA` dall'indice trigram — la proprietà per
->   cui chi cerca «bocchetta» trova l'articolo digitato storto dal fornitore.
-> - **Le rimozioni valgono SOLO per lo sfoglio** (decisione dell'utente): chi
->   scrive «vite» continua a trovarla, e c'è una sentinella d'integrazione.
-> - **Le etichette vere non sono quelle che Andrea ha scritto a memoria**:
->   `ROBOCINQUQ` (non «RobocinqueQ»), `NOTTOLIN` (non «NOTTLIN»), `KITPORTE`
->   attaccato, e «Mov.» sono **due** etichette (`MOV.GRATZ`, `MOV.MARTELLINA`).
-> - **Due refusi li ha decisi il codice**: `ROBOCINQUQ` porta `ID61RSB`, serie del
->   Robocinque **base** (la S usa `ID71*`); `ROBOTE` porta `CD92DK`, e `CD9x` è di
->   **Robotre** (Robot usa `CD4x`/`CD7x`). L'handoff dava quest'ultimo per
->   indecidibile.
-> - **Il marcatore della S ha tre forme**: `S` (77), `S'` (21), `S'ID51RSB` (1,
->   spazio mancante). Leggerne una sola spaccherebbe il gruppo a metà **senza che
->   nulla vada a zero**.
-> - Il verdetto **(3) del `/llm-council`** della sessione scorsa («abbreviazioni:
->   nessuna riga di codice, la fusione la fa l'occhio») è **caduto**: Andrea ha
->   usato la cosa vera e ha chiesto la fusione di otto etichette, incluse
->   esattamente `ROS.`, `BOCCEHTTA` e `ROBOTE`. Il council aveva ragione sui pixel
->   e torto sul mestiere. Il test d'integrazione che lo codificava è girato
->   insieme alla decisione.
+> - 🔴 **Vercel Pro entro sabato 08/08** (Hobby vieta l'uso commerciale).
+> - **Le tre distinte reali di MC, Peruzzi e Fosca** pendono da cinque sessioni.
+>   Reparto SERRAMENTI, ma resta la cosa aperta che vale di più.
 >
-> ### 🔍 Tre cose imparate eseguendo
+> ### 🧾 Debito dichiarato
 >
-> 1. **Il gate girava su venti righe finte.** Importando il listino vero in locale
->    è emerso che il test del refuso «bocchetta» pretendeva un codice del **seed**:
->    falliva anche col codice non modificato (**provato con `git stash`**).
->    Riscritto come proprietà — sul catalogo vero i `BOCCEHTTA` cadono alle
->    posizioni **317-319 su 319**, cioè dopo tutte le 288 scritte giuste.
->    **Regola nuova: importare il listino vero prima di far girare l'integrazione.**
-> 2. **Un difetto l'hanno trovato gli screenshot, non i test.** Il sottotitolo
->    prometteva «per la prima parola della descrizione a listino», falso dopo le
->    fusioni — e c'era un test che passava, perché verificava che la frase *ci
->    fosse*. Corretto, e aggiunta la riga che dichiara ciò che il programma decide:
->    «Viti, dadi, chiavi e rondelle non si sfogliano: si trovano scrivendole».
-> 3. **Il primo giro del browser ritrae lo skeleton.** In dev Next compila alla
->    prima richiesta: aspettare un timer dà 7 falsi rossi. Aspettare il
->    **contenuto** (`waitForFunction`) li azzera.
->
-> ### ❓ DA CHIEDERE ALL'UTENTE (per Andrea)
->
-> 1. **La sua lista non è esaustiva**: almeno dieci casi identici non citati —
->    otto etichette per la stessa cosa (`MANIG.` 57 · `MANIG.CD213` 2 ·
->    `MANIG.INCASSO` 4 · `MANIG.LC413RS` 1 · `MANIGLIA` 28 · `MANIGLIE` 1 ·
->    `MANIGLIONE` 338 · `MANIGLIONI` 8), quattro per «placca» (`PL.` 10 ·
->    `PL.OTT.` 1 · `PL.OTT.YALE` 11 · `PLACCA` 65), più `COPRIAVVOLG.` 6,
->    `LUNDCREM` 1, `HEIDI/PETER` 2, `RG` 1. Si trattano come le altre?
-> 2. **`RONDELLE` (2 codici)** è lasciata dentro: è la stessa cosa di `RONDELLA`
->    che lui toglie, ma non l'ha nominata. Un test fissa la scelta perché sia
->    visibile e non una dimenticanza.
->
-> ### ▶ E LE DUE COSE CHE NON SONO CODICE
->
-> - ✅ **La pronta consegna è stata caricata in produzione dall'utente.** Chiusa.
-> - 🔴 **Vercel Pro entro sabato 08/08** (Hobby vieta l'uso commerciale): è
->   un'azione dell'utente sulla dashboard, non mia.
-> - **Le tre distinte reali di MC, Peruzzi e Fosca** pendono da quattro sessioni.
->   Reparto SERRAMENTI, non maniglie, ma resta la cosa aperta che vale di più.
+> - `articles.image_url` si chiama «url» e contiene una **chiave**: rinominarla è
+>   una migrazione per un fatto che il commento a schema già chiarisce.
+> - La verifica in browser ha **intercettato** `/api/article-image` servendo i WebP
+>   convertiti in locale: il token Blob è un secret di produzione e qui non c'è.
+>   Router, chiavi a DB, URL, layout e segnaposto sono codice di produzione senza
+>   sostituzioni; l'unico tratto non provato dal vivo è la lettura da Blob, che ha
+>   la stessa forma di `/api/listino`, già in produzione.
 
 > ### (Sessione precedente, 2026-08-04) — «SFOGLIA»
 >

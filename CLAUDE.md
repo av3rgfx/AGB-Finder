@@ -842,3 +842,36 @@ AZIONE OPS.** Aperto: **le foto** · 2 domande per Andrea (la sua lista non è e
 `RONDELLE`) · Vercel Pro entro 08/08 · le tre distinte reali.
 Scheda misure: `docs/superpowers/specs/2026-08-04-foto-e-finiture-colombo-misure-2.md`.
 ✅ **La pronta consegna è stata caricata in produzione dall'utente**: chiusa.
+
++ **FOTO DEGLI ARTICOLI COLOMBO + FILTRO COLORI ✅ (branch `claude/ufptrade-foto-maniglie-a6bc3s`, PR da aprire)**:
+il reparto maniglie mostrava 3.456 articoli senza una sola immagine, e `ArticoloRow` aveva **già** il posto
+della miniatura (44px, disegnato la sessione prima, sempre vuoto perché `image_url` era NULL ovunque).
+**1.995 codici su 3.456 = 57,7%** hanno ora una foto, con **228 file** su Vercel Blob **privato** dietro
+`/api/article-image`. **Tre gradini, tutti cose scritte da COLOMBO**: il **codice** nel nome del file (322 —
+raggiunge maniglioni, pomoli e bocchette, per nome di modello irraggiungibili) · la **finitura** (994 — si
+vede il colore che il cliente comprerà) · la foto del **modello** (679). **Eseguire ha falsificato quattro
+affermazioni della scheda misure**: le 707 foto non sono tutte «5315×5315 pulite su bianco» — **69 sono
+scatti d'ambiente** su fondo colorato (`Robo4_def.jpg`: 8268×7087, **34 MB**) · il «39% con la finitura nel
+nome» contava le parole per esteso in **due lingue**, il codice ufficiale sta in **143 file** · il codice
+intero nel nome sta in **29 file** · e **la cartella da sola non basta**, perché sette gruppi di listino
+hanno **due archivi** ciascuno. 🔴 **La scoperta che ha cambiato il disegno: «ZERO» è un prodotto a listino**
+(156 codici) e l'archivio lo nomina in 71 file — la foto liscia su un articolo ZERO è un'altra rosetta, non
+un'approssimazione. **Dove non si indovina**: SPIDER, MILLA e TRAMA hanno due archivi ciascuno e nessuna
+fonte di COLOMBO li accoppia → **66 codici senza foto**, dichiarati con la ragione (la serie sbagliata darebbe
+una foto che esiste, si vede benissimo, ed è di un altro prodotto). **`pnpm foto:colombo` non scarica i 3,5 GB**:
+legge l'indice dei 79 zip con richieste **Range** sulle central directory e scarica solo le 228 scelte, una voce
+alla volta (`zip-range.ts`, zero dipendenze); converte col **`sharp`** (devDependency), e la conversione **non è
+un'ottimizzazione** — un JPEG **CMYK** il browser non lo disegna. Idempotente. **`articles.image_url` conserva
+la CHIAVE** dello store privato: **nessuna colonna nuova** (decisione utente — `catalog_edition` sarebbe nata
+accanto a `catalog_page`, NULL su tutte e 3.456 le righe, cioè la forma della «disponibilità falsa»); corretto
+il commento a schema che diceva «Blob PUBBLICO», falso in due affermazioni su tre. **+ FILTRO COLORI** (la 14ª
+riga di Andrea): offre le finiture **presenti nel contesto** (28 nel catalogo, **cinque dentro FEDRA**), non le
+31 sempre, e **non si restringe con quella già scelta** — un filtro che cancella le proprie alternative è un
+vicolo cieco; `<details>` nativo (46px chiuso), regola in TypeScript come la disponibilità, filtri intersecati
+prima del raw SQL. **Difetto trovato dagli screenshot e non dai test**: col filtro acceso il numero sui gruppi
+contava un altro insieme senza dirlo → ora lo dichiara, e le quattro copie sparse di «&pronta=1» nei link sono
+una regola sola. Gate: typecheck · lint · **1.414 test** · build 23 route · **integrazione 7/7 sul catalogo
+vero** (provata rossa sabotando la tabella) · **browser 28/28 + 20/20** (desktop e 375px, screenshot guardati).
+🟢 **NESSUNA MIGRAZIONE, nessuna finestra di disservizio.** 🔴 **AL MERGE**: secret `COLOMBO_DOWNLOAD_PASSWORD`
++ run «Ops — Foto COLOMBO». **Domanda nuova per COLOMBO**: quale archivio è MR11 e quale MR15 (idem LC31/LC41,
+LC71/LC81). Spec/piano: `docs/superpowers/{specs,plans}/2026-08-05-foto-articoli-colombo*`.
