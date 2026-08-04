@@ -103,6 +103,21 @@ Tailwind CSS 3 · Vitest · pnpm. Deploy target: Vercel + Neon + Upstash.
   nuovo, scratchpad svuotata), **NON cercarlo sul web da solo**: chiedere il link
   direttamente all'utente, che lo fornirà. Ultimo link fornito (2026-07-01):
   https://drive.google.com/file/d/1TugU94aM6OP557ELiLQpH0nUxhxrXMUz/view?usp=sharing
+- **Cartella Drive MANIGLIE (COLOMBO)** — **riuso autorizzato dall'utente il
+  2026-08-04**, non serve richiederla ogni volta:
+  https://drive.google.com/drive/folders/1pyiyNW77oy96V5iLd_U4TBmaqFtZ6uvL
+  Contiene i quattro file del reparto: `LISTINO 02 2026 con temporary
+  surcherge.xlsx` (foglio `LP 02-26`, 3.456 codici — **è quello in produzione**) ·
+  `pronta consegna colombo.xls` · `ER MAN 2026_100726.pdf` · `RR MAN 2026_100726.pdf`.
+  Gli id si ricavano dall'HTML della cartella; il download diretto è
+  `https://drive.usercontent.google.com/download?id=<id>&export=download&confirm=t`.
+- **Area download COLOMBO** (`download.colombodesign.com`, form a sola password —
+  la password la fornisce l'utente, **non va scritta in nessun file**): cataloghi,
+  listini PDF, file 3D e l'**archivio fotografico ufficiale** (79 zip, 3,3 GB, 707
+  foto 5315×5315 CMYK). L'indice dei zip si prende con richieste **Range** sulla
+  central directory, senza scaricare i 3,3 GB.
+- ⚠️ **Il repo è PUBBLICO**: listino, giacenze e foto del fornitore **non si
+  committano mai**. Nei `.md` vanno solo i numeri aggregati.
 - Stessa regola per qualunque altro file/documento aziendale mancante: prima
   chiedere all'utente, mai recuperarlo autonomamente da fonti esterne.
 

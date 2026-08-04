@@ -306,7 +306,87 @@ di traduzione delle sigle di §7.2.
 
 ---
 
-## 8. Riproducibilità
+## 8. I NUMERI, sul listino di produzione
+
+Arrivato l'xlsx (`LISTINO 02 2026 con temporary surcherge.xlsx`, foglio **`LP 02-26`**,
+**3.456 codici**, 114 prime parole — combacia con la produzione, e conferma la
+stranezza dell'intestazione `0.035` della colonna surcharge).
+
+### 8.1 Copertura delle foto
+
+| Sorgente | Codici coperti | % |
+|---|---|---|
+| **archivi di modello** (68 zip → 59 gruppi) | 1.853 | **53,6%** |
+| **accessori**, col codice scritto nel nome del file | +297 | +8,6% |
+| **totale prudente** | **2.146** | **62,1%** |
+| accessori, agganciando anche i **nomi di modello** scritti nelle descrizioni (`MANIGLIONE PIUMA AR16`) | fino a +528 | |
+| **totale ottimistico** | **2.394** | **69,3%** |
+
+Contro il **57,4%** della mappatura dal titolo del catalogo — e con foto di stampa
+invece di ritagli a 305×110.
+
+**5 archivi non agganciano nessun gruppo**: `00a_Laconica`, `00b_Robot6`,
+`00c_Robot6S`, `00d_Halo`, `00e_Kubo`. Non è un difetto: sono prodotti **nuovi**,
+presenti nel catalogo 2026 e **non ancora a listino**. Restano senza articolo, e
+quando COLOMBO li metterà a listino si aggancieranno da soli.
+
+### 8.2 Il filtro colori
+
+**3.065 codici su 3.456 = 88,7%** hanno come coda una delle **31 finiture
+ufficiali** di §5. Le code distinte sono **57**, non 133.
+
+Le non riconosciute sono quasi tutte **bicolori** — `CR8` = `CROMO/CROMAT` (33) ·
+`OL9` = `OROPLUS/OROMAT` (24) · `CM5` = `CROMAT/CROMO` (20) — più **237 codici
+senza coda** (nessun trattino). Nessuna va inventata: o è una delle 31, o il
+filtro non la mostra.
+
+| | | | | |
+|---|---|---|---|---|
+| CM 592 | CR 493 | OL 377 | NM 186 | GM 140 |
+| OM 134 | UB 109 | VM 98 | BI 80 | NI 73 |
+
+### 8.3 Le 14 righe di Andrea, verificate sulle etichette vere
+
+Diverse **non sono scritte come le ha dette**: le ha lette a schermo e
+approssimate. Le vere:
+
+| Chiesto da Andrea | Etichetta reale | Codici | Esito |
+|---|---|---|---|
+| RobocinqueQ → Robocinque | **`ROBOCINQUQ`** | 1 | → `ROBOCINQUE` (103) |
+| RoboTE → ROBOTRE | `ROBOTE` | 1 | → `ROBOTRE` (52) |
+| togliere RONDELLA | `RONDELLA` | 9 | ⚠️ esiste **anche `RONDELLE` (2)**, non citata |
+| ROS + ROSETTA → ROSETTA | `ROS.` + `ROSETTA` | 58 + 47 | → `ROSETTA` (105) |
+| togliere Vite e Viti | `VITE` + `VITI` | 21 + 1 | 22 codici |
+| Mov. → MOVIMENTO | **`MOV.GRATZ`** + **`MOV.MARTELLINA`** | 1 + 2 | → `MOVIMENTO` (36) |
+| NOTTLIN → NOTTOLINO | **`NOTTOLIN`** | 1 | → `NOTTOLINO` (161) |
+| togliere DADO | `DADO` | 4 | |
+| togliere CHIAVE | `CHIAVE` | 28 | |
+| BOCCEHTTA → BOCCHETTA | `BOCCEHTTA` | 2 | → `BOCCHETTA` (288) |
+| DUMMY/C → DUMMY | `DUMMY/C` | 3 | → `DUMMY` (6) |
+| KIT PORTE → KIT | **`KITPORTE`** (attaccato) | 1 | → `KIT` (139) |
+| dividere ROBOCINQUE / S | secondo token **`S`** | 54 su 103 | |
+| dividere ROBOQUATTRO / S | secondo token **`S`** (23), **`S'`** (21), `S'ID51RSB` (1) | 45 su 111 | |
+
+**Le divisioni sono implementabili con una regola sola**: il secondo token vale
+`S` o comincia per `S'`. Non è un'inferenza sul codice — è una parola scritta da
+COLOMBO nella descrizione. Effetto complessivo: **114 gruppi → 102**, e 65 codici
+escono dallo sfoglio.
+
+### 8.4 La lista di Andrea NON è esaustiva — dieci casi identici che non ha citato
+
+| | |
+|---|---|
+| `MANIG.` 57 · `MANIG.CD213` 2 · `MANIG.INCASSO` 4 · `MANIG.LC413RS` 1 · `MANIGLIA` 28 · `MANIGLIE` 1 · `MANIGLIONE` 338 · `MANIGLIONI` 8 | otto etichette per la stessa cosa |
+| `PL.` 10 · `PL.OTT.` 1 · `PL.OTT.YALE` 11 · `PLACCA` 65 | quattro |
+| `HEIDI/PETER` 2 · `LUNDCREM` 1 · `COPRIAVVOLG.` 6 · `RG` 1 | compositi e sigle |
+
+**Non li tocco.** Fare più di quanto chiesto sulla tassonomia di qualcun altro è
+lo stesso errore che stiamo correggendo: qui la fonte di verità è **Andrea**, non
+la simmetria. Vanno mostrati a lui.
+
+---
+
+## 9. Riproducibilità
 
 ```bash
 curl -sSL "https://drive.usercontent.google.com/download?id=1G3ucgkGbVwAMub_74C-mvVs-tvNGq1Hj&export=download&confirm=t" -o ermanm.pdf
