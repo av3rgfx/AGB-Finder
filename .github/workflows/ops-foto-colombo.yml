@@ -16,8 +16,11 @@ jobs:
     env:
       BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
       COLOMBO_DOWNLOAD_PASSWORD: ${{ secrets.COLOMBO_DOWNLOAD_PASSWORD }}
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      DIRECT_URL: ${{ secrets.DATABASE_URL }}
+      # Il secret si chiama NEON_DIRECT_URL, come in ops-neon.yml e
+      # ops-extract-images.yml: `DATABASE_URL` non esiste, e il primo run l'ha
+      # scoperto fallendo alla guardia in zero secondi.
+      DATABASE_URL: ${{ secrets.NEON_DIRECT_URL }}
+      DIRECT_URL: ${{ secrets.NEON_DIRECT_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -33,7 +36,7 @@ jobs:
         run: |
           test -n "$COLOMBO_DOWNLOAD_PASSWORD" || { echo "::error::Secret COLOMBO_DOWNLOAD_PASSWORD mancante"; exit 1; }
           test -n "$BLOB_READ_WRITE_TOKEN" || { echo "::error::Secret BLOB_READ_WRITE_TOKEN mancante"; exit 1; }
-          test -n "$DATABASE_URL" || { echo "::error::Secret DATABASE_URL mancante"; exit 1; }
+          test -n "$DATABASE_URL" || { echo "::error::Secret NEON_DIRECT_URL mancante"; exit 1; }
           pnpm foto:colombo ${{ inputs.dry_run && '--dry-run' || '' }}
       - name: Verifica
         run: |
