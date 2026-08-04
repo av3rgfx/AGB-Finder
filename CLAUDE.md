@@ -761,3 +761,28 @@ importa **anche il listino COLOMBO** — serviva davvero, perché la tabella `ar
 **VUOTA** (la run del 03/08 importava il solo catalogo AGB, e `db:seed:maniglie` non è nel workflow):
 senza, «Sfoglia» sarebbe andato online mostrando zero gruppi.
 Piano: `docs/superpowers/plans/2026-08-04-catalogo-maniglie-sfoglia.md`.
+
++ **FOTO COLOMBO — misure fatte, zero codice (prossima sessione)**: a chiusura della sessione «Sfoglia»
+l'utente ha scelto le **foto** come passo successivo, e le misure sono state fatte **subito**, perché il
+catalogo era scaricabile allora e il container no: `docs/superpowers/specs/2026-08-04-foto-catalogo-colombo-misure.md`.
+**LA FOTO APPARTIENE AL GRUPPO, NON AL CODICE**: il catalogo intitola ogni pagina prodotto col **nome
+commerciale** («Roboquattro  Colombo Design»), la stessa parola con cui lo sfoglio raggruppa. Ribalta la
+stima pessimistica della spec (foto→codice: tetto **21%**) → foto→gruppo: **1.984 codici su 3.456 =
+57,4%**, ed è più onesto, perché una foto di catalogo ritrae il modello e non la finitura (sparisce il
+timore «dodici tessere con la stessa foto»). **`ER MAN 2026`: 260 pagine · 725 immagini · 615 JPEG + 110
+raw · ZERO JPEG2000** → 🟢 la trappola AGB **non si ripete** (lì erano `jpx`, PDF.js non le decodificava,
+ed è costata due tentativi sbagliati). Il testo si decodifica con **+29 su ogni byte** (verificato:
+`'$'+29='A'`, `"5RVHV"→"Roses"`), non è più «una frase in un `.md`». **167 pagine con foto**, su **94** il
+titolo è un gruppo del listino, **61 gruppi su 114** ricevono una foto. Il 57,4% è un **pavimento**: le 73
+pagine non agganciate sono copertine (da escludere), **pagine di continuazione** col primo testo numerico
+— recuperabili con un riporto del titolo, 🔴 **da misurare** — e **artefatti di decodifica** sugli
+accentati (`ALATSSÑ` per `ALATO`). **Già misurato e da non rifare**: i codici ordinabili nel catalogo sono
+lo **0,2%** (conferma che il catalogo non pubblica codici d'ordine); le famiglie ci sono al 52% ma coprono
+solo il **43,4%**, cioè **meno** del nome commerciale; la mappatura per pagina **sulle famiglie**
+fallisce (4 pagine su 167 non ambigue, 115 con foto e zero famiglie) — ed è l'errore commesso e corretto
+misurando: si cercava la famiglia dove il catalogo scrive il nome. ⚠️ Blob **privato** → i byte passano da
+una route Node e pesano su **Fast Origin Transfer** (40%): conta la DIMENSIONE, non la collocazione.
+`catalogPage` esiste a schema e **non è mai stato scritto**; va riempito con le foto, e vuole accanto una
+**colonna di edizione** o `ER MAN 2027` rinumera le pagine.
+⚠️ **La pronta consegna non è mai stata caricata in produzione**: su Neon 3.456 articoli e **zero**
+`stock_imports` → metà del reparto è spenta finché Andrea non apre `/maniglie/import`. Due minuti, zero codice.

@@ -104,22 +104,76 @@
 > poteva nemmeno accendere senza risalire. Un gruppo pieno sarebbe sembrato vuoto.
 > Spostata a livello di pagina, vale a tutti e tre i livelli.
 >
-> ### ▶ COSA FARE ORA
+> ### ▶ COSA FARE ORA — LE FOTO (deciso dall'utente)
 >
-> 1. **La domanda che pende da tre sessioni**: sono arrivate le **tre distinte reali**
->    di MC, Peruzzi e Fosca? Senza, i tre clienti principali ricevono distinte mai
->    confrontate con un ordine vero.
-> 2. **Passo 4 — le foto** dal catalogo `ER MAN 2026` (261 pagine, 725 immagini per
->    2.943 codici = **1 foto ogni 4**, tetto 21%). L'utente ha posto un vincolo:
->    «voglio qualità delle immagini», che va in tensione con i 400px di §6.5 della
->    spec — si concilia con **due formati** (miniatura per l'elenco, piena per la
->    scheda), non con un compromesso unico. ⚠️ Lo store Blob è **privato**: i byte
->    passano da una route Node e pesano su Fast Origin Transfer.
-> 3. **Vercel Pro entro sabato 08/08** (Hobby vieta l'uso commerciale).
-> 4. Debito noto: il nome commerciale **non è ancora un canale di ricerca** —
->    `article.search` cerca su codice, nome ed EAN, e il nome del listino contiene
->    già LARA/PETER/FEDRA, quindi cercare «lara» funziona **per caso** (via trigram
->    sul campo `name`), non per disegno.
+> **Le misure sono già fatte**, a chiusura della sessione precedente, perché il
+> catalogo era scaricabile allora e il container no. Stanno in
+> `docs/superpowers/specs/2026-08-04-foto-catalogo-colombo-misure.md`. In sintesi:
+>
+> **LA FOTO APPARTIENE AL GRUPPO, NON AL CODICE.** Il catalogo intitola ogni pagina
+> prodotto col **nome commerciale** («Roboquattro  Colombo Design»), che è la stessa
+> parola con cui lo sfoglio raggruppa. Questo ribalta la stima pessimistica della
+> spec «Sfoglia» (foto→codice: tetto 21%):
+>
+> | Granularità | Copertura misurata |
+> |---|---|
+> | foto → **codice** (assunzione vecchia) | 725 / 3.456 = 21% (tetto) |
+> | foto → **gruppo** (misurato) | **1.984 / 3.456 codici = 57,4%** |
+>
+> Ed è più **onesto**: una foto di catalogo ritrae il modello, non la finitura —
+> quindi il timore «dodici tessere Mood con la stessa foto» sparisce, perché sul
+> gruppo è *vero* che è la foto del gruppo.
+>
+> **I fatti che tolgono il rischio:**
+> - **260 pagine, 725 immagini, 615 JPEG + 110 raw, ZERO JPEG2000.** 🟢 La trappola
+>   AGB **non si ripete**: lì le foto erano `jpx` e PDF.js non le decodificava, ed è
+>   costata due tentativi sbagliati. `pdfimages` le estrae senza trattamenti.
+> - **Il testo si decodifica con +29 su ogni byte** (verificato: `'$'+29='A'`,
+>   `"5RVHV"→"Roses"`). Non è più «una frase in un `.md`».
+> - **167 pagine hanno foto**; su 94 il titolo È un gruppo del listino; **61 gruppi
+>   su 114** ricevono almeno una foto.
+>
+> **Il 57,4% è un PAVIMENTO, non un tetto.** Le 73 pagine non agganciate sono tre
+> classi: copertine (da escludere), **pagine di continuazione** il cui primo testo è
+> un numero — altre foto dello stesso modello, recuperabili con un **riporto del
+> titolo** 🔴 *da misurare, non da assumere* — e **artefatti di decodifica** sugli
+> accentati (`ALATSSÑ` per `ALATO`), che lo shift byte-per-byte rompe sui multibyte.
+>
+> **Cosa è già misurato e NON va rifatto:** i codici ordinabili nel catalogo sono lo
+> **0,2%** (conferma §3.1: il catalogo non pubblica codici d'ordine); le famiglie ci
+> sono al 52% ma coprono solo il **43,4%** dei codici, cioè **meno** del nome
+> commerciale; e la mappatura per pagina **sulle famiglie** fallisce (4 pagine su 167
+> non ambigue, 115 con foto e zero famiglie). Quest'ultima è l'errore che ho commesso
+> e corretto misurando: cercavo la famiglia dove il catalogo scrive il nome.
+>
+> **Ordine di lavoro suggerito:**
+> 1. **La misura (2)**: quanto sale la copertura col riporto del titolo sulle pagine
+>    di continuazione, e col fix degli accentati. È l'unico numero che manca.
+> 2. Le **quattro decisioni** di §5 della scheda misure — in particolare: la foto sul
+>    gruppo al 57,4% basta? uno o due formati? e `catalogPage`, che esiste a schema e
+>    non è mai stato scritto, vuole accanto una **colonna di edizione** o `ER MAN 2027`
+>    rinumera le pagine e le righe continueranno a dire «Pagina 63» (è la lezione di
+>    `lastListingAt` applicata all'altra metà del modello).
+> 3. Poi spec → piano → TDD, come sempre.
+>
+> ⚠️ **Vincolo di piattaforma**: lo store Blob è **privato**, i byte passano da una
+> route Node e pesano su **Fast Origin Transfer**, già al 40%. Conta la DIMENSIONE,
+> non la collocazione. E **Vercel Pro entro sabato 08/08** (Hobby vieta l'uso
+> commerciale).
+>
+> ### ▶ E LA DOMANDA CHE PENDE DA TRE SESSIONI
+>
+> Sono arrivate le **tre distinte reali** di MC, Peruzzi e Fosca? È del reparto
+> SERRAMENTI, non delle maniglie, ma resta la cosa aperta che vale di più: senza, i
+> tre clienti principali ricevono distinte mai confrontate con un ordine vero.
+>
+> ### ▶ E UNA COSA CHE NON È CODICE
+>
+> **La pronta consegna non è mai stata caricata in produzione.** Su Neon ci sono 3.456
+> articoli e **zero** `stock_imports`: la fascia dice «Nessuna pronta consegna
+> caricata», il pallino non compare e il filtro «solo pronta consegna» non esiste a
+> schermo. Metà del reparto — quella che l'ha motivato — è spenta finché Andrea non
+> apre `/maniglie/import` e carica il suo `.xls`. Due minuti, zero righe di codice.
 >
 > ### Cosa è successo (2026-08-04)
 >
