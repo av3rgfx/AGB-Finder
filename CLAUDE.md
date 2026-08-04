@@ -51,14 +51,19 @@ Tailwind CSS 3 · Vitest · pnpm. Deploy target: Vercel + Neon + Upstash.
   (`$queryRaw`/`$executeRaw`) — e nelle migrazioni. Ne esistono **due, ed è l'elenco
   completo**: `src/server/ai/rag.ts` (RAGEngine, ibrida AGB con pgvector) e
   `src/server/maniglie/search.ts` (articoli COLOMBO: `tsvector` + trigram, **senza**
-  pgvector, non esprimibili in Prisma). *Nessun raw SQL nei router.* ⚠️ La regola
+  pgvector, più il `GROUP BY` sulla prima parola dello sfoglio — non esprimibili in
+  Prisma). Le REGOLE DI DOMINIO restano fuori: la disponibilità in `stock-status.ts`
+  e la famiglia in `browse.ts`, entrambe TypeScript/Prisma; al raw SQL arriva al
+  massimo una lista di id già decisa. *Nessun raw SQL nei router.* ⚠️ La regola
   diceva «solo per pgvector, nel solo RAGEngine»: era già disattesa da
   `src/server/chat/tools.ts`, e la ricerca articoli l'ha resa insostenibile alla
   lettera. Riscritta per dire ciò che davvero protegge (il confinamento), non un
   luogo unico. **La regola di business NON sta nel raw SQL**: la disponibilità vive
   in `stock-status.ts`, tutta in Prisma.
 - **Reparti**: l'app ha due mondi affiancati — **SERRAMENTI** (nessun prefisso di
-  rotta) e **MANIGLIE** (`/maniglie/*`). `src/lib/reparti.ts` è la fonte unica; il
+  rotta, sezione di ricerca «Archivio») e **MANIGLIE** (`/maniglie/*`, sezione
+  «**Catalogo**» — non «Disponibilità», che nominava un attributo falso 95 volte su
+  100, e non «Archivio», che è già dell'altro reparto). `src/lib/reparti.ts` è la fonte unica; il
   reparto si deduce dall'**URL**, mai da un cookie o da `localStorage`. `/` è la
   schermata di scelta, attraversata a ogni login. La parola è **«reparto»**, mai
   «programma». Il **marchio sta nel sottotitolo** (il reparto maniglie ospiterà
@@ -687,3 +692,72 @@ finestre non cambiano funzionalità, cambiano contenitore — tre strade in spec
 `/llm-council` e `/impeccable` **prima** di scrivere codice. Poi i passi 1-4 (modello dati + import
 listino — **unica migrazione** · ricerca e scheda · upload pronta consegna · foto da catalogo).
 Spec/piano: `docs/superpowers/{specs,plans}/2026-08-03-*`.
+
++ **«SFOGLIA» — IL CATALOGO MANIGLIE SENZA DIGITARE ✅ (branch `claude/maniglie-catalogo-browse-cgxvjr`,
+PR aperta, **ops già eseguite sul ref del branch**)**: `article.search` imponeva `query.min(1)` e il
+client non chiamava nulla finché non si digitava — **non esisteva alcun percorso che elencasse qualcosa
+senza scrivere**. La sezione era letteralmente una casella bianca, e rispondeva solo a chi il codice lo
+sapeva già; chi ha in mano l'oggetto non ce l'ha. **Le cinque misure di §7 sul listino vero** (3.456
+codici, foglio `LP 02-26`): **114 prime parole distinte** (75 coprono il 95%, 11 singoletti, 45
+descrizioni con spaziatura irregolare) · il **secondo** token è la famiglia solo nel **53%** — era la
+domanda sbagliata, perché la famiglia c'è e **cambia posto** (`FEDRA CREM AC12` la mette terza,
+`PLACCA Y PER AM113` quarta) → nuova misura **(b bis)**: la famiglia **ovunque stia**, trovata per
+intersezione fra descrizione e codice (non una regexp che deduce dal codice, che §9 vieta) → **79,8%**,
+66% al 2° token e 26% al 3° · **533 famiglie**, mediana **3 codici** (non 36) · **133 code** di finitura,
+le prime 14 coprono il 72%. **LA PREMESSA DELLA SPEC ERA FALSA, E IN MEGLIO**: la prima parola non è una
+tipologia ma un **misto** di tipologie (MANIGLIONE 338, BOCCHETTA 288, NOTTOLINO 161, KIT 139) e **nomi
+commerciali** (ROBOT 129, ONE 124, DUE 120, PETER 41, LARA 28, FEDRA 35) → **il nome commerciale è già
+nel listino**, copre il 100% delle righe e costa zero, mentre la spec lo dava per vivente solo nel PDF
+(71 nomi su 96, «un passo di lavoro intero»). **`ER MAN 2026` serve ora SOLO per le foto.**
+**DUE DIFETTI TROVATI ESEGUENDO, NON LEGGENDO**: (1) **`pnpm import:listino` non era mai passato sul file
+vero** — moriva alla prima riga perché l'intestazione della colonna surcharge non è un nome ma
+l'**aliquota** (`0.035`), e sotto c'era di peggio: SheetJS dà `0.035` con `header:1` e `"3.5%"` come
+chiave di riga, quindi lo script cercava la colonna con la prima e leggeva le celle con la seconda —
+anche senza crash **ogni prezzo sarebbe uscito senza il 3,5%**. Fix **strutturale** (`parseListinoSheet`
+deriva da sé le intestazioni dalle chiavi delle righe: l'errore non è più commettibile dal chiamante) +
+`looksLikeRate` come ripiego, **dimostrato aritmeticamente**: 0 righe scartate · 0 collisioni · 0
+mismatch sulla SOMMA su **tutte e 3.456** le righe. (2) **Il gate della disponibilità non verificava
+nulla**: `seedManiglie` esce in silenzio senza un ADMIN a DB, quindi su database pulito i tre test della
+regola centrale del reparto fallivano invece di provare qualcosa (preesistente su `main`, verificato con
+`git stash`); da 10 a 21 test di integrazione verdi. **IL DISEGNO**: tre livelli, tutti su parole di
+COLOMBO — `taxonomy.ts` (modulo foglia: `firstWord`, `familyOf`, e `SQL_FIRST_WORD` come **costante**,
+col gemello SQL legato alla funzione TS da un test su tutta la tabella) · livello 1 = `GROUP BY` in
+`search.ts` · livello 2 = `splitGroup` in `browse.ts`, **TypeScript puro** perché «qual è la famiglia» è
+una regola di dominio, come la disponibilità. `splitGroup` restituisce famiglie **e codici sciolti
+insieme**, e la funzione è una sola apposta: misurando la copertura per gruppo, solo **23 gruppi su 114**
+ce l'hanno piena, **21** a zero e **70 parziali** (MANIGLIONE 333/338, BOCCHETTA 250/288) → una
+`groupByFamily` avrebbe reso **irraggiungibili** i codici restanti, invisibili anche a chi scrive il
+codice perché nessun conteggio andava a zero. Scartata la **famiglia degenere** (uguale alla parola del
+gruppo): scoperta su `KIT PORTE SCORREVOLI` / `XKIT/PS-CM`, avrebbe prodotto «KIT › KIT (23)» nascondendo
+116 codici. **CHIUSI I DUE DEBITI**: `offset` collegato (pagina nell'URL, come l'archivio) e **scroll
+restore riusando `archivio-scroll.ts`** (900→900 a 375px, 883→883 a desktop); **fascia data STICKY**.
+**LE TRE DECISIONI APERTE PASSATE DAL `/llm-council`** (5 advisor + 3 peer review + chairman), con le
+affermazioni numeriche **verificate sul DB prima della sintesi** — e una ha **demolito l'argomento
+centrale** di un advisor (i gruppi-modello conterrebbero maniglie, ~990 codici: misurato, «MANIGLION»
+compare in 360 descrizioni, **346 come prima parola e 14 altrove**, dispersione ~70 in tutto):
+**(1)** «Disponibilità» → **«Catalogo»**, perché nominava un **attributo falso 95 volte su 100**;
+**(2)** livello 1 **alfabetico**, a **chip in griglia**, con **filtro sulle etichette** — per numerosità
+il numero grosso significa «più finiture» (MANIGLIONE: 338 codici, **160 descrizioni distinte**) e
+seppelliva LARA/MILLA/VIOLA, i nomi che il cliente **pronuncia**; misurato in browser da ~14 schermate a
+**5,8** (375px) e **2,5** (desktop), e l'ordinamento sta in **TypeScript** e non in `ORDER BY` perché la
+collation è del database e può differire fra locale e Neon; **(3)** abbreviazioni: **nessuna riga di
+codice**, perché in alfabetico `ROS.`/`ROSETTA` sono **adiacenti**, il grappolo `MANIG.*` è contiguo,
+`BOCCEHTTA` cade prima di `BOCCHETTA` e `ROBOTE` atterra **esattamente fra** ROBOT e ROBOTRE — la
+fusione la fa l'occhio, e una tabella di alias sarebbe manutenzione perpetua su un listino in scadenza.
+**(+) FILTRO «SOLO PRONTA CONSEGNA»**: il dato che lo motiva è **178 articoli su 3.456 = 5,2%**, cioè 19
+righe su 20 non ordinabili oggi. La regola non entra nel raw SQL (`allAvailableArticleIds` è Prisma, al
+`GROUP BY` arriva solo una lista di id); `[]` e `undefined` sono **valori diversi** e il codice li
+distingue; il numero sul chip **dichiara** di aver cambiato insieme; sta nell'URL (`?pronta=1`); non
+compare cercando né senza giacenza caricata. Sui dati veri: 114 gruppi → **30**, somma dei conteggi
+filtrati **esattamente 178**. **Un test rosso ha scoperto un difetto di disegno mio**: la casella stava
+**dentro** l'elenco dei gruppi, quindi da dentro un gruppo il filtro restava acceso e **invisibile** e
+non si poteva accendere senza risalire — un gruppo pieno sarebbe sembrato vuoto. Spostata a livello di
+pagina. Gate: typecheck · lint · **1307 test** · build 22 route · **integrazione 21/21 su Postgres vero**
+· **browser** 38+5, 22 e 22 controlli su desktop e **375px**, screenshot guardati (è così che è saltato
+fuori il troncamento dei nomi a 375px, dove l'unica parola diversa è l'ultima).
+**🟢 NESSUNA MIGRAZIONE**: i gruppi si calcolano a lettura, quindi il listino aggiornato si colloca da
+solo. **AZIONE OPS ESEGUITA** (run `30903709865`, sul ref del branch): il workflow «Ops — Neon» ora
+importa **anche il listino COLOMBO** — serviva davvero, perché la tabella `articles` in produzione era
+**VUOTA** (la run del 03/08 importava il solo catalogo AGB, e `db:seed:maniglie` non è nel workflow):
+senza, «Sfoglia» sarebbe andato online mostrando zero gruppi.
+Piano: `docs/superpowers/plans/2026-08-04-catalogo-maniglie-sfoglia.md`.
