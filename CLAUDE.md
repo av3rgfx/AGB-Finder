@@ -47,8 +47,22 @@ Tailwind CSS 3 · Vitest · pnpm. Deploy target: Vercel + Neon + Upstash.
 ## REGOLE INVIOLABILI
 - TypeScript strict sempre.
 - Tutte le API via **tRPC** (mai `fetch` diretto dal client).
-- Tutte le query via **Prisma**. **Raw SQL solo per pgvector**, incapsulato nel
-  solo modulo `RAGEngine` (`$queryRaw`/`$executeRaw`) — e nelle migrazioni.
+- Tutte le query via **Prisma**. **Raw SQL confinato in moduli di ricerca nominati**
+  (`$queryRaw`/`$executeRaw`) — e nelle migrazioni. Ne esistono **due, ed è l'elenco
+  completo**: `src/server/ai/rag.ts` (RAGEngine, ibrida AGB con pgvector) e
+  `src/server/maniglie/search.ts` (articoli COLOMBO: `tsvector` + trigram, **senza**
+  pgvector, non esprimibili in Prisma). *Nessun raw SQL nei router.* ⚠️ La regola
+  diceva «solo per pgvector, nel solo RAGEngine»: era già disattesa da
+  `src/server/chat/tools.ts`, e la ricerca articoli l'ha resa insostenibile alla
+  lettera. Riscritta per dire ciò che davvero protegge (il confinamento), non un
+  luogo unico. **La regola di business NON sta nel raw SQL**: la disponibilità vive
+  in `stock-status.ts`, tutta in Prisma.
+- **Reparti**: l'app ha due mondi affiancati — **SERRAMENTI** (nessun prefisso di
+  rotta) e **MANIGLIE** (`/maniglie/*`). `src/lib/reparti.ts` è la fonte unica; il
+  reparto si deduce dall'**URL**, mai da un cookie o da `localStorage`. `/` è la
+  schermata di scelta, attraversata a ogni login. La parola è **«reparto»**, mai
+  «programma». Il **marchio sta nel sottotitolo** (il reparto maniglie ospiterà
+  COLOMBO, HOPPE, OLIVARI, DND, GHIDINI…): la tessera non si rinomina mai.
 - UI **in italiano**. Codici prodotto in **font monospace** (JetBrains Mono).
 - **Ogni design UI/UX si fa per MOBILE *e* desktop, mai solo desktop.** Ogni pagina o
   componente nuovo/modificato va progettato e implementato **responsive** (mobile-first),
@@ -97,6 +111,25 @@ Tailwind CSS 3 · Vitest · pnpm. Deploy target: Vercel + Neon + Upstash.
 - **Docker**: `bash scripts/dev-bootstrap.sh` (avvia daemon + Postgres/Redis +
   migrate + seed).
 - **Import PDF**: richiede `poppler-utils` (`pdftotext`).
+- **SheetJS NON si installa da npm.** Sul registry `xlsx` è fermo alla **0.18.5
+  (2022)**, con vulnerabilità note e mai corrette lì (prototype pollution, ReDoS).
+  Le versioni sane esistono **solo** sul CDN di SheetJS, e si installa pinnata:
+  `pnpm add https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`. È la stessa
+  classe di trappola del pin a pnpm 10: un `pnpm add xlsx` distratto reinstalla
+  la versione vulnerabile. Serve all'import listino e alla pronta consegna.
+- **`dev-bootstrap.sh`**: la copia di `.env` deve stare **PRIMA** di
+  `setup-prisma-engines.sh`, che crea lui `.env` per scriverci i path `PRISMA_*` —
+  se sta dopo non scatta mai e `migrate deploy` muore con `P1012` su ogni
+  container nuovo (corretto il 2026-08-04).
+- **Verifica browser**: Playwright dal registry non combacia con i browser
+  pre-installati. Lanciare con
+  `executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome"`,
+  **mai** `npx playwright install`.
+- **`pnpm build` mentre gira `pnpm dev` ROMPE il dev server**: condividono la
+  cartella `.next`, e la build di produzione la sovrascrive → il server continua
+  a rispondere 200 sulle pagine ma serve **404 su tutti i chunk**, quindi il
+  browser mostra l'HTML senza JavaScript e ogni verifica fallisce in modo
+  misterioso. Fermare `dev` prima di `build`; per ripartire, `rm -rf .next`.
 - Comandi prisma/tsx: fare `set -a; source .env; set +a` prima (per gli engine).
 
 ## TESTING / GATE
@@ -624,7 +657,30 @@ non-commercial personal use only»*, e la definizione include *«a paid employee
 sospensione; **passaggio a Pro deciso per il 2026-08-08**. La capacità a 20 utenti regge, ma
 **storage Neon 72-80%** e **Fast Origin Transfer 40%** hanno **una sola causa**: le 7.082 foto AGB
 stanno **dentro Postgres**. Da qui la decisione: **le foto COLOMBO nascono su Vercel Blob**.
-**▶ PROSSIMA SESSIONE — IL SELETTORE DI PROGRAMMA**: la prima schermata dopo il login diventa un
++ **REPARTO MANIGLIE (passi 1-3) + SELETTORE DI REPARTO ✅** (branch `claude/program-selector-yxw8zd`):
+tre tabelle nuove (`articles`, `stock_imports`, `stock_lines`, **mai** `Product`), parser del listino,
+script ops `import:listino`, ricerca (tsvector + trigram: «bocchetta» trova il refuso `BOCCEHTTA` del
+fornitore), scheda articolo, upload della pronta consegna con riepilogo/annullamento, e la schermata `/`
+di scelta reparto. Disponibilità **derivata** dall'ultimo import non annullato, mai un flag. Verdetto
+`/llm-council`: route group scartati su un fatto riprodotto (`E28`: separano il layout, non il
+namespace) → segmento URL vero `/maniglie/*`, **zero cookie**. Rimossi dalla TopBar **due controlli
+finti** (ricerca senza handler + campanella senza sistema di notifiche). Gate: typecheck · lint · **1213
+test** · build 22 route · browser 77/81 + 12/12. **AZIONE OPS ESEGUITA** (run `30848665038`, 2026-08-03
+20:05→20:17Z, 15/15 verdi, lanciata **sul ref del branch prima del merge**: finestra di disservizio zero).
+
+**▶ PROSSIMA SESSIONE — «SFOGLIA», IL CATALOGO SENZA DIGITARE.** Analisi conclusa, **zero codice**:
+`docs/superpowers/specs/2026-08-04-catalogo-maniglie-sfoglia-design.md`. Il bisogno è reale (`article.search`
+impone `query.min(1)`: **non esiste alcun percorso che elenchi qualcosa senza scrivere**), ma l'albero
+marca→sottocategoria→prodotto **non è costruibile**: il sito COLOMBO non pubblica mai un codice ordinabile
+(`MD 11 R-RY` vs `0MD11R-CM` → normalizzati **non combaciano**), il codice ordinabile *è* la finitura
+(1 foto ogni 4 codici, tetto 21%; il maniglione Mood ha 12 finiture con la stessa foto), e l'albero è già
+falsificato dentro COLOMBO (faccette diverse per collezione). **Fonte unica: la PRIMA PAROLA della
+descrizione del listino** — copre 3.456 su 3.456, un `GROUP BY` in `search.ts`, zero migrazioni, e
+l'etichetta è la parola di COLOMBO, non una nostra deduzione. 🔴 **BLOCCATO dai tre file di Andrea**: il
+dominio gira su 20 articoli **inventati**, e uno sfoglio su venti righe scelte da noi non dice nulla sugli
+altri 3.436. Prima dell'UI, le **cinque misure** di §7.
+
+**▶ SESSIONE PRECEDENTE — IL SELETTORE DI PROGRAMMA**: la prima schermata dopo il login diventa un
 selettore (**FINESTRE** / **MANIGLIE**, estendibile), per rendere visibile il distacco. **La sezione
 finestre non si tocca.** ⚠️ Ma un selettore *è* una modifica al **guscio di navigazione**: le
 finestre non cambiano funzionalità, cambiano contenitore — tre strade in spec §8.0, da portare a

@@ -20,5 +20,10 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/admin/:path*", "/login"],
+  // ⚠️ Allowlist cablato: le rotte non elencate qui NON passano da questo
+  // controllo e restano protette dal solo `redirect("/login")` del layout
+  // server — vale già oggi per /archivio, /richieste, /clienti, /utenti,
+  // /impostazioni. Il reparto maniglie e la scelta del reparto ci entrano
+  // invece di ereditare la lacuna.
+  matcher: ["/", "/dashboard/:path*", "/admin/:path*", "/maniglie/:path*", "/login"],
 };

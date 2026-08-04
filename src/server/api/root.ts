@@ -8,6 +8,7 @@ import { kitRouter } from "@/server/api/routers/kit";
 import { customerRouter } from "@/server/api/routers/customer";
 import { dashboardRouter } from "@/server/api/routers/dashboard";
 import { settingsRouter } from "@/server/api/routers/settings";
+import { articleRouter } from "@/server/api/routers/article";
 
 /** Root tRPC router. Add feature routers here as the app grows. */
 export const appRouter = createTRPCRouter({
@@ -20,6 +21,8 @@ export const appRouter = createTRPCRouter({
   customer: customerRouter,
   dashboard: dashboardRouter,
   settings: settingsRouter,
+  // Reparto maniglie: tabelle proprie, mai `Product`.
+  article: articleRouter,
 });
 
 export type AppRouter = typeof appRouter;

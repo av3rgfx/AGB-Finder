@@ -443,17 +443,77 @@ comparire voci che non lo riguardano.
 Corollario dichiarato dall'utente: **la sezione finestre non si tocca**, deve restare
 com'è.
 
-> ⚠️ **Tensione da sciogliere alla prossima sessione, non da decidere qui.** Un selettore
-> *è* una modifica al guscio di navigazione: cambia dove atterra il login, aggiunge un
-> livello di route sopra l'esistente e tocca la sidebar. Cioè: **nessuna funzionalità
-> delle finestre cambia, ma il loro contenitore sì.** Le strade sono almeno tre —
-> (a) una route `/` che fa da selettore e lascia intatti i percorsi attuali;
-> (b) due gruppi di route affiancati (`/(finestre)/…` e `/(maniglie)/…`), con la sidebar
-> che mostra solo il gruppo corrente e un modo per tornare al selettore;
-> (c) un commutatore dentro la sidebar, senza schermata dedicata.
-> La (b) è la più pulita per il futuro ed è anche quella che tocca più file esistenti.
-> **Da portare a `/llm-council` e a `/impeccable`** (mobile ≤375px *e* desktop) prima di
-> scrivere codice, insieme alla domanda su cosa vede chi ha accesso a un solo programma.
+> ✅ **Tensione sciolta — verdetto `/llm-council` del 2026-08-04** (5 advisor + 5 peer
+> review + chairman, con un reviewer che ha *eseguito* i comandi e riprodotto i build).
+>
+> **Nessuna delle tre strade come scritte.** Si prende la **(a)** — selettore a `/`,
+> percorsi attuali intatti — **più** un'opzione che non era in elenco: il reparto nuovo
+> vive su un **segmento URL vero**, `src/app/(dashboard)/maniglie/…`.
+>
+> La **(b) cade su un fatto riprodotto**: con il Next 15.5.20 installato, due route group
+> fratelli che risolvono lo stesso path fanno fallire la build
+> (*«You cannot have two parallel pages that resolve to the same path»*, `E28`). Il punto
+> che il council ha isolato e che la spec non sapeva: **i route group separano il layout,
+> non il namespace** — l'URL resta identico, quindi la (b) non dà l'isolamento per cui la
+> si sceglieva. E `/utenti`, `/impostazioni` e soprattutto **l'assistente** sono già
+> trasversali ai due reparti: sotto la (b) andrebbero collocati fisicamente in uno o
+> duplicati. La (b) non è né fatale né gratis: è **inerte**.
+>
+> Corollario verificato: la seconda metà dell'affermazione «(b) tocca più file esistenti»
+> era **falsa** (i route group non entrano nell'URL, quindi le 26 occorrenze di path
+> restavano valide) — ma è ininfluente, perché la (b) esce comunque.
+>
+> **Le decisioni operative:**
+>
+> | | |
+> |---|---|
+> | **Rotte** | `/` = scelta reparto · nessun prefisso = SERRAMENTI (intatto) · `/maniglie/*` = MANIGLIE. Zero rinomine, bookmark degli agenti vivi |
+> | **Attraversato o raggiungibile** | **attraversato** a ogni login: è l'unica risposta onesta quando l'app non sa dove vuoi andare |
+> | **Memoria del reparto** | **nessuna. Zero cookie.** Sarebbe l'ottava istanza della classe «valore deciso dal programma e mai dichiarato»; il rimedio non è «scriverlo a schermo», è non ricordare. Il reparto si deduce dall'**URL**, che è derivato e condivisibile |
+> | **Atterraggio** | `login-form.tsx:66` e `decideRedirect` puntano a `/`; `/` entra nel matcher conservando il redirect a `/login` |
+> | **Ritorno** | l'header `h-16` della sidebar da wordmark statico a **nome reparto + «Cambia reparto»**. Gratis a 375px: `topbar.tsx:141` rimonta la stessa Sidebar nel drawer |
+> | **«Dove sono» a 375px** | la TopBar mobile non ha né wordmark né nome sezione → **l'hamburger porta scritto il reparto** (`☰ MANIGLIE`): zero spazio nuovo, bersaglio più grande, e vale su entrambi i reparti |
+> | **Ordine** | **due PR: maniglie prima, selettore per ultimo.** Il selettore è l'unico pezzo che tocca il guscio di un'app viva, ha zero migrazioni e si annulla con un revert; e la seconda tessera è onesta solo dopo che `/maniglie` esiste |
+>
+> **Chi ha accesso a un solo reparto: nessuno, oggi** (`MAGAZZINO` è fuori scope, §5). Il
+> selettore va comunque **derivato da una lista**, così che il giorno in cui la lista ha un
+> elemento solo si salti da sé — e il «clic in più» si dissolva senza codice nuovo.
+>
+> ### 8.0.1 Le parole (decisione dell'utente, 2026-08-04)
+>
+> **«Reparto», mai «programma»**: in un gestionale italiano «il programma» *è* il software,
+> e un selettore di programmi dentro un programma legge come un menù d'avvio. Compare in un
+> punto solo: **«Cambia reparto»**.
+>
+> **Le tessere si chiamano SERRAMENTI e MANIGLIE**, e il **marchio sta nel sottotitolo**:
+> *SERRAMENTI — Ferramenta per serramenti · AGB* e *MANIGLIE — Maniglie per porte e
+> finestre · COLOMBO*. Il council proponeva i marchi nudi (`AGB`/`COLOMBO`) perché una
+> maniglia si monta su una finestra e «MANIGLIE» è ambiguo — e l'ambiguità è **reale e
+> verificata**: `recent-searches.tsx:5` suggerisce letteralmente «maniglia» fra le ricerche
+> **dell'archivio AGB**, «entrata maniglia» è un campo del wizard kit, e la cremonese *è* la
+> maniglia della finestra (69 occorrenze in `src/`).
+>
+> Ma un dato nuovo dell'utente **capovolge l'argomento**: il reparto maniglie ospiterà
+> **almeno cinque marche** (COLOMBO, poi HOPPE, OLIVARI, DND, GHIDINI…). Quindi COLOMBO non
+> è il *nome* del reparto, è un suo **contenuto**: chiamare la tessera COLOMBO sarebbe
+> sbagliato il giorno che entra la seconda marca, e andrebbe rinominata — cioè esattamente
+> il difetto che si voleva evitare. La divisione è per **categoria di merce e mestiere**, le
+> marche stanno dentro. Il modello lo regge già: `Article.brand` è una colonna proprio
+> perché «le altre marche arrivano qui, non in tabelle nuove» (§6.1).
+>
+> L'ambiguità si risolve quindi **altrove, non nel nome della tessera**: (a) il marchio nel
+> sottotitolo fa la disambiguazione e cresce senza rinomine; (b) **le due sezioni di ricerca
+> non si chiamano tutt'e due «Archivio»** — quella AGB resta `Archivio`, quella maniglie è
+> **`Disponibilità`**, che è la domanda letterale di Andrea e non un sinonimo di «cerca».
+>
+> ### 8.0.2 Il difetto che il council ha trovato di passaggio
+>
+> Il `matcher` del middleware è un **allowlist cablato**: `/archivio`, `/richieste`,
+> `/clienti`, `/utenti`, `/impostazioni` **non ci sono già oggi** — sono protetti solo dal
+> `redirect("/login")` del layout server. Quindi `/maniglie/*` nascerebbe con la stessa
+> lacuna. Non è una falla di autorizzazione (il layout server e le procedure tRPC reggono),
+> ma è una protezione dichiarata che copre meno di quanto sembri: **va allargata**, non
+> replicata così com'è.
 
 ### 8.1 Le schermate del dominio maniglie
 
@@ -530,6 +590,14 @@ Restano:
 | 2 | Ricerca e scheda articolo (i due stati dell'agente, la data, il prezzo arrotondato) | no |
 | 3 | Upload pronta consegna + riepilogo + conferma + annulla | no |
 | 4 | Arricchimento da catalogo: pagina + foto su Blob | no |
+| 5 | **Il selettore di reparto** (§8.0) — PR a sé, **mergiata per ultima** | no |
+
+**Il selettore è ultimo, non primo** (decisione dell'utente del 2026-08-04, dopo il
+council). Le ragioni sono due e nessuna è di comodo: (a) un bivio con un ramo che non
+porta da nessuna parte **sembra un guasto**, e la seconda tessera è onesta solo dopo che
+`/maniglie` esiste; (b) è l'unico pezzo che tocca il **guscio di navigazione di un'app
+viva** — zero migrazioni, quindi si annulla con un revert, il che lo rende il candidato
+giusto all'ultimo posto e non al primo.
 
 Il passo 0 non è igiene: è il prerequisito. E la mano che lo fa passa esattamente per i
 punti in cui atterreranno le maniglie.

@@ -7,6 +7,7 @@ import { User, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { HOME_REPARTI } from "@/lib/reparti";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const REMEMBER_KEY = "ufp:email";
@@ -63,7 +64,12 @@ export function LoginForm() {
       /* ignore */
     }
 
-    router.replace(params.get("callbackUrl") ?? "/dashboard");
+    // Senza `callbackUrl` si atterra sulla SCELTA DEL REPARTO, non dentro i
+    // serramenti: l'app non ricorda dove eri (nessun cookie, per non
+    // reintrodurre un valore deciso dal programma e mai dichiarato), quindi
+    // chiedere è l'unica risposta onesta. Chi arriva da un segnalibro o da un
+    // link condiviso porta il proprio `callbackUrl` e non passa di lì.
+    router.replace(params.get("callbackUrl") ?? HOME_REPARTI);
     router.refresh();
   }
 
