@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 import { seedManiglie } from "../../../prisma/seed-maniglie";
 import { searchArticleIds, browseFirstWords, articleIdsByFirstWord } from "./search";
-import { firstWord } from "./taxonomy";
+import { firstWord, secondToken, SQL_FIRST_WORD, SQL_SECOND_WORD } from "./taxonomy";
+import { browseLabel } from "./curatela";
 import {
   currentStockImport,
   availableArticleIds,
@@ -86,15 +87,38 @@ describe.runIf(Boolean(url))("ricerca articoli — integrazione su Postgres", ()
     expect(await codesOf("maniglia")).toContain("0CD41R-CM");
   });
 
+  /**
+   * Il refuso è nei DATI del fornitore, digitato a mano, e l'agente digita la
+   * parola giusta. Il full-text non lo trova: lo trova il ramo trigram. Un
+   * articolo che è sullo scaffale ma non si trova è ciò che riporta l'agente al
+   * telefono, cioè il fallimento che la spec vuole evitare.
+   *
+   * Asserisce la PROPRIETÀ e non un codice: prima pretendeva `0CD41RCB`, che è
+   * un articolo inventato dal seed, e sul catalogo vero (3.456 righe) falliva —
+   * non perché la ricerca fosse rotta, ma perché il gate girava solo su venti
+   * righe finte. Sul listino vero i refusi cadono alle posizioni 317-319 su 319,
+   * cioè esattamente dove devono: dopo tutte le 288 scritte giuste.
+   */
   it("RECUPERA il refuso del listino: «bocchetta» trova BOCCEHTTA", async () => {
-    // Il refuso è nei DATI del fornitore, digitato a mano, e l'agente digita la
-    // parola giusta. Il full-text non lo trova: lo trova il ramo trigram. Un
-    // articolo che è sullo scaffale ma non si trova è ciò che riporta l'agente
-    // al telefono, cioè il fallimento che la spec vuole evitare.
-    const codes = await codesOf("bocchetta");
-    expect(codes).toContain("0CD41RCB"); // BOCCEHTTA CD41
+    const { hits } = await searchArticleIds(db, {
+      brand: "COLOMBO",
+      query: "bocchetta",
+      limit: 500,
+      offset: 0,
+    });
+    const rows = await db.article.findMany({
+      where: { id: { in: hits.map((h) => h.id) } },
+      select: { id: true, name: true },
+    });
+    const byId = new Map(rows.map((r) => [r.id, r.name]));
+    const names = hits.map((h) => byId.get(h.id)!).filter(Boolean);
+
+    expect(names.some((n) => n.startsWith("BOCCEHTTA"))).toBe(true);
     // …e senza scavalcare quelle scritte giuste.
-    expect(codes.indexOf("0CD63FP-CM")).toBeLessThan(codes.indexOf("0CD41RCB"));
+    expect(names[0]!.startsWith("BOCCHETTA")).toBe(true);
+    expect(names.findIndex((n) => n.startsWith("BOCCEHTTA"))).toBeGreaterThan(
+      names.findIndex((n) => n.startsWith("BOCCHETTA")),
+    );
   });
 
   it("trova per EAN", async () => {
@@ -238,12 +262,31 @@ describe.runIf(Boolean(url))("sfoglio — il GROUP BY SQL e la funzione TypeScri
     });
     const ts = new Map<string, number>();
     for (const r of rows) {
-      const w = firstWord(r.name);
+      const w = browseLabel(r.name);
+      if (w === null) continue;
       ts.set(w, (ts.get(w) ?? 0) + 1);
     }
 
     expect(sql.length).toBe(ts.size);
     for (const g of sql) expect([g.word, g.count]).toEqual([g.word, ts.get(g.word)]);
+  });
+
+  /**
+   * Il gemello SQL del SECONDO token, che è ciò su cui poggiano le divisioni:
+   * se `split_part(…, 2)` e `secondToken` divergessero, `ROBOCINQUE S`
+   * conterebbe righe diverse da quelle che poi la schermata mostra.
+   */
+  it("prima e secondo token: SQL e TypeScript concordano su tutta la tabella", async () => {
+    const rows = await db.$queryRaw<{ w1: string; w2: string; name: string }[]>`
+      SELECT ${Prisma.raw(SQL_FIRST_WORD.replace(/\bname\b/, "a.name"))} AS w1,
+             ${Prisma.raw(SQL_SECOND_WORD.replace(/\bname\b/, "a.name"))} AS w2,
+             a.name
+      FROM articles a WHERE a.brand = 'COLOMBO'
+    `;
+    expect(rows.length).toBeGreaterThan(3000);
+    for (const r of rows) {
+      expect([r.name, r.w1, r.w2 || null]).toEqual([r.name, firstWord(r.name), secondToken(r.name)]);
+    }
   });
 
   it("lo spazio doppio non produce un gruppo vuoto", async () => {
@@ -260,14 +303,106 @@ describe.runIf(Boolean(url))("sfoglio — il GROUP BY SQL e la funzione TypeScri
     expect(words).toEqual([...words].sort((a, b) => a.localeCompare(b, "it")));
   });
 
-  it("i doppioni del fornitore finiscono adiacenti, senza che noi li fondiamo", async () => {
-    // È ciò che rende inutile una tabella di alias: `ROS.` e `ROSETTA` sono la
-    // stessa cosa scritta in due modi, e in alfabetico si vedono insieme.
+  /**
+   * Questo test prima diceva l'opposto — «i doppioni finiscono adiacenti, senza
+   * che noi li fondiamo» — ed era il verdetto del `/llm-council`: in alfabetico
+   * `ROS.` e `ROSETTA` si vedono insieme, quindi la fusione la fa l'occhio.
+   * Andrea ha usato lo sfoglio vero e ha chiesto di fonderle. Il test è girato
+   * insieme alla decisione, perché codificava il comportamento vecchio.
+   */
+  it("le etichette doppie del fornitore non compaiono più: sono fuse", async () => {
     const words = (await browseFirstWords(db, "COLOMBO")).map((g) => g.word);
-    const dist = (a: string, b: string) => Math.abs(words.indexOf(a) - words.indexOf(b));
-    if (words.includes("ROS.") && words.includes("ROSETTA")) {
-      expect(dist("ROS.", "ROSETTA")).toBe(1);
+    for (const storta of [
+      "ROS.",
+      "BOCCEHTTA",
+      "NOTTOLIN",
+      "KITPORTE",
+      "DUMMY/C",
+      "MOV.GRATZ",
+      "MOV.MARTELLINA",
+      "ROBOCINQUQ",
+      "ROBOTE",
+    ]) {
+      expect(words).not.toContain(storta);
     }
+    expect(words).toContain("ROSETTA");
+    expect(words).toContain("BOCCHETTA");
+  });
+
+  it("le etichette escluse da Andrea non si sfogliano", async () => {
+    const words = (await browseFirstWords(db, "COLOMBO")).map((g) => g.word);
+    for (const fuori of ["VITE", "VITI", "RONDELLA", "DADO", "CHIAVE"]) {
+      expect(words).not.toContain(fuori);
+    }
+  });
+
+  it("Robocinque e Robocinque S sono due voci, e Roboquattro pure", async () => {
+    const words = (await browseFirstWords(db, "COLOMBO")).map((g) => g.word);
+    expect(words).toContain("ROBOCINQUE");
+    expect(words).toContain("ROBOCINQUE S");
+    expect(words).toContain("ROBOQUATTRO");
+    expect(words).toContain("ROBOQUATTRO S");
+  });
+
+  /**
+   * Nessun codice si perde per strada: la somma dei conteggi mostrati più gli
+   * esclusi deve fare il totale a DB. Senza, una fusione sbagliata potrebbe far
+   * sparire righe senza che nulla vada a zero.
+   */
+  it("la somma dei gruppi più gli esclusi fa il totale degli articoli", async () => {
+    const groups = await browseFirstWords(db, "COLOMBO");
+    const rows = await db.article.findMany({
+      where: { brand: "COLOMBO" },
+      select: { name: true },
+    });
+    const esclusi = rows.filter((r) => browseLabel(r.name) === null).length;
+    expect(groups.reduce((s, g) => s + g.count, 0) + esclusi).toBe(rows.length);
+    expect(esclusi).toBeGreaterThan(0);
+  });
+
+  it("le righe di un'etichetta fusa comprendono quelle scritte storte", async () => {
+    const rows = await articleIdsByFirstWord(db, "COLOMBO", "ROSETTA");
+    expect(rows.some((r) => firstWord(r.name) === "ROS.")).toBe(true);
+    expect(rows.some((r) => firstWord(r.name) === "ROSETTA")).toBe(true);
+  });
+
+  it("le righe di una metà divisa non contengono l'altra metà", async () => {
+    const s = await articleIdsByFirstWord(db, "COLOMBO", "ROBOCINQUE S");
+    const base = await articleIdsByFirstWord(db, "COLOMBO", "ROBOCINQUE");
+    expect(s.length).toBeGreaterThan(0);
+    expect(base.length).toBeGreaterThan(0);
+    for (const r of s) expect(secondToken(r.name)).toMatch(/^S'?/);
+    for (const r of base) expect(secondToken(r.name)).not.toMatch(/^S'?$|^S'/);
+    expect(s.some((r) => base.includes(r))).toBe(false);
+  });
+
+  /**
+   * Un gruppo escluso non deve tornare a schermo scrivendolo nell'URL: sarebbe
+   * nascosto dalla vista ma raggiungibile a mano, che è peggio di non toglierlo.
+   */
+  it("un'etichetta esclusa non restituisce righe nemmeno se richiesta a mano", async () => {
+    expect(await articleIdsByFirstWord(db, "COLOMBO", "VITE")).toEqual([]);
+  });
+
+  /**
+   * L'altra metà della decisione dell'utente, ed è quella che la rende
+   * accettabile: le rimozioni valgono SOLO per lo sfoglio. Una vite tolta anche
+   * dalla ricerca sarebbe un pezzo che è a magazzino e non si trova — cioè
+   * esattamente il fallimento che il ramo trigram esiste per evitare.
+   */
+  it("ciò che è escluso dallo sfoglio resta trovabile SCRIVENDOLO", async () => {
+    const { hits } = await searchArticleIds(db, {
+      brand: "COLOMBO",
+      query: "vite",
+      limit: 50,
+      offset: 0,
+    });
+    const rows = await db.article.findMany({
+      where: { id: { in: hits.map((h) => h.id) } },
+      select: { name: true },
+    });
+    const viti = rows.filter((r) => browseLabel(r.name) === null);
+    expect(viti.length).toBeGreaterThan(0);
   });
 });
 
@@ -300,8 +435,23 @@ describe.runIf(Boolean(url))("sfoglio — il filtro «solo pronta consegna»", (
     for (const g of soloPronti) {
       expect(g.count).toBeLessThanOrEqual(totali.get(g.word) ?? 0);
     }
-    // La somma dei filtrati è esattamente il numero di articoli pronti.
-    expect(soloPronti.reduce((n, g) => n + g.count, 0)).toBe(new Set(pronti).size);
+    /**
+     * La somma dei filtrati è il numero di articoli pronti **che si sfogliano**,
+     * non di quelli pronti. Prima erano lo stesso numero; da quando Andrea ha
+     * escluso viti, dadi, chiavi e rondelle non lo sono più — nel seed c'è
+     * proprio una `VITE FISSAGGIO ROSETTA` in pronta consegna. È voluto: quei
+     * pezzi restano in magazzino e restano trovabili scrivendo, ma non stanno
+     * nel catalogo che Andrea sfoglia.
+     */
+    const prontiRows = await db.article.findMany({
+      where: { id: { in: [...new Set(pronti)] } },
+      select: { name: true },
+    });
+    const sfogliabili = prontiRows.filter((r) => browseLabel(r.name) !== null);
+    expect(soloPronti.reduce((n, g) => n + g.count, 0)).toBe(sfogliabili.length);
+    // E i due numeri devono DAVVERO differire, altrimenti l'asserzione sopra
+    // passerebbe anche se l'esclusione non funzionasse.
+    expect(sfogliabili.length).toBeLessThan(prontiRows.length);
   });
 
   it("un elenco di id VUOTO dà zero gruppi, non tutti", async () => {

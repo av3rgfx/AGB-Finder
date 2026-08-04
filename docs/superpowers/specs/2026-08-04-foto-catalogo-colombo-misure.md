@@ -1,5 +1,12 @@
 # Foto COLOMBO — le misure fatte PRIMA di scrivere codice
 
+> 🔴 **SUPERATA IN PARTE.** Le conclusioni di §3.1 e §4 sono state **falsificate**
+> rieseguendo le misure sul catalogo: le «pagine di continuazione» sono le pagine
+> TECNICHE del modello già contato (riporto del titolo = +0), gli accentati valgono
+> **un** titolo su 92, e il conteggio «167 pagine con foto» mescola scatti
+> d'ambiente, scatti prodotto e icone. Leggere prima
+> `2026-08-04-foto-e-finiture-colombo-misure-2.md`.
+
 > **Stato**: misure eseguite sul catalogo vero, **zero righe di codice**.
 > **Data**: 2026-08-04, a chiusura della sessione «Sfoglia».
 > **Perché ora**: il catalogo è scaricabile adesso, il container no. Questi numeri

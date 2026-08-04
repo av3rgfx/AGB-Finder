@@ -9,14 +9,13 @@
 
 | Campo | Valore |
 |-------|--------|
-| **Data** | 2026-08-04 — **«SFOGLIA»: il catalogo maniglie senza digitare** |
-| **Fase in corso** | Fase 1 — MVP Gestionale · il secondo dominio si sfoglia |
-| **Sotto-fase** | Catalogo COLOMBO a tre livelli + filtro pronta consegna. Passo 4 (foto da catalogo) NON fatto, e ora serve SOLO per le foto |
-| **Branch git** | `claude/maniglie-catalogo-browse-cgxvjr` (da `main`, dopo il merge #50) — **pushato**, 12 commit |
-| **Stato deploy** | **NESSUNA MIGRAZIONE.** I gruppi si calcolano a lettura: il listino aggiornato si colloca da solo. |
-| **🟢 Azione ops** | **ESEGUITA**: run «Ops — Neon» **`30903709865`**, lanciata **sul ref del branch** prima del merge. Il workflow ora importa anche il **listino COLOMBO** (passo nuovo, dopo migrate/AGB/seed, con input URL e controllo che l'xlsx sia uno zip). Serviva davvero: la tabella `articles` in produzione era **VUOTA** — la run del 03/08 importava il solo catalogo AGB, e `db:seed:maniglie` (20 articoli inventati) non è nel workflow. Senza, «Sfoglia» sarebbe andato online con zero gruppi. |
-| **Gate** | typecheck · lint · **1307 test** (139 skip) · build 22 route · **integrazione 21/21 su Postgres vero** · **browser 22+22+38+5 controlli** (desktop e 375px, screenshot guardati) |
-| **Aperto** | **passo 4** (foto dal catalogo `ER MAN 2026`, 1 foto ogni 4 codici) · Vercel Pro entro sabato 08/08 · storage Neon da misurare · le tre distinte reali (MC, Peruzzi, Fosca) |
+| **Data** | 2026-08-04 — **MISURE SULLE FOTO + CURATELA DELLO SFOGLIO (le 14 righe di Andrea)** |
+| **Fase in corso** | Fase 1 — MVP Gestionale · reparto maniglie |
+| **Sotto-fase** | Andrea ha usato il catalogo vero e ha mandato 14 correzioni: **13 fatte** (la 14ª è il filtro colori). Le **foto** sono misurate ma **non implementate**: sono la prossima sessione. |
+| **Branch git** | `claude/foto-catalogo-maniglie-8sua1k` (da `main`, dopo il merge #52) — **pushato**, 7 commit |
+| **Stato deploy** | 🟢 **NESSUNA MIGRAZIONE, NESSUNA AZIONE OPS.** La curatela si applica **a lettura**: niente colonne, niente re-import. |
+| **Gate** | typecheck · lint · **1336 test** · build 22 route · **integrazione 29/29 su Postgres vero col listino VERO (3.456 codici)** · **browser 54/54** (desktop e 375px, screenshot guardati) |
+| **Aperto** | ⭐ **LE FOTO** (misure fatte, zero codice) · le 2 domande per Andrea (§«DA CHIEDERE») · Vercel Pro entro sabato 08/08 · le tre distinte reali (MC, Peruzzi, Fosca) |
 
 ---
 
@@ -24,156 +23,188 @@
 
 | Campo | Valore |
 |-------|--------|
-| **Data** | 2026-08-04 — **REPARTO MANIGLIE (passi 1-3) + SELETTORE DI REPARTO** |
-| **Fase in corso** | Fase 1 — MVP Gestionale · **il secondo dominio è vivo** |
-| **Sotto-fase** | Archivio pronta consegna COLOMBO — passi **1, 2 e 3 fatti**; passo 4 (foto da catalogo) NON fatto |
-| **Branch git** | `claude/program-selector-yxw8zd` (da `main`, dopo il merge #49) — **pushato** |
-| **Stato deploy** | **Neon ALLINEATO**: la migrazione è già applicata. Manca solo il merge. |
-| **🟢 Azione ops** | **ESEGUITA.** Run «Ops — Neon» **`30848665038`** del 2026-08-03 20:05→20:17Z, lanciato **sul ref del branch** (`8f60bba`) e non su `main`: **15/15 passi verdi**. Migrazione `20260803182947_maniglie_articles_stock` applicata (tre tabelle: `articles`, `stock_imports`, `stock_lines`) · import catalogo AGB · seed admin/kit/clienti · embed **1 secondo** (niente da fare: nessun codice nuovo, come atteso). Lanciata PRIMA del merge, quindi finestra di disservizio **zero** — il precedente da evitare sono i venti minuti della PR #40. ⚠️ Il seed di sviluppo `db:seed:maniglie` NON è nel workflow, ed è giusto: quei 20 articoli sono inventati e non devono arrivare in produzione. Al merge non resta nulla da fare. |
-| **Gate** | typecheck · lint · **1212 test** (131 skip) · build **22 route** (erano 18) · **browser 77/81** (desktop e 375px, screenshot guardati) · **integrazione 13/13 su Postgres vero** |
-| **Aperto** | ⭐ **«Sfoglia»** (catalogo senza digitare — analisi conclusa, spec pronta, **bloccata dai file**) · **passo 4** (pagina + foto da catalogo ER su Blob) · 🔴 i **tre file di Andrea** (non sono nel repo: bloccano tutto il resto) · Vercel Pro entro sabato 08/08 · storage Neon da misurare · le tre distinte reali |
+| **Data** | 2026-08-04 — **«SFOGLIA»: il catalogo maniglie senza digitare** |
+| **Fase in corso** | Fase 1 — MVP Gestionale · il secondo dominio si sfoglia |
+| **Sotto-fase** | Catalogo COLOMBO a tre livelli + filtro pronta consegna |
+| **Branch git** | `claude/maniglie-catalogo-browse-cgxvjr` — **PR #51 e #52 MERGIATE** |
+| **Stato deploy** | **NESSUNA MIGRAZIONE.** I gruppi si calcolano a lettura. |
+| **🟢 Azione ops** | **ESEGUITA**: run «Ops — Neon» **`30903709865`**, sul ref del branch prima del merge. Il workflow ora importa anche il **listino COLOMBO**: serviva, perché `articles` in produzione era **VUOTA**. |
+| **Gate** | typecheck · lint · **1307 test** · build 22 route · **integrazione 21/21** · **browser 22+22+38+5** |
 
 ---
 
 > **▶ RIPRENDI DA QUI**
 >
-> ## «SFOGLIA» È FATTO. Restano le foto, e una domanda che pende da tre sessioni.
+> ## LE FOTO. Tutto misurato, zero codice scritto.
 >
-> Il catalogo COLOMBO si sfoglia **senza digitare**: 114 gruppi → famiglie → codici,
-> tutto su parole scritte da COLOMBO. Branch `claude/maniglie-catalogo-browse-cgxvjr`,
-> 12 commit, PR aperta, **ops già eseguite sul ref del branch**.
+> Questa sessione ha fatto due cose: ha **misurato** le foto fino in fondo (e i
+> numeri sono buoni), e ha **eseguito la curatela** che Andrea ha chiesto dopo
+> aver usato il catalogo vero. Le foto sono la prossima sessione, e non manca
+> più nessun dato per farle.
 >
-> ### Le cinque misure, sul listino vero (3.456 codici)
+> ### 🔑 I FILE: ora sono TUTTI raggiungibili da soli
 >
-> | # | Misura | Valore |
+> - **Cartella Drive MANIGLIE** — riuso **autorizzato dall'utente**, registrata in
+>   `CLAUDE.md`: contiene listino (`LP 02-26`, 3.456 codici, **è quello in
+>   produzione**), pronta consegna, `ER MAN 2026` e `RR MAN 2026`. Gli id si
+>   ricavano dall'HTML della cartella, il download è
+>   `https://drive.usercontent.google.com/download?id=<id>&export=download&confirm=t`.
+> - **Area download COLOMBO** (`download.colombodesign.com`, form a **sola
+>   password** — la password la fornisce l'utente, **non è scritta da nessuna
+>   parte e non va scritta**). Lì c'è l'**archivio fotografico ufficiale**.
+> - **Ambiente**: `bash scripts/dev-bootstrap.sh`, poi
+>   `pnpm import:listino COLOMBO <listino.xlsx>` per avere i **3.456 codici veri**
+>   in locale — è ciò che rende il gate d'integrazione una verifica e non un
+>   rituale su venti righe finte.
+>
+> ### 📸 LE FOTO — tutte le misure, da NON rifare
+>
+> **La sorgente è l'archivio ufficiale, non il PDF.** 79 zip, 3,3 GB compressi,
+> **707 foto**, 4,15 GB scompattate, **5315×5315 CMYK**, prodotto **pulito su
+> fondo bianco**. L'indice di tutti e 79 si prende con richieste **Range** sulla
+> central directory: pochi MB invece di 3,3 GB (script riproducibile in §9 della
+> scheda misure).
+>
+> | Sorgente | Codici coperti | % |
 > |---|---|---|
-> | a | prime parole distinte | **114** · 75 coprono il 95% · 11 singoletti · 45 con spaziatura irregolare |
-> | b | il **secondo** token è la famiglia | 53% — era la domanda sbagliata |
-> | b bis | la famiglia **ovunque stia** | **79,8%** (66% al 2° token, 26% al 3°) |
-> | c | famiglie distinte | **533** |
-> | d | codici per famiglia (mediana) | **3** — non 36 |
-> | e | code dopo l'ultimo separatore | **133**, le prime 14 coprono il **72%** |
+> | archivi di **modello** (68 zip → 59 gruppi) | 1.853 | **53,6%** |
+> | **accessori**, col codice scritto nel nome del file | +297 | +8,6% |
+> | **totale prudente** | **2.146** | **62,1%** |
+> | accessori, agganciando anche i nomi di modello scritti nelle descrizioni | +528 | |
+> | **totale ottimistico** | **2.394** | **69,3%** |
 >
-> **La premessa della spec era falsa, e in meglio.** La prima parola non è una
-> tipologia: è un misto di tipologie (MANIGLIONE 338, BOCCHETTA 288) e **nomi
-> commerciali** (ROBOT 129, PETER 41, LARA 28). Quindi **il nome commerciale è già
-> nel listino**, copre il 100% delle righe e costa zero — la spec lo dava per
-> vivente solo nel PDF, con copertura 71/96 e «un passo di lavoro intero».
-> **`ER MAN 2026` serve ora SOLO per le foto.**
+> **L'aggancio ha tre gradini, tutti scritti da COLOMBO:**
+> 1. **cartella → modello** — vale per tutte e 707 (`01_Alato/` *è* l'etichetta);
+> 2. **+ finitura** dove sta nel nome (39% dei file: `Alatò_1CR.jpg`, `alato cromo.jpg`);
+> 3. **+ codice** dove COLOMBO l'ha scritto (**62% degli accessori**: `ar14_OL.jpg`,
+>    `PB1304.jpg`, `ID313Q cromo matte.jpg`) — ed è lì che serviva, perché
+>    maniglioni, pomoli, bocchette e complementi per nome commerciale erano
+>    **irraggiungibili**.
 >
-> ### Due difetti trovati eseguendo, non leggendo
+> Chi non arriva a nessuno dei tre **resta senza foto** (vincolo dell'utente:
+> niente foto→codice inventate).
 >
-> 1. **`pnpm import:listino` non era mai passato sul file vero.** Moriva alla prima
->    riga: l'intestazione della colonna surcharge non è un nome, è l'**aliquota**
->    (`0.035`). Sotto c'era di peggio — SheetJS dà `0.035` con `header:1` e `"3.5%"`
->    come chiave di riga: lo script cercava la colonna con la prima e leggeva le
->    celle con la seconda, quindi anche senza crash **ogni prezzo sarebbe uscito
->    senza il 3,5%**. Fix strutturale (le intestazioni le deriva il parser dalle
->    righe) e **dimostrato**: 0 scartate · 0 collisioni · 0 mismatch su 3.456 righe.
-> 2. **Il gate della disponibilità non verificava nulla.** `seedManiglie` esce in
->    silenzio senza un ADMIN a DB, quindi su database pulito i tre test della regola
->    centrale del reparto fallivano. Preesistente su `main`, verificato con `git stash`.
+> **Il peso, misurato su 45 foto vere (127 MB di originali):**
 >
-> ### Le tre decisioni passate dal `/llm-council` (5 advisor + 3 peer review + chairman)
+> | | miniatura 320px | scheda 900px |
+> |---|---|---|
+> | JPEG q82 | 6,2 KB medi | 33,2 KB medi |
+> | **WebP q80** | **2,8 KB medi** | **15,8 KB medi** |
 >
-> Ho verificato sul DB le affermazioni numeriche **prima** della sintesi, e una ha
-> demolito l'argomento centrale di un advisor: sosteneva che i gruppi-modello
-> (~990 codici) contenessero maniglie, rendendo «MANIGLIONE 338» non esaustivo.
-> Misurato: «MANIGLION» compare in 360 descrizioni, **346 come prima parola, 14
-> altrove**. La dispersione è ~70 codici in tutto, non 990.
+> Tutte e 707: **2 MB** di miniature + **11 MB** di schede = **13 MB su Blob**,
+> da 4,15 GB. Griglia da 40 tessere: **120 KB**. Il vincolo Fast Origin Transfer
+> è sciolto. ⚠️ La conversione **non è un'ottimizzazione, è obbligatoria**: un
+> JPEG **CMYK** il browser non lo mostra.
 >
-> - **(1) «Disponibilità» → «Catalogo».** Nomina un attributo che è falso 95 volte
->   su 100. «Archivio» resta dell'altro reparto.
-> - **(2) Livello 1 alfabetico, a chip, con filtro sulle etichette.** Per numerosità
->   il numero grosso significa «più finiture» (MANIGLIONE: 338 codici, **160
->   descrizioni distinte**) e seppelliva LARA/MILLA/VIOLA, i nomi che il cliente
->   pronuncia. Misurato in browser: da ~14 schermate a **5,8** a 375px, **2,5** a
->   desktop. L'ordinamento è in TypeScript, non `ORDER BY`: la collation è del DB e
->   può differire fra locale e Neon.
-> - **(3) Abbreviazioni: nessuna riga di codice.** In alfabetico `ROS.`/`ROSETTA`
->   sono **adiacenti**, il grappolo `MANIG.*` è contiguo, `BOCCEHTTA` cade prima di
->   `BOCCHETTA`, e `ROBOTE` atterra **esattamente fra** ROBOT e ROBOTRE. La fusione
->   la fa l'occhio.
-> - **(+) Filtro «solo pronta consegna»** (confermato dopo): **178 su 3.456 = 5,2%**.
->   114 gruppi → **30**, e la somma dei conteggi filtrati fa esattamente 178.
+> ⚠️ **Le cartelle usano sigle interne**: `Robot1`=Robot, `Robot2`=Robodue,
+> `Robot3`=Robotre, `Robot4`=Roboquattro, `Robot5S`=Robocinque S. Serve una
+> tabella di ~10 traduzioni, **da verificare sul listino**. E **5 archivi non
+> agganciano nulla** — `00a_Laconica`, `00b_Robot6`, `00c_Robot6S`, `00d_Halo`,
+> `00e_Kubo`: **non è un difetto**, sono prodotti nuovi a catalogo 2026 e non
+> ancora a listino. Si aggancieranno da soli.
 >
-> ### Il difetto di disegno che un test rosso ha scoperto
+> **Le quattro decisioni di §5 della scheda misure, con la raccomandazione data:**
+> (1) mappare a livello **modello/famiglia**, e **niente foto al livello 1** dello
+> sfoglio (le chip alfabetiche le ha decise il council su una misura: da ~14
+> schermate a 5,8 a 375px — riempirle di immagini rifà il danno). Foto al
+> **livello 2** e sulla **scheda articolo**. (2) **Due formati, nessun ritocco
+> creativo**: 320px e 900px WebP. (3) **Vercel Blob privato dietro la route Node**,
+> come `/api/product-image`; **mai** in `public/`, il repo è pubblico e sono foto
+> di un fornitore. (4) `catalog_edition` accanto a `catalog_page` (valore
+> `ER MAN 2026`) — **una sola colonna, una sola migrazione, nessuna tabella
+> nuova**: `imageUrl` esiste già a schema e un articolo ha una foto sola. Va
+> corretto il commento a schema, che dice «Blob **PUBBLICO**» mentre è privato.
 >
-> Avevo messo la casella del filtro **dentro l'elenco dei gruppi**, cioè solo al
-> livello 1: da dentro un gruppo il filtro restava acceso e **invisibile**, e non si
-> poteva nemmeno accendere senza risalire. Un gruppo pieno sarebbe sembrato vuoto.
-> Spostata a livello di pagina, vale a tutti e tre i livelli.
+> **Cosa NON rifare** (sta in `docs/superpowers/specs/2026-08-04-foto-e-finiture-colombo-misure-2.md`):
+> le misure sul PDF `ER MAN 2026` sono superate dall'archivio, ma restano vere e
+> documentate — 92 scatti d'ambiente, 441 scatti prodotto a 305×110, il testo
+> cifrato da uno **shift di +29 per byte**, e le **31 finiture ufficiali** (p13
+> stampata = p14 del file) con nome e colore campionato. Quelle servono ancora,
+> perché sono la **fonte del filtro colori**.
 >
-> ### ▶ COSA FARE ORA — LE FOTO (deciso dall'utente)
+> ### 🎨 IL FILTRO COLORI (la 14ª riga di Andrea, non fatta)
 >
-> **Le misure sono già fatte**, a chiusura della sessione precedente, perché il
-> catalogo era scaricabile allora e il container no. Stanno in
-> `docs/superpowers/specs/2026-08-04-foto-catalogo-colombo-misure.md`. In sintesi:
+> **88,7%** dei codici (3.065 su 3.456) ha come coda una delle **31 finiture
+> ufficiali**. Le code distinte sono **57**, non 133. Le non riconosciute sono
+> quasi tutte **bicolori** (`CR8` = CROMO/CROMAT 33 · `OL9` = OROPLUS/OROMAT 24 ·
+> `CM5` 20) più **237 codici senza trattino**. La tabella completa delle 31, con
+> colore in esadecimale, è in §5 della scheda misure. **Non inventare categorie
+> sulle altre 102 code.**
 >
-> **LA FOTO APPARTIENE AL GRUPPO, NON AL CODICE.** Il catalogo intitola ogni pagina
-> prodotto col **nome commerciale** («Roboquattro  Colombo Design»), che è la stessa
-> parola con cui lo sfoglio raggruppa. Questo ribalta la stima pessimistica della
-> spec «Sfoglia» (foto→codice: tetto 21%):
+> Fonte in più, autorevole: il **listino PDF dell'area download** (`Listino-Price
+> list 0625 rel1.pdf`, 256 pagine, **testo in chiaro**) ha a **pagina 16 la
+> matrice modello × finitura**, cioè quali finiture esistono per quale modello,
+> dichiarate dal fornitore. ⚠️ È l'edizione **06/25**, più vecchia di `LP 02-26`,
+> e il suo «indice dei codici» è **testo convertito in curve** (36 caratteri
+> estraibili su una pagina intera): non è una sorgente di codici.
 >
-> | Granularità | Copertura misurata |
-> |---|---|
-> | foto → **codice** (assunzione vecchia) | 725 / 3.456 = 21% (tetto) |
-> | foto → **gruppo** (misurato) | **1.984 / 3.456 codici = 57,4%** |
+> ### ✅ COSA È STATO FATTO — la curatela di Andrea (13 righe su 14)
 >
-> Ed è più **onesto**: una foto di catalogo ritrae il modello, non la finitura —
-> quindi il timore «dodici tessere Mood con la stessa foto» sparisce, perché sul
-> gruppo è *vero* che è la foto del gruppo.
+> **114 gruppi → 102.** BOCCHETTA 288→291, ROSETTA 47→105, e `ROBOCINQUE S` e
+> `ROBOQUATTRO S` come voci proprie. Modulo `src/server/maniglie/curatela.ts`
+> (`browseLabel`, `sourceFirstWords`, `foldBrowseGroups`), applicato **a lettura**
+> in `browseFirstWords` e `articleIdsByFirstWord`.
 >
-> **I fatti che tolgono il rischio:**
-> - **260 pagine, 725 immagini, 615 JPEG + 110 raw, ZERO JPEG2000.** 🟢 La trappola
->   AGB **non si ripete**: lì le foto erano `jpx` e PDF.js non le decodificava, ed è
->   costata due tentativi sbagliati. `pdfimages` le estrae senza trattamenti.
-> - **Il testo si decodifica con +29 su ogni byte** (verificato: `'$'+29='A'`,
->   `"5RVHV"→"Roses"`). Non è più «una frase in un `.md`».
-> - **167 pagine hanno foto**; su 94 il titolo È un gruppo del listino; **61 gruppi
->   su 114** ricevono almeno una foto.
+> - **NON all'import**: riscrivere `articles.name` cancellerebbe la parola di
+>   COLOMBO e farebbe sparire `BOCCEHTTA` dall'indice trigram — la proprietà per
+>   cui chi cerca «bocchetta» trova l'articolo digitato storto dal fornitore.
+> - **Le rimozioni valgono SOLO per lo sfoglio** (decisione dell'utente): chi
+>   scrive «vite» continua a trovarla, e c'è una sentinella d'integrazione.
+> - **Le etichette vere non sono quelle che Andrea ha scritto a memoria**:
+>   `ROBOCINQUQ` (non «RobocinqueQ»), `NOTTOLIN` (non «NOTTLIN»), `KITPORTE`
+>   attaccato, e «Mov.» sono **due** etichette (`MOV.GRATZ`, `MOV.MARTELLINA`).
+> - **Due refusi li ha decisi il codice**: `ROBOCINQUQ` porta `ID61RSB`, serie del
+>   Robocinque **base** (la S usa `ID71*`); `ROBOTE` porta `CD92DK`, e `CD9x` è di
+>   **Robotre** (Robot usa `CD4x`/`CD7x`). L'handoff dava quest'ultimo per
+>   indecidibile.
+> - **Il marcatore della S ha tre forme**: `S` (77), `S'` (21), `S'ID51RSB` (1,
+>   spazio mancante). Leggerne una sola spaccherebbe il gruppo a metà **senza che
+>   nulla vada a zero**.
+> - Il verdetto **(3) del `/llm-council`** della sessione scorsa («abbreviazioni:
+>   nessuna riga di codice, la fusione la fa l'occhio») è **caduto**: Andrea ha
+>   usato la cosa vera e ha chiesto la fusione di otto etichette, incluse
+>   esattamente `ROS.`, `BOCCEHTTA` e `ROBOTE`. Il council aveva ragione sui pixel
+>   e torto sul mestiere. Il test d'integrazione che lo codificava è girato
+>   insieme alla decisione.
 >
-> **Il 57,4% è un PAVIMENTO, non un tetto.** Le 73 pagine non agganciate sono tre
-> classi: copertine (da escludere), **pagine di continuazione** il cui primo testo è
-> un numero — altre foto dello stesso modello, recuperabili con un **riporto del
-> titolo** 🔴 *da misurare, non da assumere* — e **artefatti di decodifica** sugli
-> accentati (`ALATSSÑ` per `ALATO`), che lo shift byte-per-byte rompe sui multibyte.
+> ### 🔍 Tre cose imparate eseguendo
 >
-> **Cosa è già misurato e NON va rifatto:** i codici ordinabili nel catalogo sono lo
-> **0,2%** (conferma §3.1: il catalogo non pubblica codici d'ordine); le famiglie ci
-> sono al 52% ma coprono solo il **43,4%** dei codici, cioè **meno** del nome
-> commerciale; e la mappatura per pagina **sulle famiglie** fallisce (4 pagine su 167
-> non ambigue, 115 con foto e zero famiglie). Quest'ultima è l'errore che ho commesso
-> e corretto misurando: cercavo la famiglia dove il catalogo scrive il nome.
+> 1. **Il gate girava su venti righe finte.** Importando il listino vero in locale
+>    è emerso che il test del refuso «bocchetta» pretendeva un codice del **seed**:
+>    falliva anche col codice non modificato (**provato con `git stash`**).
+>    Riscritto come proprietà — sul catalogo vero i `BOCCEHTTA` cadono alle
+>    posizioni **317-319 su 319**, cioè dopo tutte le 288 scritte giuste.
+>    **Regola nuova: importare il listino vero prima di far girare l'integrazione.**
+> 2. **Un difetto l'hanno trovato gli screenshot, non i test.** Il sottotitolo
+>    prometteva «per la prima parola della descrizione a listino», falso dopo le
+>    fusioni — e c'era un test che passava, perché verificava che la frase *ci
+>    fosse*. Corretto, e aggiunta la riga che dichiara ciò che il programma decide:
+>    «Viti, dadi, chiavi e rondelle non si sfogliano: si trovano scrivendole».
+> 3. **Il primo giro del browser ritrae lo skeleton.** In dev Next compila alla
+>    prima richiesta: aspettare un timer dà 7 falsi rossi. Aspettare il
+>    **contenuto** (`waitForFunction`) li azzera.
 >
-> **Ordine di lavoro suggerito:**
-> 1. **La misura (2)**: quanto sale la copertura col riporto del titolo sulle pagine
->    di continuazione, e col fix degli accentati. È l'unico numero che manca.
-> 2. Le **quattro decisioni** di §5 della scheda misure — in particolare: la foto sul
->    gruppo al 57,4% basta? uno o due formati? e `catalogPage`, che esiste a schema e
->    non è mai stato scritto, vuole accanto una **colonna di edizione** o `ER MAN 2027`
->    rinumera le pagine e le righe continueranno a dire «Pagina 63» (è la lezione di
->    `lastListingAt` applicata all'altra metà del modello).
-> 3. Poi spec → piano → TDD, come sempre.
+> ### ❓ DA CHIEDERE ALL'UTENTE (per Andrea)
 >
-> ⚠️ **Vincolo di piattaforma**: lo store Blob è **privato**, i byte passano da una
-> route Node e pesano su **Fast Origin Transfer**, già al 40%. Conta la DIMENSIONE,
-> non la collocazione. E **Vercel Pro entro sabato 08/08** (Hobby vieta l'uso
-> commerciale).
+> 1. **La sua lista non è esaustiva**: almeno dieci casi identici non citati —
+>    otto etichette per la stessa cosa (`MANIG.` 57 · `MANIG.CD213` 2 ·
+>    `MANIG.INCASSO` 4 · `MANIG.LC413RS` 1 · `MANIGLIA` 28 · `MANIGLIE` 1 ·
+>    `MANIGLIONE` 338 · `MANIGLIONI` 8), quattro per «placca» (`PL.` 10 ·
+>    `PL.OTT.` 1 · `PL.OTT.YALE` 11 · `PLACCA` 65), più `COPRIAVVOLG.` 6,
+>    `LUNDCREM` 1, `HEIDI/PETER` 2, `RG` 1. Si trattano come le altre?
+> 2. **`RONDELLE` (2 codici)** è lasciata dentro: è la stessa cosa di `RONDELLA`
+>    che lui toglie, ma non l'ha nominata. Un test fissa la scelta perché sia
+>    visibile e non una dimenticanza.
 >
-> ### ▶ E LA DOMANDA CHE PENDE DA TRE SESSIONI
+> ### ▶ E LE DUE COSE CHE NON SONO CODICE
 >
-> Sono arrivate le **tre distinte reali** di MC, Peruzzi e Fosca? È del reparto
-> SERRAMENTI, non delle maniglie, ma resta la cosa aperta che vale di più: senza, i
-> tre clienti principali ricevono distinte mai confrontate con un ordine vero.
->
-> ### ▶ E UNA COSA CHE NON È CODICE
->
-> **La pronta consegna non è mai stata caricata in produzione.** Su Neon ci sono 3.456
-> articoli e **zero** `stock_imports`: la fascia dice «Nessuna pronta consegna
-> caricata», il pallino non compare e il filtro «solo pronta consegna» non esiste a
-> schermo. Metà del reparto — quella che l'ha motivato — è spenta finché Andrea non
-> apre `/maniglie/import` e carica il suo `.xls`. Due minuti, zero righe di codice.
+> - ✅ **La pronta consegna è stata caricata in produzione dall'utente.** Chiusa.
+> - 🔴 **Vercel Pro entro sabato 08/08** (Hobby vieta l'uso commerciale): è
+>   un'azione dell'utente sulla dashboard, non mia.
+> - **Le tre distinte reali di MC, Peruzzi e Fosca** pendono da quattro sessioni.
+>   Reparto SERRAMENTI, non maniglie, ma resta la cosa aperta che vale di più.
+
+> ### (Sessione precedente, 2026-08-04) — «SFOGLIA»
 >
 > ### Cosa è successo (2026-08-04)
 >

@@ -386,10 +386,21 @@ describe("ManiglieClient — sfoglio", () => {
     // Sono parole di COLOMBO, refusi compresi: senza l'origine a schermo
     // sembrerebbero una classificazione nostra. E «338» conta i CODICI, non i
     // modelli — le descrizioni distinte sono 160.
+    //
+    // Diceva «per la prima parola della descrizione a listino», che con la
+    // curatela di Andrea è diventato falso: ROSETTA raccoglie anche le righe
+    // scritte `ROS.`, e ROBOCINQUE S è un pezzo del gruppo ROBOCINQUE.
     render(<ManiglieClient />);
-    expect(screen.getByText(/prima parola della descrizione a listino/i)).toBeTruthy();
+    expect(screen.getByText(/come li nomina COLOMBO/i)).toBeTruthy();
     expect(screen.getByText(/ordine alfabetico/i)).toBeTruthy();
     expect(screen.getByText(/il numero è quanti codici/i)).toBeTruthy();
+  });
+
+  it("dichiara le categorie che NON si sfogliano", () => {
+    // Senza, chi cerca una vite nel catalogo e non la trova conclude che non la
+    // trattiamo — mentre è a magazzino e la ricerca la restituisce.
+    render(<ManiglieClient />);
+    expect(screen.getByText(/viti, dadi, chiavi e rondelle non si sfogliano/i)).toBeTruthy();
   });
 
   it("il campo filtra le etichette senza interrogare il server", () => {

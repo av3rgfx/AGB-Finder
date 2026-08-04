@@ -26,6 +26,16 @@ import { normalizeArticleCode } from "./code-norm";
  */
 export const SQL_FIRST_WORD = `split_part(regexp_replace(upper(trim(name)), '\\s+', ' ', 'g'), ' ', 1)`;
 
+/**
+ * Il gemello SQL di `secondToken`. Serve al livello 1 dello sfoglio, dove la
+ * curatela divide `ROBOCINQUE` da `ROBOCINQUE S` guardando il secondo token: il
+ * `GROUP BY` deve quindi restituirlo insieme al primo.
+ *
+ * Dove il secondo token non c'è, `split_part` dà stringa vuota — che è ciò che
+ * `foldBrowseGroups` traduce in `null`.
+ */
+export const SQL_SECOND_WORD = `split_part(regexp_replace(upper(trim(name)), '\\s+', ' ', 'g'), ' ', 2)`;
+
 /** Prima parola della descrizione, in maiuscolo. Spazi multipli collassati. */
 export function firstWord(name: string): string {
   return name.trim().toUpperCase().split(/\s+/)[0] ?? "";
