@@ -401,9 +401,10 @@ function ArticoloRow({ articolo }: { articolo: ArticleSummary }) {
 }
 
 /**
- * Miniatura. Il 15% dei codici è minuteria che nessun catalogo fotografa: la
- * foto mancante è la normalità, non un errore, e si disegna come un segnaposto
- * neutro — mai come un messaggio.
+ * Miniatura, servita da `/api/article-image` (Blob privato, dietro auth). Il 42%
+ * dei codici è minuteria e accessoristica che nessun catalogo fotografa una per
+ * una: la foto mancante è la normalità, non un errore, e si disegna come un
+ * segnaposto neutro — mai come un messaggio.
  */
 function Foto({ url }: { url: string | null }) {
   const [failed, setFailed] = useState(false);
@@ -418,7 +419,7 @@ function Foto({ url }: { url: string | null }) {
     );
   }
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- foto su Vercel Blob, URL esterno non ottimizzabile
+    // eslint-disable-next-line @next/next/no-img-element -- sorgente dinamica dietro auth, non da ottimizzare
     <img
       src={url}
       alt=""

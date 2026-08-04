@@ -17,7 +17,8 @@ const articolo = {
   total: 48.31,
   ean: "8032679001234",
   catalogPage: 12,
-  imageUrl: "https://blob.example/colombo/0CD41RCM.jpg",
+  imageUrl: "/api/article-image?k=maniglie%2Fcolombo%2F01-robot4%2Froboquattro-1ol&size=320",
+  imageUrlLarge: "/api/article-image?k=maniglie%2Fcolombo%2F01-robot4%2Froboquattro-1ol&size=900",
   inStock: true,
   priceList: 46.68,
   surcharge: 1.63,
@@ -112,6 +113,13 @@ describe("ArticoloClient", () => {
     expect(screen.getByRole("link", { name: /catalogo/i })).toBeTruthy();
   });
 
+  it("usa il formato grande, non la miniatura delle righe", () => {
+    // Il riquadro è 192 CSS px: la miniatura da 320 sarebbe sgranata su ogni
+    // schermo retina, e la scheda è il posto in cui si guarda il prodotto.
+    const { container } = render(<ArticoloClient id="a1" />);
+    expect(container.querySelector("img")!.getAttribute("src")).toContain("size=900");
+  });
+
   it("con la foto rotta resta un segnaposto neutro, non un messaggio", () => {
     const { container } = render(<ArticoloClient id="a1" />);
     fireEvent.error(container.querySelector("img")!);
@@ -120,10 +128,10 @@ describe("ArticoloClient", () => {
     expect(screen.getByText("MANIGLIA ROBOQUATTRO CROMO")).toBeTruthy();
   });
 
-  // Il 15% dei codici è minuteria che nessun catalogo fotografa: la foto
-  // mancante è la normalità.
+  // Il 42% dei codici è minuteria e accessoristica che nessun catalogo
+  // fotografa una per una: la foto mancante è la normalità.
   it("senza foto disegna il segnaposto, senza tentare alcun caricamento", () => {
-    getById.mockReturnValue(query({ data: { ...articolo, imageUrl: null } }));
+    getById.mockReturnValue(query({ data: { ...articolo, imageUrl: null, imageUrlLarge: null } }));
     const { container } = render(<ArticoloClient id="a1" />);
     expect(container.querySelector("img")).toBeNull();
     expect(container.querySelector("svg")).toBeTruthy();
