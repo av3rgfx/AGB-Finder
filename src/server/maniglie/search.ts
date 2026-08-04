@@ -1,5 +1,6 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { normalizeArticleCode } from "./code-norm";
+import { SQL_FIRST_WORD } from "./taxonomy";
 
 /**
  * Ricerca articoli del reparto maniglie. SOLO Postgres: `tsvector` + trigram.
@@ -99,4 +100,54 @@ export async function searchArticleIds(
     hits: rows.map((r) => ({ id: r.id, score: Number(r.score) })),
     total: Number(counted?.n ?? 0),
   };
+}
+
+/**
+ * SFOGLIO, livello 1: le prime parole della descrizione, con quanti codici
+ * ciascuna. È l'unico raggruppamento che copre il 100% del listino, e l'etichetta
+ * è una parola scritta da COLOMBO — non una nostra classificazione.
+ *
+ * `GROUP BY` su un'espressione non è esprimibile in Prisma, ed è il motivo per
+ * cui sta qui e non in un modulo nuovo: `CLAUDE.md` elenca DUE moduli autorizzati
+ * al raw SQL, e questo è già uno dei due. La regola di dominio «qual è la
+ * famiglia» invece NON è qui: è TypeScript puro in `browse.ts`, come la
+ * disponibilità sta in `stock-status.ts`.
+ *
+ * Ordinato per numerosità decrescente (decisione utente): chi apre trova subito
+ * il grosso del magazzino, e la coda dei refusi da un codice solo (`ROBOTE`,
+ * `NOTTOLIN`) finisce in fondo, dove disturba meno.
+ */
+export async function browseFirstWords(
+  db: PrismaClient,
+  brand: string,
+): Promise<{ word: string; count: number }[]> {
+  const rows = await db.$queryRaw<{ word: string; n: bigint }[]>`
+    SELECT ${Prisma.raw(SQL_FIRST_WORD.replace(/\bname\b/, "a.name"))} AS word,
+           COUNT(*)::bigint AS n
+    FROM articles a
+    WHERE a.brand = ${brand}
+    GROUP BY 1
+    ORDER BY n DESC, word ASC
+  `;
+  return rows.map((r) => ({ word: r.word, count: Number(r.n) }));
+}
+
+/**
+ * Le righe di un gruppo di primo livello, in ordine di codice. Volutamente
+ * TUTTE: il gruppo più numeroso del listino vero è MANIGLIONE con 338 righe, e
+ * leggerle intere è ciò che permette di raggruppare per famiglia in TypeScript
+ * invece di riscrivere quella regola in SQL.
+ */
+export async function articleIdsByFirstWord(
+  db: PrismaClient,
+  brand: string,
+  word: string,
+): Promise<{ id: string; code: string; codeNorm: string; name: string }[]> {
+  return db.$queryRaw<{ id: string; code: string; codeNorm: string; name: string }[]>`
+    SELECT a.id, a.code, a.code_norm AS "codeNorm", a.name
+    FROM articles a
+    WHERE a.brand = ${brand}
+      AND ${Prisma.raw(SQL_FIRST_WORD.replace(/\bname\b/, "a.name"))} = ${word}
+    ORDER BY a.code ASC
+  `;
 }

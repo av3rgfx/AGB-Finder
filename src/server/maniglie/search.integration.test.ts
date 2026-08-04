@@ -1,10 +1,33 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { PrismaClient } from "@prisma/client";
 import { seedManiglie } from "../../../prisma/seed-maniglie";
-import { searchArticleIds } from "./search";
+import { searchArticleIds, browseFirstWords } from "./search";
+import { firstWord } from "./taxonomy";
 import { currentStockImport, availableArticleIds } from "./stock-status";
 
 const url = process.env.INTEGRATION_DATABASE_URL;
+
+/**
+ * `seedManiglie` esce in silenzio se a DB non c'è un ADMIN («salto la pronta
+ * consegna»): su un database di integrazione pulito la giacenza non nasceva, e
+ * i tre test della disponibilità — la regola centrale del reparto — fallivano
+ * senza che il gate stesse verificando alcunché. L'admin lo crea il test, che è
+ * chi ne ha bisogno; il ritorno anticipato del seed resta com'è, perché in
+ * sviluppo è un messaggio utile.
+ */
+async function ensureAdmin(db: PrismaClient) {
+  const existing = await db.user.findFirst({ where: { role: "ADMIN" } });
+  if (existing) return existing;
+  return db.user.create({
+    data: {
+      name: "Integrazione",
+      email: "integrazione@ufptrade.local",
+      firstName: "Integrazione",
+      lastName: "Test",
+      role: "ADMIN",
+    },
+  });
+}
 
 /**
  * La ricerca articoli è raw SQL (tsvector + trigram): i mock non ne verificano
@@ -28,6 +51,7 @@ describe.runIf(Boolean(url))("ricerca articoli — integrazione su Postgres", ()
 
   beforeAll(async () => {
     db = new PrismaClient({ datasourceUrl: url });
+    await ensureAdmin(db);
     await seedManiglie(db);
   }, 30_000);
 
@@ -111,6 +135,7 @@ describe.runIf(Boolean(url))("disponibilità derivata — integrazione", () => {
 
   beforeAll(async () => {
     db = new PrismaClient({ datasourceUrl: url });
+    await ensureAdmin(db);
     await seedManiglie(db);
   }, 30_000);
 
@@ -157,5 +182,75 @@ describe.runIf(Boolean(url))("disponibilità derivata — integrazione", () => {
     // Ripristino, così l'ordine dei test non conta.
     await db.stockImport.update({ where: { id: before!.id }, data: { cancelledAt: null } });
     expect((await currentStockImport(db, "COLOMBO"))?.id).toBe(before!.id);
+  });
+});
+
+describe.runIf(Boolean(url))("sfoglio — il GROUP BY SQL e la funzione TypeScript", () => {
+  let db: PrismaClient;
+
+  beforeAll(async () => {
+    db = new PrismaClient({ datasourceUrl: url });
+    await ensureAdmin(db);
+    await seedManiglie(db);
+    // Righe scelte per rompere il gemello SQL se divergesse da `firstWord`:
+    // spazio doppio (45 casi nel listino vero), spazi attorno, parola sola.
+    for (const [code, name] of [
+      ["ZZTEST-A", "PEGASO  INCASSO AM111 CROMAT"],
+      ["ZZTEST-B", "  MANIGLIONE  ZZ01 OTTONE  "],
+      ["ZZTEST-C", "POMOLO"],
+    ] as const) {
+      await db.article.upsert({
+        where: { brand_code: { brand: "COLOMBO", code } },
+        update: { name },
+        create: {
+          brand: "COLOMBO",
+          code,
+          codeNorm: code.replace(/[^A-Z0-9]/g, ""),
+          name,
+          priceList: "1.00",
+          lastListingAt: new Date(),
+        },
+      });
+    }
+  }, 30_000);
+
+  afterAll(async () => {
+    await db.article.deleteMany({ where: { code: { startsWith: "ZZTEST-" } } });
+    await db.$disconnect();
+  });
+
+  /**
+   * IL test di questo modulo. La «prima parola» è scritta due volte — una in
+   * TypeScript per lo script di misura, una in SQL per il raggruppamento — e se
+   * le due divergono il numero misurato smette di essere il numero mostrato
+   * all'agente, in silenzio. Qui si confrontano su TUTTA la tabella.
+   */
+  it("danno esattamente gli stessi gruppi, sull'intera tabella", async () => {
+    const sql = await browseFirstWords(db, "COLOMBO");
+
+    const rows = await db.article.findMany({
+      where: { brand: "COLOMBO" },
+      select: { name: true },
+    });
+    const ts = new Map<string, number>();
+    for (const r of rows) {
+      const w = firstWord(r.name);
+      ts.set(w, (ts.get(w) ?? 0) + 1);
+    }
+
+    expect(sql.length).toBe(ts.size);
+    for (const g of sql) expect([g.word, g.count]).toEqual([g.word, ts.get(g.word)]);
+  });
+
+  it("lo spazio doppio non produce un gruppo vuoto", async () => {
+    const groups = await browseFirstWords(db, "COLOMBO");
+    expect(groups.map((g) => g.word)).not.toContain("");
+    expect(groups.map((g) => g.word)).toContain("PEGASO");
+  });
+
+  it("ordina per numero di codici decrescente (decisione utente)", async () => {
+    const groups = await browseFirstWords(db, "COLOMBO");
+    const counts = groups.map((g) => g.count);
+    expect(counts).toEqual([...counts].sort((a, b) => b - a));
   });
 });
