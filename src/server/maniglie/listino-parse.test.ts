@@ -29,6 +29,76 @@ describe("resolveListinoColumns", () => {
     });
   });
 
+  /**
+   * Il listino vero (`LISTINO 02 2026 con temporary surcherge.xlsx`, foglio
+   * «LP 02-26») NON intitola la colonna del surcharge con un nome: ci mette
+   * l'ALIQUOTA. La riga di intestazione è
+   *
+   *   ["Articolo","Descrizione","Prezzo LP 02/26", 0.035, "SOMMA","EAN", null, null]
+   *
+   * — un numero e due celle vuote. Le intestazioni erano state dedotte dal NOME
+   * DEL FILE («con temporary surcherge») e non dal file: il parser non era mai
+   * passato su questo xlsx.
+   */
+  it("non esplode su intestazioni che non sono stringhe", () => {
+    // Il cast riproduce esattamente il chiamante che ha prodotto il crash:
+    // `sheet_to_json({header: 1})` restituisce le celle GREZZE, e lo script le
+    // passava con un `as string[]`. Il cast era la bugia; qui è la prova.
+    const cols = resolveListinoColumns([
+      "Articolo",
+      "Descrizione",
+      "Prezzo LP 02/26",
+      0.035,
+      "SOMMA",
+      "EAN",
+      null,
+      null,
+    ] as unknown as string[]);
+    expect(cols?.code).toBe("Articolo");
+    expect(cols?.name).toBe("Descrizione");
+    expect(cols?.priceList).toBe("Prezzo LP 02/26");
+    expect(cols?.declaredTotal).toBe("SOMMA");
+    expect(cols?.ean).toBe("EAN");
+  });
+
+  it("riconosce la colonna del surcharge quando è intitolata con la sua aliquota", () => {
+    // `sheet_to_json` in modalità oggetto formatta l'intestazione: la chiave
+    // delle celle è «3.5%», non `0.035`. È quella che il parser deve restituire,
+    // perché è quella con cui le righe si indicizzano.
+    const cols = resolveListinoColumns([
+      "Articolo",
+      "Descrizione",
+      "Prezzo LP 02/26",
+      "3.5%",
+      "SOMMA",
+      "EAN",
+    ]);
+    expect(cols?.surcharge).toBe("3.5%");
+  });
+
+  it("non scambia per surcharge una colonna a caso quando il nome c'è", () => {
+    const cols = resolveListinoColumns([
+      "CODICE",
+      "DESCRIZIONE",
+      "PREZZO",
+      "TEMPORARY SURCHARGE",
+      "3.5%",
+    ]);
+    expect(cols?.surcharge).toBe("TEMPORARY SURCHARGE");
+  });
+
+  it("non prende per surcharge una colonna vuota di SheetJS", () => {
+    // Le celle di intestazione vuote diventano `__EMPTY`, `__EMPTY_1`…
+    const cols = resolveListinoColumns([
+      "Articolo",
+      "Descrizione",
+      "Prezzo",
+      "__EMPTY",
+      "__EMPTY_1",
+    ]);
+    expect(cols?.surcharge).toBeNull();
+  });
+
   it("ignora maiuscole e spazi attorno", () => {
     const cols = resolveListinoColumns([" codice ", "Descrizione", "Prezzo"]);
     expect(cols?.code).toBe(" codice ");

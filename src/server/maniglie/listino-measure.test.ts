@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   firstWord,
   secondToken,
+  familyTokenIndex,
   codeTail,
   median,
   measureListino,
@@ -39,6 +40,33 @@ describe("secondToken", () => {
 
   it("è null quando la descrizione ha una parola sola", () => {
     expect(secondToken("POMOLO")).toBeNull();
+  });
+});
+
+describe("familyTokenIndex", () => {
+  // Il listino vero non mette la famiglia sempre al secondo posto: la posizione
+  // dipende da quante parole di nome commerciale la precedono. Ma il CODICE dice
+  // quale token sia — non si deduce una grammatica, si intersecano due campi che
+  // COLOMBO ha scritto entrambi.
+  it("trova la famiglia al secondo posto", () => {
+    expect(familyTokenIndex("FEDRA AC11R CROMAT", "0AC11RCM")).toBe(1);
+  });
+
+  it("la trova al terzo, quando il nome commerciale è di due parole", () => {
+    expect(familyTokenIndex("PLACCA PEGASO PL70 CROMAT", "0AM11PL70CM")).toBe(2);
+  });
+
+  it("la trova al quarto", () => {
+    expect(familyTokenIndex("PLACCA Y PER AM113 BRONZO", "0AM113PLYBR")).toBe(3);
+  });
+
+  it("è null quando nessun token compare nel codice", () => {
+    // La descrizione dice AC11RY, il codice dice AC11RSMY: sono davvero diversi.
+    expect(familyTokenIndex("FEDRA AC11RY STRETTA C/MOLLA", "0AC11RSMYCM")).toBeNull();
+  });
+
+  it("ignora i token di un carattere, che aggancerebbero per caso", () => {
+    expect(familyTokenIndex("PLACCA Y CROMO", "0AM113PLYBR")).toBeNull();
   });
 });
 
@@ -164,6 +192,19 @@ describe("measureListino", () => {
       // comunque la famiglia: le misure (a) e (b) sono indipendenti.
       const solo = measureListino([a("CB16ZB-OT", "ROBOCINQUQ CB16 OTTONE")]);
       expect(solo.secondTokenIsFamily.matched).toBe(1);
+    });
+  });
+
+  describe("(b bis) la famiglia, ovunque stia nella descrizione", () => {
+    it("conta quanti codici hanno un token che compare nel codice", () => {
+      // Tutti tranne VITE («FISSAGGIO», «ROSETTA», «M4X22» non sono in LC55VT).
+      expect(m.familyToken.found).toBe(6);
+      expect(m.familyToken.ratio).toBeCloseTo(6 / 7, 5);
+    });
+
+    it("dice in che posizione si trova, perché è ciò che decide se serve una regola posizionale", () => {
+      // Qui è sempre il secondo token (indice 1).
+      expect(m.familyToken.positions).toEqual([{ index: 1, count: 6 }]);
     });
   });
 

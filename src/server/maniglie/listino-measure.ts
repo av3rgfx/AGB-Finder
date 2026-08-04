@@ -57,6 +57,17 @@ export interface ListinoMeasures {
     byFirstWord: { word: string; total: number; matched: number; ratio: number }[];
     counterExamples: { code: string; name: string; token: string }[];
   };
+  /**
+   * (b bis) la famiglia trovata OVUNQUE stia nella descrizione, non solo al
+   * secondo posto. È questa che decide se il livello «modello» sia estraibile
+   * dal listino o se serva il catalogo PDF.
+   */
+  familyToken: {
+    found: number;
+    ratio: number;
+    /** Quante volte la famiglia sta in ciascuna posizione, dalla più frequente. */
+    positions: { index: number; count: number }[];
+  };
   /** (c) e (d) le famiglie, contate sui soli secondi token che agganciano il codice. */
   families: {
     distinct: number;
@@ -81,6 +92,25 @@ export function firstWord(name: string): string {
 export function secondToken(name: string): string | null {
   const parts = name.trim().toUpperCase().split(/\s+/);
   return parts.length >= 2 ? parts[1]! : null;
+}
+
+/**
+ * Indice del token della descrizione che compare nel codice — la famiglia,
+ * ovunque stia. `null` se nessuno la contiene.
+ *
+ * Nel listino vero la posizione NON è fissa (`FEDRA AC11R …` è al secondo posto,
+ * `PLACCA PEGASO PL70 …` al terzo, `PLACCA Y PER AM113 …` al quarto): dipende da
+ * quante parole di nome commerciale la precedono. Trovarla per intersezione col
+ * codice non è dedurre una grammatica — che è ciò che §9 della spec vieta — ma
+ * far combaciare due campi che COLOMBO ha scritto entrambi.
+ */
+export function familyTokenIndex(name: string, codeNorm: string): number | null {
+  const tokens = name.trim().toUpperCase().split(/\s+/);
+  for (let i = 0; i < tokens.length; i++) {
+    const norm = normalizeArticleCode(tokens[i]!);
+    if (norm.length >= MIN_FAMILY_LEN && codeNorm.includes(norm)) return i;
+  }
+  return null;
 }
 
 /**
@@ -136,21 +166,36 @@ export function measureListino(articles: MeasuredArticle[]): ListinoMeasures {
   const counterExamples: { code: string; name: string; token: string }[] = [];
   const familyEntries: { word: string; example: string }[] = [];
   const perWord = new Map<string, { word: string; total: number; matched: number }>();
+  const positions = new Map<number, number>();
+  let familyFound = 0;
 
   for (const a of articles) {
     const head = firstWord(a.name);
     const row = perWord.get(head) ?? { word: head, total: 0, matched: 0 };
     row.total++;
 
+    // §7(b) alla lettera: il SECONDO token, e solo quello.
     const token = secondToken(a.name);
     const norm = token ? normalizeArticleCode(token) : "";
     if (token && norm.length >= MIN_FAMILY_LEN && a.codeNorm.includes(norm)) {
-      familyEntries.push({ word: token, example: a.name });
       row.matched++;
     } else if (token) {
       counterExamples.push({ code: a.code, name: a.name, token });
     }
     perWord.set(head, row);
+
+    // Le famiglie si contano invece sul token che aggancia DAVVERO il codice,
+    // ovunque stia: contarle sul secondo token gonfierebbe l'elenco con parole
+    // che famiglie non sono.
+    const idx = familyTokenIndex(a.name, a.codeNorm);
+    if (idx !== null) {
+      familyFound++;
+      positions.set(idx, (positions.get(idx) ?? 0) + 1);
+      familyEntries.push({
+        word: a.name.trim().toUpperCase().split(/\s+/)[idx]!,
+        example: a.name,
+      });
+    }
   }
 
   const familyGroups = group(familyEntries);
@@ -177,6 +222,13 @@ export function measureListino(articles: MeasuredArticle[]): ListinoMeasures {
         .map((r) => ({ ...r, ratio: r.matched / r.total }))
         .sort((a, b) => b.total - a.total || a.word.localeCompare(b.word)),
       counterExamples,
+    },
+    familyToken: {
+      found: familyFound,
+      ratio: total === 0 ? 0 : familyFound / total,
+      positions: [...positions.entries()]
+        .map(([index, count]) => ({ index, count }))
+        .sort((a, b) => b.count - a.count || a.index - b.index),
     },
     families: {
       distinct: familyGroups.length,

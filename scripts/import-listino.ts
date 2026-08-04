@@ -43,12 +43,13 @@ async function main() {
     raw: true,
     defval: null,
   });
-  const headers =
-    (XLSX.utils.sheet_to_json<string[]>(sheet, { header: 1, range: 0 })[0] as string[]) ?? [];
+  console.log(
+    `  foglio «${sheetName}» · ${rows.length} righe · colonne: ${Object.keys(rows[0] ?? {}).join(" · ")}`,
+  );
 
-  console.log(`  foglio «${sheetName}» · ${rows.length} righe · ${headers.length} colonne`);
-
-  const parsed = parseListinoSheet(rows, headers);
+  // Le intestazioni le deriva `parseListinoSheet` dalle chiavi delle righe: vedi
+  // il suo commento sul perché passargliele qui era la causa del difetto.
+  const parsed = parseListinoSheet(rows);
 
   if (parsed.fatal) {
     console.error(`✗ ${parsed.fatal}`);

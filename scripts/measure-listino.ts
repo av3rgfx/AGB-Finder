@@ -44,13 +44,12 @@ function main() {
   }
   const sheet = workbook.Sheets[sheetName]!;
   const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { raw: true, defval: null });
-  const headers =
-    (XLSX.utils.sheet_to_json<string[]>(sheet, { header: 1, range: 0 })[0] as string[]) ?? [];
-
   console.log(`▶ ${filePath}`);
-  console.log(`  foglio «${sheetName}» · ${rows.length} righe · colonne: ${headers.join(" · ")}\n`);
+  console.log(
+    `  foglio «${sheetName}» · ${rows.length} righe · colonne: ${Object.keys(rows[0] ?? {}).join(" · ")}\n`,
+  );
 
-  const parsed = parseListinoSheet(rows, headers);
+  const parsed = parseListinoSheet(rows);
   if (parsed.fatal) {
     console.error(`✗ ${parsed.fatal}`);
     process.exit(1);
@@ -72,13 +71,22 @@ function main() {
     `  gruppi da UN codice solo ... ${m.firstWords.singletons}  (refusi e nomi di modello si annidano qui)`,
   );
   console.log(`  spaziatura irregolare ...... ${m.firstWords.irregularWhitespace} descrizioni`);
-  const verdetto =
+  // Le soglie della spec (≤ 40 regge, ~300 muore) erano una stima fatta PRIMA di
+  // vedere il file. Un numero che cade in mezzo non si giudica con una soglia
+  // inventata: si dichiara la conseguenza, che è quanto lungo diventa lo scorrimento.
+  const schermate = Math.ceil(m.firstWords.distinct / 8.5);
+  console.log(
+    `\n  A 375px, righe da 44px: ~${schermate} schermate per l'elenco delle prime parole,` +
+      `\n  contro ~${Math.ceil(m.total / 6)} schermate per i ${m.total} codici ordinabili.`,
+  );
+  console.log(
     m.firstWords.distinct <= 40
-      ? "✅ REGGE — l'elenco è sfogliabile (soglia di spec: ≤ 40)"
-      : m.firstWords.distinct <= 80
-        ? "🟡 REGGE CON UNA SOGLIA — troppi per un elenco piatto, si mostrano i gruppi principali e la coda dietro «Altro»"
-        : "🔴 NON REGGE — non è una tassonomia, è un elenco di parole (soglia di spec: ~300 = muore)";
-  console.log(`\n  ${verdetto}\n`);
+      ? "  ✅ elenco piatto, si sfoglia com'è"
+      : m.firstWords.distinct <= 150
+        ? "  🟡 elenco lungo ma finito: serve un ordinamento dichiarato e un secondo livello dentro i gruppi grossi"
+        : "  🔴 non è una tassonomia, è un elenco di parole",
+  );
+  console.log("");
   table(m.firstWords.groups, m.total, 60);
   const coda = m.firstWords.groups.filter((g) => g.count === 1);
   if (coda.length > 0) {
@@ -114,6 +122,25 @@ function main() {
   }
 
   // ── (c) e (d) ─────────────────────────────────────────────────────────────
+  // ── (b bis) ───────────────────────────────────────────────────────────────
+  console.log("\n═══ (b bis) LA FAMIGLIA, OVUNQUE STIA NELLA DESCRIZIONE ═══");
+  console.log(
+    `  trovata .................... ${m.familyToken.found} su ${m.total} (${pct(m.familyToken.found, m.total)})`,
+  );
+  console.log("  in quale posizione:");
+  for (const p of m.familyToken.positions) {
+    console.log(
+      `   token n.${p.index + 1} ${String(p.count).padStart(6)}  ${pct(p.count, m.familyToken.found).padStart(6)}`,
+    );
+  }
+  console.log(
+    m.familyToken.ratio >= 0.9
+      ? "  ✅ il livello «modello» è estraibile DAL LISTINO — il catalogo PDF serve solo per le foto"
+      : m.familyToken.ratio >= 0.7
+        ? "  🟡 estraibile per la maggioranza: il livello «modello» avrebbe una coda scoperta"
+        : "  🔴 non estraibile dal listino: il modello può venire solo dal catalogo PDF",
+  );
+
   console.log("\n═══ (c) e (d) LE FAMIGLIE ═══");
   console.log(`  famiglie distinte .......... ${m.families.distinct}`);
   console.log(`  codici per famiglia (med.) . ${m.families.medianCodes}`);
