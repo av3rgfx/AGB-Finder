@@ -1,75 +1,85 @@
 # Prompt di apertura — prossima sessione
 
-> Copia il blocco qui sotto e incollalo come primo messaggio.
-> Allega, se li hai, i tre file di Andrea (vedi in fondo).
+> Copia il blocco fra le righe e incollalo come primo messaggio.
+> La prossima sessione è **di decisioni**, non di esecuzione: i dettagli li dai tu.
 
 ---
 
-Ciao. Riprendiamo UFPtrade. Leggi prima `handoff.md` (§RIPRENDI DA QUI) e
-`docs/superpowers/specs/2026-08-04-catalogo-maniglie-sfoglia-design.md`.
+Ciao. Riprendiamo UFPtrade. Leggi prima `handoff.md` (§RIPRENDI DA QUI) e `CLAUDE.md`.
 
-**Dove siamo.** Il reparto MANIGLIE è vivo sul branch `claude/program-selector-yxw8zd`
-(passi 1-3 + selettore di reparto, migrazione già applicata a Neon col run ops
-`30848665038`). Nella scorsa sessione ho chiesto un **catalogo digitalizzato sfogliabile**
-e tu hai fatto l'analisi senza scrivere codice: il verdetto è che il bisogno è reale ma
-l'albero `marca → sottocategoria → prodotto` non è costruibile, e va rovesciato in **una
-schermata sola, un livello solo**, costruita sulla **prima parola della descrizione del
-listino**.
+**Questa sessione è diversa dalle precedenti: voglio discutere e prendere decisioni
+progettuali importanti, che porteranno grandi cambiamenti.** I dettagli te li do io
+qui sotto. Non aprire codice per primo: prima ascolta, poi ragiona, e usa
+`/brainstorming` e `/llm-council` **prima** di scrivere qualunque riga.
 
-**Rispondo alle sei domande di §10 della spec:**
+**Cosa voglio cambiare / discutere:**
 
-1. Chi sfoglia davvero (Andrea col magazzino, o l'agente col cliente davanti)?
-   → **[RISPONDI QUI]**
-2. I tre file veri: te li allego? Quali?
-   → **[RISPONDI QUI]**
-3. I clienti chiedono per nome commerciale («la LARA») o per codice?
-   → **[RISPONDI QUI]**
-4. Esiste un documento COLOMBO con la corrispondenza sigla→finitura (`CM`, `NM`, `OL`)?
-   → **[RISPONDI QUI]**
-5. Lo schermo si mostra al cliente o resta fra colleghi?
-   → **[RISPONDI QUI]**
-6. Le altre marche (HOPPE, OLIVARI, DND, GHIDINI) hanno un listino con un campo categoria?
-   → **[RISPONDI QUI]**
+> **[SCRIVI QUI]**
 
-**Cosa voglio da questa sessione**, nell'ordine:
+**Come voglio che tu lavori, in ordine:**
 
-1. **Le cinque misure di §7 sul listino vero** — script, zero UI. Soprattutto: **quante
-   prime parole distinte esistono sui 3.456 codici?** Se sono ≤ 40 la strada regge; se sono
-   ~300 muore e me lo devi dire subito, prima di costruirci sopra.
-2. Se la misura regge: **«Sfoglia»** come da §6 — un livello, dentro `/maniglie`, elenco
-   `TIPOLOGIA · numero di codici`, filtro come chip nell'URL, stesso componente riga della
-   ricerca. Chiudendo i due debiti dichiarati: **`offset` collegato** e **ripristino dello
-   scroll riusando `src/lib/archivio-scroll.ts`** (non reinventarlo).
-3. La fascia della data **sticky** nell'elenco filtrato: in una lista lunga il banner esce
-   dallo schermo e resterebbero pallini verdi senza data.
+1. **Leggi `handoff.md` §RIPRENDI DA QUI**: c'è la tabella delle **decisioni
+   strutturali già prese** con la ragione di ciascuna, e l'elenco dei **debiti
+   strutturali**. Non ridiscutere una decisione senza sapere quale argomento la
+   sosteneva: quasi tutte sono state prese *contro* un'alternativa che sembrava
+   migliore.
+2. **Fammi le domande che servono.** Se una scelta cambia materialmente il lavoro,
+   chiedimela invece di assumere. Se per rispondere ti serve misurare qualcosa sul
+   catalogo vero, misura: l'ambiente si monta con `bash scripts/dev-bootstrap.sh`
+   e `pnpm import:listino COLOMBO <listino.xlsx>` (i file stanno nella cartella
+   Drive registrata in `CLAUDE.md`, il cui riuso è già autorizzato).
+3. **`/llm-council`** su ogni dubbio architetturale vero — e **verifica nel repo le
+   affermazioni degli advisor prima di sintetizzare**: nelle sessioni scorse più di
+   un argomento del council è caduto su un fatto controllato in dieci minuti.
+4. **Spec, poi piano, poi TDD.** Niente codice prima della spec.
+5. **Dimmi il costo prima di pagarlo**: se una decisione implica una migrazione,
+   una finestra di disservizio o un run ops, voglio saperlo *quando decidiamo*, non
+   quando è fatta.
 
-**Vincoli che non voglio vedere violati** (sono in `CLAUDE.md`, li ripeto perché contano
-qui): niente regexp sul codice per dedurre modello o categoria · niente scraping del sito
-COLOMBO · **niente schermata «scegli la marca» finché la marca è una** · nessuna
-disponibilità senza la data dell'ultimo import · mobile-first verificato a 375px in browser
-vero · UI in italiano, codici in monospace.
+**Vincoli permanenti che restano validi**: TypeScript strict · tutto via tRPC ·
+regole di dominio in TypeScript e mai nel raw SQL · UI in italiano, codici in
+monospace · **mobile-first verificato a 375px in browser vero** · admin crea tutti
+gli account · il repo è **pubblico**, quindi listino, giacenze e foto del fornitore
+non si committano mai · un run ops con migrazione va lanciato **sul ref del branch,
+prima del merge**.
 
-**Workflow:** usa `/using-superpowers`, poi `/brainstorming` se serve chiarire, poi
-`/writing-plans` e TDD. Usa `/ponytail` mentre scrivi. Usa `/impeccable` per la UI, in
-versione mobile **e** desktop. Se emerge un dubbio architetturale vero, `/llm-council`.
+**Dove siamo, in tre righe.** Reparto SERRAMENTI (AGB): catalogo 7.488 prodotti,
+chat, e generatore di distinte con tre tipologie attive. Reparto MANIGLIE (COLOMBO):
+3.456 articoli, sfoglio a tre livelli, pronta consegna, filtro colori, e **2.118
+articoli con foto (61,3%)** in produzione. Tutto su un solo repo, un solo database,
+un solo Better Auth.
 
-**Ricorda:** finché i file veri non ci sono, il dominio gira su **20 articoli inventati** e
-qualunque prototipo di sfoglio funzionerà benissimo senza dire nulla sugli altri 3.436. Se
-non te li ho allegati, **chiedimeli invece di procedere**.
+**Cose aperte che potrebbero intrecciarsi con quello che decideremo:**
+
+- 🔴 **Vercel Pro** (Hobby vieta l'uso commerciale): era deciso per il 08/08 — fatto?
+- 🔴 **Le tre distinte reali di MC, Peruzzi e Fosca**: pendono da cinque sessioni, e
+  sono la cosa aperta che vale di più.
+- La **migrazione multi-marca**, rimandata alla marca #3: 128 occorrenze in 22 file.
+- Le **7.082 foto AGB dentro Postgres**, causa unica dei tre limiti di piattaforma.
+- Due domande in attesa: una per **COLOMBO** (quale archivio è MR11 e quale MR15,
+  idem LC31/LC41 e LC71/LC81: 66 codici senza foto) e una per **Andrea** (le
+  fusioni di etichette che non ha citato).
 
 ---
 
-## File da allegare
+## Se invece la sessione fosse solo di esecuzione
 
-| File | A cosa serve | Stato |
+Lavoro pronto da prendere, senza decisioni da prendere prima:
+
+- **`updateMany` al posto di 1.995 `update` singoli** in `scripts/foto-colombo.ts`:
+  sono i 4 minuti più lenti di ogni run ops.
+- **Le preview Vercel sono rosse su ogni PR** da mesi, anche su PR di soli
+  documenti (verificato sulla #53): nessuno l'ha mai diagnosticato.
+- **Le tre distinte reali**, se nel frattempo sono arrivate.
+- I **pomoli dei modelli** (`bold_45`, `daytona_45`, `drop_45`, `mapo_45`,
+  `Moon_45`, `spider_45`): oggi fuori perché quale serie sia il pomolo non è
+  scritto. Se COLOMBO risponde, sono altre decine di codici con foto.
+
+## File del fornitore (dove si prendono)
+
+| File | A cosa serve | Dove |
 |---|---|---|
-| Listino COLOMBO aggiornato (`.xlsx`) | le cinque misure, l'import vero, la tassonomia | Andrea doveva procurarlo |
-| Pronta consegna (`.xls`) | collaudo dell'aggancio e degli orfani | esiste (201 codici) |
-| `ER MAN 2026_100726.pdf` | passo 4: pagina tecnica, foto, nome commerciale | esiste, 261 pagine |
-
-## Altri fronti aperti (non bloccanti)
-
-- **Vercel Pro entro sabato 2026-08-08** (Hobby vieta l'uso commerciale).
-- Storage Neon al 72-80%: causa unica sono le 7.082 foto AGB **dentro Postgres**.
-- Le **tre distinte reali** di MC, Peruzzi e Fosca (aperta da più sessioni).
-- Passo 4 del dominio maniglie (foto su Blob, **ridimensionate all'estrazione**).
+| `LISTINO 02 2026 …xlsx` (foglio `LP 02-26`, 3.456 codici) | è quello in produzione | cartella Drive in `CLAUDE.md` |
+| `pronta consegna colombo.xls` | aggancio e orfani | idem |
+| `ER MAN 2026_100726.pdf` | le 31 finiture (p13) | idem |
+| Archivio fotografico (79 zip, 707 foto) | le foto | area download COLOMBO, password dall'utente |
