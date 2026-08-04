@@ -113,9 +113,26 @@ export async function searchArticleIds(
  * famiglia» invece NON è qui: è TypeScript puro in `browse.ts`, come la
  * disponibilità sta in `stock-status.ts`.
  *
- * Ordinato per numerosità decrescente (decisione utente): chi apre trova subito
- * il grosso del magazzino, e la coda dei refusi da un codice solo (`ROBOTE`,
- * `NOTTOLIN`) finisce in fondo, dove disturba meno.
+ * ORDINE ALFABETICO, e non per numerosità (verdetto `/llm-council`, confermato
+ * dall'utente). Ordinare per conteggio comunica *importanza* mentre misura la
+ * proliferazione di finiture del fornitore: MANIGLIONE ha 338 codici ma 160
+ * descrizioni distinte, quindi il numero grosso non è «il gruppo che conta di
+ * più», è «il gruppo con più varianti di colore». Sarebbe un valore deciso dal
+ * programma e mai dichiarato — la classe di difetto chiusa otto volte. In più
+ * spingeva in fondo LARA (28), MILLA (28), VIOLA (35): i nomi che il cliente
+ * PRONUNCIA, cioè l'unico appiglio dell'agente col cliente davanti.
+ *
+ * L'alfabetico non promette nulla, ed è quello che risolve gratis i doppioni:
+ * misurato sui 114 gruppi veri, `ROS.` e `ROSETTA` finiscono ADIACENTI, il
+ * grappolo `MANIG.*`/`MANIGLIA` è contiguo, `BOCCEHTTA` (refuso del fornitore)
+ * cade subito prima di `BOCCHETTA`, e `ROBOTE` — refuso di cui non sappiamo se
+ * sia ROBOT o ROBOTRE — atterra esattamente in mezzo ai due. La fusione la fa
+ * l'occhio di chi guarda; noi non indoviniamo niente.
+ *
+ * L'ordinamento si fa in TypeScript e non in SQL di proposito: `ORDER BY` usa la
+ * COLLATION del database, che può differire fra il Postgres locale e Neon, e
+ * l'ordine adesso è una promessa fatta a schermo. (Misurato: oggi i due ordini
+ * coincidono su tutti e 114 i gruppi — si fissa perché resti vero.)
  */
 export async function browseFirstWords(
   db: PrismaClient,
@@ -127,9 +144,10 @@ export async function browseFirstWords(
     FROM articles a
     WHERE a.brand = ${brand}
     GROUP BY 1
-    ORDER BY n DESC, word ASC
   `;
-  return rows.map((r) => ({ word: r.word, count: Number(r.n) }));
+  return rows
+    .map((r) => ({ word: r.word, count: Number(r.n) }))
+    .sort((a, b) => a.word.localeCompare(b.word, "it"));
 }
 
 /**

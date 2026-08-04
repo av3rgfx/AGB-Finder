@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { ChevronRight, X } from "lucide-react";
 
@@ -69,32 +70,96 @@ function RigaSfoglia({
   );
 }
 
-/** Livello 1: i gruppi. */
+/**
+ * Livello 1: i gruppi, come CHIP in griglia fluida e non come righe a tutta
+ * larghezza. A 375px ne entrano due per riga: 114 gruppi passano da ~14
+ * schermate a ~5, senza tagliarne nessuno — e tagliarne una parte avrebbe
+ * richiesto una soglia decisa da noi («i primi 20»), che è esattamente la classe
+ * di difetto chiusa otto volte. Misurato: i primi 19 gruppi sono già il 55% del
+ * catalogo, quindi un taglio nasconderebbe il 45%, non una coda.
+ *
+ * In ordine ALFABETICO. Per numerosità il numero grosso non significa «conta di
+ * più» ma «ha più finiture» (MANIGLIONE: 338 codici, 160 descrizioni distinte),
+ * e spingeva in fondo LARA, MILLA, VIOLA — i nomi che il cliente pronuncia.
+ *
+ * Il campo che filtra le etichette è ciò che rende la lunghezza irrilevante e
+ * insieme scioglie i doppioni del fornitore senza che noi si fonda niente:
+ * digitando «ros» compaiono `ROS.` e `ROSETTA` una sopra l'altra, e la fusione
+ * la fa l'occhio di chi guarda. Filtra SOLO le 114 etichette già in memoria:
+ * nessuna query, e non è la ricerca articoli — quella sta sopra ed è un'altra cosa.
+ */
 export function SfogliaGruppi({ groups }: { groups: Gruppo[] }) {
+  const [filtro, setFiltro] = useState("");
+  const cerca = filtro.trim().toUpperCase();
+  const visibili = cerca ? groups.filter((g) => g.word.includes(cerca)) : groups;
+
   return (
-    <section aria-labelledby="sfoglia-titolo" className="flex flex-col gap-2">
+    <section aria-labelledby="sfoglia-titolo" className="flex flex-col gap-3">
       <div className="flex flex-col gap-0.5">
         <h2 id="sfoglia-titolo" className="text-sm font-semibold text-ink">
           Sfoglia il catalogo
         </h2>
         {/* L'origine dichiarata: è ciò che impedisce all'etichetta di sembrare
             una classificazione nostra. Le parole sono di COLOMBO, refusi
-            compresi, e chi le legge deve saperlo. */}
+            compresi, e chi le legge deve saperlo. E il numero è quanti CODICI,
+            non quanti modelli: dirlo evita che «338» prometta 338 oggetti
+            diversi quando le descrizioni distinte sono 160. */}
         <p className="text-xs text-ink-subtle">
-          {groups.length} gruppi, per la prima parola della descrizione a listino
+          {groups.length} gruppi in ordine alfabetico, per la prima parola della descrizione a
+          listino. Il numero è quanti codici.
         </p>
       </div>
-      <ul className="list-none overflow-hidden rounded-md border border-line">
-        {groups.map((g) => (
-          <RigaSfoglia
-            key={g.word}
-            href={`/maniglie?tipo=${encodeURIComponent(g.word)}`}
-            label={g.word}
-            count={g.count}
-          />
-        ))}
-      </ul>
+
+      <label className="flex flex-col gap-1">
+        <span className="sr-only">Filtra i gruppi</span>
+        <input
+          type="text"
+          value={filtro}
+          onChange={(e) => setFiltro(e.target.value)}
+          placeholder="Filtra i gruppi…"
+          // 40px: più basso della ricerca articoli, che resta il campo primario.
+          className="h-10 w-full rounded border border-line-strong bg-surface px-3 text-base text-ink transition-colors duration-150 placeholder:text-ink-subtle focus-visible:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/25 sm:text-sm"
+        />
+      </label>
+
+      {visibili.length === 0 ? (
+        <p className="rounded-md border border-dashed border-line-strong bg-surface p-6 text-center text-sm text-ink-subtle">
+          Nessun gruppo contiene «{filtro.trim()}». Per cercare un articolo usa il campo qui sopra.
+        </p>
+      ) : (
+        <ul className="grid list-none grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+          {visibili.map((g) => (
+            <ChipGruppo key={g.word} gruppo={g} />
+          ))}
+        </ul>
+      )}
     </section>
+  );
+}
+
+/**
+ * Il chip di un gruppo. L'etichetta va a capo invece di troncarsi: fra i 114
+ * gruppi veri ci sono `ROBOQUATTRO`, `FERMAPORTA`, `BLOCCAPORTA` e
+ * `MANIG.LC413RS`, e a 375px in due colonne non ci stanno su una riga sola.
+ * Troncare qui significherebbe rendere illeggibile proprio l'unica cosa che il
+ * chip contiene.
+ */
+function ChipGruppo({ gruppo }: { gruppo: Gruppo }) {
+  return (
+    <li>
+      <Link
+        href={`/maniglie?tipo=${encodeURIComponent(gruppo.word)}`}
+        aria-label={`${gruppo.word}, ${conteggio(gruppo.count)}`}
+        className="flex h-full min-h-[56px] flex-col justify-center gap-0.5 rounded-md border border-line bg-surface px-3 py-2 transition-colors duration-150 hover:border-line-strong hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+      >
+        <span className="break-words text-sm font-medium leading-tight text-ink">
+          {gruppo.word}
+        </span>
+        <span aria-hidden className="text-xs tabular-nums text-ink-subtle">
+          {gruppo.count}
+        </span>
+      </Link>
+    </li>
   );
 }
 

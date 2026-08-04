@@ -248,9 +248,21 @@ describe.runIf(Boolean(url))("sfoglio — il GROUP BY SQL e la funzione TypeScri
     expect(groups.map((g) => g.word)).toContain("PEGASO");
   });
 
-  it("ordina per numero di codici decrescente (decisione utente)", async () => {
+  it("ordina alfabeticamente, non per numerosità", async () => {
+    // Per numerosità il numero grosso significa «più finiture», non «più
+    // importante», e spingerebbe in fondo i nomi che il cliente pronuncia.
     const groups = await browseFirstWords(db, "COLOMBO");
-    const counts = groups.map((g) => g.count);
-    expect(counts).toEqual([...counts].sort((a, b) => b - a));
+    const words = groups.map((g) => g.word);
+    expect(words).toEqual([...words].sort((a, b) => a.localeCompare(b, "it")));
+  });
+
+  it("i doppioni del fornitore finiscono adiacenti, senza che noi li fondiamo", async () => {
+    // È ciò che rende inutile una tabella di alias: `ROS.` e `ROSETTA` sono la
+    // stessa cosa scritta in due modi, e in alfabetico si vedono insieme.
+    const words = (await browseFirstWords(db, "COLOMBO")).map((g) => g.word);
+    const dist = (a: string, b: string) => Math.abs(words.indexOf(a) - words.indexOf(b));
+    if (words.includes("ROS.") && words.includes("ROSETTA")) {
+      expect(dist("ROS.", "ROSETTA")).toBe(1);
+    }
   });
 });

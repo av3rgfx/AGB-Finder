@@ -81,12 +81,14 @@ function risultati(over: Record<string, unknown> = {}) {
   };
 }
 
-/** I gruppi veri del listino COLOMBO, coi loro conteggi veri. */
+/** Gruppi veri del listino COLOMBO, coi conteggi veri, in ordine alfabetico. */
 const GRUPPI = [
-  { word: "MANIGLIONE", count: 338 },
   { word: "BOCCHETTA", count: 288 },
   { word: "KIT", count: 139 },
   { word: "LARA", count: 28 },
+  { word: "MANIGLIONE", count: 338 },
+  { word: "ROS.", count: 58 },
+  { word: "ROSETTA", count: 47 },
 ];
 
 beforeEach(() => {
@@ -366,21 +368,63 @@ describe("ManiglieClient — sfoglio", () => {
     render(<ManiglieClient />);
     expect(screen.getByText("Sfoglia il catalogo")).toBeTruthy();
     expect(screen.getByText("MANIGLIONE")).toBeTruthy();
-    expect(screen.getByText("338 codici")).toBeTruthy();
+    expect(screen.getByLabelText("MANIGLIONE, 338 codici")).toBeTruthy();
     expect(searchQuery.mock.calls[0]?.[1]).toMatchObject({ enabled: false });
   });
 
-  it("dichiara da dove vengono le etichette", () => {
-    // Sono parole di COLOMBO, refusi compresi. Senza l'origine a schermo
-    // sembrerebbero una classificazione nostra.
+  it("mostra TUTTI i gruppi: nessuna soglia decisa da noi", () => {
+    // «I primi 20 + mostra tutti» richiederebbe una soglia che nessun dato
+    // sostiene, ed è la classe di difetto chiusa otto volte. Sui dati veri i
+    // primi 19 gruppi sono già il 55% del catalogo: un taglio nasconderebbe il
+    // 45%, non una coda.
+    render(<ManiglieClient />);
+    for (const g of GRUPPI) expect(screen.getByText(g.word)).toBeTruthy();
+    expect(screen.queryByText(/mostra tutti/i)).toBeNull();
+  });
+
+  it("dichiara da dove vengono le etichette E cosa conta il numero", () => {
+    // Sono parole di COLOMBO, refusi compresi: senza l'origine a schermo
+    // sembrerebbero una classificazione nostra. E «338» conta i CODICI, non i
+    // modelli — le descrizioni distinte sono 160.
     render(<ManiglieClient />);
     expect(screen.getByText(/prima parola della descrizione a listino/i)).toBeTruthy();
+    expect(screen.getByText(/ordine alfabetico/i)).toBeTruthy();
+    expect(screen.getByText(/il numero è quanti codici/i)).toBeTruthy();
+  });
+
+  it("il campo filtra le etichette senza interrogare il server", () => {
+    render(<ManiglieClient />);
+    fireEvent.change(screen.getByPlaceholderText("Filtra i gruppi…"), { target: { value: "ros" } });
+    // I due modi in cui il fornitore scrive la stessa cosa compaiono INSIEME:
+    // la fusione la fa l'occhio, noi non indoviniamo niente.
+    expect(screen.getByText("ROS.")).toBeTruthy();
+    expect(screen.getByText("ROSETTA")).toBeTruthy();
+    expect(screen.queryByText("MANIGLIONE")).toBeNull();
+    // Nessuna query nuova: filtra i 114 già in memoria.
+    expect(searchQuery.mock.calls.every((c) => (c[1] as { enabled: boolean }).enabled === false)).toBe(true);
+  });
+
+  it("se il filtro non trova nulla lo dice, e rimanda alla ricerca vera", () => {
+    render(<ManiglieClient />);
+    fireEvent.change(screen.getByPlaceholderText("Filtra i gruppi…"), { target: { value: "zzz" } });
+    expect(screen.getByText(/Nessun gruppo contiene «zzz»/)).toBeTruthy();
   });
 
   it("ogni gruppo porta al proprio livello 2 via URL, non via stato nascosto", () => {
     render(<ManiglieClient />);
     const link = screen.getByText("LARA").closest("a");
     expect(link?.getAttribute("href")).toBe("/maniglie?tipo=LARA");
+  });
+
+  it("i gruppi restano nell'ordine in cui il server li manda (alfabetico)", () => {
+    // L'ordinamento è del server, che lo fissa in TypeScript per non dipendere
+    // dalla collation del database: il client non riordina.
+    render(<ManiglieClient />);
+    const etichette = screen
+      .getAllByRole("listitem")
+      .map((li) => li.querySelector("span")?.textContent)
+      .filter(Boolean);
+    expect(etichette.slice(0, GRUPPI.length)).toEqual(GRUPPI.map((g) => g.word));
   });
 
   it("dentro un gruppo mostra le famiglie, in mono perché sono pezzi di codice", () => {
