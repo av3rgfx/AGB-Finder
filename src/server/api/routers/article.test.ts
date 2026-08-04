@@ -148,6 +148,45 @@ describe("article.search", () => {
   });
 });
 
+describe("la foto: dalla chiave a DB all'URL della route", () => {
+  const CHIAVE = "maniglie/colombo/01-fedra/fedra-1ol";
+
+  it("la chiave non esce mai grezza verso il browser", async () => {
+    // A DB c'è la CHIAVE Blob (store privato): il browser deve ricevere solo un
+    // percorso della nostra applicazione, che passa dall'auth.
+    vi.mocked(searchArticleIds).mockResolvedValue({ hits: [{ id: "a1", score: 1 }], total: 1 });
+    articleFindMany.mockResolvedValue([article({ imageUrl: CHIAVE })]);
+
+    const res = await caller(agent).article.search({ query: "fedra" });
+    expect(res.hits[0]!.imageUrl).toBe(
+      "/api/article-image?k=maniglie%2Fcolombo%2F01-fedra%2Ffedra-1ol&size=320",
+    );
+  });
+
+  it("senza foto l'URL è null: nessuna richiesta sprecata per il 42% scoperto", async () => {
+    vi.mocked(searchArticleIds).mockResolvedValue({ hits: [{ id: "a1", score: 1 }], total: 1 });
+    articleFindMany.mockResolvedValue([article({ imageUrl: null })]);
+
+    const res = await caller(agent).article.search({ query: "vite" });
+    expect(res.hits[0]!.imageUrl).toBeNull();
+  });
+
+  it("la scheda riceve anche il formato grande", async () => {
+    articleFindUnique.mockResolvedValue(article({ imageUrl: CHIAVE }));
+    const res = await caller(agent).article.getById({ id: "a1" });
+    expect(res.imageUrl).toContain("size=320");
+    expect(res.imageUrlLarge).toBe(
+      "/api/article-image?k=maniglie%2Fcolombo%2F01-fedra%2Ffedra-1ol&size=900",
+    );
+  });
+
+  it("senza foto anche il formato grande è null", async () => {
+    articleFindUnique.mockResolvedValue(article({ imageUrl: null }));
+    const res = await caller(agent).article.getById({ id: "a1" });
+    expect(res.imageUrlLarge).toBeNull();
+  });
+});
+
 describe("article.getById", () => {
   it("espone ENTRAMBE le metà del prezzo, oltre al totale", async () => {
     // Il surcharge è temporaneo per definizione: deve essere leggibile.

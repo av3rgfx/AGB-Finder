@@ -41,6 +41,18 @@ const ARTICLE_FIELDS = {
 
 type ArticleRow = Prisma.ArticleGetPayload<{ select: typeof ARTICLE_FIELDS }>;
 
+/**
+ * `articles.image_url` conserva la CHIAVE Blob, non un URL: il file sta su uno
+ * store PRIVATO e i byte passano sempre da `/api/article-image`, che è dietro
+ * auth. Il browser vede solo un percorso della nostra applicazione.
+ *
+ * `null` quando la foto non c'è — il 42% dei codici, che è minuteria che nessun
+ * catalogo fotografa: così la pagina non spende una richiesta per scoprirlo.
+ */
+function urlFoto(chiave: string | null, size: 320 | 900): string | null {
+  return chiave === null ? null : `/api/article-image?k=${encodeURIComponent(chiave)}&size=${size}`;
+}
+
 function toSummary(a: ArticleRow, inStock: boolean) {
   return {
     id: a.id,
@@ -51,7 +63,8 @@ function toSummary(a: ArticleRow, inStock: boolean) {
     total: articleTotal(a.priceList, a.surcharge).toNumber(),
     ean: a.ean,
     catalogPage: a.catalogPage,
-    imageUrl: a.imageUrl,
+    /** Miniatura: è la misura del posto che le righe hanno già (44px, retina). */
+    imageUrl: urlFoto(a.imageUrl, 320),
     inStock,
   };
 }
@@ -319,6 +332,9 @@ export const articleRouter = createTRPCRouter({
       const { inStock, updates } = await resolveStock(ctx.db, [row]);
       return {
         ...toSummary(row, inStock.has(row.id)),
+        /** La scheda disegna la foto grande: 320px su un riquadro da 192 CSS px
+            sarebbe sgranata su ogni schermo retina. */
+        imageUrlLarge: urlFoto(row.imageUrl, 900),
         /** Le due metà, per la scheda: il surcharge è temporaneo e va poter essere letto. */
         priceList: row.priceList.toNumber(),
         surcharge: row.surcharge === null ? null : row.surcharge.toNumber(),
