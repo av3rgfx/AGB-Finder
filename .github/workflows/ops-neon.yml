@@ -6,6 +6,10 @@ on:
         description: "URL diretto del listino AGB PDF (default: link registrato in CLAUDE.md)"
         required: false
         default: "https://drive.usercontent.google.com/download?id=1TugU94aM6OP557ELiLQpH0nUxhxrXMUz&export=download&confirm=t"
+      listino_colombo_url:
+        description: "URL diretto del listino COLOMBO xlsx (reparto maniglie). Vuoto = salta l'import."
+        required: false
+        default: "https://drive.usercontent.google.com/download?id=1FV7AEKVe67tlIGOMrglVi3ip8TdZNueI&export=download&confirm=t"
 jobs:
   ops:
     runs-on: ubuntu-latest
@@ -47,5 +51,25 @@ jobs:
         run: |
           pnpm db:seed
           pnpm db:seed:kit
+      # Reparto MANIGLIE. Sta DOPO migrazione, import AGB e seed di proposito: se
+      # il download da Drive fallisse, il resto è già applicato — e la finestra di
+      # disservizio a zero dipende dal fatto che la migrazione passi comunque.
+      #
+      # Idempotente: `upsert` su (brand, code). Riscrive `last_listing_at`, che è
+      # ciò che rende visibile «non più a listino» quando COLOMBO toglie un codice.
+      - name: Import listino COLOMBO (reparto maniglie)
+        if: ${{ github.event.inputs.listino_colombo_url != '' }}
+        # L'input non fidato passa da una env var e non viene mai interpolato
+        # nello script: sul runner sono in scope i secret di DB e Gemini.
+        env:
+          LISTINO_COLOMBO_URL: ${{ github.event.inputs.listino_colombo_url }}
+        run: |
+          curl -sSL "$LISTINO_COLOMBO_URL" -o listino-colombo.xlsx
+          # Un xlsx è uno zip: se Drive restituisce una pagina HTML di errore, il
+          # parser fallirebbe con un messaggio che non dice cosa è successo.
+          head -c 2 listino-colombo.xlsx | grep -q 'PK' || { echo "::error::Il download non è un xlsx valido"; exit 1; }
+          echo "xlsx scaricato: $(wc -c < listino-colombo.xlsx) byte"
+          pnpm import:listino COLOMBO listino-colombo.xlsx
+
       - name: Embed catalogo (idempotente, batch 50)
         run: pnpm embed:products
