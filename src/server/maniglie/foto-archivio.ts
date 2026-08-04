@@ -144,6 +144,59 @@ export const ARCHIVI: Record<string, VoceArchivio> = {
 };
 
 /**
+ * REGOLE PER SINGOLO FILE, dentro gli archivi che un'etichetta non ce l'hanno.
+ *
+ * `02_Pomoli` raccoglie i pomoli di mezzo catalogo, e il suo nome non dice a
+ * quale gruppo appartenga ciascuno. Ma il nome del FILE sì, e l'indice del
+ * listino COLOMBO — sezione «pomoli / door knobs» — stampa accanto a ognuno la
+ * sua serie: «130 round ID25», «131 round ID35», «132 square LC25», «133 square
+ * LC35», «124 cut MS15», «125 cut MS25», «128 robot CD45», «129 robot CD55»,
+ * «129 robot CD65». È la stessa qualità di prova delle righe ROBOT CD41/CD75 in
+ * `ARCHIVI`: due cose scritte da COLOMBO che combaciano, non una deduzione.
+ *
+ * ⚠️ Quello che NON entra, e perché: `bold_45`, `daytona_45`, `drop_45`,
+ * `mapo_45`, `Moon_45`, `spider_45` sono i pomoli di modelli che hanno già il
+ * loro archivio di maniglia. Quei gruppi sono coperti al 100% dalla maniglia, e
+ * quale serie sia il pomolo non è scritto da nessuna parte: attaccarlo
+ * significherebbe rischiare un pomolo su un codice di maniglia — una foto che
+ * esiste, si vede benissimo, ed è di un altro prodotto.
+ *
+ * La chiave è `archivio/nome-file`, e vince su `ARCHIVI[archivio]`.
+ */
+export const FILE_MODELLO: Record<string, VoceArchivio> = {
+  // I tre pomoli ROBOTECH che mancavano: ROBOT passa da 65 a 111 codici su 129
+  // (resta fuori il solo CD42, «senza mov.»).
+  "02_Pomoli/robot45_45": { etichetta: "ROBOT", serie: "CD45" },
+  "02_Pomoli/robot55_45": { etichetta: "ROBOT", serie: "CD55" },
+  "02_Pomoli/robot65_45": { etichetta: "ROBOT", serie: "CD65" },
+  // `robot75_45` NON è qui: il CD75 ce l'ha già `01_Robot1_p`, che è il suo
+  // archivio di modello. Due sorgenti per la stessa coppia sarebbero due verità.
+
+  "02_Pomoli/round25_45": { etichetta: "ROUND", serie: "ID25" },
+  "02_Pomoli/round35_45": { etichetta: "ROUND", serie: "ID35" },
+  "02_Pomoli/square25_45": { etichetta: "SQUARE", serie: "LC25" },
+  "02_Pomoli/square35_45": { etichetta: "SQUARE", serie: "LC35" },
+  "02_Pomoli/cut15_45": { etichetta: "CUT", serie: "MS15" },
+  "02_Pomoli/cut25_45": { etichetta: "CUT", serie: "MS25" },
+  // PUSH: cinque codici, tutti LC55, e un file solo. Una serie qui non
+  // separerebbe niente, e un vincolo che non separa può solo togliere foto.
+  "02_Pomoli/push_45": { etichetta: "PUSH" },
+  // MOOD Collection: il listino scrive «POMOLO ONE …» (CC15) e «POMOLO ONE Q …»
+  // (CC25), i file «pomolo one strawberry red» e «pomolo one q lime green».
+  // Le parole sono di COLOMBO da entrambe le parti.
+  "02_Pomoli/pomolo one strawberry red": { etichetta: "POMOLO", serie: "CC15" },
+  "02_Pomoli/pomolo one q lime green": { etichetta: "POMOLO", serie: "CC25" },
+};
+
+/**
+ * La voce che vale per una foto: la regola del suo file se c'è, altrimenti
+ * quella del suo archivio.
+ */
+function voceDi(archivio: string, nome: string): VoceArchivio | undefined {
+  return FILE_MODELLO[`${archivio}/${nome}`] ?? ARCHIVI[archivio];
+}
+
+/**
  * Uno scatto d'ambiente non è una foto di prodotto: `Robo4_def.jpg` è 8268×7087,
  * 34 MB, la maniglia su fondo colorato con ombre lunghe. In una griglia di
  * miniature su bianco stona, e non dice nulla in 44 pixel. Sono 68 file su 707, e
@@ -252,7 +305,7 @@ export function abbinaFoto(
   const usabili = foto
     .filter((f) => scattoDiProdotto(f.nome))
     .map((f) => ({
-      archivio: f.archivio,
+      voce: voceDi(f.archivio, f.nome),
       chiave: chiaveFoto(f.archivio, f.nome),
       nomeNorm: f.nome.replace(/[^A-Za-z0-9]/g, "").toUpperCase(),
       finitura: finituraDiFoto(f.nome),
@@ -282,9 +335,8 @@ export function abbinaFoto(
     const zero = varianteZero(a.name);
     const serieDelCodice = senzaZeroIniziale(a.codeNorm);
     const candidate = usabili.filter((f) => {
-      const voce = ARCHIVI[f.archivio];
-      if (!voce || voce.etichetta !== etichetta) return false;
-      if (voce.serie && !serieDelCodice.startsWith(voce.serie)) return false;
+      if (!f.voce || f.voce.etichetta !== etichetta) return false;
+      if (f.voce.serie && !serieDelCodice.startsWith(f.voce.serie)) return false;
       return f.zero === zero;
     });
     if (candidate.length === 0) continue;
