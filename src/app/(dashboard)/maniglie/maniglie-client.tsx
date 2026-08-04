@@ -335,7 +335,15 @@ function ArticoloRow({ articolo }: { articolo: ArticleSummary }) {
       <Foto url={articolo.imageUrl} />
       <div className="flex min-w-0 flex-col gap-1 sm:contents">
         <span className="min-w-0 truncate font-mono text-xs text-ink-subtle">{articolo.code}</span>
-        <span className="min-w-0 truncate text-sm font-medium text-ink">{articolo.name}</span>
+        {/* A 375px il nome va a capo invece di troncarsi: sfogliando una
+            famiglia le righe sono nomi quasi identici, in cui l'unica parola
+            diversa è l'ultima («… CROMAT» / «… OROPLUS»). Troncare taglierebbe
+            esattamente ciò che le distingue. Due righe bastano: le descrizioni
+            del listino sono tagliate a 35 caratteri già alla fonte. Da `sm` in
+            su la riga resta una griglia allineata, e lì il troncamento va bene. */}
+        <span className="line-clamp-2 min-w-0 text-sm font-medium text-ink sm:truncate">
+          {articolo.name}
+        </span>
         <StockBadge inStock={articolo.inStock} />
       </div>
       <span className="text-sm font-semibold tabular-nums text-ink sm:justify-self-end">
