@@ -75,10 +75,43 @@ const MARCATORE_S = /^S'?$|^S'/;
  * `null` = non si sfoglia (ma resta cercabile).
  */
 export function browseLabel(name: string): string | null {
-  const w = firstWord(name);
-  if (ESCLUSE.has(w)) return null;
-  if (DIVISE.has(w) && MARCATORE_S.test(secondToken(name) ?? "")) return `${w} S`;
-  return FUSIONI[w] ?? w;
+  return labelFromTokens(firstWord(name), secondToken(name));
+}
+
+/**
+ * La stessa regola a partire dai due token già separati — è la forma che serve
+ * al livello 1, dove il `GROUP BY` restituisce i token e non le descrizioni.
+ * Una regola sola per le due strade: se fossero due potrebbero divergere, e il
+ * numero contato non sarebbe più il numero mostrato.
+ */
+function labelFromTokens(first: string, second: string | null): string | null {
+  if (ESCLUSE.has(first)) return null;
+  if (DIVISE.has(first) && MARCATORE_S.test(second ?? "")) return `${first} S`;
+  return FUSIONI[first] ?? first;
+}
+
+/** Una riga del `GROUP BY` di livello 1: i due token e quanti codici. */
+export interface TokenCount {
+  first: string;
+  second: string;
+  count: number;
+}
+
+/**
+ * I gruppi da mostrare, curati e sommati. In ordine alfabetico italiano, deciso
+ * QUI e non con un `ORDER BY`: la collation è del database e può differire fra
+ * il Postgres locale e Neon, mentre l'ordine è una promessa fatta a schermo.
+ */
+export function foldBrowseGroups(rows: TokenCount[]): { word: string; count: number }[] {
+  const counts = new Map<string, number>();
+  for (const r of rows) {
+    const label = labelFromTokens(r.first, r.second || null);
+    if (label === null) continue;
+    counts.set(label, (counts.get(label) ?? 0) + r.count);
+  }
+  return [...counts.entries()]
+    .map(([word, count]) => ({ word, count }))
+    .sort((a, b) => a.word.localeCompare(b.word, "it"));
 }
 
 /**

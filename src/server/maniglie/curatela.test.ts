@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { browseLabel, sourceFirstWords } from "./curatela";
+import { browseLabel, foldBrowseGroups, sourceFirstWords } from "./curatela";
 
 /**
  * Le regole vengono da Andrea, che rifornisce il magazzino e ha usato lo sfoglio
@@ -102,5 +102,45 @@ describe("sourceFirstWords", () => {
 
   test("un'etichetta non toccata è la sua sola sorgente", () => {
     expect(sourceFirstWords("ALBA")).toEqual(["ALBA"]);
+  });
+});
+
+/**
+ * Il livello 1 conta in SQL e cura in TypeScript: il `GROUP BY` non sa nulla di
+ * fusioni e divisioni, e la regola di dominio non deve finire in una query.
+ */
+describe("foldBrowseGroups", () => {
+  test("le due etichette della rosetta diventano una voce sola, con la somma", () => {
+    expect(
+      foldBrowseGroups([
+        { first: "ROS.", second: "OTT.", count: 58 },
+        { first: "ROSETTA", second: "PB01", count: 47 },
+      ]),
+    ).toEqual([{ word: "ROSETTA", count: 105 }]);
+  });
+
+  test("un gruppo diviso conta le sue due metà separatamente", () => {
+    expect(
+      foldBrowseGroups([
+        { first: "ROBOCINQUE", second: "ID61R", count: 49 },
+        { first: "ROBOCINQUE", second: "S", count: 54 },
+      ]),
+    ).toEqual([
+      { word: "ROBOCINQUE", count: 49 },
+      { word: "ROBOCINQUE S", count: 54 },
+    ]);
+  });
+
+  test("un'etichetta esclusa non compare, e non lascia una voce a zero", () => {
+    expect(foldBrowseGroups([{ first: "VITE", second: "M4X25", count: 21 }])).toEqual([]);
+  });
+
+  test("l'ordine è alfabetico italiano, come la schermata promette", () => {
+    expect(
+      foldBrowseGroups([
+        { first: "ZELDA", second: "MM11R", count: 26 },
+        { first: "ALBA", second: "LC91R", count: 21 },
+      ]).map((g) => g.word),
+    ).toEqual(["ALBA", "ZELDA"]);
   });
 });

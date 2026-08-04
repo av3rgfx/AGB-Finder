@@ -1,6 +1,7 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { normalizeArticleCode } from "./code-norm";
-import { SQL_FIRST_WORD } from "./taxonomy";
+import { SQL_FIRST_WORD, SQL_SECOND_WORD } from "./taxonomy";
+import { browseLabel, foldBrowseGroups, sourceFirstWords } from "./curatela";
 
 /**
  * Ricerca articoli del reparto maniglie. SOLO Postgres: `tsvector` + trigram.
@@ -145,17 +146,18 @@ export async function browseFirstWords(
   onlyIds?: string[],
 ): Promise<{ word: string; count: number }[]> {
   if (onlyIds && onlyIds.length === 0) return [];
-  const rows = await db.$queryRaw<{ word: string; n: bigint }[]>`
-    SELECT ${Prisma.raw(SQL_FIRST_WORD.replace(/\bname\b/, "a.name"))} AS word,
+  const rows = await db.$queryRaw<{ w1: string; w2: string; n: bigint }[]>`
+    SELECT ${Prisma.raw(SQL_FIRST_WORD.replace(/\bname\b/, "a.name"))} AS w1,
+           ${Prisma.raw(SQL_SECOND_WORD.replace(/\bname\b/, "a.name"))} AS w2,
            COUNT(*)::bigint AS n
     FROM articles a
     WHERE a.brand = ${brand}
       ${onlyIds ? Prisma.sql`AND a.id IN (${Prisma.join(onlyIds)})` : Prisma.empty}
-    GROUP BY 1
+    GROUP BY 1, 2
   `;
-  return rows
-    .map((r) => ({ word: r.word, count: Number(r.n) }))
-    .sort((a, b) => a.word.localeCompare(b.word, "it"));
+  return foldBrowseGroups(
+    rows.map((r) => ({ first: r.w1, second: r.w2, count: Number(r.n) })),
+  );
 }
 
 /**
@@ -167,16 +169,25 @@ export async function browseFirstWords(
 export async function articleIdsByFirstWord(
   db: PrismaClient,
   brand: string,
-  word: string,
+  label: string,
   onlyIds?: string[],
 ): Promise<{ id: string; code: string; codeNorm: string; name: string }[]> {
   if (onlyIds && onlyIds.length === 0) return [];
-  return db.$queryRaw<{ id: string; code: string; codeNorm: string; name: string }[]>`
+
+  // Il `WHERE` sa leggere solo la parola cruda, quindi si allarga alle sorgenti
+  // dell'etichetta (`ROSETTA` ← `ROS.` + `ROSETTA`) e si RESTRINGE dopo con la
+  // stessa regola del livello 1. Il secondo passaggio non è ridondante: le due
+  // metà di una divisione condividono la sorgente, e senza tornerebbero unite.
+  const words = sourceFirstWords(label);
+  if (words.length === 0) return [];
+
+  const rows = await db.$queryRaw<{ id: string; code: string; codeNorm: string; name: string }[]>`
     SELECT a.id, a.code, a.code_norm AS "codeNorm", a.name
     FROM articles a
     WHERE a.brand = ${brand}
-      AND ${Prisma.raw(SQL_FIRST_WORD.replace(/\bname\b/, "a.name"))} = ${word}
+      AND ${Prisma.raw(SQL_FIRST_WORD.replace(/\bname\b/, "a.name"))} IN (${Prisma.join(words)})
       ${onlyIds ? Prisma.sql`AND a.id IN (${Prisma.join(onlyIds)})` : Prisma.empty}
     ORDER BY a.code ASC
   `;
+  return rows.filter((r) => browseLabel(r.name) === label);
 }
