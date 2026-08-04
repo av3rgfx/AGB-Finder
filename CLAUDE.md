@@ -799,5 +799,46 @@ misurando: si cercava la famiglia dove il catalogo scrive il nome. ⚠️ Blob *
 una route Node e pesano su **Fast Origin Transfer** (40%): conta la DIMENSIONE, non la collocazione.
 `catalogPage` esiste a schema e **non è mai stato scritto**; va riempito con le foto, e vuole accanto una
 **colonna di edizione** o `ER MAN 2027` rinumera le pagine.
-⚠️ **La pronta consegna non è mai stata caricata in produzione**: su Neon 3.456 articoli e **zero**
-`stock_imports` → metà del reparto è spenta finché Andrea non apre `/maniglie/import`. Due minuti, zero codice.
++ **MISURE FOTO (definitive) + CURATELA DELLO SFOGLIO ✅ (branch `claude/foto-catalogo-maniglie-8sua1k`, PR
+aperta)**. **(A) Le foto: sorgente decisa, misurata, zero codice.** Le due strade della scheda misure
+precedente valgono **zero e uno**: le «pagine di continuazione» sono le pagine TECNICHE del modello già
+contato (72 su 73 seguono una pagina con foto → riporto del titolo = **+0 modelli**), e i titoli non-ASCII
+sono **uno solo** su 92 (`Alatò`). Ma la premessa sotto era sbagliata: «167 pagine con foto» mescolava **92
+scatti d'ambiente** (≥1 MP), **441 scatti prodotto** (305×110, 3,4 KB, sulle pagine tecniche scartate) e le
+icone. **La sorgente vera è l'archivio fotografico ufficiale** dell'area download: **79 zip, 707 foto,
+5315×5315 CMYK**, prodotto pulito su bianco; indice preso con richieste **Range** sulla central directory
+(pochi MB invece di 3,3 GB). **Copertura 62,1% prudente → 69,3%** (1.853 codici dagli archivi di modello +
+297 dagli accessori col codice nel nome; fino a +528 agganciando i nomi di modello nelle descrizioni),
+contro il 57,4% del titolo di catalogo. **Aggancio a tre gradini, tutti scritti da COLOMBO**: cartella →
+modello (707/707) · + finitura dove sta nel nome (39%) · + codice dove COLOMBO l'ha scritto (**62% degli
+accessori**, cioè proprio maniglioni/pomoli/bocchette/complementi che per nome erano irraggiungibili). Chi
+non arriva a nessuno dei tre **resta senza foto**. **Peso: 13 MB** (2 miniature 320px + 11 schede 900px,
+WebP) da 4,15 GB → il vincolo Fast Origin Transfer è sciolto; la conversione **non è un'ottimizzazione**, un
+JPEG **CMYK** il browser non lo mostra. ⚠️ Le cartelle usano **sigle interne** (`Robot4`=Roboquattro): serve
+una tabellina di ~10 traduzioni, da verificare sul listino. 5 archivi non agganciano nulla (Laconica,
+Robot6, Robot6S, Halo, Kubo): sono **prodotti nuovi non ancora a listino**. **Filtro colori: 88,7%** dei
+codici ha come coda una delle **31 finiture ufficiali** (estratte dal catalogo con nome e colore, §5 della
+scheda); le code distinte sono **57**, non 133, e le non riconosciute sono quasi tutte **bicolori** (`CR8` =
+CROMO/CROMAT). Il listino PDF dell'area download (edizione **06/25**, testo in chiaro) ha a **p16 la matrice
+modello × finitura**, ma il suo indice dei codici è **testo convertito in curve** → non è una sorgente.
+**(B) La curatela di Andrea: 13 righe su 14 fatte.** Andrea ha usato il catalogo vero e ha mandato 14
+correzioni. **114 gruppi → 102** (BOCCHETTA 288→291, ROSETTA 47→105, `ROBOCINQUE S` e `ROBOQUATTRO S` come
+voci proprie, 63 codici fuori dallo sfoglio). Modulo foglia `src/server/maniglie/curatela.ts`
+(`browseLabel`/`sourceFirstWords`/`foldBrowseGroups`) applicato **a lettura** — **non** all'import, che
+cancellerebbe la parola di COLOMBO e farebbe sparire `BOCCEHTTA` dall'indice trigram. **Le rimozioni valgono
+SOLO per lo sfoglio** (decisione utente): chi scrive «vite» la trova, e c'è una sentinella d'integrazione.
+Le etichette vere **non sono quelle scritte a memoria** (`ROBOCINQUQ`, `NOTTOLIN`, `KITPORTE` attaccato, e
+«Mov.» sono **due** etichette); **due refusi li ha decisi il codice** (`ID61RSB` = serie del Robocinque base;
+`CD92DK` = serie di Robotre — l'handoff lo dava per indecidibile); il marcatore della S ha **tre forme**
+(`S`, `S'`, `S'ID51RSB`). **Il verdetto (3) del `/llm-council` è caduto**: «la fusione la fa l'occhio» era
+vero sui pixel e falso sul mestiere. **Tre cose imparate eseguendo**: il gate girava su venti righe finte
+(importare il listino vero in locale ha scoperto un test che pretendeva un codice del **seed** e falliva
+anche su `main`, provato con `git stash`); un difetto l'hanno trovato **gli screenshot** (il sottotitolo
+prometteva «per la prima parola della descrizione», falso dopo le fusioni, con un test che passava perché
+verificava che la frase *ci fosse*); e il primo giro del browser ritrae lo **skeleton** se si aspetta un
+timer invece del contenuto. Gate: typecheck · lint · **1336 test** · build 22 route · **integrazione 29/29
+su Postgres vero col listino VERO** · **browser 54/54** (desktop e 375px). 🟢 **NESSUNA MIGRAZIONE, NESSUNA
+AZIONE OPS.** Aperto: **le foto** · 2 domande per Andrea (la sua lista non è esaustiva: `MANIG.*`, `PL.*`,
+`RONDELLE`) · Vercel Pro entro 08/08 · le tre distinte reali.
+Scheda misure: `docs/superpowers/specs/2026-08-04-foto-e-finiture-colombo-misure-2.md`.
+✅ **La pronta consegna è stata caricata in produzione dall'utente**: chiusa.
