@@ -1,4 +1,5 @@
-import { FINITURE_PER_CODICE } from "./finiture";
+import { browseLabel } from "./curatela";
+import { FINITURE_PER_CODICE, finituraDiCodice } from "./finiture";
 
 /**
  * L'ARCHIVIO FOTOGRAFICO UFFICIALE COLOMBO, mappato al catalogo.
@@ -194,4 +195,103 @@ const slug = (s: string) =>
  */
 export function chiaveFoto(archivio: string, nome: string): string {
   return `maniglie/colombo/${slug(archivio)}/${slug(nome)}`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// L'ABBINAMENTO
+// ═══════════════════════════════════════════════════════════════
+
+export interface FotoArchivio {
+  /** Cartella dello zip, senza `.zip`: `01_Fedra`. */
+  archivio: string;
+  /** Nome del file senza estensione: `Fedra_1OL`. */
+  nome: string;
+}
+
+export interface ArticoloDaAbbinare {
+  id: string;
+  code: string;
+  codeNorm: string;
+  name: string;
+}
+
+/** Lo 0 di testa è un marcatore COLOMBO, non parte della serie. */
+const senzaZeroIniziale = (codeNorm: string) => codeNorm.replace(/^0/, "");
+
+/** Sotto i cinque caratteri un nucleo comparirebbe in un nome per puro caso. */
+const MIN_NUCLEO = 5;
+
+/** Il nucleo del codice: senza lo 0 di testa e senza la coda di finitura. */
+function nucleo(a: ArticoloDaAbbinare): string {
+  const fin = finituraDiCodice(a.code);
+  const senzaCoda = fin ? a.code.slice(0, a.code.lastIndexOf("-")) : a.code;
+  return senzaZeroIniziale(senzaCoda.replace(/[^A-Za-z0-9]/g, "").toUpperCase());
+}
+
+/**
+ * Articolo → chiave Blob della sua foto. Gli articoli senza foto **non compaiono**
+ * nella mappa: `undefined` è la risposta, e non esiste una chiave «di riserva».
+ *
+ * Tre gradini, in ordine di forza, e tutti e tre sono cose che COLOMBO ha scritto:
+ *
+ *  3. il **codice** dell'articolo è nel nome del file (`ID313 RS_45.jpg`). È
+ *     l'unica affermazione che COLOMBO faccia su un codice d'ordine, quindi vince
+ *     su tutto, e raggiunge maniglioni, pomoli, bocchette e complementi — che per
+ *     nome di modello sarebbero irraggiungibili. 322 codici sul listino vero.
+ *  2. la **finitura** del file è quella dell'articolo (`Fedra_1OL` → `0AC11R-OL`):
+ *     l'agente vede il colore che il cliente comprerà. 994 codici.
+ *  1. la foto del **modello**, in una finitura qualunque. 679 codici.
+ *
+ * Su tutti e tre pesa il filtro della variante ZERO, e sul gradino 1 la `serie`
+ * dichiarata in `ARCHIVI`.
+ */
+export function abbinaFoto(
+  articoli: ArticoloDaAbbinare[],
+  foto: FotoArchivio[],
+): Map<string, string> {
+  const usabili = foto
+    .filter((f) => scattoDiProdotto(f.nome))
+    .map((f) => ({
+      archivio: f.archivio,
+      chiave: chiaveFoto(f.archivio, f.nome),
+      nomeNorm: f.nome.replace(/[^A-Za-z0-9]/g, "").toUpperCase(),
+      finitura: finituraDiFoto(f.nome),
+      zero: varianteZero(f.nome),
+    }))
+    // Ordine stabile: l'abbinamento non deve dipendere dall'ordine in cui si sono
+    // letti gli zip, o la stessa richiesta darebbe due chiavi diverse a due run.
+    .sort((a, b) => a.chiave.localeCompare(b.chiave));
+
+  const out = new Map<string, string>();
+  for (const a of articoli) {
+    const nu = nucleo(a);
+    if (nu.length >= MIN_NUCLEO) {
+      const perCodice = usabili.filter((f) => f.nomeNorm.includes(nu));
+      if (perCodice.length > 0) {
+        // Il match più lungo: fra `PB13` e `PB1304` vince chi dice di più.
+        const scelta = [...perCodice].sort(
+          (x, y) => y.nomeNorm.length - x.nomeNorm.length || x.chiave.localeCompare(y.chiave),
+        )[0]!;
+        out.set(a.id, scelta.chiave);
+        continue;
+      }
+    }
+
+    const etichetta = browseLabel(a.name);
+    if (etichetta === null) continue;
+    const zero = varianteZero(a.name);
+    const serieDelCodice = senzaZeroIniziale(a.codeNorm);
+    const candidate = usabili.filter((f) => {
+      const voce = ARCHIVI[f.archivio];
+      if (!voce || voce.etichetta !== etichetta) return false;
+      if (voce.serie && !serieDelCodice.startsWith(voce.serie)) return false;
+      return f.zero === zero;
+    });
+    if (candidate.length === 0) continue;
+
+    const finitura = finituraDiCodice(a.code);
+    const esatta = finitura ? candidate.find((f) => f.finitura === finitura) : undefined;
+    out.set(a.id, (esatta ?? candidate[0]!).chiave);
+  }
+  return out;
 }
