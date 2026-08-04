@@ -26,7 +26,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:seed:maniglie": "tsx --env-file-if-exists=.env prisma/seed-maniglie.ts",
-    "import:listino": "tsx --env-file-if-exists=.env scripts/import-listino.ts"
+    "import:listino": "tsx --env-file-if-exists=.env scripts/import-listino.ts",
+    "measure:listino": "tsx scripts/measure-listino.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

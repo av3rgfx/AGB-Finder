@@ -41,9 +41,9 @@ describe("ArticoloClient", () => {
     expect(getById.mock.calls[0]?.[0]).toEqual({ id: "a1" });
   });
 
-  it("torna alla disponibilità", () => {
+  it("torna al catalogo", () => {
     render(<ArticoloClient id="a1" />);
-    const link = screen.getByRole("link", { name: /disponibilità/i });
+    const link = screen.getByRole("link", { name: /catalogo/i });
     expect(link).toHaveProperty("href", expect.stringContaining("/maniglie"));
   });
 
@@ -109,7 +109,7 @@ describe("ArticoloClient", () => {
     getById.mockReturnValue(query({ data: undefined, isError: true }));
     render(<ArticoloClient id="a1" />);
     expect(screen.getByRole("alert").textContent).toMatch(/Articolo non trovato/);
-    expect(screen.getByRole("link", { name: /disponibilità/i })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /catalogo/i })).toBeTruthy();
   });
 
   it("con la foto rotta resta un segnaposto neutro, non un messaggio", () => {

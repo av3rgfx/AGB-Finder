@@ -1,9 +1,45 @@
 # Catalogo maniglie — «Sfoglia» senza digitare
 
-> **Stato**: analisi conclusa, **nessuna riga di codice scritta**.
-> **Data**: 2026-08-04 · **Metodo**: 3 ricerche parallele (sito COLOMBO, dati nel repo,
-> struttura dei codici) + 3 critiche avversariali (dati, scala/UX, costo/rischio) + sintesi.
-> **Prerequisito bloccante**: i tre file veri di Andrea non sono nel repo. Vedi §9.
+> **Stato**: ✅ **COSTRUITO** — branch `claude/maniglie-catalogo-browse-cgxvjr`.
+> **Data**: 2026-08-04 · **Metodo**: 3 ricerche parallele + 3 critiche avversariali + sintesi;
+> poi le cinque misure di §7 sul file vero, e `/llm-council` sulle tre decisioni residue.
+> **Il prerequisito di §9.5 è stato onorato**: i file sono arrivati, le misure sono state
+> fatte PRIMA di scrivere UI, e hanno **falsificato la premessa** di questa spec.
+>
+> ---
+>
+> ## ⚠️ ESITO DELLE MISURE — leggere prima del resto
+>
+> Questa spec assume che la prima parola della descrizione sia una **tipologia
+> merceologica**. **È falso**, e la correzione è in meglio.
+>
+> | # | Misura (§7) | Valore misurato |
+> |---|---|---|
+> | a | prime parole distinte | **114** (né ≤40 né ~300) · 75 coprono il 95% · 11 singoletti |
+> | b | il **secondo** token è la famiglia | **53%** — domanda sbagliata: la famiglia c'è ma cambia posto |
+> | b bis | la famiglia **ovunque stia** | **79,8%** (66% al 2° token, 26% al 3°) |
+> | c | famiglie distinte | **533** |
+> | d | codici per famiglia (mediana) | **3** — smentisce i «36 per nome» di §5 |
+> | e | code dopo l'ultimo separatore | **133**, le prime 14 coprono il **72%** |
+>
+> **Le 114 parole sono un misto**: tipologie (MANIGLIONE 338, BOCCHETTA 288) **e nomi
+> commerciali** (ROBOT 129, PETER 41, LARA 28, FEDRA 35). Quindi **§4 riga 2 e §10.3
+> sono superate**: il nome commerciale NON vive solo nel PDF con copertura 71/96 —
+> è nel listino, copre il 100% delle righe e costa zero. **Il catalogo `ER MAN 2026`
+> serve ora SOLO per le foto** (§6.5 resta valido).
+>
+> **§6.1 e §6.2 sono superate** dal verdetto `/llm-council` confermato dall'utente:
+> livello 1 **alfabetico** e non per numerosità (il conteggio misura le finiture:
+> MANIGLIONE ha 338 codici e **160 descrizioni distinte**), **a chip** e non a righe
+> (~5,8 schermate a 375px invece di ~14), con un **filtro sulle etichette**. Aggiunto
+> un **livello 2** che la spec non prevedeva, perché MANIGLIONE con 338 codici
+> sarebbe 56 schermate.
+>
+> **§9.1 regge alla lettera** — nessuna regexp deduce nulla dal codice: la famiglia
+> si trova **intersecando** descrizione e codice, due campi scritti entrambi da
+> COLOMBO. **§9.3 regge**: nessuna schermata «scegli la marca».
+>
+> Il piano eseguito: `docs/superpowers/plans/2026-08-04-catalogo-maniglie-sfoglia.md`.
 
 ---
 

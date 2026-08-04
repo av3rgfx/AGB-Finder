@@ -53,7 +53,17 @@ const SYNONYMS = {
   ean: ["ean", "barcode", "codiceabarre", "ean13"],
 } as const;
 
-const squash = (s: string) => s.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+/**
+ * Le intestazioni non sono per forza stringhe: nel listino vero la colonna del
+ * surcharge è intitolata `0.035` — un numero — e le celle vuote in coda arrivano
+ * come `null`. Si coercisce invece di assumere, perché un `.trim()` su un numero
+ * fa fallire l'import intero alla prima riga.
+ */
+const squash = (s: unknown) =>
+  String(s ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
 
 /**
  * Punteggio decrescente: combaciata esatta, poi prefisso, poi contenuta. Serve a
@@ -78,6 +88,21 @@ function pick(headers: string[], candidates: readonly string[]): string | null {
   return best?.header ?? null;
 }
 
+/**
+ * Un'intestazione che è solo un numero o una percentuale — `0.035`, `3.5%`,
+ * `3,5 %` — non è un nome mancante: è l'ALIQUOTA, ed è così che il listino vero
+ * intitola la colonna del temporary surcharge.
+ *
+ * Vale solo come ripiego, quando un nome vero non si è trovato, e solo su una
+ * colonna non già assegnata. Non è un'euristica lasciata a sé stessa:
+ * `parseListinoSheet` verifica riga per riga che prezzo + surcharge ricostruisca
+ * la colonna SOMMA, quindi una colonna presa per sbaglio si manifesta come
+ * migliaia di righe incoerenti, non come un totale silenziosamente errato.
+ */
+function looksLikeRate(header: unknown): boolean {
+  return /^\d+(?:[.,]\d+)?\s*%?$/.test(String(header ?? "").trim());
+}
+
 export function resolveListinoColumns(headers: string[]): ListinoColumns | null {
   const code = pick(headers, SYNONYMS.code);
   const name = pick(headers, SYNONYMS.name);
@@ -94,11 +119,15 @@ export function resolveListinoColumns(headers: string[]): ListinoColumns | null 
     return found;
   };
 
+  const surchargeByName = takeOnce(SYNONYMS.surcharge);
+  const surcharge = surchargeByName ?? headers.find((h) => !taken.has(h) && looksLikeRate(h)) ?? null;
+  if (surcharge) taken.add(surcharge);
+
   return {
     code,
     name,
     priceList,
-    surcharge: takeOnce(SYNONYMS.surcharge),
+    surcharge,
     declaredTotal: takeOnce(SYNONYMS.declaredTotal),
     ean: takeOnce(SYNONYMS.ean),
   };
@@ -109,9 +138,17 @@ const asText = (v: unknown): string => {
   return typeof v === "string" ? v.trim() : String(v).trim();
 };
 
+/**
+ * `headers` è facoltativo, e non passarlo è la scelta giusta: le intestazioni
+ * sono le CHIAVI delle righe, e derivarle qui rende impossibile l'errore che ha
+ * tenuto questo parser fuori dal listino vero — leggerle con
+ * `sheet_to_json({header: 1})`, che restituisce la cella GREZZA (`0.035`), e poi
+ * indicizzare le celle con la chiave FORMATTATA (`«3.5%»`). Le due letture non
+ * coincidono, e la colonna trovata non si può leggere.
+ */
 export function parseListinoSheet(
   rows: Record<string, unknown>[],
-  headers: string[],
+  headers: string[] = Object.keys(rows[0] ?? {}),
 ): ListinoParseResult {
   const empty: ListinoParseResult = {
     articles: [],

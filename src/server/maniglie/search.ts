@@ -1,5 +1,6 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { normalizeArticleCode } from "./code-norm";
+import { SQL_FIRST_WORD } from "./taxonomy";
 
 /**
  * Ricerca articoli del reparto maniglie. SOLO Postgres: `tsvector` + trigram.
@@ -99,4 +100,83 @@ export async function searchArticleIds(
     hits: rows.map((r) => ({ id: r.id, score: Number(r.score) })),
     total: Number(counted?.n ?? 0),
   };
+}
+
+/**
+ * SFOGLIO, livello 1: le prime parole della descrizione, con quanti codici
+ * ciascuna. È l'unico raggruppamento che copre il 100% del listino, e l'etichetta
+ * è una parola scritta da COLOMBO — non una nostra classificazione.
+ *
+ * `GROUP BY` su un'espressione non è esprimibile in Prisma, ed è il motivo per
+ * cui sta qui e non in un modulo nuovo: `CLAUDE.md` elenca DUE moduli autorizzati
+ * al raw SQL, e questo è già uno dei due. La regola di dominio «qual è la
+ * famiglia» invece NON è qui: è TypeScript puro in `browse.ts`, come la
+ * disponibilità sta in `stock-status.ts`.
+ *
+ * ORDINE ALFABETICO, e non per numerosità (verdetto `/llm-council`, confermato
+ * dall'utente). Ordinare per conteggio comunica *importanza* mentre misura la
+ * proliferazione di finiture del fornitore: MANIGLIONE ha 338 codici ma 160
+ * descrizioni distinte, quindi il numero grosso non è «il gruppo che conta di
+ * più», è «il gruppo con più varianti di colore». Sarebbe un valore deciso dal
+ * programma e mai dichiarato — la classe di difetto chiusa otto volte. In più
+ * spingeva in fondo LARA (28), MILLA (28), VIOLA (35): i nomi che il cliente
+ * PRONUNCIA, cioè l'unico appiglio dell'agente col cliente davanti.
+ *
+ * L'alfabetico non promette nulla, ed è quello che risolve gratis i doppioni:
+ * misurato sui 114 gruppi veri, `ROS.` e `ROSETTA` finiscono ADIACENTI, il
+ * grappolo `MANIG.*`/`MANIGLIA` è contiguo, `BOCCEHTTA` (refuso del fornitore)
+ * cade subito prima di `BOCCHETTA`, e `ROBOTE` — refuso di cui non sappiamo se
+ * sia ROBOT o ROBOTRE — atterra esattamente in mezzo ai due. La fusione la fa
+ * l'occhio di chi guarda; noi non indoviniamo niente.
+ *
+ * `onlyIds` è il filtro «solo pronta consegna»: la REGOLA di disponibilità NON
+ * entra qui: la applica `stock-status.ts` in Prisma e a questo raw SQL arriva
+ * solo una lista di id già decisa. `[]` significa «nessun articolo disponibile»
+ * e restituisce zero gruppi — che è diverso da `undefined`, cioè «non filtrare».
+ *
+ * L'ordinamento si fa in TypeScript e non in SQL di proposito: `ORDER BY` usa la
+ * COLLATION del database, che può differire fra il Postgres locale e Neon, e
+ * l'ordine adesso è una promessa fatta a schermo. (Misurato: oggi i due ordini
+ * coincidono su tutti e 114 i gruppi — si fissa perché resti vero.)
+ */
+export async function browseFirstWords(
+  db: PrismaClient,
+  brand: string,
+  onlyIds?: string[],
+): Promise<{ word: string; count: number }[]> {
+  if (onlyIds && onlyIds.length === 0) return [];
+  const rows = await db.$queryRaw<{ word: string; n: bigint }[]>`
+    SELECT ${Prisma.raw(SQL_FIRST_WORD.replace(/\bname\b/, "a.name"))} AS word,
+           COUNT(*)::bigint AS n
+    FROM articles a
+    WHERE a.brand = ${brand}
+      ${onlyIds ? Prisma.sql`AND a.id IN (${Prisma.join(onlyIds)})` : Prisma.empty}
+    GROUP BY 1
+  `;
+  return rows
+    .map((r) => ({ word: r.word, count: Number(r.n) }))
+    .sort((a, b) => a.word.localeCompare(b.word, "it"));
+}
+
+/**
+ * Le righe di un gruppo di primo livello, in ordine di codice. Volutamente
+ * TUTTE: il gruppo più numeroso del listino vero è MANIGLIONE con 338 righe, e
+ * leggerle intere è ciò che permette di raggruppare per famiglia in TypeScript
+ * invece di riscrivere quella regola in SQL.
+ */
+export async function articleIdsByFirstWord(
+  db: PrismaClient,
+  brand: string,
+  word: string,
+  onlyIds?: string[],
+): Promise<{ id: string; code: string; codeNorm: string; name: string }[]> {
+  if (onlyIds && onlyIds.length === 0) return [];
+  return db.$queryRaw<{ id: string; code: string; codeNorm: string; name: string }[]>`
+    SELECT a.id, a.code, a.code_norm AS "codeNorm", a.name
+    FROM articles a
+    WHERE a.brand = ${brand}
+      AND ${Prisma.raw(SQL_FIRST_WORD.replace(/\bname\b/, "a.name"))} = ${word}
+      ${onlyIds ? Prisma.sql`AND a.id IN (${Prisma.join(onlyIds)})` : Prisma.empty}
+    ORDER BY a.code ASC
+  `;
 }

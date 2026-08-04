@@ -58,7 +58,7 @@ export const REPARTI: Reparto[] = [
     mestiere: "Maniglie per porte e finestre",
     marchi: ["COLOMBO"],
     home: "/maniglie",
-    sezioni: ["Disponibilità"],
+    sezioni: ["Catalogo"],
   },
 ];
 

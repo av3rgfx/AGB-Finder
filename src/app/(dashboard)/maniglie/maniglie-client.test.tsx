@@ -14,11 +14,15 @@ const searchQuery = vi.fn();
 const stockInfoQuery = vi.fn<(...args: unknown[]) => { data?: { importedAt: Date | null } }>(
   () => ({}),
 );
+const browseGroupsQuery = vi.fn<(...args: unknown[]) => Record<string, unknown>>(() => ({}));
+const browseFamiliesQuery = vi.fn<(...args: unknown[]) => Record<string, unknown>>(() => ({}));
 vi.mock("@/trpc/react", () => ({
   api: {
     article: {
       search: { useQuery: (...args: unknown[]) => searchQuery(...args) },
       stockInfo: { useQuery: (...args: unknown[]) => stockInfoQuery(...args) },
+      browseGroups: { useQuery: (...args: unknown[]) => browseGroupsQuery(...args) },
+      browseFamilies: { useQuery: (...args: unknown[]) => browseFamiliesQuery(...args) },
     },
   },
 }));
@@ -77,11 +81,27 @@ function risultati(over: Record<string, unknown> = {}) {
   };
 }
 
+/** Gruppi veri del listino COLOMBO, coi conteggi veri, in ordine alfabetico. */
+const GRUPPI = [
+  { word: "BOCCHETTA", count: 288 },
+  { word: "KIT", count: 139 },
+  { word: "LARA", count: 28 },
+  { word: "MANIGLIONE", count: 338 },
+  { word: "ROS.", count: 58 },
+  { word: "ROSETTA", count: 47 },
+];
+
 beforeEach(() => {
   sp = new URLSearchParams("");
   replace.mockReset();
   searchQuery.mockReset().mockReturnValue(risultati());
-  stockInfoQuery.mockReset().mockReturnValue({});
+  stockInfoQuery.mockReset().mockReturnValue({ data: { importedAt: IMPORTATO } });
+  browseGroupsQuery
+    .mockReset()
+    .mockReturnValue({ data: { groups: GRUPPI }, isPending: false, isError: false, isFetching: false });
+  browseFamiliesQuery
+    .mockReset()
+    .mockReturnValue({ data: undefined, isPending: false, isError: false, isFetching: false });
   vi.useRealTimers();
 });
 
@@ -109,7 +129,7 @@ describe("ManiglieClient — la data c'è sempre", () => {
     senzaRicerca();
     stockInfoQuery.mockReturnValue({ data: { importedAt: IMPORTATO } });
     render(<ManiglieClient />);
-    expect(screen.getByText("Cerca un articolo")).toBeTruthy();
+    expect(screen.getByText("Sfoglia il catalogo")).toBeTruthy();
     expect(screen.getByText(/28 luglio 2026/)).toBeTruthy();
   });
 
@@ -132,10 +152,8 @@ describe("ManiglieClient — la data c'è sempre", () => {
 });
 
 describe("ManiglieClient — ricerca", () => {
-  it("prima di cercare invita a cercare, senza interrogare il server", () => {
+  it("prima di cercare NON interroga la ricerca", () => {
     render(<ManiglieClient />);
-    expect(screen.getByText("Cerca un articolo")).toBeTruthy();
-    expect(screen.getByText("0CD41R-CM").className).toContain("font-mono");
     expect(searchQuery.mock.calls[0]?.[1]).toMatchObject({ enabled: false });
   });
 
@@ -238,19 +256,16 @@ describe("ManiglieClient — ricerca", () => {
 
   // Con 3.456 codici un totale grande e venti righe a schermo si contraddicono:
   // lo si dice invece di lasciarlo intuire.
-  it("dice quante righe sta mostrando quando il totale è più grande", () => {
-    sp = new URLSearchParams("q=maniglia");
-    searchQuery.mockReturnValue(
-      risultati({
-        data: {
-          hits: articoli,
-          total: 214,
-          stockUpdates: [{ brand: "COLOMBO", importedAt: IMPORTATO }],
-        },
-      }),
-    );
+  it("con più risultati della pagina, la paginazione dice dove si è", () => {
+    // Prima non c'era: il client mandava `limit` e mai `offset`, quindi cercare
+    // «maniglione» mostrava 20 righe su 338 senza alcun modo di vedere le altre.
+    sp = new URLSearchParams("q=cd41");
+    searchQuery.mockReturnValue(risultati({ data: { hits: articoli, total: 214, stockUpdates: [] } }));
     render(<ManiglieClient />);
-    expect(screen.getByText(/214 articoli · mostrati i primi 3/)).toBeTruthy();
+    expect(screen.getByText("214 articoli")).toBeTruthy();
+    expect(screen.getByLabelText("Paginazione")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Successiva" }).hasAttribute("disabled")).toBe(false);
+    expect(screen.getByRole("button", { name: "Precedente" }).hasAttribute("disabled")).toBe(true);
   });
 
   it("in caricamento mostra uno skeleton, non uno spinner", () => {
@@ -339,5 +354,304 @@ describe("ManiglieClient — URL e debounce", () => {
     rerender(<ManiglieClient />);
     expect((screen.getByRole("searchbox") as HTMLInputElement).value).toBe("rosetta");
     expect(replace).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * SFOGLIO. La denuncia da cui nasce: `article.search` imponeva `query.min(1)` e
+ * il client non chiamava nulla finché non si digitava, quindi NON esisteva alcun
+ * percorso che elencasse qualcosa senza scrivere. «Disponibilità» era una
+ * casella bianca, e rispondeva solo a chi già conosceva il codice.
+ */
+describe("ManiglieClient — sfoglio", () => {
+  it("appena aperta la pagina elenca i gruppi, senza che si sia digitato nulla", () => {
+    render(<ManiglieClient />);
+    expect(screen.getByText("Sfoglia il catalogo")).toBeTruthy();
+    expect(screen.getByText("MANIGLIONE")).toBeTruthy();
+    expect(screen.getByLabelText("MANIGLIONE, 338 codici")).toBeTruthy();
+    expect(searchQuery.mock.calls[0]?.[1]).toMatchObject({ enabled: false });
+  });
+
+  it("mostra TUTTI i gruppi: nessuna soglia decisa da noi", () => {
+    // «I primi 20 + mostra tutti» richiederebbe una soglia che nessun dato
+    // sostiene, ed è la classe di difetto chiusa otto volte. Sui dati veri i
+    // primi 19 gruppi sono già il 55% del catalogo: un taglio nasconderebbe il
+    // 45%, non una coda.
+    render(<ManiglieClient />);
+    for (const g of GRUPPI) expect(screen.getByText(g.word)).toBeTruthy();
+    expect(screen.queryByText(/mostra tutti/i)).toBeNull();
+  });
+
+  it("dichiara da dove vengono le etichette E cosa conta il numero", () => {
+    // Sono parole di COLOMBO, refusi compresi: senza l'origine a schermo
+    // sembrerebbero una classificazione nostra. E «338» conta i CODICI, non i
+    // modelli — le descrizioni distinte sono 160.
+    render(<ManiglieClient />);
+    expect(screen.getByText(/prima parola della descrizione a listino/i)).toBeTruthy();
+    expect(screen.getByText(/ordine alfabetico/i)).toBeTruthy();
+    expect(screen.getByText(/il numero è quanti codici/i)).toBeTruthy();
+  });
+
+  it("il campo filtra le etichette senza interrogare il server", () => {
+    render(<ManiglieClient />);
+    fireEvent.change(screen.getByPlaceholderText("Filtra i gruppi…"), { target: { value: "ros" } });
+    // I due modi in cui il fornitore scrive la stessa cosa compaiono INSIEME:
+    // la fusione la fa l'occhio, noi non indoviniamo niente.
+    expect(screen.getByText("ROS.")).toBeTruthy();
+    expect(screen.getByText("ROSETTA")).toBeTruthy();
+    expect(screen.queryByText("MANIGLIONE")).toBeNull();
+    // Nessuna query nuova: filtra i 114 già in memoria.
+    expect(searchQuery.mock.calls.every((c) => (c[1] as { enabled: boolean }).enabled === false)).toBe(true);
+  });
+
+  it("se il filtro non trova nulla lo dice, e rimanda alla ricerca vera", () => {
+    render(<ManiglieClient />);
+    fireEvent.change(screen.getByPlaceholderText("Filtra i gruppi…"), { target: { value: "zzz" } });
+    expect(screen.getByText(/Nessun gruppo contiene «zzz»/)).toBeTruthy();
+  });
+
+  it("ogni gruppo porta al proprio livello 2 via URL, non via stato nascosto", () => {
+    render(<ManiglieClient />);
+    const link = screen.getByText("LARA").closest("a");
+    expect(link?.getAttribute("href")).toBe("/maniglie?tipo=LARA");
+  });
+
+  it("i gruppi restano nell'ordine in cui il server li manda (alfabetico)", () => {
+    // L'ordinamento è del server, che lo fissa in TypeScript per non dipendere
+    // dalla collation del database: il client non riordina.
+    render(<ManiglieClient />);
+    const etichette = screen
+      .getAllByRole("listitem")
+      .map((li) => li.querySelector("span")?.textContent)
+      .filter(Boolean);
+    expect(etichette.slice(0, GRUPPI.length)).toEqual(GRUPPI.map((g) => g.word));
+  });
+
+  it("dentro un gruppo mostra le famiglie, in mono perché sono pezzi di codice", () => {
+    sp = new URLSearchParams("tipo=LARA");
+    browseFamiliesQuery.mockReturnValue({
+      data: { families: [{ family: "CB71R", count: 8 }], loose: [], total: 8 },
+      isPending: false,
+      isError: false,
+      isFetching: false,
+    });
+    render(<ManiglieClient />);
+    expect(screen.getByText("CB71R").className).toContain("font-mono");
+    expect(screen.getByText("8 codici")).toBeTruthy();
+    // Il livello 3 non si chiede finché non si sceglie una famiglia.
+    expect(searchQuery.mock.calls[0]?.[1]).toMatchObject({ enabled: false });
+  });
+
+  it("i codici SENZA famiglia restano raggiungibili, sotto le famiglie", () => {
+    // Su 114 gruppi veri, SETTANTA hanno copertura parziale: mostrare le sole
+    // famiglie renderebbe irraggiungibili codici che hanno prezzo e giacenza.
+    sp = new URLSearchParams("tipo=LARA");
+    browseFamiliesQuery.mockReturnValue({
+      data: { families: [{ family: "CB71R", count: 8 }], loose: [articoli[0]], total: 9 },
+      isPending: false,
+      isError: false,
+      isFetching: false,
+    });
+    render(<ManiglieClient />);
+    expect(screen.getByText("Senza famiglia")).toBeTruthy();
+    expect(screen.getByText(/il listino non lega a una famiglia/i)).toBeTruthy();
+    expect(screen.getByText("MANIGLIA ROBOQUATTRO")).toBeTruthy();
+  });
+
+  it("un gruppo senza famiglie salta il livello 2 e mostra i codici", () => {
+    // KIT: 139 codici e zero famiglie. Un livello che non divide nulla sarebbe
+    // un tocco in più per vedere la stessa identica lista.
+    sp = new URLSearchParams("tipo=KIT");
+    browseFamiliesQuery.mockReturnValue({
+      data: { families: [], loose: [], total: 139 },
+      isPending: false,
+      isError: false,
+      isFetching: false,
+    });
+    render(<ManiglieClient />);
+    expect(searchQuery.mock.calls[0]?.[0]).toMatchObject({ tipo: "KIT" });
+    expect(searchQuery.mock.calls[0]?.[1]).toMatchObject({ enabled: true });
+    expect(screen.getByText("MANIGLIA ROBOQUATTRO")).toBeTruthy();
+  });
+
+  it("scelta la famiglia chiede i codici di quella famiglia", () => {
+    sp = new URLSearchParams("tipo=LARA&fam=CB71R");
+    render(<ManiglieClient />);
+    expect(searchQuery.mock.calls[0]?.[0]).toMatchObject({ tipo: "LARA", famiglia: "CB71R" });
+    expect(searchQuery.mock.calls[0]?.[1]).toMatchObject({ enabled: true });
+  });
+
+  it("i chip dicono dove si è, e la ✕ è un link (così il tasto indietro funziona)", () => {
+    sp = new URLSearchParams("tipo=LARA&fam=CB71R");
+    render(<ManiglieClient />);
+    expect(screen.getByLabelText("Togli il gruppo LARA").getAttribute("href")).toBe("/maniglie");
+    expect(screen.getByLabelText("Togli la famiglia CB71R").getAttribute("href")).toBe(
+      "/maniglie?tipo=LARA",
+    );
+  });
+
+  it("l'offset segue la pagina dell'URL: era il debito dichiarato", () => {
+    sp = new URLSearchParams("tipo=LARA&fam=CB71R&p=3");
+    render(<ManiglieClient />);
+    expect(searchQuery.mock.calls[0]?.[0]).toMatchObject({ offset: 40, limit: 20 });
+  });
+
+  it("digitare abbandona lo sfoglio invece di cercare dentro un gruppo invisibile", async () => {
+    sp = new URLSearchParams("tipo=LARA&fam=CB71R");
+    render(<ManiglieClient />);
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "peruzzi" } });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 350));
+    });
+    expect(replace).toHaveBeenCalledWith("/maniglie?q=peruzzi", { scroll: false });
+  });
+
+  it("la fascia della data è sticky: in una lista lunga il pallino verde non resta senza data", () => {
+    stockInfoQuery.mockReturnValue({ data: { importedAt: IMPORTATO } });
+    searchQuery.mockReturnValue({
+      data: undefined,
+      isPending: false,
+      isError: false,
+      isFetching: false,
+    });
+    render(<ManiglieClient />);
+    const fascia = screen.getByText(/aggiornata al/i).closest("p");
+    expect(fascia?.className).toContain("sticky");
+    expect(fascia?.className).toContain("top-0");
+  });
+});
+
+/**
+ * IL FILTRO «SOLO PRONTA CONSEGNA». La ragione per cui esiste è un numero: sul
+ * listino vero sono 178 codici su 3.456, il 5,2%. Sfogliando senza filtro, 19
+ * codici su 20 non sono ordinabili oggi — ed è la domanda letterale di Andrea.
+ */
+describe("ManiglieClient — solo pronta consegna", () => {
+  it("il filtro c'è, ed è spento finché non lo si accende", () => {
+    render(<ManiglieClient />);
+    const casella = screen.getByLabelText("Solo pronta consegna") as HTMLInputElement;
+    expect(casella.checked).toBe(false);
+    expect(browseGroupsQuery.mock.calls[0]?.[0]).toMatchObject({ soloPronta: false });
+  });
+
+  it("NON compare se nessuna pronta consegna è mai stata caricata", () => {
+    // Un interruttore che non può rispondere è peggio della sua assenza: senza
+    // import non esiste una risposta a «cosa è pronto», e non si finge. La fonte
+    // è la stessa della data mostrata sopra, non una seconda affermazione.
+    stockInfoQuery.mockReturnValue({ data: { importedAt: null } });
+    render(<ManiglieClient />);
+    expect(screen.queryByLabelText("Solo pronta consegna")).toBeNull();
+  });
+
+  it("non compare mentre si CERCA: il filtro appartiene allo sfoglio", () => {
+    sp = new URLSearchParams("q=cd41");
+    render(<ManiglieClient />);
+    expect(screen.queryByLabelText("Solo pronta consegna")).toBeNull();
+  });
+
+  it("è raggiungibile anche da DENTRO un gruppo, non solo dal primo livello", () => {
+    sp = new URLSearchParams("tipo=LARA");
+    browseFamiliesQuery.mockReturnValue({
+      data: { families: [{ family: "CB71R", count: 2 }], loose: [], total: 2 },
+      isPending: false,
+      isError: false,
+      isFetching: false,
+    });
+    render(<ManiglieClient />);
+    expect(screen.getByLabelText("Solo pronta consegna")).toBeTruthy();
+  });
+
+  it("accendendolo lo scrive nell'URL, non in uno stato nascosto", () => {
+    render(<ManiglieClient />);
+    fireEvent.click(screen.getByLabelText("Solo pronta consegna"));
+    expect(replace).toHaveBeenCalledWith("/maniglie?pronta=1", { scroll: false });
+  });
+
+  it("acceso, lo dice al server", () => {
+    sp = new URLSearchParams("pronta=1");
+    render(<ManiglieClient />);
+    expect(browseGroupsQuery.mock.calls[0]?.[0]).toMatchObject({ soloPronta: true });
+  });
+
+  it("acceso, DICHIARA che il numero conta un altro insieme", () => {
+    // Un numero che cambia significato in silenzio è la classe di difetto
+    // chiusa otto volte, e qui cambierebbe di venti volte.
+    sp = new URLSearchParams("pronta=1");
+    render(<ManiglieClient />);
+    expect(screen.getByText(/il numero è quanti codici in pronta consegna/i)).toBeTruthy();
+  });
+
+  it("resta acceso scendendo di livello, e RESTA VISIBILE", () => {
+    // Uno stato nascosto che toglie 19 righe su 20 farebbe concludere
+    // all'agente che il catalogo non ha quell'articolo.
+    sp = new URLSearchParams("tipo=LARA&pronta=1");
+    browseFamiliesQuery.mockReturnValue({
+      data: { families: [{ family: "CB71R", count: 2 }], loose: [], total: 2 },
+      isPending: false,
+      isError: false,
+      isFetching: false,
+    });
+    render(<ManiglieClient />);
+    expect(browseFamiliesQuery.mock.calls[0]?.[0]).toMatchObject({ tipo: "LARA", soloPronta: true });
+    const casella = screen.getByLabelText("Solo pronta consegna") as HTMLInputElement;
+    expect(casella.checked).toBe(true);
+  });
+
+  it("spegnerlo da dentro un gruppo non fa perdere il gruppo", () => {
+    sp = new URLSearchParams("tipo=LARA&pronta=1");
+    browseFamiliesQuery.mockReturnValue({
+      data: { families: [{ family: "CB71R", count: 2 }], loose: [], total: 2 },
+      isPending: false,
+      isError: false,
+      isFetching: false,
+    });
+    render(<ManiglieClient />);
+    fireEvent.click(screen.getByLabelText("Solo pronta consegna"));
+    expect(replace).toHaveBeenCalledWith("/maniglie?tipo=LARA", { scroll: false });
+  });
+
+  it("i link dei gruppi se lo portano dietro", () => {
+    sp = new URLSearchParams("pronta=1");
+    render(<ManiglieClient />);
+    expect(screen.getByText("LARA").closest("a")?.getAttribute("href")).toBe(
+      "/maniglie?tipo=LARA&pronta=1",
+    );
+  });
+
+  it("arriva anche al terzo livello", () => {
+    sp = new URLSearchParams("tipo=LARA&fam=CB71R&pronta=1");
+    render(<ManiglieClient />);
+    expect(searchQuery.mock.calls[0]?.[0]).toMatchObject({
+      tipo: "LARA",
+      famiglia: "CB71R",
+      soloPronta: true,
+    });
+  });
+
+  it("accenderlo riparte da pagina 1", () => {
+    // Restare alla pagina 7 di un elenco sceso da 338 a 12 codici significa
+    // vedere una schermata vuota e credere che non ci sia niente.
+    sp = new URLSearchParams("tipo=LARA&p=7");
+    browseFamiliesQuery.mockReturnValue({
+      data: { families: [], loose: [], total: 12 },
+      isPending: false,
+      isError: false,
+      isFetching: false,
+    });
+    render(<ManiglieClient />);
+    fireEvent.click(screen.getByLabelText("Solo pronta consegna"));
+    expect(replace).toHaveBeenCalledWith("/maniglie?tipo=LARA&pronta=1", { scroll: false });
+  });
+
+  it("se non c'è nulla in pronta consegna lo dice, invece di sembrare rotto", () => {
+    sp = new URLSearchParams("pronta=1");
+    browseGroupsQuery.mockReturnValue({
+      data: { groups: [], prontaDisponibile: true },
+      isPending: false,
+      isError: false,
+      isFetching: false,
+    });
+    render(<ManiglieClient />);
+    expect(screen.getByText("Nessun articolo in pronta consegna.")).toBeTruthy();
   });
 });
