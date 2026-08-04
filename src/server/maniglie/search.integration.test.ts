@@ -383,6 +383,27 @@ describe.runIf(Boolean(url))("sfoglio — il GROUP BY SQL e la funzione TypeScri
   it("un'etichetta esclusa non restituisce righe nemmeno se richiesta a mano", async () => {
     expect(await articleIdsByFirstWord(db, "COLOMBO", "VITE")).toEqual([]);
   });
+
+  /**
+   * L'altra metà della decisione dell'utente, ed è quella che la rende
+   * accettabile: le rimozioni valgono SOLO per lo sfoglio. Una vite tolta anche
+   * dalla ricerca sarebbe un pezzo che è a magazzino e non si trova — cioè
+   * esattamente il fallimento che il ramo trigram esiste per evitare.
+   */
+  it("ciò che è escluso dallo sfoglio resta trovabile SCRIVENDOLO", async () => {
+    const { hits } = await searchArticleIds(db, {
+      brand: "COLOMBO",
+      query: "vite",
+      limit: 50,
+      offset: 0,
+    });
+    const rows = await db.article.findMany({
+      where: { id: { in: hits.map((h) => h.id) } },
+      select: { name: true },
+    });
+    const viti = rows.filter((r) => browseLabel(r.name) === null);
+    expect(viti.length).toBeGreaterThan(0);
+  });
 });
 
 describe.runIf(Boolean(url))("sfoglio — il filtro «solo pronta consegna»", () => {
