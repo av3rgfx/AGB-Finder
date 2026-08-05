@@ -920,3 +920,61 @@ una foto mancante disegnava l'icona di immagine rotta · e il **mio script di ve
 **integrazione 35/35 sul listino vero** · **browser 28/28** (desktop e 375px, screenshot guardati).
 🟢 **NESSUNA MIGRAZIONE, NESSUN RUN OPS, nessuna dipendenza nuova**: tutto si calcola a lettura, quindi il
 listino aggiornato si colloca da solo. Spec/piano: `docs/superpowers/{specs,plans}/2026-08-05-sfoglio-serie-e-foto*`.
+
++ **LE SETTE DRITTE DI ANDREA ✅ (branch `claude/uftrade-handles-catalog-fixes-q5mc0o`, PR da aprire)**:
+Andrea ha verificato lo sfoglio della PR #58 e ha mandato **cinque** correzioni; rispondendo alle
+domande ne ha aggiunte **due**. Workflow completo (brainstorming → misure sul listino e sull'archivio
+veri → `/llm-council` con le affermazioni **verificate nel repo** → `/impeccable` → spec → piano → 11
+task TDD → browser). **(1) Copia senza separatori**: `CopyCodeButton` guadagna `copyAs`, che di default
+è **ciò che mostra** — il reparto serramenti (`A50122.08.07`, punti compresi) non cambia di una riga; il
+valore è `articles.code_norm`, non un calcolo in UI. **(2) `PL.`→`PLACCA`** e **(6) `HEIDI/PETER`→HEIDI,
+`LUNDCREM`→LUND**: due capovolgono una decisione della sessione precedente, presa su una misura giusta
+che rispondeva alla domanda sbagliata («sono lo stesso oggetto» invece di «come li chiama chi li
+ordina»); i due test che asserivano il contrario **erano la codifica di quella scelta, non la sua
+sentinella**. Le cremonesi non ereditano la foto della maniglia: `serie` dichiarata sugli archivi
+(`01_Heidi`→CD31, `01_Lund`→SE11) — e la regola sulle finiture NON le avrebbe salvate, perché `0CD32-UB`
+prendeva `Heidi_R_UB`, finitura **provata giusta** e prodotto **sbagliato**. **(7) `COPPIA` si scioglie**:
+non è un prodotto, è una confezione — prima parola **trasparente**, l'etichetta viene dal secondo token
+che ripassa dalle stesse fusioni. Misurando è saltato fuori che serviva `BOCCHETTE`→`BOCCHETTA`, senza
+il quale **nasceva un gruppo nuovo da 28 codici** e nessun conteggio andava a zero. **94 → 90 gruppi.**
+**(3) LE FOTO DELLA FINITURA SBAGLIATA — il punto che vale di più.** Il match ingenuo sui nomi sarebbe
+stato **peggio del silenzio**: `Cromo` è sottostringa di «cromo matte», che è **Cromat** (lo prova
+`01_Ama`, dove COLOMBO scrive `cromat` sulla variante zero e `cromo matte` su quella liscia). Estratto
+il **vocabolario chiuso** — 638 scatti → **195 code**, guardate una per una — il riconoscitore è match
+più lungo + 6 grafie + rifiuto dei bicolori, e i bicolori si riconoscono dalla **SOVRAPPOSIZIONE**, non
+dal conteggio («Umber bronze» aggancia due aghi ma è una finitura sola col nome che ne contiene un
+altro). **Riconoscere le finiture non serve a misurare, serve a SCEGLIERE**: da **350 provate sbagliate
+a 149 senza togliere una foto**, e il caso segnalato (DUE/ONE, Mood) va a **zero** perché l'archivio *ha*
+la foto di ogni colore. Poi la regola scelta dall'utente: **una foto contesa resta solo a chi può
+dimostrare che è sua** — fondata su un fatto dimostrabile senza leggere la finitura della foto (**667
+articoli si contendevano 72 file**, quindi almeno 595 mostravano il colore di un altro codice). Esito
+finale: **2.118 → 1.609 foto (61,3% → 46,6%), provate esatte 1.033 → 1.402, provate SBAGLIATE 350 → 0.**
+**DUE IMPRECISIONI TROVATE ESEGUENDO IL GATE, non leggendo** (14 gruppi a zero erano troppi per essere
+tutti ambiguità vera), entrambe dalla stessa parte — sapevo leggere le foto meglio degli articoli: la
+coda del **nome file** pretendeva una cifra (`Heidi_R_UB` dice «Umber Bronze», **48 file su 638**, ed
+erano proprio quelli dei gruppi azzerati) e la coda del **codice articolo** pretendeva il trattino (237
+codici non ce l'hanno, **126 finiscono con una delle 31**: `0CC15FISSOC01` è «POMOLO ONE **WHITE**» e
+teneva la foto del pomolo **rosso** — la segnalazione di Andrea sopravvissuta nel punto meno visibile).
+Gruppi azzerati **14 → 7**. **MISURATO E SCARTATO**: leggere la finitura dal **nome dell'articolo** — 62
+conflitti col codice e ha torto il nome, «VINTAGE SATINATO» *è* Vintage Mat, «CROMO» è la troncatura di
+`CR8` che è un bicolore, «ANODIC SILVER» non è Silver: le descrizioni del listino sono troncate a
+colonna. ⚠️ **Prezzo dichiarato**: ROUND, SQUARE, CUT e PUSH — la copertura dei pomoli generici della PR
+#56 — perdono **tutte** le foto (i loro file non dicono alcuna finitura e dieci codici se li contendono);
+il test è stato **girato con la decisione**, non allentato in silenzio. **(4) SEZIONE «ACCESSORI»**, 17
+gruppi decisi da Andrea (**non deducibili**: i cinque gruppi di pomoli hanno l'archivio e maniglie non
+sono, MILLA/SPIDER/TRAMA sono maniglie senza archivio). Verdetto `/llm-council` (5 advisor + 3 peer
+review): **sezione, non livello e non filtro**; l'argomento del dissenziente si è **rovesciato sul
+codice** (`codaFiltri` incolla i filtri a ogni link proprio perché non si spengano scendendo). **La banda
+di sopra NON ha intestazione**: misurato che dei 27 gruppi di solo testo **17 sono accessori e 10 no**,
+quindi qualunque nome sarebbe falso o una seconda parola nostra — e un gruppo nuovo mai classificato
+cade in una banda che **non afferma nulla**. Il campo filtro impara «accessori», che non è il nome di
+nessun gruppo. **(5) ANTEPRIMA DELLA TENDINA**: la foto compare **dove distingue, non dove ripete** —
+dentro FEDRA era *ripetuta*, non piccola; dentro una tipologia resta, **ferma**. Sembra il contrario del
+livello 1 (`isModello` lì accende, qui spegne) ed è scritto nel codice perché qualcuno lo «correggerà».
+**Lo screenshot ha scovato ciò che l'asserzione non vedeva**: l'ancora scrollava (`scrollY > 100` era
+vero) ma il titolo finiva **sotto la fascia sticky**, cioè si arrivava a una banda senza la riga che
+dichiara «Accessori» come parola nostra. Gate: typecheck · lint · **test 1.546** · build 23 route ·
+**integrazione 358 sul catalogo VERO** · **browser 38/38** (desktop e 375px, screenshot guardati).
+🟢 **NESSUNA MIGRAZIONE.** 🔴 **UN RUN OPS**: «Ops — Foto COLOMBO» (~7 min, idempotente; lo script azzera
+`image_url` prima di riscrivere, quindi le foto tolte spariscono da sole). Secret `NEON_DIRECT_URL`, non
+`DATABASE_URL`. Spec/piano: `docs/superpowers/{specs,plans}/2026-08-05-sette-dritte-andrea*`.
