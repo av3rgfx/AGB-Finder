@@ -2,23 +2,27 @@ import { describe, it, expect } from "vitest";
 import { searchInputSchema } from "./article";
 
 /**
- * `article.search` serviva una sola strada: si digita, si cerca. Con lo sfoglio
- * ne serve una seconda — si sceglie un gruppo, e non si digita niente — e le due
- * condividono tutto ciò che sta dopo: `resolveStock`, `toSummary`, la data
- * dell'import, la forma della riga a schermo. Un secondo endpoint le avrebbe
- * duplicate; un input che accetta l'una O l'altra no.
+ * `article.search` aveva accolto anche lo sfoglio, per non duplicare tutto ciò
+ * che sta dopo (`resolveStock`, `toSummary`, la data dell'import, la forma della
+ * riga). Con le tendine lo sfoglio manda TUTTE le righe del gruppo in una volta,
+ * quindi quella strada sarebbe rimasta come SECONDA definizione delle stesse
+ * righe, libera di divergere da `browseSerie`. È stata smontata: qui resta la
+ * sola ricerca testuale.
  */
 describe("searchInputSchema", () => {
   it("accetta la sola query: è la ricerca di sempre", () => {
     expect(searchInputSchema.safeParse({ query: "lara" }).success).toBe(true);
   });
 
-  it("accetta il solo tipo: è lo sfoglio", () => {
-    expect(searchInputSchema.safeParse({ tipo: "MANIGLIONE" }).success).toBe(true);
+  it("RIFIUTA il tipo: lo sfoglio non passa più da qui", () => {
+    // Con le tendine, `search({tipo})` sarebbe una SECONDA definizione di «le
+    // righe di questo gruppo», libera di divergere da `browseSerie`. La
+    // ricerca testuale è l'unico mestiere rimasto a questa procedura.
+    expect(searchInputSchema.safeParse({ tipo: "MANIGLIONE" }).success).toBe(false);
   });
 
-  it("accetta tipo e famiglia insieme: è il terzo livello", () => {
-    expect(searchInputSchema.safeParse({ tipo: "LARA", famiglia: "CB71R" }).success).toBe(true);
+  it("RIFIUTA tipo e famiglia insieme", () => {
+    expect(searchInputSchema.safeParse({ tipo: "LARA", famiglia: "CB71R" }).success).toBe(false);
   });
 
   it("RIFIUTA una richiesta senza né query né tipo", () => {

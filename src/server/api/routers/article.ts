@@ -7,7 +7,11 @@ import {
   browseFirstWords,
   articleIdsByFirstWord,
 } from "@/server/maniglie/search";
-import { splitGroup, filterByFamily } from "@/server/maniglie/browse";
+import {
+  splitGroup,
+  fotoRappresentativa,
+  type BrowseRow,
+} from "@/server/maniglie/browse";
 import { resolveLabel } from "@/server/maniglie/curatela";
 import { articleTotal } from "@/server/maniglie/price";
 import {
@@ -17,6 +21,8 @@ import {
 } from "@/server/maniglie/stock-status";
 import { matchStockCodes } from "@/server/maniglie/stock-file";
 import { contaFiniture, finituraDiCodice } from "@/server/maniglie/finiture";
+import { etichetteModello } from "@/server/maniglie/foto-archivio";
+import { browseLabel } from "@/server/maniglie/curatela";
 
 /**
  * Reparto maniglie — ricerca e scheda articolo.
@@ -104,35 +110,12 @@ async function resolveStock(db: Parameters<typeof currentStockImport>[0], rows: 
  * gruppo, e la regola che scarta la famiglia degenere ha bisogno della parola
  * del gruppo per funzionare.
  */
-export const searchInputSchema = z
-  .object({
-    query: z.string().trim().min(1, "Inserisci un termine di ricerca").max(200).optional(),
-    tipo: z.string().trim().min(1).max(100).optional(),
-    famiglia: z.string().trim().min(1).max(100).optional(),
-    /** Filtro «solo pronta consegna». Vive nello sfoglio, non nella ricerca. */
-    soloPronta: z.boolean().default(false),
-    /** Filtro per finitura, una delle 31 pubblicate. Come sopra: solo sfogliando. */
-    finitura: z.string().trim().min(1).max(8).optional(),
-    brand: z.string().trim().min(1).max(50).default("COLOMBO"),
-    limit: z.number().int().min(1).max(50).default(20),
-    offset: z.number().int().min(0).default(0),
-  })
-  .refine((v) => Boolean(v.query) || Boolean(v.tipo), {
-    message: "Serve un termine di ricerca oppure un gruppo da sfogliare.",
-  })
-  .refine((v) => !v.famiglia || Boolean(v.tipo), {
-    message: "La famiglia esiste solo dentro un gruppo.",
-  })
-  .refine((v) => !v.soloPronta || Boolean(v.tipo), {
-    // Il filtro appartiene allo sfoglio: nella ricerca per testo non compare, e
-    // accettarlo lì significherebbe restringere in silenzio dei risultati che
-    // l'agente ha chiesto scrivendo.
-    message: "Il filtro «solo pronta consegna» vale solo sfogliando.",
-  })
-  .refine((v) => !v.finitura || Boolean(v.tipo), {
-    // Stessa ragione: chi scrive un codice vuole quel codice, non il suo colore.
-    message: "Il filtro della finitura vale solo sfogliando.",
-  });
+export const searchInputSchema = z.object({
+  query: z.string().trim().min(1, "Inserisci un termine di ricerca").max(200),
+  brand: z.string().trim().min(1).max(50).default("COLOMBO"),
+  limit: z.number().int().min(1).max(50).default(20),
+  offset: z.number().int().min(0).default(0),
+});
 
 /**
  * Gli id in pronta consegna, o `undefined` se non si filtra. `[]` è un valore
@@ -184,65 +167,6 @@ async function idsFiltrati(
   );
 }
 
-/**
- * Una pagina di codici presi SFOGLIANDO, non cercando. Le righe del gruppo si
- * leggono tutte (al massimo 338: MANIGLIONE) perché il filtro per famiglia è una
- * regola TypeScript e non una `WHERE`; poi si affetta.
- *
- * Restituisce la stessa forma di `search`: la schermata dei risultati è una sola.
- */
-async function browseSlice(
-  db: PrismaClient,
-  input: {
-    brand: string;
-    tipo?: string;
-    famiglia?: string;
-    soloPronta: boolean;
-    finitura?: string;
-    limit: number;
-    offset: number;
-  },
-) {
-  // Un `?tipo=` che arriva dall'URL può portare una parola FUSA: si risolve
-  // sull'etichetta corrente, o un link condiviso prima della fusione aprirebbe
-  // un gruppo vuoto senza spiegazione.
-  const tipo = resolveLabel(input.brand, input.tipo!);
-  if (tipo === null) {
-    return { hits: [], total: 0, stockUpdates: [] };
-  }
-  const all = await articleIdsByFirstWord(
-    db,
-    input.brand,
-    tipo,
-    await idsFiltrati(db, input.brand, input),
-  );
-  const selected = input.famiglia ? filterByFamily(all, tipo, input.famiglia) : all;
-  const page = selected.slice(input.offset, input.offset + input.limit);
-
-  if (page.length === 0) {
-    const imp = await currentStockImport(db, input.brand);
-    return {
-      hits: [],
-      total: selected.length,
-      stockUpdates: imp ? [{ brand: input.brand, importedAt: imp.importedAt }] : [],
-    };
-  }
-
-  const rows = await db.article.findMany({
-    where: { id: { in: page.map((r) => r.id) } },
-    select: ARTICLE_FIELDS,
-  });
-  const byId = new Map(rows.map((r: ArticleRow) => [r.id, r]));
-  const ordered = page.map((r) => byId.get(r.id)).filter((r): r is ArticleRow => Boolean(r));
-
-  const { inStock, updates } = await resolveStock(db, ordered);
-  return {
-    hits: ordered.map((r) => toSummary(r, inStock.has(r.id))),
-    total: selected.length,
-    stockUpdates: updates,
-  };
-}
-
 export const articleRouter = createTRPCRouter({
   /**
    * SFOGLIO, livello 1: i gruppi, con quanti codici ciascuno.
@@ -260,13 +184,45 @@ export const articleRouter = createTRPCRouter({
         finitura: z.string().trim().min(1).max(8).optional(),
       }),
     )
-    .query(async ({ ctx, input }) => ({
-      groups: await browseFirstWords(
-        ctx.db,
-        input.brand,
-        await idsFiltrati(ctx.db, input.brand, input),
-      ),
-    })),
+    .query(async ({ ctx, input }) => {
+      const filtrati = await idsFiltrati(ctx.db, input.brand, input);
+      const groups = await browseFirstWords(ctx.db, input.brand, filtrati);
+      const modelli = etichetteModello();
+
+      // Una sola lettura in più, e SOLO delle righe che una foto ce l'hanno
+      // (2.118 su 3.456): serve a scegliere l'anteprima di ogni gruppo-modello.
+      // Le righe senza foto qui non servirebbero a niente.
+      const conFoto = await ctx.db.article.findMany({
+        where: {
+          brand: input.brand,
+          imageUrl: { not: null },
+          ...(filtrati ? { id: { in: filtrati } } : {}),
+        },
+        select: { code: true, name: true, imageUrl: true },
+      });
+
+      const perGruppo = new Map<string, { code: string; imageUrl: string }>();
+      for (const r of conFoto) {
+        const label = browseLabel(input.brand, r.name);
+        if (label === null || !modelli.has(label)) continue;
+        // La prima per codice, deterministicamente: dentro un gruppo-modello
+        // ogni articolo ritrae lo stesso modello, quindi l'arbitrio si riduce
+        // alla finitura — e il filtro colore, quando è acceso, l'ha già decisa.
+        const gia = perGruppo.get(label);
+        if (gia === undefined || r.code.localeCompare(gia.code) < 0) {
+          perGruppo.set(label, { code: r.code, imageUrl: r.imageUrl! });
+        }
+      }
+
+      return {
+        groups: groups.map((g) => ({
+          word: g.word,
+          count: g.count,
+          isModello: modelli.has(g.word),
+          preview: urlFoto(perGruppo.get(g.word)?.imageUrl ?? null, 320),
+        })),
+      };
+    }),
 
   /**
    * Le finiture DA OFFRIRE, con quante ne contengono.
@@ -303,15 +259,25 @@ export const articleRouter = createTRPCRouter({
     }),
 
   /**
-   * SFOGLIO, livello 2: le famiglie di un gruppo. `families` vuoto significa che
-   * il gruppo una famiglia non ce l'ha — 21 gruppi su 114 — e la schermata salta
-   * al livello 3 invece di mostrare un livello che non divide nulla.
+   * SFOGLIO, livello 2: le SERIE di un gruppo, **con le loro righe**.
    *
-   * `loose` non è un dettaglio: su 70 gruppi su 114 la copertura è PARZIALE, e
-   * quei codici vanno raggiunti. La schermata li mostra SOTTO le famiglie, come
-   * righe articolo — non come una categoria che non hanno.
+   * Le righe arrivano tutte insieme e non una tendina alla volta: il server
+   * legge già l'intero gruppo per classificarlo, quindi una seconda strada che
+   * le rilegge sarebbe una seconda definizione di «le righe di questo gruppo»,
+   * libera di divergere. Caso peggiore misurato: MANIGLIONE, 338 righe = 88 KB.
+   * E una tendina chiusa tiene le sue righe nel DOM con `display:none`, quindi
+   * il browser non ne scarica le foto: il costo di rete è quello che si apre,
+   * non quello che si manda.
+   *
+   * ⚠️ La classificazione usa TUTTE le righe del gruppo; i filtri decidono solo
+   * quali si mostrano. Classificando dopo il filtro, 27 articoli su 3.393
+   * cambiavano serie con «solo pronta consegna» acceso.
+   *
+   * `senzaSerie` non è un dettaglio: sono i codici che il listino non lega a una
+   * serie, e vanno raggiunti. La schermata li mostra SOTTO le serie, come righe
+   * articolo — non come una categoria che non hanno.
    */
-  browseFamilies: agentProcedure
+  browseSerie: agentProcedure
     .input(
       z.object({
         brand: z.string().trim().min(1).max(50).default("COLOMBO"),
@@ -322,41 +288,44 @@ export const articleRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       const tipo = resolveLabel(input.brand, input.tipo);
-      if (tipo === null) return { families: [], loose: [], total: 0 };
+      if (tipo === null) return { serie: [], senzaSerie: [], total: 0 };
 
-      const rows = await articleIdsByFirstWord(
-        ctx.db,
-        input.brand,
-        tipo,
-        await idsFiltrati(ctx.db, input.brand, input),
-      );
-      const { families, loose } = splitGroup(rows, tipo);
+      const all = await articleIdsByFirstWord(ctx.db, input.brand, tipo);
+      if (all.length === 0) return { serie: [], senzaSerie: [], total: 0 };
 
-      // Senza famiglie il gruppo non è diviso: le sue righe si impaginano con
-      // `search({tipo})`, e restituirle anche qui sarebbe la stessa lista per
-      // due strade — con KIT vorrebbe dire 139 schede in una risposta che la
-      // schermata non userebbe.
-      if (families.length === 0) {
-        return { families, loose: [], total: rows.length };
-      }
+      const filtrati = await idsFiltrati(ctx.db, input.brand, input);
+      const visible = filtrati === undefined ? undefined : new Set(filtrati);
 
-      // Con le famiglie, invece, i codici sciolti si mostrano SOTTO di esse
-      // nella stessa schermata: sono al massimo qualche decina (il caso peggiore
-      // del listino vero è BOCCHETTA con 38 su 288) e nasconderli dietro una
-      // voce «Altro» significherebbe dare un nome di categoria a ciò che una
-      // categoria non ce l'ha.
-      const rowsLoose = await ctx.db.article.findMany({
-        where: { id: { in: loose.map((r) => r.id) } },
+      const rows = await ctx.db.article.findMany({
+        where: { id: { in: all.map((r) => r.id) } },
         select: ARTICLE_FIELDS,
       });
-      const byId = new Map(rowsLoose.map((r) => [r.id, r]));
-      const ordered = loose.map((r) => byId.get(r.id)).filter((r): r is ArticleRow => Boolean(r));
-      const { inStock } = await resolveStock(ctx.db, ordered);
+      const byId = new Map(rows.map((r: ArticleRow) => [r.id, r]));
+      const { inStock } = await resolveStock(ctx.db, rows);
+
+      // `imageUrl` grezzo (la chiave Blob) serve a `fotoRappresentativa`;
+      // `toSummary` lo trasforma poi nel percorso della route per il browser.
+      const conFoto: BrowseRow[] = all.map((r) => ({
+        ...r,
+        imageUrl: byId.get(r.id)?.imageUrl ?? null,
+      }));
+      const { serie, senzaSerie } = splitGroup(conFoto, tipo, visible);
+
+      const somma = (r: BrowseRow) => {
+        const a = byId.get(r.id);
+        return a ? toSummary(a, inStock.has(a.id)) : null;
+      };
+      const vive = <T,>(x: T | null): x is T => x !== null;
 
       return {
-        families,
-        loose: ordered.map((r) => toSummary(r, inStock.has(r.id))),
-        total: rows.length,
+        serie: serie.map((s) => ({
+          serie: s.serie,
+          count: s.count,
+          preview: urlFoto(fotoRappresentativa(s.rows), 320),
+          rows: s.rows.map(somma).filter(vive),
+        })),
+        senzaSerie: senzaSerie.map(somma).filter(vive),
+        total: serie.reduce((n, s) => n + s.count, 0) + senzaSerie.length,
       };
     }),
 
@@ -364,12 +333,7 @@ export const articleRouter = createTRPCRouter({
   search: agentProcedure
     .input(searchInputSchema)
     .query(async ({ ctx, input }) => {
-      if (input.tipo) return browseSlice(ctx.db, input);
-
-      const { hits, total } = await searchArticleIds(ctx.db, {
-        ...input,
-        query: input.query!,
-      });
+      const { hits, total } = await searchArticleIds(ctx.db, input);
       if (hits.length === 0) {
         // La data si mostra anche senza risultati: è la risposta alla domanda
         // «di quando è questo dato?», che non dipende dall'aver trovato qualcosa.

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Prisma } from "@prisma/client";
 import { createCallerFactory, createTRPCRouter, type TRPCContext } from "@/server/api/trpc";
-import { articleRouter } from "./article";
+import { articleRouter, searchInputSchema } from "./article";
 
 vi.mock("@/server/maniglie/search", () => ({
   searchArticleIds: vi.fn(),
@@ -150,9 +150,13 @@ describe("article.search", () => {
 
 describe("il filtro delle finiture", () => {
   it("non si applica cercando per testo: chi scrive un codice vuole quel codice", async () => {
-    await expect(
-      caller(agent).article.search({ query: "fedra", finitura: "CR" }),
-    ).rejects.toThrow(/finitura vale solo sfogliando/);
+    // Il filtro non è più nemmeno rappresentabile nell'input della ricerca:
+    // `search` fa una cosa sola da quando lo sfoglio ha il suo lettore.
+    // Zod scarta le chiavi sconosciute invece di sollevare: la prova che il
+    // filtro non arriva più alla ricerca è che l'input parsato non lo contiene.
+    expect(searchInputSchema.parse({ query: "fedra", finitura: "CR" })).not.toHaveProperty(
+      "finitura",
+    );
   });
 
   it("offre solo le finiture presenti, non tutte e trentuno", async () => {
