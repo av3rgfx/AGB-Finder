@@ -60,7 +60,8 @@ nome è un prefisso del nucleo di quel codice.
 |---|---|
 | Articoli COLOMBO a listino | **3.456** |
 | Gruppi di primo livello, post-curatela attuale | **102** (63 codici esclusi) |
-| Famiglie totali | **533** · mediana 3 codici · massimo 30 |
+| Famiglie totali, regola attuale | **533** · mediana 3 codici · massimo 30 |
+| Serie totali, regola nuova | **591** · di cui **43** da un codice solo (7,3%, oggi 8,6%) |
 | Famiglie per gruppo | mediana **5** · massimo **52** (MANIGLIONE) |
 | Gruppi senza livello 2 | **12** |
 | Codici senza famiglia | **753** su 3.393 sfogliabili (**22,2%**) |
@@ -74,7 +75,7 @@ nome è un prefisso del nucleo di quel codice.
 |---|---|---|
 | **A** — solo assorbimento in famiglie esistenti | 77,8% → 86,3% | +289 codici. Restano fuori KIT (140), POMOLINO (41), COPPIA (28), MOSTRINA (24) |
 | **B** — famiglia dedotta dal codice, sempre | 100% | **Scartata**: 25,4-35,6% di voci da **un codice solo** (MILLA 28/28, ALBA 21/21, MOVIMENTO 36/37) |
-| **C** — ibrida (adottata) | **77,8% → 97,5%** | +289 assorbiti, +379 in 53 voci nuove, 58 restano soli, 27 ambigui |
+| **C** — ibrida (adottata) | **77,8% → 98,2%** | +17 per identità, +276 per prefisso unico, +400 in 58 voci nuove. Restano **60** codici senza serie |
 
 La strada B è stata provata in due varianti e **falsificata da entrambe**: tagliando la coda
 dopo l'ultimo trattino restano 250 voci da un codice solo su 984; tagliando solo le **31
@@ -128,16 +129,23 @@ nulla e non rompe niente: il gruppo si vede lo stesso.
 
 1. **Il token della descrizione presente nel codice** (regola attuale, invariata): copre il
    77,8%. È l'intersezione di due campi che COLOMBO ha scritto entrambi.
-2. **Assorbimento**: un codice senza serie entra in una serie **già esistente nel suo
-   gruppo** se il nucleo del suo codice comincia con quel nome. +289 codici. Non inventa
-   niente: la serie di destinazione esiste perché COLOMBO l'ha scritta nella descrizione di
-   un'altra riga. Quando le serie candidate sono più di una (**27 casi**, tutti della forma
-   `AC11`/`AC11R`/`AC11RSM`) il codice **non si assorbe**: resta senza serie.
-3. **Nuclei condivisi**: i codici rimasti che condividono un nucleo formano una serie, **e
-   solo da 2 codici in su**. +379 codici in 53 voci.
+2. **Assorbimento** in una serie **già esistente nel suo gruppo**, in due sotto-casi. Non
+   inventa niente: la serie di destinazione esiste perché COLOMBO l'ha scritta nella
+   descrizione di un'altra riga.
+   - **Identità** (+17): la radice del codice è *uguale* al nome di una serie esistente.
+     Non è un'inferenza, è la stessa stringa. È il caso di `0ID51RSB-NM`, che la
+     descrizione lasciava fuori scrivendo `S'ID51RSB` attaccato.
+   - **Prefisso unico** (+276): la radice comincia con il nome di **una sola** serie
+     esistente. È il caso portato dall'utente: `0ID51RSMY-CM` → `ID51R`.
+   - Quando le candidate sono più di una e nessuna è identica (forma
+     `AC11`/`AC11R`/`AC11RSM`) il codice **non si assorbe**: sceglierne una sarebbe una
+     nostra decisione mai dichiarata. Cade al gradino 3.
+3. **Radici condivise**: i codici rimasti che condividono una radice formano una serie, **e
+   solo da 2 codici in su**. +400 codici in 58 voci. È qui che i cinque `0AC11RSMY-*` di
+   FEDRA, ambigui al gradino 2, formano la loro serie `AC11RSMY`.
 
 **Sulla soglia dei 2.** Non è un numero arbitrario travestito: una tendina che contiene una
-riga sola è un involucro attorno a una riga, non una categoria. Chi resta solo (58 codici)
+riga sola è un involucro attorno a una riga, non una categoria. Chi resta solo (60 codici)
 sta sotto «Codici senza serie», che è dove sta oggi.
 
 **Sul divieto «non dedurre dal codice»** (spec 2026-08-04 §9): si applica una **deroga
