@@ -372,12 +372,15 @@ export function SfogliaSerie({
   aperte,
   onToggle,
   senzaSerie,
+  isModello,
   renderRiga,
 }: {
   serie: Serie[];
   aperte: string[];
   onToggle: (serie: string, aperta: boolean) => void;
   senzaSerie: ArticleSummary[];
+  /** Il gruppo è un MODELLO: qui la foto per-serie ripeterebbe. */
+  isModello: boolean;
   renderRiga: (a: ArticleSummary) => ReactNode;
 }) {
   return (
@@ -393,7 +396,7 @@ export function SfogliaSerie({
                   onToggle={(e) => onToggle(s.serie, (e.currentTarget as HTMLDetailsElement).open)}
                 >
                   <summary className="flex min-h-[56px] cursor-pointer list-none items-center gap-3 bg-surface px-3 py-2 transition-colors duration-150 hover:bg-surface-sunken sm:px-4">
-                    <AnteprimaSerie url={s.preview} piccola={aperta} />
+                    {isModello ? null : <AnteprimaSerie url={s.preview} />}
                     {/* La serie è un pezzo di CODICE e sta in mono, come ogni
                         codice nell'app: guardando lo schermo si capisce a che
                         livello si è anche senza leggere le briciole. */}
@@ -439,30 +442,27 @@ export function SfogliaSerie({
 }
 
 /**
- * L'anteprima nell'intestazione di una tendina: 56px chiusa, 32px aperta.
+ * L'anteprima di una serie: **56px, FERMA**, e solo dentro una TIPOLOGIA.
  *
- * Resta anche aperta, contro la richiesta iniziale di mostrarla solo da chiusa:
- * con tre tendine aperte le intestazioni sono i soli punti di riferimento in una
- * colonna di righe quasi identiche, e toglierla la toglierebbe proprio quando
- * serve a orientarsi. Non è una ripetizione: qui si ritrae il MODELLO, nelle
- * righe le singole FINITURE. Rimpicciolendosi, l'intestazione aperta lascia il
- * peso visivo alle righe.
+ * ⚠️ SEMBRA IL CONTRARIO DEL LIVELLO 1, E NON LO È. Lì `isModello` ACCENDE la
+ * foto, qui la SPEGNE. Stesso principio, unità diversa: la tessera di livello 1
+ * ritrae il MODELLO INTERO, e una foto lo rappresenta davvero; la riga di
+ * livello 2 ritrae UNA SERIE dentro quel modello, e le serie di FEDRA sono la
+ * stessa maniglia in varianti — la foto sarebbe identica su ognuna. Dentro una
+ * tipologia (BOCCHETTA raccoglie 22 modelli, MANIGLIONE 52) distingue davvero.
+ * Chi legge questo codice non lo «corregga» per simmetria.
  *
- * Nessuna transizione sulla dimensione: sarebbe un'animazione di layout.
+ * Non si rimpicciolisce aprendo. Era una scelta nostra, e Andrea — che il
+ * programma lo usa — l'ha smentita sul campo: «confonde, e da piccola non si
+ * vede». Era anche un'animazione di layout, vietata dal sistema.
+ *
+ * Preview mancante = spazio vuoto, NON segnaposto: con la copertura al 46,5% le
+ * assenze sono frequenti, e otto riquadri grigi in colonna si leggono come «il
+ * programma è rotto». L'allineamento regge, e l'assenza si dice tacendo.
  */
-function AnteprimaSerie({ url, piccola }: { url: string | null; piccola: boolean }) {
+function AnteprimaSerie({ url }: { url: string | null }) {
   const [fallita, setFallita] = useState(false);
-  const dim = piccola ? "size-8" : "size-14";
-  if (!url || fallita) {
-    return (
-      <span
-        aria-hidden
-        className={`grid ${dim} shrink-0 place-items-center rounded border border-line bg-surface-sunken`}
-      >
-        <Package className="size-4 text-ink-subtle" />
-      </span>
-    );
-  }
+  if (!url || fallita) return <span aria-hidden className="size-14 shrink-0" />;
   return (
     // eslint-disable-next-line @next/next/no-img-element -- sorgente dinamica dietro auth, non da ottimizzare
     <img
@@ -470,7 +470,7 @@ function AnteprimaSerie({ url, piccola }: { url: string | null; piccola: boolean
       alt=""
       loading="lazy"
       onError={() => setFallita(true)}
-      className={`${dim} shrink-0 rounded border border-line bg-white object-contain`}
+      className="size-14 shrink-0 rounded border border-line bg-white object-contain"
     />
   );
 }

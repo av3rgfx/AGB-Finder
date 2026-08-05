@@ -299,10 +299,16 @@ export const articleRouter = createTRPCRouter({
       // `tipo` torna al chiamante RISOLTO: con un `?tipo=MANIG.` condiviso
       // prima della fusione, il chip «dove sei» mostrerebbe altrimenti un nome
       // che non è quello del gruppo che si sta guardando.
-      if (tipo === null) return { tipo: input.tipo, serie: [], senzaSerie: [], total: 0 };
+      if (tipo === null)
+        return { tipo: input.tipo, isModello: false, serie: [], senzaSerie: [], total: 0 };
 
       const all = await articleIdsByFirstWord(ctx.db, input.brand, tipo);
-      if (all.length === 0) return { tipo, serie: [], senzaSerie: [], total: 0 };
+      // `isModello` serve al livello 2 per SPEGNERE le anteprime: dentro un
+      // gruppo-modello le serie sono lo stesso pezzo in varianti, e la foto
+      // ripeterebbe. Sembra il contrario del livello 1 e non lo è — cambia
+      // l'unità ritratta, non il principio. Vedi `SfogliaSerie`.
+      const isModello = etichetteModello().has(tipo);
+      if (all.length === 0) return { tipo, isModello, serie: [], senzaSerie: [], total: 0 };
 
       const filtrati = await idsFiltrati(ctx.db, input.brand, input);
       const visible = filtrati === undefined ? undefined : new Set(filtrati);
@@ -330,6 +336,7 @@ export const articleRouter = createTRPCRouter({
 
       return {
         tipo,
+        isModello,
         serie: serie.map((s) => ({
           serie: s.serie,
           count: s.count,

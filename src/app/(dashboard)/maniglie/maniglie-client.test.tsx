@@ -88,7 +88,11 @@ function risultati(over: Record<string, unknown> = {}) {
  * `isModello` non è un nostro giudizio: è la struttura dell'archivio
  * fotografico di COLOMBO. LARA ha il suo archivio, BOCCHETTA e KIT no.
  */
-let serieFinta: (righe?: unknown[], senzaSerie?: unknown[]) => Record<string, unknown>;
+let serieFinta: (
+  righe?: unknown[],
+  senzaSerie?: unknown[],
+  isModello?: boolean,
+) => Record<string, unknown>;
 
 /**
  * `isAccessorio` è invece una lista di ANDREA, e non è deducibile da
@@ -121,10 +125,18 @@ beforeEach(() => {
   browseSerieQuery
     .mockReset()
     .mockReturnValue({ data: undefined, isPending: false, isError: false, isFetching: false });
-  serieFinta = (righe = [], senzaSerie = []) => ({
+  serieFinta = (righe = [], senzaSerie = [], isModello = false) => ({
     data: {
+      isModello,
       serie: righe.length
-        ? [{ serie: "CB71R", count: righe.length, preview: null, rows: righe }]
+        ? [
+            {
+              serie: "CB71R",
+              count: righe.length,
+              preview: "/api/article-image?k=cb71r&size=320",
+              rows: righe,
+            },
+          ]
         : [],
       senzaSerie,
       total: righe.length + senzaSerie.length,
@@ -910,5 +922,70 @@ describe("ManiglieClient — la sezione Accessori", () => {
     });
     expect(container.querySelectorAll("h3")).toHaveLength(0);
     expect(screen.queryByRole("link", { name: /Accessori \(/ })).toBeNull();
+  });
+});
+
+/**
+ * L'ANTEPRIMA DELLA TENDINA, rifatta il 2026-08-05.
+ *
+ * Andrea: «la foto della tendina che si rimpicciolisce quando si apre confonde
+ * e non serve a nulla quando è piccola perché non si vede». La scelta era
+ * dell'utente fra tre opzioni: non è una regressione, è una prova sul campo che
+ * ha battuto una preferenza.
+ *
+ * La regola è quella già scritta al livello 1: **la foto compare dove
+ * distingue, non dove ripete.** Dentro FEDRA le serie sono la stessa maniglia
+ * in varianti — la foto non era piccola, era RIPETUTA. Dentro BOCCHETTA (22
+ * modelli) e MANIGLIONE (52) distingue davvero.
+ */
+describe("ManiglieClient — l'anteprima della tendina", () => {
+  beforeEach(() => {
+    sp = new URLSearchParams("tipo=BOCCHETTA");
+  });
+
+  it("dimostra di guardare nel posto giusto: la tendina c'è", () => {
+    browseSerieQuery.mockReturnValue(serieFinta([articoli[0]], [], false));
+    const { container } = render(<ManiglieClient />);
+    expect(container.querySelectorAll("details summary").length).toBeGreaterThan(0);
+  });
+
+  it("dentro una TIPOLOGIA l'anteprima c'è", () => {
+    browseSerieQuery.mockReturnValue(serieFinta([articoli[0]], [], false));
+    const { container } = render(<ManiglieClient />);
+    expect(container.querySelectorAll("summary img")).toHaveLength(1);
+  });
+
+  it("dentro un GRUPPO-MODELLO non c'è area immagine affatto", () => {
+    browseSerieQuery.mockReturnValue(serieFinta([articoli[0]], [], true));
+    const { container } = render(<ManiglieClient />);
+    expect(container.querySelectorAll("summary img")).toHaveLength(0);
+  });
+
+  it("l'anteprima non cambia misura all'apertura", () => {
+    sp = new URLSearchParams("tipo=BOCCHETTA&fam=CB71R");
+    browseSerieQuery.mockReturnValue(serieFinta([articoli[0]], [], false));
+    const { container } = render(<ManiglieClient />);
+    const img = container.querySelector("summary img");
+    expect(img?.className).toContain("size-14");
+    expect(img?.className).not.toContain("size-8");
+  });
+
+  // Con la copertura scesa al 46,5% le anteprime mancanti sono frequenti: otto
+  // riquadri grigi in colonna si leggono come «il programma è rotto».
+  it("una preview mancante non disegna un segnaposto", () => {
+    browseSerieQuery.mockReturnValue({
+      data: {
+        isModello: false,
+        serie: [{ serie: "CB71R", count: 1, preview: null, rows: [articoli[0]] }],
+        senzaSerie: [],
+        total: 1,
+      },
+      isPending: false,
+      isError: false,
+      isFetching: false,
+    });
+    const { container } = render(<ManiglieClient />);
+    const summary = container.querySelector("summary");
+    expect(summary?.querySelector("svg")?.classList.contains("lucide-package")).not.toBe(true);
   });
 });
