@@ -37,6 +37,17 @@ interface Curatela {
   escluse: ReadonlySet<string>;
   /** Etichette in cui la «S» del secondo token è un PRODOTTO DIVERSO. */
   divise: ReadonlySet<string>;
+  /**
+   * Prime parole che non nominano il prodotto ma la CONFEZIONE: l'etichetta
+   * viene dal SECONDO token.
+   *
+   * «COPPIA BOCCHETTE YALE» è una bocchetta, e una categoria «COPPIA»
+   * raccoglierebbe oggetti che non hanno niente in comune tranne l'essere
+   * venduti a due a due. Il secondo token ripassa dalle `fusioni`, quindi
+   * `BOCCHETTE`→`BOCCHETTA` e `MANIGLIONI`→`MANIGLIONE` valgono anche qui
+   * senza una seconda regola libera di divergere dalla prima.
+   */
+  trasparenti: ReadonlySet<string>;
 }
 
 const CURATELE: Record<string, Curatela> = {
@@ -98,11 +109,21 @@ const CURATELE: Record<string, Curatela> = {
     // `01_Robot4S.zip` come archivi fotografici separati, e il suo listino
     // elenca «roboquattro» e «roboquattro S» come voci distinte.
     divise: new Set(["ROBOCINQUE", "ROBOQUATTRO"]),
+    // Misurato sul listino vero: 35 codici, e sono puliti — 7 «COPPIA
+    // MANIGLIONI» e 28 «COPPIA BOCCHETTE», nient'altro. Nessuna delle due
+    // destinazioni ha un archivio fotografico, quindi lo scioglimento non può
+    // prestare la foto di un modello a un altro.
+    trasparenti: new Set(["COPPIA"]),
   },
 };
 
 /** Una marca senza curatela non riceve le correzioni scritte per un'altra. */
-const VUOTA: Curatela = { fusioni: {}, escluse: new Set(), divise: new Set() };
+const VUOTA: Curatela = {
+  fusioni: {},
+  escluse: new Set(),
+  divise: new Set(),
+  trasparenti: new Set(),
+};
 const curatelaDi = (brand: string): Curatela => CURATELE[brand] ?? VUOTA;
 
 /**
@@ -128,6 +149,18 @@ export function browseLabel(brand: string, name: string): string | null {
  */
 function labelFromTokens(brand: string, first: string, second: string | null): string | null {
   const c = curatelaDi(brand);
+  // Le TRASPARENTI per prime: il resto della regola vale sul token che nomina
+  // davvero il prodotto.
+  //
+  // `divise` non si riapplica dopo lo spostamento, e non è una dimenticanza: il
+  // `GROUP BY` del livello 1 restituisce DUE token, non tre, quindi il
+  // marcatore della S dopo una trasparente non sarebbe leggibile. Misurato che
+  // il caso non esiste — dentro COPPIA ci sono solo MANIGLIONI e BOCCHETTE, e
+  // nessuna delle due è divisa.
+  if (c.trasparenti.has(first)) {
+    if (second === null || c.escluse.has(second)) return null;
+    return c.fusioni[second] ?? second;
+  }
   if (c.escluse.has(first)) return null;
   if (c.divise.has(first) && MARCATORE_S.test(second ?? "")) return `${first} S`;
   return c.fusioni[first] ?? first;
@@ -184,6 +217,13 @@ export function sourceFirstWords(brand: string, label: string): string[] {
   for (const [storta, giusta] of Object.entries(c.fusioni)) {
     if (giusta === label) words.add(storta);
   }
+  // Una TRASPARENTE può produrre qualunque etichetta, e da qui non si sa
+  // quale: si includono tutte, e il rifiltro con `browseLabel` — che il
+  // chiamante fa già, ed è documentato sopra — scarta i falsi positivi.
+  // Calcolare quali etichette una trasparente produca davvero vorrebbe dire
+  // scandire il listino da un modulo che non lo vede. Costa una parola nella
+  // `IN` e fino a 35 righe lette per gruppo.
+  for (const t of c.trasparenti) words.add(t);
   return [...words].sort();
 }
 
@@ -199,7 +239,9 @@ export function sourceFirstWords(brand: string, label: string): string[] {
  */
 export function resolveLabel(brand: string, tipo: string): string | null {
   const c = curatelaDi(brand);
-  if (c.escluse.has(tipo)) return null;
+  // Una trasparente non risolve: `COPPIA` produceva DUE etichette, e
+  // sceglierne una sarebbe inventare. «Non si sfoglia» è la risposta vera.
+  if (c.escluse.has(tipo) || c.trasparenti.has(tipo)) return null;
   return c.fusioni[tipo] ?? tipo;
 }
 
@@ -213,5 +255,5 @@ export function resolveLabel(brand: string, tipo: string): string | null {
  */
 export function vociCuratela(brand: string): string[] {
   const c = curatelaDi(brand);
-  return [...Object.keys(c.fusioni), ...c.escluse, ...c.divise].sort();
+  return [...Object.keys(c.fusioni), ...c.escluse, ...c.divise, ...c.trasparenti].sort();
 }

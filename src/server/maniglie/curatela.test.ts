@@ -99,7 +99,13 @@ describe("sourceFirstWords", () => {
   });
 
   test("il gruppo base di una divisione raccoglie anche il suo refuso", () => {
-    expect(sourceFirstWords("COLOMBO", "ROBOCINQUE")).toEqual(["ROBOCINQUE", "ROBOCINQUQ"]);
+    expect(sourceFirstWords("COLOMBO", "ROBOCINQUE")).toEqual([
+      // Le trasparenti compaiono ovunque: da qui non si sa quali etichette
+      // producano, e il rifiltro con `browseLabel` scarta i falsi positivi.
+      "COPPIA",
+      "ROBOCINQUE",
+      "ROBOCINQUQ",
+    ]);
   });
 
   // Senza questo, `?tipo=VITE` nell'URL rimetterebbe a schermo un gruppo che
@@ -108,8 +114,11 @@ describe("sourceFirstWords", () => {
     expect(sourceFirstWords("COLOMBO", "VITE")).toEqual([]);
   });
 
-  test("un'etichetta non toccata è la sua sola sorgente", () => {
-    expect(sourceFirstWords("COLOMBO", "ALBA")).toEqual(["ALBA"]);
+  // «Sola sorgente» più le trasparenti, che non si sa dove finiscano: leggono
+  // 35 righe in più per gruppo e le buttano. È il prezzo del non dedurre da un
+  // modulo foglia quali etichette `COPPIA` possa produrre.
+  test("un'etichetta non toccata ha se stessa e le trasparenti", () => {
+    expect(sourceFirstWords("COLOMBO", "ALBA")).toEqual(["ALBA", "COPPIA"]);
   });
 });
 
@@ -286,5 +295,72 @@ describe("resolveLabel", () => {
 
   test("non attraversa le marche", () => {
     expect(resolveLabel("HOPPE", "MANIG.")).toBe("MANIG.");
+  });
+});
+
+/**
+ * `COPPIA` non è un prodotto, è una CONFEZIONE. Andrea: «al suo interno c'è
+ * COPPIA BOCCHETTE YALE, ma tutta quella sottocategoria dovrebbe stare dentro
+ * BOCCHETTE. Vale lo stesso per tutto il resto che c'è dentro COPPIA».
+ *
+ * Misurato sul listino vero: 35 codici, e sono puliti — 7 `COPPIA MANIGLIONI`
+ * e 28 `COPPIA BOCCHETTE`, nient'altro. L'etichetta viene dal SECONDO token,
+ * che poi ripassa dalla stessa tabella di fusioni di tutti gli altri: è ciò
+ * che manda `BOCCHETTE` in `BOCCHETTA` e `MANIGLIONI` in `MANIGLIONE` senza
+ * una seconda regola che possa divergere.
+ */
+describe("browseLabel — prime parole trasparenti", () => {
+  test.each([
+    ["COPPIA BOCCHETTE YALE ZERO", "BOCCHETTA"],
+    ["COPPIA BOCCHETTE PATENT Q ZERO", "BOCCHETTA"],
+    ["COPPIA MANIGLIONI CLOUD LC26", "MANIGLIONE"],
+    ["COPPIA MANIGLIONI WIND LC36", "MANIGLIONE"],
+  ])("«%s» si elenca sotto %s", (name, atteso) => {
+    expect(browseLabel("COLOMBO", name)).toBe(atteso);
+  });
+
+  // Una parola trasparente da sola non dice che prodotto sia: meglio non
+  // sfogliarla che inventarle una categoria.
+  test("«COPPIA» da sola non si sfoglia", () => {
+    expect(browseLabel("COLOMBO", "COPPIA")).toBeNull();
+  });
+
+  // Il `WHERE` del livello 2 sa leggere solo la prima parola cruda: se COPPIA
+  // non fosse fra le sorgenti, i 28 codici entrerebbero nel CONTEGGIO di
+  // BOCCHETTA e poi sparirebbero aprendolo — un gruppo che promette 318 righe
+  // e ne mostra 290.
+  test("le trasparenti sono fra le sorgenti di ogni etichetta", () => {
+    expect(sourceFirstWords("COLOMBO", "BOCCHETTA")).toContain("COPPIA");
+    expect(sourceFirstWords("COLOMBO", "MANIGLIONE")).toContain("COPPIA");
+  });
+
+  test("ma non di un'etichetta esclusa, che resta irraggiungibile", () => {
+    expect(sourceFirstWords("COLOMBO", "VITE")).toEqual([]);
+  });
+
+  // Un link condiviso prima dello scioglimento porta `?tipo=COPPIA`. COPPIA
+  // non è più un'etichetta e non se ne può scegliere una delle due: la
+  // risposta vera è «non si sfoglia».
+  test("un ?tipo=COPPIA vecchio non risolve a nulla", () => {
+    expect(resolveLabel("COLOMBO", "COPPIA")).toBeNull();
+  });
+
+  test("la sentinella della curatela cita anche le trasparenti", () => {
+    expect(vociCuratela("COLOMBO")).toContain("COPPIA");
+  });
+
+  // La prova che i due destinatari assorbono davvero, ai numeri veri.
+  test("foldBrowseGroups somma COPPIA nei due gruppi giusti", () => {
+    expect(
+      foldBrowseGroups("COLOMBO", [
+        { first: "BOCCHETTA", second: "CD41", count: 290 },
+        { first: "COPPIA", second: "BOCCHETTE", count: 28 },
+        { first: "COPPIA", second: "MANIGLIONI", count: 7 },
+        { first: "MANIGLIONE", second: "AM113", count: 346 },
+      ]),
+    ).toEqual([
+      { word: "BOCCHETTA", count: 318 },
+      { word: "MANIGLIONE", count: 353 },
+    ]);
   });
 });
