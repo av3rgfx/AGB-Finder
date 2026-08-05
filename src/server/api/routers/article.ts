@@ -38,6 +38,7 @@ const ARTICLE_FIELDS = {
   id: true,
   brand: true,
   code: true,
+  codeNorm: true,
   name: true,
   priceList: true,
   surcharge: true,
@@ -66,6 +67,9 @@ function toSummary(a: ArticleRow, inStock: boolean) {
     id: a.id,
     brand: a.brand,
     code: a.code,
+    /** La forma SENZA separatori: è ciò che si copia negli appunti, ed è la
+        chiave con cui si aggancia la pronta consegna. Non si ricalcola in UI. */
+    codeNorm: a.codeNorm,
     name: a.name,
     /** Totale DERIVATO (prezzo + surcharge), arrotondato a 2 decimali in Decimal. */
     total: articleTotal(a.priceList, a.surcharge).toNumber(),

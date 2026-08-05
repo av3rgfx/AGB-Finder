@@ -37,7 +37,7 @@ export function ArticoloClient({ id }: { id: string }) {
 
         <div className="flex min-w-0 flex-1 flex-col gap-3">
           <div className="flex flex-wrap items-center gap-2">
-            <CopyCodeButton code={a.code} />
+            <CopyCodeButton code={a.code} copyAs={a.codeNorm} />
           </div>
 
           <h1 className="text-lg font-semibold text-ink sm:text-xl">{a.name}</h1>
