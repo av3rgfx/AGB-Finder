@@ -65,13 +65,29 @@ const CURATELE: Record<string, Curatela> = {
       MANIGLIA: "MANIGLIA INCASSO", //   28
       MANIGLIE: "MANIGLIA INCASSO", //    1
       MANIGLIONI: "MANIGLIONE", //        8 — plurale
-      // `PL.OTT. 85mm. + SOTTOPL.NYLON` e `PL.OTT.YALE 93mm+SOTTOPL.NYLON`:
-      // stesso prodotto, codici `PB02*`. NON si fondono con `PLACCA` (65),
-      // che è la placca dei maniglioni (`0AM113PL*`): stessa parola, due
-      // oggetti diversi.
-      "PL.OTT.": "PL.", //                1
-      "PL.OTT.YALE": "PL.", //           11
       RG: "DUMMY", //                     1 — «RG ADAPTOR PER DUMMY»
+
+      // ── 2026-08-05, seconda tornata di Andrea ──────────────────────────
+      // `PL.` è l'abbreviazione di `PLACCA`. La sessione precedente le teneva
+      // separate perché MISURATE come due prodotti (placche in ottone `PB02*`
+      // contro placche dei maniglioni `0AM113PL*`), e la misura era giusta ma
+      // rispondeva alla domanda sbagliata: non «sono lo stesso oggetto» ma
+      // «come li chiama chi li ordina». La distinzione non si perde — la fa il
+      // livello 2, che divide gli 87 codici in 14 serie.
+      "PL.": "PLACCA", //                22
+      "PL.OTT.": "PLACCA", //             1
+      "PL.OTT.YALE": "PLACCA", //        11
+      // Il plurale, che arriva sciogliendo `COPPIA`: senza questa riga
+      // «COPPIA BOCCHETTE YALE» fonderebbe un gruppo nuovo da 28 codici, e
+      // nessun conteggio andrebbe a zero. Trovato misurando, non leggendo.
+      BOCCHETTE: "BOCCHETTA", //         28 (via COPPIA)
+      // Le due cremonesi tornano dalla loro maniglia. ⚠️ La foto NON le segue:
+      // ci pensa la `serie` dichiarata sugli archivi in `foto-archivio.ts`,
+      // perché la regola sulle finiture NON basterebbe — `0CD32-UB`
+      // prenderebbe `Heidi_R_UB`, finitura provata GIUSTA e prodotto
+      // SBAGLIATO.
+      "HEIDI/PETER": "HEIDI", //          2
+      LUNDCREM: "LUND", //                1
     },
     // `RONDELLE` (2 codici) entra qui il 2026-08-05, e non è una svista di
     // tassonomia: la pagina dichiarava già «viti, dadi, chiavi e rondelle non

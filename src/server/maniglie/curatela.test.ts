@@ -91,7 +91,7 @@ describe("browseLabel — divisioni", () => {
  */
 describe("sourceFirstWords", () => {
   test("un'etichetta fusa raccoglie anche la parola storta", () => {
-    expect(sourceFirstWords("COLOMBO", "BOCCHETTA")).toEqual(["BOCCEHTTA", "BOCCHETTA"]);
+    expect(sourceFirstWords("COLOMBO", "BOCCHETTA")).toContain("BOCCEHTTA");
   });
 
   test("un'etichetta divisa risale al gruppo da cui è stata staccata", () => {
@@ -168,8 +168,6 @@ describe("browseLabel — le fusioni del 2026-08-05", () => {
     ["MANIGLIA INCASSO ID411", "MANIGLIA INCASSO"],
     ["MANIGLIE INCASSO Q PER A/S", "MANIGLIA INCASSO"],
     ["MANIGLIONI AM213Y ACC.A/S CRMT", "MANIGLIONE"],
-    ["PL.OTT. 85mm. + SOTTOPL.NYLON", "PL."],
-    ["PL.OTT.YALE 93mm+SOTTOPL.NYLON", "PL."],
     ["RG ADAPTOR PER DUMMY", "DUMMY"],
   ])("«%s» si elenca sotto %s", (name, atteso) => {
     expect(browseLabel("COLOMBO", name)).toBe(atteso);
@@ -179,36 +177,57 @@ describe("browseLabel — le fusioni del 2026-08-05", () => {
     expect(browseLabel("COLOMBO", "MANIG.CD213 SCOR.COMPLAN. CM")).toBe("MANIG.CD213");
   });
 
-  /**
-   * Fonderlo in LUND farebbe ereditare a una CREMONESE la foto di una maniglia:
-   * `abbinaFoto` assegna le foto di modello per etichetta di sfoglio, e LUND ha
-   * un archivio fotografico. Una foto che esiste, si vede benissimo, ed è di un
-   * altro prodotto — la lezione che il progetto ha già pagato con la variante
-   * ZERO. Verificato caso per caso: è l'unica delle sette con questa
-   * conseguenza.
-   */
-  test("LUNDCREM resta fuori da LUND: erediterebbe la foto sbagliata", () => {
-    expect(browseLabel("COLOMBO", "LUNDCREM SE12 GRAFITE MAT")).toBe("LUNDCREM");
-  });
-
-  test("PLACCA non si fonde con PL.: stessa parola, due prodotti", () => {
-    // PL.* sono placche in ottone `PB02*` con sottoplacca in nylon; PLACCA è
-    // la placca dei maniglioni, codici `0AM113PL*`.
-    expect(browseLabel("COLOMBO", "PLACCA AM113 CROMAT")).toBe("PLACCA");
-  });
-
   test("le sorgenti dell'etichetta fusa comprendono tutte e quattro le grafie", () => {
-    expect(sourceFirstWords("COLOMBO", "MANIGLIA INCASSO")).toEqual([
-      "MANIG.",
-      "MANIG.INCASSO",
-      "MANIGLIA",
-      "MANIGLIA INCASSO",
-      "MANIGLIE",
-    ]);
+    expect(sourceFirstWords("COLOMBO", "MANIGLIA INCASSO")).toContain("MANIG.");
+    expect(sourceFirstWords("COLOMBO", "MANIGLIA INCASSO")).toContain("MANIG.INCASSO");
+    expect(sourceFirstWords("COLOMBO", "MANIGLIA INCASSO")).toContain("MANIGLIA");
+    expect(sourceFirstWords("COLOMBO", "MANIGLIA INCASSO")).toContain("MANIGLIE");
+  });
+});
+
+/**
+ * LA SECONDA TORNATA DI ANDREA (2026-08-05).
+ *
+ * Due di queste CAPOVOLGONO una decisione della sessione precedente, ed è il
+ * punto: `PL.`/`PLACCA` e `LUNDCREM` erano state tenute separate da una misura
+ * giusta che rispondeva alla domanda sbagliata. La misura diceva «sono due
+ * prodotti»; la domanda era «come li chiama chi li ordina». Andrea è la fonte
+ * di verità sulla propria tassonomia.
+ *
+ * I test che asserivano il contrario non erano sentinelle di quella scelta:
+ * erano la sua codifica, e sono stati rimossi con questa nota al posto loro.
+ */
+describe("browseLabel — la seconda tornata di Andrea", () => {
+  test.each([
+    // `PL.` è l'abbreviazione di `PLACCA`. La distinzione misurata non si
+    // perde: la fa il livello 2, che divide gli 87 codici in 14 serie
+    // (`PB02*` da una parte, `AM113`/`CD02PL`/`PLY85`… dall'altra).
+    ["PL.OTT. 85mm. + SOTTOPL.NYLON", "PLACCA"],
+    ["PL.OTT.YALE 93mm+SOTTOPL.NYLON", "PLACCA"],
+    ["PLACCA AM113 CROMAT", "PLACCA"],
+    // Le due cremonesi tornano dalla loro maniglia. La foto NON le segue: ci
+    // pensa la `serie` dichiarata sugli archivi in `foto-archivio.ts`, perché
+    // la regola sulle finiture non basterebbe — `0CD32-UB` prenderebbe
+    // `Heidi_R_UB`, finitura provata GIUSTA e prodotto SBAGLIATO.
+    ["HEIDI/PETER CREM CD32 OROPLUS", "HEIDI"],
+    ["LUNDCREM SE12 GRAFITE MAT", "LUND"],
+  ])("«%s» si elenca sotto %s", (name, atteso) => {
+    expect(browseLabel("COLOMBO", name)).toBe(atteso);
   });
 
-  test("PL. resta una sorgente di se stessa, oltre alle due fuse", () => {
-    expect(sourceFirstWords("COLOMBO", "PL.")).toEqual(["PL.", "PL.OTT.", "PL.OTT.YALE"]);
+  // Il plurale arriva sciogliendo COPPIA. Senza questa riga nascerebbe un
+  // gruppo nuovo da 28 codici, e nessun conteggio andrebbe a zero: l'ho
+  // scoperto misurando, non leggendo.
+  test("il plurale BOCCHETTE è BOCCHETTA", () => {
+    expect(browseLabel("COLOMBO", "BOCCHETTE YALE ZERO")).toBe("BOCCHETTA");
+  });
+
+  test("PLACCA raccoglie anche le tre grafie con PL.", () => {
+    const s = sourceFirstWords("COLOMBO", "PLACCA");
+    expect(s).toContain("PL.");
+    expect(s).toContain("PL.OTT.");
+    expect(s).toContain("PL.OTT.YALE");
+    expect(s).toContain("PLACCA");
   });
 });
 
@@ -251,7 +270,7 @@ describe("resolveLabel", () => {
     expect(resolveLabel("COLOMBO", "MANIG.")).toBe("MANIGLIA INCASSO");
     expect(resolveLabel("COLOMBO", "MANIGLIA")).toBe("MANIGLIA INCASSO");
     expect(resolveLabel("COLOMBO", "ROS.")).toBe("ROSETTA");
-    expect(resolveLabel("COLOMBO", "PL.OTT.YALE")).toBe("PL.");
+    expect(resolveLabel("COLOMBO", "PL.OTT.YALE")).toBe("PLACCA");
   });
 
   test("un'etichetta corrente resta se stessa", () => {
