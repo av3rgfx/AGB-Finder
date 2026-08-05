@@ -1,5 +1,5 @@
 import { browseLabel } from "./curatela";
-import { FINITURE_PER_CODICE, finituraDiCodice } from "./finiture";
+import { FINITURE_PER_CODICE, finituraDiCodice, finituraDiTesto } from "./finiture";
 
 /**
  * L'ARCHIVIO FOTOGRAFICO UFFICIALE COLOMBO, mappato al catalogo.
@@ -243,16 +243,28 @@ export function scattoDiProdotto(nome: string): boolean {
 }
 
 /**
- * La finitura che COLOMBO ha scritto in coda al nome come SUO codice: `Fedra_1OL`,
- * `robot41_4NM_new`. Le parole per esteso non contano — `cromo` compare in 106
- * nomi e `bronze` in 18, due lingue e nessun elenco chiuso — e i bicolori
- * (`milla1_1OLOM`) non sono fra le 31 pubblicate.
+ * La finitura che COLOMBO ha scritto nel nome del file: come SUO codice
+ * (`Fedra_1OL`, `robot41_4NM_new`) **oppure a parole** (`due frontale capri
+ * blue`).
+ *
+ * ⚠️ Le parole non si cercavano, e sono **268 file su 638**: è la ragione per
+ * cui tutti gli otto `0CC31R-C0x` mostravano la maniglia blu. Il commento qui
+ * diceva che le parole «non contano» perché sono due lingue e nessun elenco
+ * chiuso — l'elenco chiuso invece esiste, sono le 31 finiture pubblicate, e le
+ * loro grafie reali stanno in `finiture.ts`, che è il modulo che sa come si
+ * chiamano.
+ *
+ * Le due strade sono DISGIUNTE sui 638 scatti reali (zero file le hanno
+ * entrambe), quindi l'ordine fra loro non decide nulla: il codice viene prima
+ * perché è la grafia più stretta.
  */
 export function finituraDiFoto(nome: string): string | null {
   const m = /[ _-]\d(C\d\d|[A-Z]{2})(_new)?$/i.exec(nome);
-  if (!m) return null;
-  const codice = m[1]!.toUpperCase();
-  return FINITURE_PER_CODICE.has(codice) ? codice : null;
+  if (m) {
+    const codice = m[1]!.toUpperCase();
+    if (FINITURE_PER_CODICE.has(codice)) return codice;
+  }
+  return finituraDiTesto(nome);
 }
 
 /**

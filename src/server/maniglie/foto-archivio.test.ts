@@ -174,12 +174,18 @@ describe("finitura dal nome del file", () => {
     expect(finituraDiFoto("roboquattroS_5VM")).toBe("VM");
   });
 
-  it("non legge le parole per esteso", () => {
-    // `cromo` è scritto in italiano in 106 nomi e `bronze` in inglese in 18: due
-    // lingue e nessun elenco chiuso. La finitura si legge SOLO dove COLOMBO ha
-    // scritto il suo codice.
-    expect(finituraDiFoto("roboquattro cromo matte")).toBeNull();
-    expect(finituraDiFoto("due frontale bronze")).toBeNull();
+  /**
+   * Questo test diceva l'OPPOSTO — «non legge le parole per esteso, sono due
+   * lingue e nessun elenco chiuso» — ed era la codifica di una limitazione, non
+   * la sentinella di una scelta. L'elenco chiuso esiste: sono le 31 finiture
+   * pubblicate, e le loro grafie reali stanno in `finiture.ts`.
+   *
+   * Costava caro: 268 file su 638 dicono la finitura a parole, ed è la ragione
+   * per cui tutti gli otto `0CC31R-C0x` mostravano la maniglia blu.
+   */
+  it("legge anche le parole per esteso, ed erano 268 file su 638", () => {
+    expect(finituraDiFoto("roboquattro cromo matte")).toBe("CM");
+    expect(finituraDiFoto("due frontale bronze")).toBe("C02");
   });
 
   it("i bicolori non sono una delle 31", () => {
@@ -433,5 +439,49 @@ describe("le cremonesi non ereditano la foto della loro maniglia", () => {
     );
     expect(m.get("0SE11R-CM")).toBe(chiaveFoto("01_Lund", "lund_2CM"));
     expect(m.has("0SE12-GM")).toBe(false);
+  });
+
+  /**
+   * ⚠️ SCOPERTO MISURANDO LA GUARDIA, non prevedendolo: la `serie` toglie 11
+   * foto e non 3, e le altre OTTO erano già sbagliate in produzione **prima**
+   * della fusione di Andrea.
+   *
+   * Sono le cremonesi che COLOMBO scrive con lo SPAZIO (`LUND CREM SE12`) o
+   * senza movimento (`HEIDI CD32DK SENZA MOV.`): la loro prima parola era già
+   * LUND e HEIDI, quindi ricevevano la foto della maniglia da sempre, e nessun
+   * conteggio andava a zero. La fusione non ha creato il difetto: l'ha reso
+   * visibile portando qui anche i suoi fratelli scritti attaccati.
+   */
+  it("anche le cremonesi scritte con lo spazio, già sbagliate da prima", () => {
+    const m = abbinaFoto(
+      "COLOMBO",
+      [
+        art("0SE12-CM", "LUND CREM SE12 CROMAT"),
+        art("0SE12DK/SM-CR", "LUND SE12DK SENZA MOV. CROMO"),
+        art("0CD32DK/SM-OL", "HEIDI CD32DK SENZA MOV.OROPLUS"),
+      ],
+      foto,
+    );
+    expect(m.size).toBe(0);
+  });
+});
+
+describe("finituraDiFoto legge entrambe le grafie di COLOMBO", () => {
+  it("il codice, come prima", () => {
+    expect(finituraDiFoto("Fedra_1OL")).toBe("OL");
+    expect(finituraDiFoto("robot41_4NM_new")).toBe("NM");
+  });
+
+  // 268 file su 638: senza, l'archivio DUE sembrava avere una foto sola.
+  it("e ora anche le parole", () => {
+    expect(finituraDiFoto("due frontale capri blue")).toBe("C12");
+    expect(finituraDiFoto("ama cromo matte")).toBe("CM");
+  });
+
+  it("un codice che COLOMBO non pubblica resta illeggibile, non indovinato", () => {
+    // `OP` compare in 19 file e non è fra le 31: dedurre «Oroplus» sarebbe la
+    // classe di errore che ha fatto disattivare i moduli kit PVC e battente.
+    expect(finituraDiFoto("heidi_1OP")).toBeNull();
+    expect(finituraDiFoto("Flessa_5NK")).toBeNull();
   });
 });
