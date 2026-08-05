@@ -1,5 +1,10 @@
 import { browseLabel } from "./curatela";
-import { FINITURE_PER_CODICE, finituraDiCodice, finituraDiTesto } from "./finiture";
+import {
+  codiceSenzaFinitura,
+  FINITURE_PER_CODICE,
+  finituraDiCodice,
+  finituraDiTesto,
+} from "./finiture";
 
 /**
  * L'ARCHIVIO FOTOGRAFICO UFFICIALE COLOMBO, mappato al catalogo.
@@ -259,10 +264,19 @@ export function scattoDiProdotto(nome: string): boolean {
  * perché è la grafia più stretta.
  */
 export function finituraDiFoto(nome: string): string | null {
-  const m = /[ _-]\d(C\d\d|[A-Z]{2})(_new)?$/i.exec(nome);
+  const m = /[ _-]\d?(C\d\d|[A-Z]{2})(_new)?$/i.exec(nome);
   if (m) {
     const codice = m[1]!.toUpperCase();
-    if (FINITURE_PER_CODICE.has(codice)) return codice;
+    if (FINITURE_PER_CODICE.has(codice)) {
+      // ⚠️ Un BICOLORE ha due codici in coda, e con la cifra facoltativa quelli
+      // separati da un trattino entrerebbero: `963_4GL-GM` non è «GM», è
+      // GRAFITE/GRAFITE MAT. Il secondo codice si riconosce da ciò che precede
+      // il separatore. (Quelli attaccati — `milla1_1OLOM`, `Alba_2CRNM` — cadono
+      // già da soli, perché in coda ci sono quattro lettere e non due.)
+      const altro = /(C\d\d|[A-Z]{2})$/i.exec(nome.slice(0, m.index));
+      if (altro && FINITURE_PER_CODICE.has(altro[1]!.toUpperCase())) return null;
+      return codice;
+    }
   }
   return finituraDiTesto(nome);
 }
@@ -316,11 +330,15 @@ const senzaZeroIniziale = (codeNorm: string) => codeNorm.replace(/^0/, "");
 /** Sotto i cinque caratteri un nucleo comparirebbe in un nome per puro caso. */
 const MIN_NUCLEO = 5;
 
-/** Il nucleo del codice: senza lo 0 di testa e senza la coda di finitura. */
+/**
+ * Il nucleo del codice: senza lo 0 di testa e senza la coda di finitura.
+ *
+ * Il taglio della coda lo fa `codiceSenzaFinitura`, che sa se la finitura era
+ * separata dal trattino o attaccata: qui c'era `lastIndexOf("-")`, che su un
+ * codice senza trattino avrebbe tolto l'ultimo carattere.
+ */
 function nucleo(a: ArticoloDaAbbinare): string {
-  const fin = finituraDiCodice(a.code);
-  const senzaCoda = fin ? a.code.slice(0, a.code.lastIndexOf("-")) : a.code;
-  return senzaZeroIniziale(senzaCoda.replace(/[^A-Za-z0-9]/g, "").toUpperCase());
+  return senzaZeroIniziale(codiceSenzaFinitura(a.code).replace(/[^A-Za-z0-9]/g, "").toUpperCase());
 }
 
 /**

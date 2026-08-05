@@ -62,14 +62,45 @@ export const FINITURE_PER_CODICE: ReadonlyMap<string, Finitura> = new Map(
 
 /**
  * La finitura di un codice articolo, se la sua coda è una delle 31 pubblicate.
- * `null` quando la coda non c'è (237 codici del listino non hanno il trattino) o
- * non è ufficiale.
+ * `null` quando non lo è.
+ *
+ * ⚠️ Il trattino NON è obbligatorio, e prima lo era. **237 codici del listino
+ * non ce l'hanno**, e 126 di loro finiscono comunque con una delle 31:
+ * `0CC15FISSOC01` è «POMOLO ONE **WHITE**», `0AM32DKSMSXOL` è «MADI … **OROP.**».
+ * Leggendo solo la forma col trattino, quei 126 risultavano *senza finitura* —
+ * e chi non dichiara una finitura, per la regola della foto contesa, non può
+ * sbagliarla: `POMOLO ONE WHITE` teneva la foto del pomolo **rosso**, che è
+ * alla lettera la segnalazione da cui è nata questa sessione.
+ *
+ * Non è dedurre dal codice (§9): non si interpreta la struttura del codice, si
+ * confronta la sua coda con un elenco CHIUSO di 31 stringhe pubblicate da
+ * COLOMBO. Una coda che non è fra quelle resta `null` — `CR8` e `OL9`, che sono
+ * bicolori, non entrano.
  */
 export function finituraDiCodice(code: string): string | null {
   const i = code.lastIndexOf("-");
-  if (i < 0) return null;
-  const coda = code.slice(i + 1).toUpperCase();
+  if (i >= 0) {
+    const coda = code.slice(i + 1).toUpperCase();
+    if (FINITURE_PER_CODICE.has(coda)) return coda;
+    return null;
+  }
+  const m = /(C\d\d|[A-Z]{2})$/i.exec(code);
+  if (!m) return null;
+  const coda = m[1]!.toUpperCase();
   return FINITURE_PER_CODICE.has(coda) ? coda : null;
+}
+
+/**
+ * Il codice senza la sua coda di finitura. Serve a chi deve confrontare il
+ * NUCLEO del codice e non la variante di colore, e sta qui perché il taglio
+ * dipende da come `finituraDiCodice` l'ha riconosciuta: col trattino o senza.
+ * Tenerlo altrove significherebbe riscrivere quella scelta una seconda volta.
+ */
+export function codiceSenzaFinitura(code: string): string {
+  const fin = finituraDiCodice(code);
+  if (fin === null) return code;
+  const i = code.lastIndexOf("-");
+  return i >= 0 ? code.slice(0, i) : code.slice(0, code.length - fin.length);
 }
 
 export interface FinituraCount extends Finitura {

@@ -572,3 +572,47 @@ describe("la foto contesa resta solo a chi la dimostra sua", () => {
     expect(m.get("0CC31R-C09")).toBe(chiaveFoto("01_Due", "due frontale lemon yellow"));
   });
 });
+
+/**
+ * ⚠️ LA CIFRA PRIMA DELLE DUE LETTERE ERA OBBLIGATORIA, e non doveva esserlo.
+ *
+ * `Heidi_R_UB` dice «Umber Bronze» a chiunque lo legga, ma la regexp pretendeva
+ * la forma `_1OL`: sono **48 file su 638**, e non erano una coda — erano
+ * esattamente i file dei gruppi che la regola sulle contese mandava a zero
+ * (MANIGLIA INCASSO, ROSETTA, PLACCA, KIT, HEIDI).
+ *
+ * Trovato eseguendo il gate d'integrazione, non leggendo il codice: 14 gruppi
+ * andati a zero erano troppi per essere tutti ambiguità vera.
+ */
+describe("la finitura in coda, senza la cifra", () => {
+  it.each([
+    ["Heidi_R_UB", "UB"],
+    ["Peter_R45_UB", "UB"],
+    ["cd511CF_CR", "CR"],
+    ["id411_CM", "CM"],
+    ["cb111_OL", "OL"],
+    ["pb09_CR_new", "CR"],
+    ["Lara_DK_OM", "OM"],
+  ])("«%s» è %s", (nome, atteso) => {
+    expect(finituraDiFoto(nome)).toBe(atteso);
+  });
+
+  // Col trattino la coda di un bicolore sembrerebbe un codice solo: `963_4GL-GM`
+  // NON è «GM», è GRAFITE/GRAFITE MAT. Lo si riconosce da ciò che precede.
+  it.each(["963_4GL-GM", "963_3CR-CM"])("«%s» resta un bicolore", (nome) => {
+    expect(finituraDiFoto(nome)).toBeNull();
+  });
+
+  // E quelli attaccati cadono già da soli: in coda ci sono quattro lettere.
+  it.each(["milla1_1OLOM", "Alba_2CRNM", "trama 1_1CMCR"])(
+    "«%s» resta un bicolore anche attaccato",
+    (nome) => {
+      expect(finituraDiFoto(nome)).toBeNull();
+    },
+  );
+
+  it("una coda di due lettere che non è una finitura resta illeggibile", () => {
+    expect(finituraDiFoto("Heidi_DK_OP")).toBeNull(); // OP non è fra le 31
+    expect(finituraDiFoto("Flessa_5NK")).toBeNull();
+  });
+});

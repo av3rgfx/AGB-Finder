@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  codiceSenzaFinitura,
   contaFiniture,
   FINITURE,
   FINITURE_PER_CODICE,
@@ -142,4 +143,42 @@ describe("finituraDiTesto", () => {
       expect(finituraDiTesto(nome)).toBeNull();
     },
   );
+});
+
+/**
+ * ⚠️ IL TRATTINO NON È OBBLIGATORIO, e prima lo era.
+ *
+ * 237 codici del listino non ce l'hanno, e 126 di loro finiscono comunque con
+ * una delle 31. Il difetto non era estetico: chi non dichiara una finitura, per
+ * la regola della foto contesa, non può sbagliarla — quindi «POMOLO ONE WHITE»
+ * teneva la foto del pomolo ROSSO, cioè alla lettera la segnalazione da cui è
+ * nata questa sessione.
+ */
+describe("finituraDiCodice — la coda senza trattino", () => {
+  it.each([
+    ["0CC15FISSOC01", "C01"], // POMOLO ONE WHITE
+    ["0CC15FISSOC07", "C07"], // POMOLO ONE STRAWBERRY
+    ["0AM32DKSMSXOL", "OL"], //  MADI … SENZA MOV. OROP.
+    ["0AM32DKSMSXOM", "OM"], //  … OROM.
+    ["0BD12DKF/SMCM", "CM"], //  ELLE … BASSO SENZA MOV.
+    ["0CB52DKSMSXNI", "NI"], //  FLESSA … SX SENZA MOV.
+  ])("«%s» è %s", (code, atteso) => {
+    expect(finituraDiCodice(code)).toBe(atteso);
+  });
+
+  // I bicolori non sono fra le 31 e restano fuori, col trattino o senza.
+  it.each(["0CB22DK/SMCR8", "0CB22DK/SMOL9", "0CB26-CM5"])("«%s» non è una delle 31", (code) => {
+    expect(finituraDiCodice(code)).toBeNull();
+  });
+
+  it("una coda che non è una finitura resta null", () => {
+    expect(finituraDiCodice("XGRANO 5MA")).toBeNull();
+    expect(finituraDiCodice("0ID51RSB")).toBeNull();
+  });
+
+  it("il taglio della coda funziona in entrambe le forme", () => {
+    expect(codiceSenzaFinitura("0ID41R-CR")).toBe("0ID41R");
+    expect(codiceSenzaFinitura("0CC15FISSOC01")).toBe("0CC15FISSO");
+    expect(codiceSenzaFinitura("XKIT/PS")).toBe("XKIT/PS");
+  });
 });

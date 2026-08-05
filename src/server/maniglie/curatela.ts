@@ -299,13 +299,13 @@ export function resolveLabel(brand: string, tipo: string): string | null {
  */
 export function vociCuratela(brand: string): string[] {
   const c = curatelaDi(brand);
-  return [
-    ...Object.keys(c.fusioni),
-    ...c.escluse,
-    ...c.divise,
-    ...c.trasparenti,
-    ...c.accessori,
-  ].sort();
+  // ⚠️ `accessori` NON entra, e non è una dimenticanza: le altre tre tabelle
+  // elencano parole del FORNITORE che la curatela CORREGGE — nessuna deve
+  // restare a schermo, e ognuna deve ancora agganciare una riga. Gli accessori
+  // sono l'opposto: etichette GIUSTE che restano a schermo, classificate. Le
+  // due sentinelle che leggono questa funzione asseriscono l'esatto contrario
+  // di ciò che vale per loro. La loro sentinella è in `search.integration`.
+  return [...Object.keys(c.fusioni), ...c.escluse, ...c.divise, ...c.trasparenti].sort();
 }
 
 /**

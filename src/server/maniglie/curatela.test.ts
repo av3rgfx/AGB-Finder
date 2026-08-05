@@ -416,7 +416,11 @@ describe("etichetteAccessorio", () => {
     expect(etichetteAccessorio("HOPPE").size).toBe(0);
   });
 
-  test("la sentinella della curatela li cita", () => {
-    expect(vociCuratela("COLOMBO")).toContain("NOTTOLINO");
+  // Gli accessori NON stanno in : quella elenca le parole del
+  // fornitore da CORREGGERE, e le sue due sentinelle asseriscono che non
+  // compaiano a schermo. Un accessorio a schermo ci deve stare.
+  test("NON stanno in vociCuratela, che elenca le correzioni", () => {
+    expect(vociCuratela("COLOMBO")).not.toContain("NOTTOLINO");
+    expect(vociCuratela("COLOMBO")).toContain("COPPIA");
   });
 });
