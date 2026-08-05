@@ -189,6 +189,25 @@ export const FILE_MODELLO: Record<string, VoceArchivio> = {
 };
 
 /**
+ * Le etichette di sfoglio che COLOMBO fotografa come MODELLO: quelle a cui
+ * `ARCHIVI` o `FILE_MODELLO` assegnano un archivio.
+ *
+ * Misurate sul listino 02-26: **63 gruppi su 102**, e tutti e 63 hanno almeno
+ * una foto. Gli altri 39 sono TIPOLOGIE (BOCCHETTA raccoglie 22 serie diverse,
+ * MANIGLIONE 52): lì una foto sola sarebbe un modello a caso spacciato per la
+ * categoria, e la tessera di livello 1 non ne mostra nessuna.
+ *
+ * La distinzione NON è un nostro giudizio: è come il fornitore ha organizzato
+ * il suo archivio fotografico.
+ */
+export function etichetteModello(): ReadonlySet<string> {
+  const out = new Set<string>();
+  for (const v of Object.values(ARCHIVI)) if (v.etichetta) out.add(v.etichetta);
+  for (const v of Object.values(FILE_MODELLO)) if (v.etichetta) out.add(v.etichetta);
+  return out;
+}
+
+/**
  * La voce che vale per una foto: la regola del suo file se c'è, altrimenti
  * quella del suo archivio.
  */
@@ -299,6 +318,7 @@ function nucleo(a: ArticoloDaAbbinare): string {
  * dichiarata in `ARCHIVI`.
  */
 export function abbinaFoto(
+  brand: string,
   articoli: ArticoloDaAbbinare[],
   foto: FotoArchivio[],
 ): Map<string, string> {
@@ -330,7 +350,7 @@ export function abbinaFoto(
       }
     }
 
-    const etichetta = browseLabel(a.name);
+    const etichetta = browseLabel(brand, a.name);
     if (etichetta === null) continue;
     const zero = varianteZero(a.name);
     const serieDelCodice = senzaZeroIniziale(a.codeNorm);

@@ -14,14 +14,14 @@ import { StockDate } from "@/components/maniglie/stock-date";
 import {
   FiltriSfoglia,
   FiltroFinitura,
-  SenzaFamiglia,
-  SfogliaFamiglie,
   SfogliaGruppi,
+  SfogliaSerie,
   SoloPronta,
 } from "@/components/maniglie/sfoglia";
 import { formatPrice } from "@/lib/format";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { loadScroll, saveScroll } from "@/lib/archivio-scroll";
+import { leggiSerieAperte, scriviSerieAperte } from "@/lib/serie-aperte";
 
 /** Il listino COLOMBO ha 3.456 codici: si mostra una pagina, non l'archivio. */
 const PAGE_SIZE = 20;
@@ -36,7 +36,9 @@ export function ManiglieClient() {
   // serramenti). Niente stato nascosto: dove si è, è scritto nella barra.
   const committed = (searchParams.get("q") ?? "").trim();
   const tipo = (searchParams.get("tipo") ?? "").trim();
-  const famiglia = (searchParams.get("fam") ?? "").trim();
+  // Le tendine aperte: `?fam=CD73,CC113`. Un vecchio link a una sola famiglia
+  // è già un elenco valido di una voce sola, quindi non muore.
+  const aperte = leggiSerieAperte(searchParams.get("fam"));
   // Il filtro sta nell'URL come tutto il resto: si condivide, il tasto indietro
   // lo spegne, e nessuno stato nascosto decide cosa l'agente sta guardando.
   const soloPronta = searchParams.get("pronta") === "1";
@@ -85,35 +87,18 @@ export function ManiglieClient() {
     { enabled: !cercando && !tipo, staleTime: 5 * 60_000 },
   );
 
-  // Livello 2: le famiglie del gruppo. Non serve se si è già scesi a una.
-  const famiglie = api.article.browseFamilies.useQuery(
+  // Livello 2: le serie del gruppo, CON le loro righe. Una richiesta sola per
+  // tutto il gruppo: le tendine si aprono e si chiudono senza rete.
+  const serie = api.article.browseSerie.useQuery(
     { tipo, soloPronta, ...(finitura ? { finitura } : {}) },
-    { enabled: sfogliando && !famiglia, staleTime: 5 * 60_000 },
+    { enabled: sfogliando, staleTime: 5 * 60_000 },
   );
 
-  // Un gruppo senza famiglie non ha livello 2: si passa direttamente ai codici.
-  // 21 gruppi su 114 sono così (KIT, ROS.…), e mostrargli un livello vuoto
-  // sarebbe un passaggio che non divide nulla.
-  const senzaLivello2 = famiglie.data?.families.length === 0;
-
+  // La ricerca testuale è l'unico mestiere rimasto a `search`: lo sfoglio ha un
+  // lettore solo, o le stesse righe avrebbero due definizioni libere di divergere.
   const search = api.article.search.useQuery(
-    {
-      ...(cercando
-        ? { query: committed }
-        : {
-            tipo,
-            soloPronta,
-            ...(famiglia ? { famiglia } : {}),
-            ...(finitura ? { finitura } : {}),
-          }),
-      limit: PAGE_SIZE,
-      offset: (page - 1) * PAGE_SIZE,
-    },
-    {
-      enabled: cercando || (sfogliando && (Boolean(famiglia) || senzaLivello2)),
-      placeholderData: keepPreviousData,
-      staleTime: 5 * 60_000,
-    },
+    { query: committed, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE },
+    { enabled: cercando, placeholderData: keepPreviousData, staleTime: 5 * 60_000 },
   );
 
   // La data dell'ultimo import, indipendente da ricerca e sfoglio: la pagina la
@@ -134,7 +119,6 @@ export function ManiglieClient() {
 
   const hits = search.data?.hits ?? [];
   const total = search.data?.total ?? 0;
-  const mostraCodici = cercando || (sfogliando && (Boolean(famiglia) || senzaLivello2));
 
   const setPage = useCallback(
     (p: number) => {
@@ -180,9 +164,58 @@ export function ManiglieClient() {
     [pathname, router, searchParams],
   );
 
+  /**
+   * LE TENDINE APERTE: stato locale, e l'URL scritto con `history.replaceState`.
+   *
+   * Due cose imparate in browser, nessuna delle quali si vedeva dai test.
+   *
+   * (1) Rendere `open` direttamente da `?fam=` non funziona: fra il momento in
+   * cui si scrive l'URL e il render successivo React riporta a CHIUSA la
+   * tendina appena aperta, e quel reset emette un altro `toggle` — con
+   * `open=false` — che la toglie dall'elenco.
+   *
+   * (2) `router.replace` fa un giro sul server: l'URL resta indietro di un
+   * toggle, e aprendone due di fila la seconda scrittura si perde nella corsa
+   * (misurato: due tendine aperte a schermo, `?fam=` con una sola, e la seconda
+   * sparita al primo ricaricamento). Ma nulla, sul server, dipende da `?fam=`:
+   * è memoria per il ricaricamento e per il link che si manda a un collega.
+   * `history.replaceState` la scrive subito, senza rifetch e senza render.
+   */
+  const [aperteLocali, setAperteLocali] = useState<string[]>(aperte);
+  const aperteRef = useRef(aperteLocali);
+
+  // Cambiando gruppo si riparte da ciò che dice l'URL di ARRIVO: un link
+  // `?tipo=X&fam=Y` apre Y, un link al solo gruppo non apre niente.
+  // SOLO su `tipo`: con `aperte` fra le dipendenze l'effetto si riattiverebbe
+  // a ogni nostra scrittura e riporterebbe indietro lo stato.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    aperteRef.current = aperte;
+    setAperteLocali(aperte);
+  }, [tipo]);
+
+  const toggleSerie = useCallback((nome: string, aperta: boolean) => {
+    const correnti = aperteRef.current;
+    // Eco della riconciliazione di React, non un gesto dell'agente: si ignora.
+    if (aperta === correnti.includes(nome)) return;
+    const prossime = aperta ? [...correnti, nome] : correnti.filter((x) => x !== nome);
+    aperteRef.current = prossime;
+    setAperteLocali(prossime);
+
+    // `fam` si riscrive per intero, quindi la sua eventuale staleness in
+    // `searchParams` non conta; gli altri parametri non cambiano aprendo una
+    // tendina.
+    const next = new URLSearchParams(searchParams.toString());
+    const v = scriviSerieAperte(prossime);
+    if (v) next.set("fam", v);
+    else next.delete("fam");
+    const qs = next.toString();
+    window.history.replaceState(null, "", qs ? `${pathname}?${qs}` : pathname);
+  }, [pathname, searchParams]);
+
   useScrollRestore(
-    `${committed}|${tipo}|${famiglia}|${page}|${soloPronta}|${finitura}`,
-    Boolean(search.data ?? gruppi.data),
+    `${committed}|${tipo}|${aperteLocali.join(",")}|${page}|${soloPronta}|${finitura}`,
+    Boolean(search.data ?? gruppi.data ?? serie.data),
   );
 
   // Una fonte sola per «di quando è questo dato»: i risultati quando ci sono
@@ -241,8 +274,10 @@ export function ManiglieClient() {
 
       {sfogliando ? (
         <FiltriSfoglia
-          tipo={tipo}
-          famiglia={famiglia}
+          // L'etichetta RISOLTA dal server: un `?tipo=MANIG.` condiviso prima
+          // della fusione mostrerebbe altrimenti un nome che non è quello del
+          // gruppo che si ha davanti.
+          tipo={serie.data?.tipo ?? tipo}
           soloPronta={soloPronta}
           finitura={finituraScelta}
         />
@@ -250,7 +285,7 @@ export function ManiglieClient() {
 
       <section
         aria-label={sfogliando ? "Sfoglia" : "Risultati"}
-        aria-busy={search.isFetching || gruppi.isFetching || famiglie.isFetching}
+        aria-busy={search.isFetching || gruppi.isFetching || serie.isFetching}
         className="flex flex-col gap-3"
       >
         {!cercando && !tipo ? (
@@ -265,70 +300,57 @@ export function ManiglieClient() {
               finitura={finituraScelta}
             />
           )
-        ) : sfogliando && !famiglia && famiglie.isPending ? (
+        ) : sfogliando ? (
+          serie.isPending ? (
+            <SkeletonList />
+          ) : serie.isError ? (
+            <Errore titolo="Serie non caricate" />
+          ) : serie.data && serie.data.total === 0 ? (
+            <EmptyState
+              title="Nessun codice in questo gruppo"
+              detail={<>Torna indietro e scegli un altro gruppo.</>}
+            />
+          ) : (
+            <>
+              <p className="text-sm text-ink-subtle" aria-live="polite">
+                {serie.data?.total === 1 ? "1 articolo" : `${serie.data?.total ?? 0} articoli`}
+              </p>
+              <SfogliaSerie
+                serie={serie.data?.serie ?? []}
+                aperte={aperteLocali}
+                onToggle={toggleSerie}
+                senzaSerie={serie.data?.senzaSerie ?? []}
+                renderRiga={(articolo) => <ArticoloRow key={articolo.id} articolo={articolo} />}
+              />
+            </>
+          )
+        ) : search.isPending ? (
           <SkeletonList />
-        ) : sfogliando && famiglie.isError ? (
-          <Errore titolo="Famiglie non caricate" />
+        ) : search.isError ? (
+          <Errore titolo="Ricerca non riuscita" />
+        ) : hits.length === 0 ? (
+          <EmptyState
+            title={`Nessun articolo per «${committed}»`}
+            detail={
+              <>
+                Controlla il codice, oppure cerca per nome. I separatori non contano:{" "}
+                <code className="font-mono text-ink-muted">0CD41RCM</code> e{" "}
+                <code className="font-mono text-ink-muted">0CD41R-CM</code> trovano lo stesso
+                articolo.
+              </>
+            }
+          />
         ) : (
           <>
-            {sfogliando && !famiglia && famiglie.data && famiglie.data.families.length > 0 ? (
-              <>
-                <SfogliaFamiglie
-                  tipo={tipo}
-                  families={famiglie.data.families}
-                  soloPronta={soloPronta}
-                  finitura={finituraScelta}
-                />
-                {famiglie.data.loose.length > 0 ? (
-                  <>
-                    <SenzaFamiglia count={famiglie.data.loose.length} />
-                    <ul className="list-none overflow-hidden rounded-md border border-line">
-                      {famiglie.data.loose.map((articolo) => (
-                        <ArticoloRow key={articolo.id} articolo={articolo} />
-                      ))}
-                    </ul>
-                  </>
-                ) : null}
-              </>
-            ) : null}
-
-            {mostraCodici ? (
-              search.isPending ? (
-                <SkeletonList />
-              ) : search.isError ? (
-                <Errore titolo="Ricerca non riuscita" />
-              ) : hits.length === 0 ? (
-                <EmptyState
-                  title={
-                    cercando ? `Nessun articolo per «${committed}»` : "Nessun codice in questo gruppo"
-                  }
-                  detail={
-                    cercando ? (
-                      <>
-                        Controlla il codice, oppure cerca per nome. I separatori non contano:{" "}
-                        <code className="font-mono text-ink-muted">0CD41RCM</code> e{" "}
-                        <code className="font-mono text-ink-muted">0CD41R-CM</code> trovano lo stesso
-                        articolo.
-                      </>
-                    ) : (
-                      <>Torna indietro e scegli un altro gruppo.</>
-                    )
-                  }
-                />
-              ) : (
-                <>
-                  <p className="text-sm text-ink-subtle" aria-live="polite">
-                    {total === 1 ? "1 articolo" : `${total} articoli`}
-                  </p>
-                  <ul className="list-none overflow-hidden rounded-md border border-line">
-                    {hits.map((articolo) => (
-                      <ArticoloRow key={articolo.id} articolo={articolo} />
-                    ))}
-                  </ul>
-                  <Pagination page={page} total={total} onChange={setPage} />
-                </>
-              )
-            ) : null}
+            <p className="text-sm text-ink-subtle" aria-live="polite">
+              {total === 1 ? "1 articolo" : `${total} articoli`}
+            </p>
+            <ul className="list-none overflow-hidden rounded-md border border-line">
+              {hits.map((articolo) => (
+                <ArticoloRow key={articolo.id} articolo={articolo} />
+              ))}
+            </ul>
+            <Pagination page={page} total={total} onChange={setPage} />
           </>
         )}
       </section>

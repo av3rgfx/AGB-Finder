@@ -156,6 +156,7 @@ export async function browseFirstWords(
     GROUP BY 1, 2
   `;
   return foldBrowseGroups(
+    brand,
     rows.map((r) => ({ first: r.w1, second: r.w2, count: Number(r.n) })),
   );
 }
@@ -178,7 +179,7 @@ export async function articleIdsByFirstWord(
   // dell'etichetta (`ROSETTA` ← `ROS.` + `ROSETTA`) e si RESTRINGE dopo con la
   // stessa regola del livello 1. Il secondo passaggio non è ridondante: le due
   // metà di una divisione condividono la sorgente, e senza tornerebbero unite.
-  const words = sourceFirstWords(label);
+  const words = sourceFirstWords(brand, label);
   if (words.length === 0) return [];
 
   const rows = await db.$queryRaw<{ id: string; code: string; codeNorm: string; name: string }[]>`
@@ -189,5 +190,5 @@ export async function articleIdsByFirstWord(
       ${onlyIds ? Prisma.sql`AND a.id IN (${Prisma.join(onlyIds)})` : Prisma.empty}
     ORDER BY a.code ASC
   `;
-  return rows.filter((r) => browseLabel(r.name) === label);
+  return rows.filter((r) => browseLabel(brand, r.name) === label);
 }

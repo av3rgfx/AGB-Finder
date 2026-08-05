@@ -3,7 +3,8 @@ import { Prisma, PrismaClient } from "@prisma/client";
 import { seedManiglie } from "../../../prisma/seed-maniglie";
 import { searchArticleIds, browseFirstWords, articleIdsByFirstWord } from "./search";
 import { firstWord, secondToken, SQL_FIRST_WORD, SQL_SECOND_WORD } from "./taxonomy";
-import { browseLabel } from "./curatela";
+import { browseLabel, vociCuratela } from "./curatela";
+import { serieDelGruppo, splitGroup, type BrowseRow } from "./browse";
 import {
   currentStockImport,
   availableArticleIds,
@@ -262,7 +263,7 @@ describe.runIf(Boolean(url))("sfoglio — il GROUP BY SQL e la funzione TypeScri
     });
     const ts = new Map<string, number>();
     for (const r of rows) {
-      const w = browseLabel(r.name);
+      const w = browseLabel("COLOMBO", r.name);
       if (w === null) continue;
       ts.set(w, (ts.get(w) ?? 0) + 1);
     }
@@ -312,21 +313,35 @@ describe.runIf(Boolean(url))("sfoglio — il GROUP BY SQL e la funzione TypeScri
    */
   it("le etichette doppie del fornitore non compaiono più: sono fuse", async () => {
     const words = (await browseFirstWords(db, "COLOMBO")).map((g) => g.word);
-    for (const storta of [
-      "ROS.",
-      "BOCCEHTTA",
-      "NOTTOLIN",
-      "KITPORTE",
-      "DUMMY/C",
-      "MOV.GRATZ",
-      "MOV.MARTELLINA",
-      "ROBOCINQUQ",
-      "ROBOTE",
-    ]) {
-      expect(words).not.toContain(storta);
+    // La lista era scritta a mano e non verificava di essere completa: ora si
+    // deriva dalla curatela, quindi una fusione nuova è coperta senza toccare
+    // il test. Le DIVISE si saltano: la parola base resta un gruppo vero.
+    for (const storta of vociCuratela("COLOMBO")) {
+      if (storta === "ROBOCINQUE" || storta === "ROBOQUATTRO") continue;
+      expect(words, `etichetta curata ancora a schermo: «${storta}»`).not.toContain(storta);
     }
     expect(words).toContain("ROSETTA");
     expect(words).toContain("BOCCHETTA");
+    expect(words).toContain("MANIGLIA INCASSO");
+  });
+
+  /**
+   * Il test qui sopra verifica solo che le etichette storte NON compaiano:
+   * passerebbe identico il giorno in cui COLOMBO corregge `BOCCEHTTA` e la voce
+   * della curatela diventa morta. Una voce morta non si vede a schermo, perché
+   * nessun conteggio va a zero — è la stessa forma di difetto che questo
+   * progetto ha già pagato più volte. Misurato il 2026-08-05 sul listino vero:
+   * 16 voci su 16 agganciano ancora, quindi il gate nasce verde.
+   */
+  it("ogni voce della curatela aggancia ancora una riga del listino", async () => {
+    const rows = await db.article.findMany({
+      where: { brand: "COLOMBO" },
+      select: { name: true },
+    });
+    const prime = new Set(rows.map((r) => firstWord(r.name)));
+    for (const voce of vociCuratela("COLOMBO")) {
+      expect(prime.has(voce), `voce morta nella curatela: «${voce}»`).toBe(true);
+    }
   });
 
   it("le etichette escluse da Andrea non si sfogliano", async () => {
@@ -355,7 +370,7 @@ describe.runIf(Boolean(url))("sfoglio — il GROUP BY SQL e la funzione TypeScri
       where: { brand: "COLOMBO" },
       select: { name: true },
     });
-    const esclusi = rows.filter((r) => browseLabel(r.name) === null).length;
+    const esclusi = rows.filter((r) => browseLabel("COLOMBO", r.name) === null).length;
     expect(groups.reduce((s, g) => s + g.count, 0) + esclusi).toBe(rows.length);
     expect(esclusi).toBeGreaterThan(0);
   });
@@ -401,7 +416,7 @@ describe.runIf(Boolean(url))("sfoglio — il GROUP BY SQL e la funzione TypeScri
       where: { id: { in: hits.map((h) => h.id) } },
       select: { name: true },
     });
-    const viti = rows.filter((r) => browseLabel(r.name) === null);
+    const viti = rows.filter((r) => browseLabel("COLOMBO", r.name) === null);
     expect(viti.length).toBeGreaterThan(0);
   });
 });
@@ -447,7 +462,7 @@ describe.runIf(Boolean(url))("sfoglio — il filtro «solo pronta consegna»", (
       where: { id: { in: [...new Set(pronti)] } },
       select: { name: true },
     });
-    const sfogliabili = prontiRows.filter((r) => browseLabel(r.name) !== null);
+    const sfogliabili = prontiRows.filter((r) => browseLabel("COLOMBO", r.name) !== null);
     expect(soloPronti.reduce((n, g) => n + g.count, 0)).toBe(sfogliabili.length);
     // E i due numeri devono DAVVERO differire, altrimenti l'asserzione sopra
     // passerebbe anche se l'esclusione non funzionasse.
@@ -459,13 +474,17 @@ describe.runIf(Boolean(url))("sfoglio — il filtro «solo pronta consegna»", (
     // `undefined`, che significa «non filtrare». Confonderli mostrerebbe
     // l'intero catalogo a chi ha chiesto solo ciò che è pronto.
     expect(await browseFirstWords(db, "COLOMBO", [])).toEqual([]);
-    expect(await articleIdsByFirstWord(db, "COLOMBO", "MANIGLIA", [])).toEqual([]);
+    expect(await articleIdsByFirstWord(db, "COLOMBO", "MANIGLIA INCASSO", [])).toEqual([]);
   });
 
   it("dentro un gruppo restituisce solo le righe pronte", async () => {
+    // Il gruppo si chiama «MANIGLIA INCASSO» dal 2026-08-05: `MANIGLIA` da
+    // sola ora non aggancia nulla, perché il rifiltro con `browseLabel` la
+    // riporta all'etichetta fusa. È il comportamento giusto, ed è la ragione
+    // per cui il router risolve il `?tipo=` che arriva dall'URL.
     const imp = await currentStockImport(db, "COLOMBO");
     const pronti = new Set(await allAvailableArticleIds(db, imp!.id));
-    const righe = await articleIdsByFirstWord(db, "COLOMBO", "MANIGLIA", [...pronti]);
+    const righe = await articleIdsByFirstWord(db, "COLOMBO", "MANIGLIA INCASSO", [...pronti]);
     expect(righe.length).toBeGreaterThan(0);
     for (const r of righe) expect(pronti.has(r.id)).toBe(true);
   });
@@ -476,5 +495,105 @@ describe.runIf(Boolean(url))("sfoglio — il filtro «solo pronta consegna»", (
     const righe = await db.stockLine.count({ where: { importId: imp!.id } });
     const orfani = await db.stockLine.count({ where: { importId: imp!.id, articleId: null } });
     expect(pronti.length).toBe(righe - orfani);
+  });
+});
+
+/**
+ * LE SERIE, sul catalogo vero e non su venti righe finte. I numeri sono quelli
+ * misurati il 2026-08-05 sul listino `LP 02-26`: se il listino nuovo li sposta,
+ * questo test lo dice invece di lasciarlo scoprire a schermo.
+ */
+describe.runIf(Boolean(url))("sfoglio — le serie del livello 2", () => {
+  let db: PrismaClient;
+
+  beforeAll(async () => {
+    db = new PrismaClient({ datasourceUrl: url });
+  });
+
+  afterAll(async () => {
+    await db.$disconnect();
+  });
+
+  async function perGruppo(): Promise<Map<string, BrowseRow[]>> {
+    const rows = await db.article.findMany({
+      where: { brand: "COLOMBO" },
+      select: { id: true, code: true, codeNorm: true, name: true },
+    });
+    const out = new Map<string, BrowseRow[]>();
+    for (const r of rows) {
+      const l = browseLabel("COLOMBO", r.name);
+      if (l === null) continue;
+      if (!out.has(l)) out.set(l, []);
+      out.get(l)!.push(r);
+    }
+    return out;
+  }
+
+  it("le tre regole coprono il 98% dei codici sfogliabili", async () => {
+    const gruppi = await perGruppo();
+    let sfogliabili = 0;
+    let conSerie = 0;
+    for (const [g, rs] of gruppi) {
+      sfogliabili += rs.length;
+      conSerie += serieDelGruppo(rs, g).size;
+    }
+    expect(sfogliabili).toBeGreaterThan(3_300);
+    expect(conSerie / sfogliabili).toBeGreaterThan(0.98);
+  });
+
+  it("nessun articolo cambia serie quando si accende un filtro", async () => {
+    // Il difetto che ha riscritto il contratto di `splitGroup`: classificando
+    // DOPO il filtro, 27 articoli finivano in una serie diversa e un URL
+    // condiviso apriva una tendina che non esisteva più.
+    const gruppi = await perGruppo();
+    for (const [g, rs] of gruppi) {
+      const intera = serieDelGruppo(rs, g);
+      const visibili = new Set(rs.filter((_, i) => i % 5 === 0).map((r) => r.id));
+      const { serie, senzaSerie } = splitGroup(rs, g, visibili);
+      for (const s of serie) {
+        for (const r of s.rows) {
+          expect(s.serie, `${r.code} in ${g}`).toBe(intera.get(r.id));
+        }
+      }
+      for (const r of senzaSerie) {
+        expect(intera.get(r.id), `${r.code} in ${g}`).toBeUndefined();
+      }
+    }
+  });
+
+  it("il caso portato dal campo: le due maniglie ROBOQUATTRO S hanno la loro serie", async () => {
+    const gruppi = await perGruppo();
+    const rs = gruppi.get("ROBOQUATTRO S")!;
+    const m = serieDelGruppo(rs, "ROBOQUATTRO S");
+    const perCodice = new Map(rs.map((r) => [r.code, m.get(r.id) ?? null]));
+    expect(perCodice.get("0ID51RSMY-CM")).toBe("ID51R");
+    expect(perCodice.get("0ID51RSMY-CR")).toBe("ID51R");
+    expect(perCodice.get("0ID51RSB-NM")).toBe("ID51RSB");
+  });
+
+  it("ROSETTA non ha più ottanta codici fuori da ogni serie", async () => {
+    const gruppi = await perGruppo();
+    const rs = gruppi.get("ROSETTA")!;
+    const { senzaSerie } = splitGroup(rs, "ROSETTA");
+    expect(rs.length).toBeGreaterThan(100);
+    expect(senzaSerie.length).toBe(0);
+  });
+
+  it("una serie da un codice solo non nasce: la soglia dei due regge sul vero", async () => {
+    const gruppi = await perGruppo();
+    let serie = 0;
+    let singole = 0;
+    for (const [g, rs] of gruppi) {
+      const conta = new Map<string, number>();
+      for (const s of serieDelGruppo(rs, g).values()) conta.set(s, (conta.get(s) ?? 0) + 1);
+      serie += conta.size;
+      singole += [...conta.values()].filter((n) => n === 1).length;
+    }
+    // Le serie da un codice solo esistono ancora, ma vengono TUTTE dal primo
+    // gradino (il token della descrizione): il terzo non ne crea mai.
+    // Misurato: 43 su 591, l'8% scarso, meno di quante ne aveva la regola
+    // vecchia da sola.
+    expect(serie).toBeGreaterThan(500);
+    expect(singole / serie).toBeLessThan(0.1);
   });
 });

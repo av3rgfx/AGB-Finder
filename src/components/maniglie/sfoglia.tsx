@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
-import { ChevronDown, ChevronRight, Palette, X } from "lucide-react";
+import { ChevronDown, Package, Palette, X } from "lucide-react";
+import type { ArticleSummary } from "@/server/api/routers/article";
 
 /**
  * SFOGLIO — il catalogo COLOMBO senza digitare nulla.
@@ -23,11 +24,18 @@ import { ChevronDown, ChevronRight, Palette, X } from "lucide-react";
 export interface Gruppo {
   word: string;
   count: number;
+  /** Il gruppo È un modello: COLOMBO gli dedica un archivio fotografico. */
+  isModello: boolean;
+  /** Percorso della foto di anteprima, o `null`. */
+  preview: string | null;
 }
 
-export interface Famiglia {
-  family: string;
+export interface Serie {
+  serie: string;
   count: number;
+  preview: string | null;
+  /** Le righe della serie, già in pagina: la tendina si apre senza rete. */
+  rows: ArticleSummary[];
 }
 
 /**
@@ -66,50 +74,12 @@ function insiemeContato(soloPronta: boolean, finitura: FinituraScelta): string {
 }
 
 /**
- * Riga di navigazione: etichetta, quanti codici contiene, e dove porta.
- * 44px pieni di bersaglio, larghi quanto la riga: si tocca col pollice senza
- * mirare.
- */
-function RigaSfoglia({
-  href,
-  label,
-  count,
-  mono,
-}: {
-  href: string;
-  label: string;
-  count: number;
-  mono?: boolean;
-}) {
-  return (
-    <li className="border-b border-line last:border-b-0">
-      <Link
-        href={href}
-        className="flex min-h-[44px] items-center gap-3 bg-surface px-3 py-2.5 transition-colors duration-150 hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand/40 sm:px-4"
-      >
-        <span
-          className={
-            mono
-              ? "min-w-0 flex-1 truncate font-mono text-sm text-ink"
-              : "min-w-0 flex-1 truncate text-sm font-medium text-ink"
-          }
-        >
-          {label}
-        </span>
-        <span className="shrink-0 text-xs tabular-nums text-ink-subtle">{conteggio(count)}</span>
-        <ChevronRight className="size-4 shrink-0 text-ink-subtle" aria-hidden />
-      </Link>
-    </li>
-  );
-}
-
-/**
- * Livello 1: i gruppi, come CHIP in griglia fluida e non come righe a tutta
- * larghezza. A 375px ne entrano due per riga: 114 gruppi passano da ~14
- * schermate a ~5, senza tagliarne nessuno — e tagliarne una parte avrebbe
- * richiesto una soglia decisa da noi («i primi 20»), che è esattamente la classe
- * di difetto chiusa otto volte. Misurato: i primi 19 gruppi sono già il 55% del
- * catalogo, quindi un taglio nasconderebbe il 45%, non una coda.
+ * Livello 1: i gruppi, in griglia fluida e non come righe a tutta larghezza.
+ * A 375px ne entrano due per riga, e nessuno viene tagliato — tagliarne una
+ * parte avrebbe richiesto una soglia decisa da noi («i primi 20»), che è
+ * esattamente la classe di difetto chiusa otto volte. Misurato: i primi 19
+ * gruppi sono già il 55% del catalogo, quindi un taglio nasconderebbe il 45%,
+ * non una coda.
  *
  * In ordine ALFABETICO. Per numerosità il numero grosso non significa «conta di
  * più» ma «ha più finiture» (MANIGLIONE: 338 codici, 160 descrizioni distinte),
@@ -156,8 +126,9 @@ export function SfogliaGruppi({
             che questo reparto ha già corretto una volta (una sezione chiamata
             «Disponibilità» che nominava un attributo falso 95 volte su 100). */}
         <p className="text-xs text-ink-subtle">
-          {groups.length} gruppi in ordine alfabetico, come li nomina COLOMBO. Il numero è quanti
-          codici{insiemeContato(soloPronta, finitura)}.
+          {groups.length} gruppi in ordine alfabetico. Il numero è quanti codici
+          {insiemeContato(soloPronta, finitura)}, non quanti modelli: lo stesso pezzo compare una
+          volta per finitura.
         </p>
         {/* Ciò che il programma ha deciso e che senza questa riga non direbbe:
             cinque categorie non si sfogliano affatto. Chi cercasse una vite qui
@@ -188,9 +159,9 @@ export function SfogliaGruppi({
             : "Nessun articolo in pronta consegna."}
         </p>
       ) : (
-        <ul className="grid list-none grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+        <ul className="grid list-none grid-cols-2 items-start gap-2 sm:grid-cols-3 lg:grid-cols-4">
           {visibili.map((g) => (
-            <ChipGruppo key={g.word} gruppo={g} coda={codaFiltri(soloPronta, finitura)} />
+            <TesseraGruppo key={g.word} gruppo={g} coda={codaFiltri(soloPronta, finitura)} />
           ))}
         </ul>
       )}
@@ -227,21 +198,41 @@ export function SoloPronta({ value, onChange }: { value: boolean; onChange: (v: 
 }
 
 /**
- * Il chip di un gruppo. L'etichetta va a capo invece di troncarsi: fra i 114
- * gruppi veri ci sono `ROBOQUATTRO`, `FERMAPORTA`, `BLOCCAPORTA` e
- * `MANIG.LC413RS`, e a 375px in due colonne non ci stanno su una riga sola.
- * Troncare qui significherebbe rendere illeggibile proprio l'unica cosa che il
- * chip contiene.
+ * La tessera di un gruppo, in DUE forme, e la differenza non è estetica.
+ *
+ * **Modello** (63 gruppi su 102): foto grande, nome, conteggio. La foto è quella
+ * di un suo articolo, e dentro un gruppo-modello tutti gli articoli sono lo
+ * stesso modello in finiture diverse — quindi ritrae il gruppo, non un suo
+ * membro a caso. Quali gruppi siano un modello NON è un nostro giudizio: è la
+ * struttura dell'archivio fotografico ufficiale di COLOMBO (`ARCHIVI`).
+ *
+ * **Tipologia** (39): solo testo, nome più grande. NESSUNA area immagine: una
+ * tipologia raccoglie modelli diversi (BOCCHETTA ne ha 22), e una foto sola
+ * sarebbe un modello spacciato per la categoria. Lasciare il riquadro vuoto
+ * sarebbe peggio che non averlo: in una griglia un buco si legge come immagine
+ * rotta, mentre una tessera di testo si legge come una tessera di testo.
+ *
+ * L'etichetta va a capo invece di troncarsi: fra i gruppi veri ci sono
+ * `ROBOQUATTRO`, `FERMAPORTA`, `MANIGLIA INCASSO`, e a 375px in due colonne non
+ * ci stanno su una riga sola. Troncare renderebbe illeggibile proprio l'unica
+ * cosa che la tessera contiene.
  */
-function ChipGruppo({ gruppo, coda }: { gruppo: Gruppo; coda: string }) {
+function TesseraGruppo({ gruppo, coda }: { gruppo: Gruppo; coda: string }) {
   return (
     <li>
       <Link
         href={`/maniglie?tipo=${encodeURIComponent(gruppo.word)}${coda ? `&${coda}` : ""}`}
         aria-label={`${gruppo.word}, ${conteggio(gruppo.count)}`}
-        className="flex h-full min-h-[56px] flex-col justify-center gap-0.5 rounded-md border border-line bg-surface px-3 py-2 transition-colors duration-150 hover:border-line-strong hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+        className="flex h-full flex-col gap-1 rounded-md border border-line bg-surface p-2 transition-colors duration-150 hover:border-line-strong hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
       >
-        <span className="break-words text-sm font-medium leading-tight text-ink">
+        {gruppo.isModello ? <FotoGruppo url={gruppo.preview} /> : null}
+        <span
+          className={
+            gruppo.isModello
+              ? "break-words text-sm font-medium leading-tight text-ink"
+              : "flex min-h-[40px] flex-1 items-center break-words text-base font-semibold leading-tight text-ink"
+          }
+        >
           {gruppo.word}
         </span>
         <span aria-hidden className="text-xs tabular-nums text-ink-subtle">
@@ -252,51 +243,161 @@ function ChipGruppo({ gruppo, coda }: { gruppo: Gruppo; coda: string }) {
   );
 }
 
-/** Livello 2: le famiglie di un gruppo. */
-export function SfogliaFamiglie({
-  tipo,
-  families,
-  soloPronta,
-  finitura,
-}: {
-  tipo: string;
-  families: Famiglia[];
-  soloPronta: boolean;
-  finitura: FinituraScelta;
-}) {
-  const coda = codaFiltri(soloPronta, finitura);
+/**
+ * La foto di un gruppo-modello. Tutti e 63 ne hanno una (misurato), ma il
+ * segnaposto resta: un listino nuovo può portare un modello prima che
+ * l'archivio fotografico lo segua, e allora la tessera deve reggere.
+ *
+ * `onError` non è prudenza teorica: la foto arriva da una route che risponde
+ * 404 quando il file non c'è su Blob, e senza questo il browser disegnerebbe
+ * la sua icona di immagine rotta — che in una griglia si legge come «il
+ * programma è guasto». È lo stesso patto della miniatura nelle righe articolo.
+ */
+function FotoGruppo({ url }: { url: string | null }) {
+  const [fallita, setFallita] = useState(false);
+  if (!url || fallita) {
+    return (
+      <span
+        aria-hidden
+        className="grid aspect-square w-full place-items-center rounded bg-surface-sunken"
+      >
+        <Package className="size-6 text-ink-subtle" />
+      </span>
+    );
+  }
   return (
-    <ul className="list-none overflow-hidden rounded-md border border-line">
-      {families.map((f) => (
-        <RigaSfoglia
-          key={f.family}
-          href={`/maniglie?tipo=${encodeURIComponent(tipo)}&fam=${encodeURIComponent(f.family)}${coda ? `&${coda}` : ""}`}
-          label={f.family}
-          count={f.count}
-          mono
-        />
-      ))}
-    </ul>
+    // eslint-disable-next-line @next/next/no-img-element -- sorgente dinamica dietro auth, non da ottimizzare
+    <img
+      src={url}
+      alt=""
+      loading="lazy"
+      onError={() => setFallita(true)}
+      className="aspect-square w-full rounded bg-white object-contain"
+    />
   );
 }
 
 /**
- * Intestazione dei codici che una famiglia non ce l'hanno.
+ * Livello 2: le SERIE del gruppo, a TENDINA, più d'una aperta insieme.
  *
- * Non è una categoria e non deve sembrarlo: su 114 gruppi veri settanta hanno
- * copertura PARZIALE (BOCCHETTA 250 su 288), e questi codici restano sotto le
- * famiglie come righe articolo. Una voce «Altro» darebbe un nome di categoria a
- * ciò che una categoria non ha — la classe di difetto che il progetto ha chiuso
- * otto volte. Qui si constata l'assenza del dato, e la si constata a parole.
+ * `<details>`/`<summary>` NATIVO, come il filtro colori: dà tastiera,
+ * `aria-expanded` e la ricerca del browser (che apre da sé la tendina giusta)
+ * senza scriverli. E ha un effetto che una disclosure a mano non avrebbe: una
+ * tendina chiusa tiene le sue righe nel DOM con `display:none`, quindi il
+ * browser non ne scarica le foto. Il costo di rete è quello che si apre, non
+ * quello che si manda.
+ *
+ * Le righe di una serie aperta stanno su fondo `surface-sunken` per mostrare
+ * che sono dentro qualcosa. Nessun bordo laterale colorato (vietato dal
+ * sistema) e nessun rientro: a 375px lo spazio orizzontale non c'è.
+ *
+ * Nessuna animazione di altezza: si muove solo il chevron.
  */
-export function SenzaFamiglia({ count }: { count: number }) {
+export function SfogliaSerie({
+  serie,
+  aperte,
+  onToggle,
+  senzaSerie,
+  renderRiga,
+}: {
+  serie: Serie[];
+  aperte: string[];
+  onToggle: (serie: string, aperta: boolean) => void;
+  senzaSerie: ArticleSummary[];
+  renderRiga: (a: ArticleSummary) => ReactNode;
+}) {
   return (
-    <div className="flex flex-col gap-0.5 pt-1">
-      <h3 className="text-sm font-semibold text-ink">Senza famiglia</h3>
-      <p className="text-xs text-ink-subtle">
-        {conteggio(count)} che il listino non lega a una famiglia
-      </p>
+    <div className="flex flex-col gap-3">
+      {serie.length > 0 ? (
+        <ul className="list-none overflow-hidden rounded-md border border-line">
+          {serie.map((s) => {
+            const aperta = aperte.includes(s.serie);
+            return (
+              <li key={s.serie} className="border-b border-line last:border-b-0">
+                <details
+                  open={aperta}
+                  onToggle={(e) => onToggle(s.serie, (e.currentTarget as HTMLDetailsElement).open)}
+                >
+                  <summary className="flex min-h-[56px] cursor-pointer list-none items-center gap-3 bg-surface px-3 py-2 transition-colors duration-150 hover:bg-surface-sunken sm:px-4">
+                    <AnteprimaSerie url={s.preview} piccola={aperta} />
+                    {/* La serie è un pezzo di CODICE e sta in mono, come ogni
+                        codice nell'app: guardando lo schermo si capisce a che
+                        livello si è anche senza leggere le briciole. */}
+                    <span className="min-w-0 flex-1 truncate font-mono text-sm text-ink">
+                      {s.serie}
+                    </span>
+                    <span className="shrink-0 text-xs tabular-nums text-ink-subtle">
+                      {conteggio(s.count)}
+                    </span>
+                    <ChevronDown
+                      className={`size-4 shrink-0 text-ink-subtle transition-transform duration-150 ${aperta ? "rotate-180" : ""}`}
+                      aria-hidden
+                    />
+                  </summary>
+                  <ul className="list-none bg-surface-sunken">{s.rows.map(renderRiga)}</ul>
+                </details>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+
+      {senzaSerie.length > 0 ? (
+        <>
+          {/* Non è una categoria e non deve sembrarlo: sono i codici che il
+              listino non lega a una serie. Misurato dopo i tre gradini: 60 su
+              3.393. Una voce «Altro» darebbe un nome di categoria a ciò che una
+              categoria non ha — la classe di difetto che il progetto ha chiuso
+              otto volte. Qui si constata l'assenza del dato, a parole. */}
+          <div className="flex flex-col gap-0.5 pt-1">
+            <h3 className="text-sm font-semibold text-ink">Codici senza serie</h3>
+            <p className="text-xs text-ink-subtle">
+              {conteggio(senzaSerie.length)} che il listino non lega a una serie
+            </p>
+          </div>
+          <ul className="list-none overflow-hidden rounded-md border border-line">
+            {senzaSerie.map(renderRiga)}
+          </ul>
+        </>
+      ) : null}
     </div>
+  );
+}
+
+/**
+ * L'anteprima nell'intestazione di una tendina: 56px chiusa, 32px aperta.
+ *
+ * Resta anche aperta, contro la richiesta iniziale di mostrarla solo da chiusa:
+ * con tre tendine aperte le intestazioni sono i soli punti di riferimento in una
+ * colonna di righe quasi identiche, e toglierla la toglierebbe proprio quando
+ * serve a orientarsi. Non è una ripetizione: qui si ritrae il MODELLO, nelle
+ * righe le singole FINITURE. Rimpicciolendosi, l'intestazione aperta lascia il
+ * peso visivo alle righe.
+ *
+ * Nessuna transizione sulla dimensione: sarebbe un'animazione di layout.
+ */
+function AnteprimaSerie({ url, piccola }: { url: string | null; piccola: boolean }) {
+  const [fallita, setFallita] = useState(false);
+  const dim = piccola ? "size-8" : "size-14";
+  if (!url || fallita) {
+    return (
+      <span
+        aria-hidden
+        className={`grid ${dim} shrink-0 place-items-center rounded border border-line bg-surface-sunken`}
+      >
+        <Package className="size-4 text-ink-subtle" />
+      </span>
+    );
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- sorgente dinamica dietro auth, non da ottimizzare
+    <img
+      src={url}
+      alt=""
+      loading="lazy"
+      onError={() => setFallita(true)}
+      className={`${dim} shrink-0 rounded border border-line bg-white object-contain`}
+    />
   );
 }
 
@@ -307,12 +408,10 @@ export function SenzaFamiglia({ count }: { count: number }) {
  */
 export function FiltriSfoglia({
   tipo,
-  famiglia,
   soloPronta,
   finitura,
 }: {
   tipo: string;
-  famiglia: string;
   soloPronta: boolean;
   finitura: FinituraScelta;
 }) {
@@ -321,22 +420,13 @@ export function FiltriSfoglia({
   const coda = filtri ? `?${filtri}` : "";
   return (
     <nav aria-label="Dove sei" className="flex flex-wrap items-center gap-2">
-
       <Chip
         label={tipo}
-        // Togliere il gruppo porta all'elenco dei gruppi; togliendolo cade anche
-        // la famiglia, che senza il suo gruppo non individua nulla.
+        // Togliere il gruppo porta all'elenco dei gruppi. Le tendine aperte
+        // cadono con lui: fuori dal loro gruppo non individuano nulla.
         href={`/maniglie${coda}`}
         removeLabel={`Togli il gruppo ${tipo}`}
       />
-      {famiglia ? (
-        <Chip
-          label={famiglia}
-          mono
-          href={`/maniglie?tipo=${encodeURIComponent(tipo)}${coda.replace("?", "&")}`}
-          removeLabel={`Togli la famiglia ${famiglia}`}
-        />
-      ) : null}
     </nav>
   );
 }

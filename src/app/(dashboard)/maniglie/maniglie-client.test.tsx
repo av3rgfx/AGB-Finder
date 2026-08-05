@@ -15,7 +15,7 @@ const stockInfoQuery = vi.fn<(...args: unknown[]) => { data?: { importedAt: Date
   () => ({}),
 );
 const browseGroupsQuery = vi.fn<(...args: unknown[]) => Record<string, unknown>>(() => ({}));
-const browseFamiliesQuery = vi.fn<(...args: unknown[]) => Record<string, unknown>>(() => ({}));
+const browseSerieQuery = vi.fn<(...args: unknown[]) => Record<string, unknown>>(() => ({}));
 const finitureQuery = vi.fn<(...args: unknown[]) => Record<string, unknown>>(() => ({}));
 vi.mock("@/trpc/react", () => ({
   api: {
@@ -23,7 +23,7 @@ vi.mock("@/trpc/react", () => ({
       search: { useQuery: (...args: unknown[]) => searchQuery(...args) },
       stockInfo: { useQuery: (...args: unknown[]) => stockInfoQuery(...args) },
       browseGroups: { useQuery: (...args: unknown[]) => browseGroupsQuery(...args) },
-      browseFamilies: { useQuery: (...args: unknown[]) => browseFamiliesQuery(...args) },
+      browseSerie: { useQuery: (...args: unknown[]) => browseSerieQuery(...args) },
       finiture: { useQuery: (...args: unknown[]) => finitureQuery(...args) },
     },
   },
@@ -84,13 +84,18 @@ function risultati(over: Record<string, unknown> = {}) {
 }
 
 /** Gruppi veri del listino COLOMBO, coi conteggi veri, in ordine alfabetico. */
+/**
+ * `isModello` non è un nostro giudizio: è la struttura dell'archivio
+ * fotografico di COLOMBO. LARA ha il suo archivio, BOCCHETTA e KIT no.
+ */
+let serieFinta: (righe?: unknown[], senzaSerie?: unknown[]) => Record<string, unknown>;
+
 const GRUPPI = [
-  { word: "BOCCHETTA", count: 288 },
-  { word: "KIT", count: 139 },
-  { word: "LARA", count: 28 },
-  { word: "MANIGLIONE", count: 338 },
-  { word: "ROS.", count: 58 },
-  { word: "ROSETTA", count: 47 },
+  { word: "BOCCHETTA", count: 288, isModello: false, preview: null },
+  { word: "KIT", count: 139, isModello: false, preview: null },
+  { word: "LARA", count: 28, isModello: true, preview: "/api/article-image?k=lara&size=320" },
+  { word: "MANIGLIONE", count: 338, isModello: false, preview: null },
+  { word: "ROSETTA", count: 47, isModello: false, preview: null },
 ];
 
 beforeEach(() => {
@@ -102,9 +107,21 @@ beforeEach(() => {
   browseGroupsQuery
     .mockReset()
     .mockReturnValue({ data: { groups: GRUPPI }, isPending: false, isError: false, isFetching: false });
-  browseFamiliesQuery
+  browseSerieQuery
     .mockReset()
     .mockReturnValue({ data: undefined, isPending: false, isError: false, isFetching: false });
+  serieFinta = (righe = [], senzaSerie = []) => ({
+    data: {
+      serie: righe.length
+        ? [{ serie: "CB71R", count: righe.length, preview: null, rows: righe }]
+        : [],
+      senzaSerie,
+      total: righe.length + senzaSerie.length,
+    },
+    isPending: false,
+    isError: false,
+    isFetching: false,
+  });
   vi.useRealTimers();
 });
 
@@ -385,18 +402,31 @@ describe("ManiglieClient — sfoglio", () => {
     expect(screen.queryByText(/mostra tutti/i)).toBeNull();
   });
 
-  it("dichiara da dove vengono le etichette E cosa conta il numero", () => {
-    // Sono parole di COLOMBO, refusi compresi: senza l'origine a schermo
-    // sembrerebbero una classificazione nostra. E «338» conta i CODICI, non i
-    // modelli — le descrizioni distinte sono 160.
-    //
-    // Diceva «per la prima parola della descrizione a listino», che con la
-    // curatela di Andrea è diventato falso: ROSETTA raccoglie anche le righe
-    // scritte `ROS.`, e ROBOCINQUE S è un pezzo del gruppo ROBOCINQUE.
+  it("dichiara cosa conta il numero, e NON promette più che le etichette siano di COLOMBO", () => {
+    // La frase «come li nomina COLOMBO» era già FALSA prima delle fusioni:
+    // `ROBOCINQUE S` è una stringa che componiamo noi, e ROSETTA raccoglie le
+    // righe scritte `ROS.`. Il test vecchio verificava che la frase CI FOSSE,
+    // quindi sarebbe passato identico per sempre.
+    // Resta vero e utile dire cosa conta il numero: «338» sono CODICI, non
+    // modelli — le descrizioni distinte di MANIGLIONE sono 160.
     render(<ManiglieClient />);
-    expect(screen.getByText(/come li nomina COLOMBO/i)).toBeTruthy();
+    expect(screen.queryByText(/come li nomina COLOMBO/i)).toBeNull();
     expect(screen.getByText(/ordine alfabetico/i)).toBeTruthy();
     expect(screen.getByText(/il numero è quanti codici/i)).toBeTruthy();
+    expect(screen.getByText(/non quanti modelli/i)).toBeTruthy();
+  });
+
+  it("il gruppo-modello mostra la sua foto, la tipologia non ha un'area immagine vuota", () => {
+    // In una griglia un riquadro vuoto si legge come «immagine rotta»; una
+    // tessera di solo testo si legge come una tessera di solo testo. E su una
+    // TIPOLOGIA (BOCCHETTA raccoglie 22 serie) una foto sola sarebbe un modello
+    // a caso spacciato per la categoria.
+    render(<ManiglieClient />);
+    // `alt=""` toglie l'immagine dall'albero di accessibilità (è decorativa: a
+    // portare il significato è il nome del gruppo), quindi si cerca nel DOM.
+    const foto = document.querySelectorAll("img");
+    expect(foto).toHaveLength(1);
+    expect(foto[0]?.getAttribute("src")).toBe("/api/article-image?k=lara&size=320");
   });
 
   it("dichiara le categorie che NON si sfogliano", () => {
@@ -409,12 +439,9 @@ describe("ManiglieClient — sfoglio", () => {
   it("il campo filtra le etichette senza interrogare il server", () => {
     render(<ManiglieClient />);
     fireEvent.change(screen.getByPlaceholderText("Filtra i gruppi…"), { target: { value: "ros" } });
-    // I due modi in cui il fornitore scrive la stessa cosa compaiono INSIEME:
-    // la fusione la fa l'occhio, noi non indoviniamo niente.
-    expect(screen.getByText("ROS.")).toBeTruthy();
     expect(screen.getByText("ROSETTA")).toBeTruthy();
     expect(screen.queryByText("MANIGLIONE")).toBeNull();
-    // Nessuna query nuova: filtra i 114 già in memoria.
+    // Nessuna query nuova: filtra le etichette già in memoria.
     expect(searchQuery.mock.calls.every((c) => (c[1] as { enabled: boolean }).enabled === false)).toBe(true);
   });
 
@@ -441,77 +468,108 @@ describe("ManiglieClient — sfoglio", () => {
     expect(etichette.slice(0, GRUPPI.length)).toEqual(GRUPPI.map((g) => g.word));
   });
 
-  it("dentro un gruppo mostra le famiglie, in mono perché sono pezzi di codice", () => {
+  it("dentro un gruppo mostra le SERIE a tendina, in mono perché sono pezzi di codice", () => {
     sp = new URLSearchParams("tipo=LARA");
-    browseFamiliesQuery.mockReturnValue({
-      data: { families: [{ family: "CB71R", count: 8 }], loose: [], total: 8 },
-      isPending: false,
-      isError: false,
-      isFetching: false,
-    });
+    browseSerieQuery.mockReturnValue(serieFinta([articoli[0]]));
     render(<ManiglieClient />);
     expect(screen.getByText("CB71R").className).toContain("font-mono");
-    expect(screen.getByText("8 codici")).toBeTruthy();
-    // Il livello 3 non si chiede finché non si sceglie una famiglia.
+    expect(screen.getByText("1 codice")).toBeTruthy();
+    // La ricerca testuale non si interroga sfogliando: lo sfoglio ha un lettore
+    // solo, o le stesse righe avrebbero due definizioni libere di divergere.
     expect(searchQuery.mock.calls[0]?.[1]).toMatchObject({ enabled: false });
   });
 
-  it("i codici SENZA famiglia restano raggiungibili, sotto le famiglie", () => {
-    // Su 114 gruppi veri, SETTANTA hanno copertura parziale: mostrare le sole
-    // famiglie renderebbe irraggiungibili codici che hanno prezzo e giacenza.
+  it("le righe di una serie sono già in pagina anche a tendina CHIUSA", () => {
+    // È ciò che rende l'apertura istantanea: nessuna richiesta, nessuno
+    // scheletro. E il browser non scarica le foto di ciò che è `display:none`.
     sp = new URLSearchParams("tipo=LARA");
-    browseFamiliesQuery.mockReturnValue({
-      data: { families: [{ family: "CB71R", count: 8 }], loose: [articoli[0]], total: 9 },
+    browseSerieQuery.mockReturnValue(serieFinta([articoli[0]]));
+    render(<ManiglieClient />);
+    expect(screen.getByText("MANIGLIA ROBOQUATTRO")).toBeTruthy();
+    expect(document.querySelector("details")?.open).toBe(false);
+  });
+
+  it("una serie elencata in ?fam= nasce APERTA", () => {
+    sp = new URLSearchParams("tipo=LARA&fam=CB71R");
+    browseSerieQuery.mockReturnValue(serieFinta([articoli[0]]));
+    render(<ManiglieClient />);
+    expect(document.querySelector("details")?.open).toBe(true);
+  });
+
+  it("aprire una serie la scrive nell'URL, senza scrollare", () => {
+    sp = new URLSearchParams("tipo=LARA");
+    browseSerieQuery.mockReturnValue(serieFinta([articoli[0]]));
+    render(<ManiglieClient />);
+    const dettaglio = document.querySelector("details")!;
+    dettaglio.open = true;
+    fireEvent(dettaglio, new Event("toggle", { bubbles: false }));
+    // `history.replaceState` e non `router.replace`: quest'ultimo fa un giro
+    // sul server, e aprendo due tendine di fila la seconda scrittura si perdeva
+    // nella corsa. Niente, sul server, dipende da `?fam=`.
+    expect(window.location.search).toContain("fam=CB71R");
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it("aprendo DUE serie di fila l'URL le elenca entrambe", () => {
+    // Il difetto trovato in browser e non dai test: il secondo `toggle` scatta
+    // prima che React abbia recepito la scrittura del primo, quindi leggendo
+    // `searchParams` avrebbe sovrascritto con la sola serie appena aperta —
+    // due tendine aperte a schermo, una sola nell'URL, e la seconda persa al
+    // primo ricaricamento.
+    sp = new URLSearchParams("tipo=LARA");
+    browseSerieQuery.mockReturnValue({
+      data: {
+        serie: [
+          { serie: "CB71R", count: 1, preview: null, rows: [articoli[0]] },
+          { serie: "CB72DK", count: 1, preview: null, rows: [articoli[0]] },
+        ],
+        senzaSerie: [],
+        total: 2,
+      },
       isPending: false,
       isError: false,
       isFetching: false,
     });
     render(<ManiglieClient />);
-    expect(screen.getByText("Senza famiglia")).toBeTruthy();
-    expect(screen.getByText(/il listino non lega a una famiglia/i)).toBeTruthy();
+    const dettagli = document.querySelectorAll("details");
+    for (const d of dettagli) {
+      d.open = true;
+      fireEvent(d, new Event("toggle", { bubbles: false }));
+    }
+    // L'URL si scrive con `history.replaceState` e non con `router.replace`:
+    // quest'ultimo fa un giro sul server e la seconda scrittura si perdeva
+    // nella corsa (misurato in browser). Niente, sul server, dipende da `?fam=`.
+    expect(window.location.search).toContain("fam=CB71R%2CCB72DK");
+  });
+
+  it("i codici SENZA serie restano raggiungibili, sotto le serie", () => {
+    // Su 3.393 codici sfogliabili sessanta non hanno una serie: mostrare le
+    // sole serie li renderebbe irraggiungibili pur avendo prezzo e giacenza.
+    sp = new URLSearchParams("tipo=LARA");
+    browseSerieQuery.mockReturnValue(serieFinta([], [articoli[0]]));
+    render(<ManiglieClient />);
+    expect(screen.getByText("Codici senza serie")).toBeTruthy();
+    expect(screen.getByText(/il listino non lega a una serie/i)).toBeTruthy();
     expect(screen.getByText("MANIGLIA ROBOQUATTRO")).toBeTruthy();
   });
 
-  it("un gruppo senza famiglie salta il livello 2 e mostra i codici", () => {
-    // KIT: 139 codici e zero famiglie. Un livello che non divide nulla sarebbe
-    // un tocco in più per vedere la stessa identica lista.
-    sp = new URLSearchParams("tipo=KIT");
-    browseFamiliesQuery.mockReturnValue({
-      data: { families: [], loose: [], total: 139 },
-      isPending: false,
-      isError: false,
-      isFetching: false,
-    });
+  it("un gruppo vuoto lo dice, invece di sembrare rotto", () => {
+    sp = new URLSearchParams("tipo=LARA");
+    browseSerieQuery.mockReturnValue(serieFinta([], []));
     render(<ManiglieClient />);
-    expect(searchQuery.mock.calls[0]?.[0]).toMatchObject({ tipo: "KIT" });
-    expect(searchQuery.mock.calls[0]?.[1]).toMatchObject({ enabled: true });
-    expect(screen.getByText("MANIGLIA ROBOQUATTRO")).toBeTruthy();
+    expect(screen.getByText("Nessun codice in questo gruppo")).toBeTruthy();
   });
 
-  it("scelta la famiglia chiede i codici di quella famiglia", () => {
+  it("il chip dice dove si è, e la ✕ è un link (così il tasto indietro funziona)", () => {
     sp = new URLSearchParams("tipo=LARA&fam=CB71R");
-    render(<ManiglieClient />);
-    expect(searchQuery.mock.calls[0]?.[0]).toMatchObject({ tipo: "LARA", famiglia: "CB71R" });
-    expect(searchQuery.mock.calls[0]?.[1]).toMatchObject({ enabled: true });
-  });
-
-  it("i chip dicono dove si è, e la ✕ è un link (così il tasto indietro funziona)", () => {
-    sp = new URLSearchParams("tipo=LARA&fam=CB71R");
+    browseSerieQuery.mockReturnValue(serieFinta([articoli[0]]));
     render(<ManiglieClient />);
     expect(screen.getByLabelText("Togli il gruppo LARA").getAttribute("href")).toBe("/maniglie");
-    expect(screen.getByLabelText("Togli la famiglia CB71R").getAttribute("href")).toBe(
-      "/maniglie?tipo=LARA",
-    );
-  });
-
-  it("l'offset segue la pagina dell'URL: era il debito dichiarato", () => {
-    sp = new URLSearchParams("tipo=LARA&fam=CB71R&p=3");
-    render(<ManiglieClient />);
-    expect(searchQuery.mock.calls[0]?.[0]).toMatchObject({ offset: 40, limit: 20 });
   });
 
   it("digitare abbandona lo sfoglio invece di cercare dentro un gruppo invisibile", async () => {
     sp = new URLSearchParams("tipo=LARA&fam=CB71R");
+    browseSerieQuery.mockReturnValue(serieFinta([articoli[0]]));
     render(<ManiglieClient />);
     fireEvent.change(screen.getByRole("searchbox"), { target: { value: "peruzzi" } });
     await act(async () => {
@@ -565,7 +623,7 @@ describe("ManiglieClient — solo pronta consegna", () => {
 
   it("è raggiungibile anche da DENTRO un gruppo, non solo dal primo livello", () => {
     sp = new URLSearchParams("tipo=LARA");
-    browseFamiliesQuery.mockReturnValue({
+    browseSerieQuery.mockReturnValue({
       data: { families: [{ family: "CB71R", count: 2 }], loose: [], total: 2 },
       isPending: false,
       isError: false,
@@ -599,21 +657,21 @@ describe("ManiglieClient — solo pronta consegna", () => {
     // Uno stato nascosto che toglie 19 righe su 20 farebbe concludere
     // all'agente che il catalogo non ha quell'articolo.
     sp = new URLSearchParams("tipo=LARA&pronta=1");
-    browseFamiliesQuery.mockReturnValue({
+    browseSerieQuery.mockReturnValue({
       data: { families: [{ family: "CB71R", count: 2 }], loose: [], total: 2 },
       isPending: false,
       isError: false,
       isFetching: false,
     });
     render(<ManiglieClient />);
-    expect(browseFamiliesQuery.mock.calls[0]?.[0]).toMatchObject({ tipo: "LARA", soloPronta: true });
+    expect(browseSerieQuery.mock.calls[0]?.[0]).toMatchObject({ tipo: "LARA", soloPronta: true });
     const casella = screen.getByLabelText("Solo pronta consegna") as HTMLInputElement;
     expect(casella.checked).toBe(true);
   });
 
   it("spegnerlo da dentro un gruppo non fa perdere il gruppo", () => {
     sp = new URLSearchParams("tipo=LARA&pronta=1");
-    browseFamiliesQuery.mockReturnValue({
+    browseSerieQuery.mockReturnValue({
       data: { families: [{ family: "CB71R", count: 2 }], loose: [], total: 2 },
       isPending: false,
       isError: false,
@@ -632,12 +690,13 @@ describe("ManiglieClient — solo pronta consegna", () => {
     );
   });
 
-  it("arriva anche al terzo livello", () => {
+  it("arriva anche alle righe, che ora vivono dentro le serie", () => {
+    // Prima era una terza domanda (`search({tipo, famiglia})`); ora le righe
+    // arrivano con le serie, quindi il filtro va dove va la classificazione.
     sp = new URLSearchParams("tipo=LARA&fam=CB71R&pronta=1");
     render(<ManiglieClient />);
-    expect(searchQuery.mock.calls[0]?.[0]).toMatchObject({
+    expect(browseSerieQuery.mock.calls[0]?.[0]).toMatchObject({
       tipo: "LARA",
-      famiglia: "CB71R",
       soloPronta: true,
     });
   });
@@ -646,7 +705,7 @@ describe("ManiglieClient — solo pronta consegna", () => {
     // Restare alla pagina 7 di un elenco sceso da 338 a 12 codici significa
     // vedere una schermata vuota e credere che non ci sia niente.
     sp = new URLSearchParams("tipo=LARA&p=7");
-    browseFamiliesQuery.mockReturnValue({
+    browseSerieQuery.mockReturnValue({
       data: { families: [], loose: [], total: 12 },
       isPending: false,
       isError: false,
@@ -699,11 +758,12 @@ describe("ManiglieClient — filtro finitura", () => {
     expect(replace).toHaveBeenCalledWith("/maniglie?tipo=FEDRA", { scroll: false });
   });
 
-  it("la finitura scelta passa a tutte e tre le domande dello sfoglio", () => {
+  it("la finitura scelta passa a entrambe le domande dello sfoglio", () => {
+    // Sono due e non più tre: le righe arrivano con le serie.
     sp = new URLSearchParams("tipo=FEDRA&finitura=CR");
     render(<ManiglieClient />);
-    expect(browseFamiliesQuery.mock.calls[0]?.[0]).toMatchObject({ finitura: "CR" });
-    expect(searchQuery.mock.calls[0]?.[0]).toMatchObject({ finitura: "CR" });
+    expect(browseSerieQuery.mock.calls[0]?.[0]).toMatchObject({ finitura: "CR" });
+    expect(browseGroupsQuery.mock.calls[0]?.[0]).toMatchObject({ finitura: "CR" });
   });
 
   it("l'elenco delle finiture NON si restringe con quella già scelta", () => {
@@ -763,6 +823,8 @@ describe("ManiglieClient — il numero dichiara di cosa parla", () => {
   it("senza filtri la frase resta pulita", () => {
     sp = new URLSearchParams("");
     render(<ManiglieClient />);
-    expect(screen.getByText(/Il numero è quanti codici/).textContent).toMatch(/codici\.$/);
+    expect(screen.getByText(/Il numero è quanti codici/).textContent).toMatch(
+      /codici, non quanti modelli/,
+    );
   });
 });
