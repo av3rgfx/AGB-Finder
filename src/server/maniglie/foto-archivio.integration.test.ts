@@ -44,7 +44,7 @@ describe.skipIf(!attivo)("foto ↔ catalogo vero", () => {
       select: { id: true, code: true, codeNorm: true, name: true },
     });
     foto = JSON.parse(readFileSync(indice!, "utf8")) as FotoArchivio[];
-    abbinati = abbinaFoto(articoli, foto);
+    abbinati = abbinaFoto("COLOMBO", articoli, foto);
   });
 
   afterAll(async () => {
@@ -74,7 +74,7 @@ describe.skipIf(!attivo)("foto ↔ catalogo vero", () => {
 
   it("i pomoli generici sono coperti per intero", () => {
     const per = (g: string) => {
-      const r = articoli.filter((a) => browseLabel(a.name) === g);
+      const r = articoli.filter((a) => browseLabel("COLOMBO", a.name) === g);
       return `${r.filter((a) => abbinati.has(a.id)).length}/${r.length}`;
     };
     expect(per("ROUND")).toBe("20/20");
@@ -87,7 +87,7 @@ describe.skipIf(!attivo)("foto ↔ catalogo vero", () => {
   });
 
   it("ogni etichetta della tabella esiste davvero fra quelle dello sfoglio", () => {
-    const esistenti = new Set(articoli.map((a) => browseLabel(a.name)).filter(Boolean));
+    const esistenti = new Set(articoli.map((a) => browseLabel("COLOMBO", a.name)).filter(Boolean));
     for (const [archivio, voce] of Object.entries(ARCHIVI)) {
       if (voce.etichetta === null) continue;
       expect(esistenti.has(voce.etichetta), `${archivio} → ${voce.etichetta}`).toBe(true);
@@ -122,7 +122,7 @@ describe.skipIf(!attivo)("foto ↔ catalogo vero", () => {
       foto.map((f) => [chiaveFoto(f.archivio, f.nome), f.archivio] as const),
     );
     for (const a of articoli) {
-      const l = browseLabel(a.name);
+      const l = browseLabel("COLOMBO", a.name);
       if (l !== "SPIDER" && l !== "MILLA" && l !== "TRAMA") continue;
       const chiave = abbinati.get(a.id);
       if (chiave === undefined) continue;

@@ -238,17 +238,17 @@ describe("abbinamento articolo → foto", () => {
   ];
 
   it("gradino 2: la finitura esatta vince sulla foto di modello", () => {
-    const m = abbinaFoto([art("0AC11R-CR", "FEDRA AC11R CROMO")], fedra);
+    const m = abbinaFoto("COLOMBO", [art("0AC11R-CR", "FEDRA AC11R CROMO")], fedra);
     expect(m.get("0AC11R-CR")).toBe("maniglie/colombo/01-fedra/fedra-2cr");
   });
 
   it("gradino 1: senza la sua finitura prende la foto del modello", () => {
-    const m = abbinaFoto([art("0AC11R-VM", "FEDRA AC11R VINTAGE SAT.")], fedra);
+    const m = abbinaFoto("COLOMBO", [art("0AC11R-VM", "FEDRA AC11R VINTAGE SAT.")], fedra);
     expect(m.get("0AC11R-VM")).toBe("maniglie/colombo/01-fedra/fedra-1ol");
   });
 
   it("non usa mai uno scatto d'ambiente, nemmeno come ultima risorsa", () => {
-    const m = abbinaFoto(
+    const m = abbinaFoto("COLOMBO", 
       [art("0AC11R-VM", "FEDRA AC11R VINTAGE SAT.")],
       [{ archivio: "01_Fedra", nome: "Fedra_def" }],
     );
@@ -256,7 +256,7 @@ describe("abbinamento articolo → foto", () => {
   });
 
   it("gradino 3: il codice scritto nel nome del file vince su tutto", () => {
-    const m = abbinaFoto(
+    const m = abbinaFoto("COLOMBO", 
       [art("0ID313RS-CM", "MANIGLIONE ID313RS CROMAT")],
       [{ archivio: "03_Maniglioni_Pulls", nome: "ID313 RS_45" }],
     );
@@ -264,7 +264,7 @@ describe("abbinamento articolo → foto", () => {
   });
 
   it("fra due nomi che contengono il codice vince quello che dice di più", () => {
-    const m = abbinaFoto(
+    const m = abbinaFoto("COLOMBO", 
       [art("0PB1304-CR", "BLINDATA PB1304 CROMO")],
       [
         { archivio: "05_Blindate_Armored door", nome: "PB13" },
@@ -279,7 +279,7 @@ describe("abbinamento articolo → foto", () => {
       { archivio: "01_Robot4", nome: "roboquattro-1OL" },
       { archivio: "01_Robot4", nome: "roboquattro zero frontale oroplus_new" },
     ];
-    const m = abbinaFoto(
+    const m = abbinaFoto("COLOMBO", 
       [
         art("0ID41R-OL", "ROBOQUATTRO ID41R OROPLUS"),
         art("0ID41RSB/0-OL", "ROBOQUATTRO ID41RSB ZERO"),
@@ -293,7 +293,7 @@ describe("abbinamento articolo → foto", () => {
   });
 
   it("un articolo ZERO senza foto ZERO resta senza foto", () => {
-    const m = abbinaFoto(
+    const m = abbinaFoto("COLOMBO", 
       [art("0ID41RSB/0-OL", "ROBOQUATTRO ID41RSB ZERO")],
       [{ archivio: "01_Robot4", nome: "roboquattro-1OL" }],
     );
@@ -305,7 +305,7 @@ describe("abbinamento articolo → foto", () => {
       { archivio: "01_Robot1_m", nome: "robot41_2CR" },
       { archivio: "01_Robot1_p", nome: "robot75_3CR" },
     ];
-    const m = abbinaFoto(
+    const m = abbinaFoto("COLOMBO", 
       [art("0CD41R-CR", "ROBOT CD41R CROMO"), art("0CD75R-CR", "ROBOT CD75R CROMO")],
       foto,
     );
@@ -316,7 +316,7 @@ describe("abbinamento articolo → foto", () => {
   it("una serie che non combacia non presta la foto", () => {
     // ROBOT CD45 è un pomolo che non ha un archivio proprio: nessuno dei due
     // archivi di ROBOT è suo, e prendersi il primo sarebbe una foto sbagliata.
-    const m = abbinaFoto(
+    const m = abbinaFoto("COLOMBO", 
       [art("0CD45R-CR", "ROBOT CD45R CROMO")],
       [{ archivio: "01_Robot1_m", nome: "robot41_2CR" }],
     );
@@ -325,7 +325,7 @@ describe("abbinamento articolo → foto", () => {
 
   it("un archivio senza etichetta non presta la sua foto a nessuno", () => {
     // SPIDER: due archivi, accoppiamento archivio↔serie non scritto.
-    const m = abbinaFoto(
+    const m = abbinaFoto("COLOMBO", 
       [art("0MR11R-CM", "SPIDER MR11R CROMAT")],
       [{ archivio: "01_Spider_m", nome: "spider1_1CR" }],
     );
@@ -335,7 +335,7 @@ describe("abbinamento articolo → foto", () => {
   it("un articolo che non si sfoglia può comunque avere la foto dal suo codice", () => {
     // `VITE` è esclusa dallo sfoglio (curatela), quindi non ha etichetta — ma il
     // gradino 3 è un'affermazione di COLOMBO su un codice, e vale lo stesso.
-    const m = abbinaFoto(
+    const m = abbinaFoto("COLOMBO", 
       [art("0CD79BZG-CR", "VITE CD79BZG CROMO")],
       [{ archivio: "06_Complementi", nome: "CD79_BZG" }],
     );
@@ -345,7 +345,7 @@ describe("abbinamento articolo → foto", () => {
   it("un nucleo corto non aggancia per caso", () => {
     // `BR` (VIOLA AR21R VINTAGE LUCIDO) è un codice di due caratteri: sotto i
     // cinque, un nucleo comparirebbe dentro quasi qualunque nome di file.
-    const m = abbinaFoto(
+    const m = abbinaFoto("COLOMBO", 
       [art("BR", "VIOLA AR21R VINTAGE LUCIDO")],
       [{ archivio: "06_Complementi", nome: "abrx_CR" }],
     );
@@ -358,13 +358,13 @@ describe("abbinamento articolo → foto", () => {
       { archivio: "01_Fedra", nome: "Fedra_1OL" },
     ];
     const a = art("0AC11R-VM", "FEDRA AC11R VINTAGE SAT.");
-    expect(abbinaFoto([a], foto).get(a.id)).toBe(abbinaFoto([a], [...foto].reverse()).get(a.id));
+    expect(abbinaFoto("COLOMBO", [a], foto).get(a.id)).toBe(abbinaFoto("COLOMBO", [a], [...foto].reverse()).get(a.id));
   });
 });
 
 describe("abbinamento con le regole per file", () => {
   it("un pomolo generico prende la foto del suo file, non quella dell'archivio", () => {
-    const m = abbinaFoto(
+    const m = abbinaFoto("COLOMBO", 
       [art("0ID25R-CR", "ROUND ID25R CROMO"), art("0ID35R-CR", "ROUND ID35R CROMO")],
       [
         { archivio: "02_Pomoli", nome: "round25_45" },
@@ -376,7 +376,7 @@ describe("abbinamento con le regole per file", () => {
   });
 
   it("i pomoli ROBOT non rubano la foto alla maniglia ROBOT", () => {
-    const m = abbinaFoto(
+    const m = abbinaFoto("COLOMBO", 
       [art("0CD41R-CR", "ROBOT CD41R CROMO"), art("0CD45R-CR", "ROBOT CD45R CROMO")],
       [
         { archivio: "01_Robot1_m", nome: "robot41_2CR" },
@@ -390,7 +390,7 @@ describe("abbinamento con le regole per file", () => {
   it("un file dell'archivio accessori senza regola non presta nulla per modello", () => {
     // `spider_45` è il pomolo Spider: il gruppo SPIDER non è decidibile, quindi
     // resta senza foto anche adesso.
-    const m = abbinaFoto(
+    const m = abbinaFoto("COLOMBO", 
       [art("0MR11R-CM", "SPIDER MR11R CROMAT")],
       [{ archivio: "02_Pomoli", nome: "spider_45" }],
     );

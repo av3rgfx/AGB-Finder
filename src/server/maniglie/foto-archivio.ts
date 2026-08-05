@@ -299,6 +299,7 @@ function nucleo(a: ArticoloDaAbbinare): string {
  * dichiarata in `ARCHIVI`.
  */
 export function abbinaFoto(
+  brand: string,
   articoli: ArticoloDaAbbinare[],
   foto: FotoArchivio[],
 ): Map<string, string> {
@@ -330,7 +331,7 @@ export function abbinaFoto(
       }
     }
 
-    const etichetta = browseLabel(a.name);
+    const etichetta = browseLabel(brand, a.name);
     if (etichetta === null) continue;
     const zero = varianteZero(a.name);
     const serieDelCodice = senzaZeroIniziale(a.codeNorm);

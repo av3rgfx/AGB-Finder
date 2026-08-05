@@ -1,8 +1,7 @@
 import { firstWord, secondToken } from "./taxonomy";
 
 /**
- * CURATELA DELLO SFOGLIO — le correzioni chieste da Andrea sulle etichette di
- * primo livello, dopo aver usato il catalogo vero.
+ * CURATELA DELLO SFOGLIO — le correzioni alle etichette di primo livello.
  *
  * Vive QUI e non nell'import, di proposito: riscrivere `articles.name`
  * cancellerebbe la parola scritta da COLOMBO e, in particolare, farebbe sparire
@@ -12,56 +11,83 @@ import { firstWord, secondToken } from "./taxonomy";
  * ciò che riporta l'agente al telefono. Il nome storto resta a DB e resta
  * cercabile: cambia solo COME lo si elenca.
  *
- * E vive in un modulo foglia, non in una tabella a DB: quattordici regole che
- * cambiano di rado non valgono una schermata di amministrazione.
+ * E vive in un modulo foglia, non in una tabella a DB: sedici regole che
+ * cambiano di rado non valgono una schermata di amministrazione. Il segnale per
+ * cambiare idea non è il numero di voci, è la prima volta che qualcuno aspetta
+ * un deploy per una correzione urgente.
  *
  * ⚠️ LE RIMOZIONI VALGONO SOLO PER LO SFOGLIO (decisione dell'utente,
  * 2026-08-04). Chi scrive «vite» nella ricerca continua a trovarla: lo sfoglio
  * serve a guardare, la ricerca a rispondere «esiste? è ordinabile?».
- *
- * ⚠️ Il verdetto del `/llm-council` della sessione precedente diceva
- * «abbreviazioni: nessuna riga di codice, in alfabetico `ROS.` e `ROSETTA` sono
- * adiacenti, la fusione la fa l'occhio». Andrea ha usato la cosa vera e ha
- * chiesto la fusione di otto etichette, incluse esattamente quelle. L'adiacenza
- * era vera e irrilevante: vedere due chip vicine non è avere una voce sola, e
- * chi rifornisce il magazzino conta le voci.
  */
 
 /**
- * Etichette del fornitore che sono la stessa cosa scritta in modi diversi.
- * Misurate sul listino `LP 02-26`: sono le stringhe VERE, non quelle che Andrea
- * ha scritto a memoria.
+ * Le tabelle sono PER MARCA.
+ *
+ * `browseLabel` non aveva `brand`, e con HOPPE, OLIVARI, DND e GHIDINI in
+ * arrivo le correzioni scritte guardando il listino COLOMBO si sarebbero
+ * applicate in silenzio alle loro etichette: nessun conteggio sarebbe andato a
+ * zero, e nessuno se ne sarebbe accorto. Costa un parametro oggi, un incidente
+ * invisibile alla marca #3.
  */
-const FUSIONI: Record<string, string> = {
-  BOCCEHTTA: "BOCCHETTA", //      2 codici — refuso del fornitore
-  NOTTOLIN: "NOTTOLINO", //       1
-  KITPORTE: "KIT", //             1 — «KIT PORTE» è scritto attaccato
-  "DUMMY/C": "DUMMY", //          3
-  "MOV.GRATZ": "MOVIMENTO", //    1 ┐ Andrea ha detto «Mov.»: sono due etichette
-  "MOV.MARTELLINA": "MOVIMENTO", // 2 ┘
-  "ROS.": "ROSETTA", //          58
-  ROBOCINQUQ: "ROBOCINQUE", //    1 — il codice `ID61RSB` è la serie del base
-  ROBOTE: "ROBOTRE", //           1 — il codice `CD92DK` è la serie di Robotre
+interface Curatela {
+  /** Etichette del fornitore che sono la stessa cosa scritta in modi diversi. */
+  fusioni: Record<string, string>;
+  /** Etichette che non si sfogliano. Restano cercabili scrivendole. */
+  escluse: ReadonlySet<string>;
+  /** Etichette in cui la «S» del secondo token è un PRODOTTO DIVERSO. */
+  divise: ReadonlySet<string>;
+}
+
+const CURATELE: Record<string, Curatela> = {
+  COLOMBO: {
+    // Misurate sul listino `LP 02-26`: sono le stringhe VERE, non quelle
+    // scritte a memoria.
+    fusioni: {
+      BOCCEHTTA: "BOCCHETTA", //          2 codici — refuso del fornitore
+      NOTTOLIN: "NOTTOLINO", //           1
+      KITPORTE: "KIT", //                 1 — «KIT PORTE» è scritto attaccato
+      "DUMMY/C": "DUMMY", //              3
+      "MOV.GRATZ": "MOVIMENTO", //        1 ┐ Andrea ha detto «Mov.»: sono due
+      "MOV.MARTELLINA": "MOVIMENTO", //   2 ┘ etichette
+      "ROS.": "ROSETTA", //              58
+      ROBOCINQUQ: "ROBOCINQUE", //        1 — il codice `ID61RSB` è del base
+      ROBOTE: "ROBOTRE", //               1 — il codice `CD92DK` è di Robotre
+
+      // ── 2026-08-05, chieste dal titolare e misurate ─────────────────────
+      // Le quattro etichette «maniglia» dicono TUTTE «INCASSO»: 56 righe su
+      // 57, 4 su 4, 28 su 28, 1 su 1. La voce fusa lo dice, o prometterebbe
+      // tutte le maniglie e ne conterebbe 90 — mentre le 129 di ROBOT sono
+      // maniglie che stanno in un'altra voce. Sarebbe un avanzo con nome di
+      // categoria.
+      "MANIG.": "MANIGLIA INCASSO", //   57
+      "MANIG.INCASSO": "MANIGLIA INCASSO", // 4
+      MANIGLIA: "MANIGLIA INCASSO", //   28
+      MANIGLIE: "MANIGLIA INCASSO", //    1
+      MANIGLIONI: "MANIGLIONE", //        8 — plurale
+      // `PL.OTT. 85mm. + SOTTOPL.NYLON` e `PL.OTT.YALE 93mm+SOTTOPL.NYLON`:
+      // stesso prodotto, codici `PB02*`. NON si fondono con `PLACCA` (65),
+      // che è la placca dei maniglioni (`0AM113PL*`): stessa parola, due
+      // oggetti diversi.
+      "PL.OTT.": "PL.", //                1
+      "PL.OTT.YALE": "PL.", //           11
+      RG: "DUMMY", //                     1 — «RG ADAPTOR PER DUMMY»
+    },
+    // `RONDELLE` (2 codici) entra qui il 2026-08-05, e non è una svista di
+    // tassonomia: la pagina dichiarava già «viti, dadi, chiavi e rondelle non
+    // si sfogliano» mentre esclusa era solo `RONDELLA`. Era una frase falsa a
+    // schermo.
+    escluse: new Set(["VITE", "VITI", "RONDELLA", "RONDELLE", "DADO", "CHIAVE"]),
+    // Non è un'opinione nostra: COLOMBO tiene `01_Robot4.zip` e
+    // `01_Robot4S.zip` come archivi fotografici separati, e il suo listino
+    // elenca «roboquattro» e «roboquattro S» come voci distinte.
+    divise: new Set(["ROBOCINQUE", "ROBOQUATTRO"]),
+  },
 };
 
-/**
- * Etichette che non si sfogliano: non servono ad Andrea né agli agenti.
- * 63 codici in tutto. Restano cercabili scrivendo.
- *
- * `RONDELLE` (2 codici) NON è qui pur essendo la stessa cosa di `RONDELLA`:
- * Andrea non l'ha citata, e sulla sua tassonomia la fonte di verità è lui, non
- * la simmetria. Idem per gli altri nove casi identici che non ha nominato
- * (`MANIG.`/`MANIGLIA`/`MANIGLIONE`…, `PL.`/`PLACCA`…): vanno mostrati a lui.
- */
-const ESCLUSE = new Set(["VITE", "VITI", "RONDELLA", "DADO", "CHIAVE"]);
-
-/**
- * Etichette in cui la «S» del secondo token è un PRODOTTO DIVERSO e non una
- * variante — e non è un'opinione nostra: COLOMBO tiene `01_Robot4.zip` e
- * `01_Robot4S.zip` come archivi fotografici separati, e il suo listino elenca
- * «roboquattro» e «roboquattro S» come voci distinte.
- */
-const DIVISE = new Set(["ROBOCINQUE", "ROBOQUATTRO"]);
+/** Una marca senza curatela non riceve le correzioni scritte per un'altra. */
+const VUOTA: Curatela = { fusioni: {}, escluse: new Set(), divise: new Set() };
+const curatelaDi = (brand: string): Curatela => CURATELE[brand] ?? VUOTA;
 
 /**
  * Il marcatore della S, in tutte e tre le forme che il listino usa davvero:
@@ -74,8 +100,8 @@ const MARCATORE_S = /^S'?$|^S'/;
  * L'etichetta sotto cui una riga si elenca nello sfoglio.
  * `null` = non si sfoglia (ma resta cercabile).
  */
-export function browseLabel(name: string): string | null {
-  return labelFromTokens(firstWord(name), secondToken(name));
+export function browseLabel(brand: string, name: string): string | null {
+  return labelFromTokens(brand, firstWord(name), secondToken(name));
 }
 
 /**
@@ -84,10 +110,11 @@ export function browseLabel(name: string): string | null {
  * Una regola sola per le due strade: se fossero due potrebbero divergere, e il
  * numero contato non sarebbe più il numero mostrato.
  */
-function labelFromTokens(first: string, second: string | null): string | null {
-  if (ESCLUSE.has(first)) return null;
-  if (DIVISE.has(first) && MARCATORE_S.test(second ?? "")) return `${first} S`;
-  return FUSIONI[first] ?? first;
+function labelFromTokens(brand: string, first: string, second: string | null): string | null {
+  const c = curatelaDi(brand);
+  if (c.escluse.has(first)) return null;
+  if (c.divise.has(first) && MARCATORE_S.test(second ?? "")) return `${first} S`;
+  return c.fusioni[first] ?? first;
 }
 
 /** Una riga del `GROUP BY` di livello 1: i due token e quanti codici. */
@@ -102,10 +129,13 @@ export interface TokenCount {
  * QUI e non con un `ORDER BY`: la collation è del database e può differire fra
  * il Postgres locale e Neon, mentre l'ordine è una promessa fatta a schermo.
  */
-export function foldBrowseGroups(rows: TokenCount[]): { word: string; count: number }[] {
+export function foldBrowseGroups(
+  brand: string,
+  rows: TokenCount[],
+): { word: string; count: number }[] {
   const counts = new Map<string, number>();
   for (const r of rows) {
-    const label = labelFromTokens(r.first, r.second || null);
+    const label = labelFromTokens(brand, r.first, r.second || null);
     if (label === null) continue;
     counts.set(label, (counts.get(label) ?? 0) + r.count);
   }
@@ -120,16 +150,36 @@ export function foldBrowseGroups(rows: TokenCount[]): { word: string; count: num
  * cruda. Chi le usa DEVE poi rifiltrare con `browseLabel`: le divisioni
  * condividono la sorgente col loro gruppo base.
  *
+ * `base` si include sempre, anche quando è un'etichetta coniata dalla fusione
+ * (`MANIGLIA INCASSO`, che contiene uno spazio e quindi non può essere la prima
+ * parola di nulla): un valore in più nella `IN` non aggancia niente, e il
+ * rifiltro con `browseLabel` esclude comunque i falsi positivi. La regola più
+ * semplice che funziona.
+ *
  * Lista vuota per un'etichetta esclusa: senza, `?tipo=VITE` nell'URL
  * rimetterebbe a schermo un gruppo che abbiamo tolto dall'elenco.
  */
-export function sourceFirstWords(label: string): string[] {
-  if (ESCLUSE.has(label)) return [];
+export function sourceFirstWords(brand: string, label: string): string[] {
+  const c = curatelaDi(brand);
+  if (c.escluse.has(label)) return [];
   const base = label.endsWith(" S") ? label.slice(0, -2) : label;
-  if (label.endsWith(" S")) return DIVISE.has(base) ? [base] : [];
+  if (label.endsWith(" S")) return c.divise.has(base) ? [base] : [];
   const words = new Set([base]);
-  for (const [storta, giusta] of Object.entries(FUSIONI)) {
+  for (const [storta, giusta] of Object.entries(c.fusioni)) {
     if (giusta === label) words.add(storta);
   }
   return [...words].sort();
+}
+
+/**
+ * Tutte le prime parole citate dalle tabelle di una marca.
+ *
+ * Serve al gate che impedisce alla curatela di marcire: il test esistente
+ * verifica solo che le etichette storte NON compaiano, e passerebbe identico il
+ * giorno in cui COLOMBO corregge `BOCCEHTTA` e la voce diventa morta. Una voce
+ * morta non si vede a schermo, perché nessun conteggio va a zero.
+ */
+export function vociCuratela(brand: string): string[] {
+  const c = curatelaDi(brand);
+  return [...Object.keys(c.fusioni), ...c.escluse, ...c.divise].sort();
 }

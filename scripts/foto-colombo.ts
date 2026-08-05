@@ -152,7 +152,7 @@ async function main() {
     where: { brand: MARCA },
     select: { id: true, code: true, codeNorm: true, name: true },
   });
-  const perArticolo = abbinaFoto(articoli, foto);
+  const perArticolo = abbinaFoto(MARCA, articoli, foto);
   const chiaviScelte = new Set(perArticolo.values());
   const pct = ((100 * perArticolo.size) / articoli.length).toFixed(1);
   console.log(

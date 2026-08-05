@@ -3,7 +3,7 @@ import { Prisma, PrismaClient } from "@prisma/client";
 import { seedManiglie } from "../../../prisma/seed-maniglie";
 import { searchArticleIds, browseFirstWords, articleIdsByFirstWord } from "./search";
 import { firstWord, secondToken, SQL_FIRST_WORD, SQL_SECOND_WORD } from "./taxonomy";
-import { browseLabel } from "./curatela";
+import { browseLabel, vociCuratela } from "./curatela";
 import {
   currentStockImport,
   availableArticleIds,
@@ -262,7 +262,7 @@ describe.runIf(Boolean(url))("sfoglio — il GROUP BY SQL e la funzione TypeScri
     });
     const ts = new Map<string, number>();
     for (const r of rows) {
-      const w = browseLabel(r.name);
+      const w = browseLabel("COLOMBO", r.name);
       if (w === null) continue;
       ts.set(w, (ts.get(w) ?? 0) + 1);
     }
@@ -312,21 +312,35 @@ describe.runIf(Boolean(url))("sfoglio — il GROUP BY SQL e la funzione TypeScri
    */
   it("le etichette doppie del fornitore non compaiono più: sono fuse", async () => {
     const words = (await browseFirstWords(db, "COLOMBO")).map((g) => g.word);
-    for (const storta of [
-      "ROS.",
-      "BOCCEHTTA",
-      "NOTTOLIN",
-      "KITPORTE",
-      "DUMMY/C",
-      "MOV.GRATZ",
-      "MOV.MARTELLINA",
-      "ROBOCINQUQ",
-      "ROBOTE",
-    ]) {
-      expect(words).not.toContain(storta);
+    // La lista era scritta a mano e non verificava di essere completa: ora si
+    // deriva dalla curatela, quindi una fusione nuova è coperta senza toccare
+    // il test. Le DIVISE si saltano: la parola base resta un gruppo vero.
+    for (const storta of vociCuratela("COLOMBO")) {
+      if (storta === "ROBOCINQUE" || storta === "ROBOQUATTRO") continue;
+      expect(words, `etichetta curata ancora a schermo: «${storta}»`).not.toContain(storta);
     }
     expect(words).toContain("ROSETTA");
     expect(words).toContain("BOCCHETTA");
+    expect(words).toContain("MANIGLIA INCASSO");
+  });
+
+  /**
+   * Il test qui sopra verifica solo che le etichette storte NON compaiano:
+   * passerebbe identico il giorno in cui COLOMBO corregge `BOCCEHTTA` e la voce
+   * della curatela diventa morta. Una voce morta non si vede a schermo, perché
+   * nessun conteggio va a zero — è la stessa forma di difetto che questo
+   * progetto ha già pagato più volte. Misurato il 2026-08-05 sul listino vero:
+   * 16 voci su 16 agganciano ancora, quindi il gate nasce verde.
+   */
+  it("ogni voce della curatela aggancia ancora una riga del listino", async () => {
+    const rows = await db.article.findMany({
+      where: { brand: "COLOMBO" },
+      select: { name: true },
+    });
+    const prime = new Set(rows.map((r) => firstWord(r.name)));
+    for (const voce of vociCuratela("COLOMBO")) {
+      expect(prime.has(voce), `voce morta nella curatela: «${voce}»`).toBe(true);
+    }
   });
 
   it("le etichette escluse da Andrea non si sfogliano", async () => {
@@ -355,7 +369,7 @@ describe.runIf(Boolean(url))("sfoglio — il GROUP BY SQL e la funzione TypeScri
       where: { brand: "COLOMBO" },
       select: { name: true },
     });
-    const esclusi = rows.filter((r) => browseLabel(r.name) === null).length;
+    const esclusi = rows.filter((r) => browseLabel("COLOMBO", r.name) === null).length;
     expect(groups.reduce((s, g) => s + g.count, 0) + esclusi).toBe(rows.length);
     expect(esclusi).toBeGreaterThan(0);
   });
@@ -401,7 +415,7 @@ describe.runIf(Boolean(url))("sfoglio — il GROUP BY SQL e la funzione TypeScri
       where: { id: { in: hits.map((h) => h.id) } },
       select: { name: true },
     });
-    const viti = rows.filter((r) => browseLabel(r.name) === null);
+    const viti = rows.filter((r) => browseLabel("COLOMBO", r.name) === null);
     expect(viti.length).toBeGreaterThan(0);
   });
 });
@@ -447,7 +461,7 @@ describe.runIf(Boolean(url))("sfoglio — il filtro «solo pronta consegna»", (
       where: { id: { in: [...new Set(pronti)] } },
       select: { name: true },
     });
-    const sfogliabili = prontiRows.filter((r) => browseLabel(r.name) !== null);
+    const sfogliabili = prontiRows.filter((r) => browseLabel("COLOMBO", r.name) !== null);
     expect(soloPronti.reduce((n, g) => n + g.count, 0)).toBe(sfogliabili.length);
     // E i due numeri devono DAVVERO differire, altrimenti l'asserzione sopra
     // passerebbe anche se l'esclusione non funzionasse.
@@ -459,13 +473,17 @@ describe.runIf(Boolean(url))("sfoglio — il filtro «solo pronta consegna»", (
     // `undefined`, che significa «non filtrare». Confonderli mostrerebbe
     // l'intero catalogo a chi ha chiesto solo ciò che è pronto.
     expect(await browseFirstWords(db, "COLOMBO", [])).toEqual([]);
-    expect(await articleIdsByFirstWord(db, "COLOMBO", "MANIGLIA", [])).toEqual([]);
+    expect(await articleIdsByFirstWord(db, "COLOMBO", "MANIGLIA INCASSO", [])).toEqual([]);
   });
 
   it("dentro un gruppo restituisce solo le righe pronte", async () => {
+    // Il gruppo si chiama «MANIGLIA INCASSO» dal 2026-08-05: `MANIGLIA` da
+    // sola ora non aggancia nulla, perché il rifiltro con `browseLabel` la
+    // riporta all'etichetta fusa. È il comportamento giusto, ed è la ragione
+    // per cui il router risolve il `?tipo=` che arriva dall'URL.
     const imp = await currentStockImport(db, "COLOMBO");
     const pronti = new Set(await allAvailableArticleIds(db, imp!.id));
-    const righe = await articleIdsByFirstWord(db, "COLOMBO", "MANIGLIA", [...pronti]);
+    const righe = await articleIdsByFirstWord(db, "COLOMBO", "MANIGLIA INCASSO", [...pronti]);
     expect(righe.length).toBeGreaterThan(0);
     for (const r of righe) expect(pronti.has(r.id)).toBe(true);
   });
