@@ -206,7 +206,14 @@ export function SfogliaGruppi({
               className="flex flex-col gap-3 border-t border-line pt-4"
             >
               <div className="flex flex-col gap-0.5">
-                <h3 id="accessori" className="scroll-mt-4 text-sm font-semibold text-ink">
+                {/* `scroll-mt-14` e non `-4`: sopra l'elenco c'è la fascia
+                    STICKY con la data della pronta consegna (36px misurati), e
+                    con un margine più piccolo l'ancora atterrava lasciando il
+                    titolo NASCOSTO sotto di essa. Il salto sembrava funzionare
+                    — lo scroll avveniva — ma portava a una banda senza nome.
+                    L'ha visto lo screenshot, non l'asserzione: il test
+                    controllava `scrollY > 100`, ed era vero. */}
+                <h3 id="accessori" className="scroll-mt-14 text-sm font-semibold text-ink">
                   Accessori
                 </h3>
                 {/* L'unica parola NOSTRA di questo schermo, e lo dice. Tutte le
