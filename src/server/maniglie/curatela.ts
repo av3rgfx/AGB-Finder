@@ -48,6 +48,25 @@ interface Curatela {
    * senza una seconda regola libera di divergere dalla prima.
    */
   trasparenti: ReadonlySet<string>;
+  /**
+   * I gruppi che NON sono maniglie, decisi da Andrea (rifornimento magazzino).
+   *
+   * ⚠️ «Accessori» è la PRIMA parola NOSTRA in questo schermo: tutte le altre
+   * etichette sono parole scritte da COLOMBO, refusi compresi. Va dichiarata a
+   * schermo come nostra, ed è per questo che la sezione ha un'intestazione
+   * mentre il resto della griglia non ne ha nessuna: una banda senza nome non
+   * afferma niente, e non c'è nome che sarebbe vero sopra tutti gli altri 73.
+   *
+   * ⚠️ NON coincide con «ha un archivio fotografico»: i cinque gruppi di pomoli
+   * (POMOLO, PUSH, ROUND, SQUARE, CUT) l'archivio ce l'hanno e maniglie non
+   * sono; MILLA, SPIDER e TRAMA sono maniglie e l'archivio non ce l'hanno. Non
+   * è deducibile da nessun dato: è una lista.
+   *
+   * ⚠️ Da non confondere con gli «archivi di accessori» di `foto-archivio.ts`
+   * (`02_Pomoli`, `03_Maniglioni_Pulls`): quelle sono sezioni dell'archivio
+   * fotografico di COLOMBO, e POMOLO e MANIGLIONE non stanno in questa lista.
+   */
+  accessori: ReadonlySet<string>;
 }
 
 const CURATELE: Record<string, Curatela> = {
@@ -114,6 +133,30 @@ const CURATELE: Record<string, Curatela> = {
     // destinazioni ha un archivio fotografico, quindi lo scioglimento non può
     // prestare la foto di un modello a un altro.
     trasparenti: new Set(["COPPIA"]),
+    // 17 gruppi, 648 codici (19,1% del listino). Misurato: sono il 31,5% di
+    // ciò che è in pronta consegna, cioè proprio la parte che sta sullo
+    // scaffale — l'8,6% degli accessori è pronto contro il 4,4% del resto.
+    // POMOLINO non c'è: il titolare l'ha citato nel primo messaggio e tolto in
+    // quello definitivo.
+    accessori: new Set([
+      "BATTIPORTA",
+      "BLOCCAPORTA",
+      "BUSSOLA",
+      "COPRIAVVOLG.",
+      "DISPOSITIVO",
+      "DUMMY",
+      "FERMAPORTA",
+      "INSERTO",
+      "KIT",
+      "MOLLA",
+      "MOSTRINA",
+      "MOVIMENTO",
+      "NOTTOLINO",
+      "PLACCA",
+      "PROLUNGA",
+      "QUADRO",
+      "ROSETTA",
+    ]),
   },
 };
 
@@ -123,6 +166,7 @@ const VUOTA: Curatela = {
   escluse: new Set(),
   divise: new Set(),
   trasparenti: new Set(),
+  accessori: new Set(),
 };
 const curatelaDi = (brand: string): Curatela => CURATELE[brand] ?? VUOTA;
 
@@ -255,5 +299,20 @@ export function resolveLabel(brand: string, tipo: string): string | null {
  */
 export function vociCuratela(brand: string): string[] {
   const c = curatelaDi(brand);
-  return [...Object.keys(c.fusioni), ...c.escluse, ...c.divise, ...c.trasparenti].sort();
+  return [
+    ...Object.keys(c.fusioni),
+    ...c.escluse,
+    ...c.divise,
+    ...c.trasparenti,
+    ...c.accessori,
+  ].sort();
+}
+
+/**
+ * I gruppi che si elencano sotto «Accessori». Vuoto per una marca senza
+ * curatela: il giorno di HOPPE la lista di Andrea non deve applicarsi in
+ * silenzio a un listino che non ha guardato.
+ */
+export function etichetteAccessorio(brand: string): ReadonlySet<string> {
+  return curatelaDi(brand).accessori;
 }

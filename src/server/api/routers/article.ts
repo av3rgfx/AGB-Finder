@@ -12,7 +12,7 @@ import {
   fotoRappresentativa,
   type BrowseRow,
 } from "@/server/maniglie/browse";
-import { resolveLabel } from "@/server/maniglie/curatela";
+import { etichetteAccessorio, resolveLabel } from "@/server/maniglie/curatela";
 import { articleTotal } from "@/server/maniglie/price";
 import {
   allAvailableArticleIds,
@@ -192,6 +192,9 @@ export const articleRouter = createTRPCRouter({
       const filtrati = await idsFiltrati(ctx.db, input.brand, input);
       const groups = await browseFirstWords(ctx.db, input.brand, filtrati);
       const modelli = etichetteModello();
+      // «Accessori» è una parola NOSTRA, non di COLOMBO: la schermata lo
+      // dichiara, e questo è il dato che le permette di farlo.
+      const accessori = etichetteAccessorio(input.brand);
 
       // Una sola lettura in più, e SOLO delle righe che una foto ce l'hanno
       // (2.118 su 3.456): serve a scegliere l'anteprima di ogni gruppo-modello.
@@ -223,6 +226,7 @@ export const articleRouter = createTRPCRouter({
           word: g.word,
           count: g.count,
           isModello: modelli.has(g.word),
+          isAccessorio: accessori.has(g.word),
           preview: urlFoto(perGruppo.get(g.word)?.imageUrl ?? null, 320),
         })),
       };

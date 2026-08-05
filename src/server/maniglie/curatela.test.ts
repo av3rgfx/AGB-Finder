@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import {
   browseLabel,
+  etichetteAccessorio,
   foldBrowseGroups,
   resolveLabel,
   sourceFirstWords,
@@ -362,5 +363,60 @@ describe("browseLabel — prime parole trasparenti", () => {
       { word: "BOCCHETTA", count: 318 },
       { word: "MANIGLIONE", count: 353 },
     ]);
+  });
+});
+
+/**
+ * I 17 gruppi che Andrea rifornisce. NON sono deducibili da nessun dato: i
+ * cinque gruppi di pomoli hanno l'archivio fotografico e maniglie non sono, e
+ * MILLA, SPIDER e TRAMA sono maniglie che l'archivio non ce l'hanno. È una
+ * lista, e a schermo va dichiarata come parola nostra.
+ */
+describe("etichetteAccessorio", () => {
+  test("sono i 17 di Andrea", () => {
+    expect([...etichetteAccessorio("COLOMBO")].sort()).toEqual([
+      "BATTIPORTA",
+      "BLOCCAPORTA",
+      "BUSSOLA",
+      "COPRIAVVOLG.",
+      "DISPOSITIVO",
+      "DUMMY",
+      "FERMAPORTA",
+      "INSERTO",
+      "KIT",
+      "MOLLA",
+      "MOSTRINA",
+      "MOVIMENTO",
+      "NOTTOLINO",
+      "PLACCA",
+      "PROLUNGA",
+      "QUADRO",
+      "ROSETTA",
+    ]);
+  });
+
+  // POMOLINO era nel primo messaggio e non nel definitivo: resta prodotto
+  // principale finché Andrea non dice altro.
+  test("POMOLINO, BOCCHETTA e MANIGLIONE non sono accessori", () => {
+    const acc = etichetteAccessorio("COLOMBO");
+    expect(acc.has("POMOLINO")).toBe(false);
+    expect(acc.has("BOCCHETTA")).toBe(false);
+    expect(acc.has("MANIGLIONE")).toBe(false);
+  });
+
+  // La sentinella: se una di queste etichette smettesse di esistere, la voce
+  // sarebbe morta e nessun conteggio andrebbe a zero.
+  test("ogni accessorio è un'etichetta che la curatela produce davvero", () => {
+    for (const a of etichetteAccessorio("COLOMBO")) {
+      expect(browseLabel("COLOMBO", `${a} QUALCOSA`), a).toBe(a);
+    }
+  });
+
+  test("una marca senza curatela non eredita gli accessori di COLOMBO", () => {
+    expect(etichetteAccessorio("HOPPE").size).toBe(0);
+  });
+
+  test("la sentinella della curatela li cita", () => {
+    expect(vociCuratela("COLOMBO")).toContain("NOTTOLINO");
   });
 });
