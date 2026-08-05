@@ -58,12 +58,10 @@ export const ARCHIVI: Record<string, VoceArchivio> = {
   "01_Gaia": { etichetta: "GAIA" },
   "01_Gira": { etichetta: "GIRA" },
   "01_Gryps": { etichetta: "GRYPS" },
-  "01_Heidi": { etichetta: "HEIDI" },
   "01_Ida": { etichetta: "IDA" },
   "01_Isy": { etichetta: "ISY" },
   "01_Lara": { etichetta: "LARA" },
   "01_Libra": { etichetta: "LIBRA" },
-  "01_Lund": { etichetta: "LUND" },
   "01_Mach": { etichetta: "MACH" },
   "01_Madi": { etichetta: "MADI" },
   "01_Mapo": { etichetta: "MAPO" },
@@ -87,6 +85,19 @@ export const ARCHIVI: Record<string, VoceArchivio> = {
   "01_Viola": { etichetta: "VIOLA" },
   "01_Wing": { etichetta: "WING" },
   "01_Zelda": { etichetta: "ZELDA" },
+
+  // ── due archivi che ora ospitano anche una CREMONESE ───────────────────────
+  // Dal 2026-08-05 `HEIDI/PETER` si elenca sotto HEIDI e `LUNDCREM` sotto LUND
+  // (fusioni chieste da Andrea). Ma la cremonese è un altro prodotto, e senza
+  // `serie` prenderebbe la foto della maniglia — e qui la regola sulle finiture
+  // NON salva: `0CD32-UB` avrebbe `Heidi_R_UB`, finitura provata GIUSTA e
+  // prodotto SBAGLIATO.
+  // ⚠️ La fonte della serie è il LISTINO, non i nomi dei file: COLOMBO scrive
+  // «HEIDI CD31R» contro «HEIDI/PETER CREM CD32», «LUND SE11R» contro
+  // «LUNDCREM SE12». Va detto, perché la regola di questo campo è «solo dove
+  // COLOMBO l'ha scritta» e qui l'ha scritta altrove.
+  "01_Heidi": { etichetta: "HEIDI", serie: "CD31" },
+  "01_Lund": { etichetta: "LUND", serie: "SE11" },
 
   // ── la serie ROBOTECH: sigle interne, tradotte ─────────────────────────────
   // `Robot2` non è «Robot 2»: è ROBODUE. La traduzione è verificata sul listino

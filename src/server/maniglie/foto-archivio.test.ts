@@ -397,3 +397,41 @@ describe("abbinamento con le regole per file", () => {
     expect(m.size).toBe(0);
   });
 });
+
+/**
+ * Le fusioni del 2026-08-05 mandano tre cremonesi dentro il gruppo della loro
+ * maniglia (`HEIDI/PETER`→HEIDI, `LUNDCREM`→LUND). Senza guardia
+ * erediterebbero la foto della maniglia — e la regola sulle finiture NON le
+ * intercetta: `0CD32-UB` prenderebbe `Heidi_R_UB`, cioè finitura provata
+ * GIUSTA e prodotto SBAGLIATO. È la stessa forma della trappola ZERO.
+ *
+ * La guardia è la `serie`, già usata per ROBOT (CD41/CD75) e MOOD (CC11/CC21).
+ * ⚠️ La fonte qui è il LISTINO e non i nomi dei file: COLOMBO scrive
+ * «HEIDI CD31R» contro «HEIDI/PETER CREM CD32». È scritta da lui, altrove.
+ */
+describe("le cremonesi non ereditano la foto della loro maniglia", () => {
+  const foto: FotoArchivio[] = [
+    { archivio: "01_Heidi", nome: "Heidi_R_UB" },
+    { archivio: "01_Lund", nome: "lund_2CM" },
+  ];
+
+  it("la maniglia HEIDI la prende", () => {
+    const m = abbinaFoto("COLOMBO", [art("0CD31R-UB", "HEIDI CD31R UMBER BRONZE")], foto);
+    expect(m.get("0CD31R-UB")).toBe(chiaveFoto("01_Heidi", "Heidi_R_UB"));
+  });
+
+  it("la cremonese CD32 no, benché ora si elenchi sotto HEIDI", () => {
+    const m = abbinaFoto("COLOMBO", [art("0CD32-UB", "HEIDI/PETER CREM CD32 UMBER")], foto);
+    expect(m.has("0CD32-UB")).toBe(false);
+  });
+
+  it("la maniglia LUND la prende, la cremonese SE12 no", () => {
+    const m = abbinaFoto(
+      "COLOMBO",
+      [art("0SE11R-CM", "LUND SE11R CROMAT"), art("0SE12-GM", "LUNDCREM SE12 GRAFITE MAT")],
+      foto,
+    );
+    expect(m.get("0SE11R-CM")).toBe(chiaveFoto("01_Lund", "lund_2CM"));
+    expect(m.has("0SE12-GM")).toBe(false);
+  });
+});
