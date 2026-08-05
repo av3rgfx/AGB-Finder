@@ -9,13 +9,13 @@
 
 | Campo | Valore |
 |-------|--------|
-| **Data** | 2026-08-05 — **LE FOTO DEGLI ARTICOLI COLOMBO + IL FILTRO COLORI + I POMOLI GENERICI** |
+| **Data** | 2026-08-05 — **LO SFOGLIO A SERIE: FOTO, TENDINE, FUSIONI** |
 | **Fase in corso** | Fase 1 — MVP Gestionale · reparto maniglie |
-| **Sotto-fase** | Chiusa. Il reparto maniglie ha le foto, e sono **in produzione**. |
-| **PR** | **#54** (foto + filtro colori) · **#55** (fix secret ops) · **#56** (pomoli generici) — **tutte e tre MERGIATE** |
-| **Stato deploy** | 🟢 **NESSUNA MIGRAZIONE in tutta la sessione.** ✅ **Ops ESEGUITE**: run `30948429475` (228 foto, 1.995 articoli) e `30958928985` (12 foto, **2.118 articoli**) |
-| **Gate** | typecheck · lint · **1.423 test** · build 23 route · **integrazione 9/9 sul catalogo vero** · **browser 28/28 + 20/20** (desktop e 375px) |
-| **In produzione** | **2.118 codici su 3.456 (61,3%) hanno una foto**, con 240 file su Vercel Blob privato |
+| **Sotto-fase** | Chiusa. Sessione di DECISIONI portata fino all'esecuzione completa. |
+| **Branch** | `claude/ufptrade-catalog-redesign-sy81sv` — PR aperta |
+| **Stato deploy** | 🟢 **NESSUNA MIGRAZIONE, NESSUN RUN OPS, nessuna dipendenza nuova.** Tutto si calcola a lettura: al deploy si applica da solo |
+| **Gate** | typecheck · lint · **1.463 test** · build 23 route · **integrazione 35/35 sul listino VERO** · **browser 28/28** (desktop e 375px) |
+| **In produzione al merge** | 94 gruppi (erano 102) · **98,2%** dei codici sfogliabili in una serie (era 77,8%) · foto su 63 gruppi-modello |
 
 ---
 
@@ -23,115 +23,137 @@
 
 | Campo | Valore |
 |-------|--------|
-| **Data** | 2026-08-04 — **MISURE SULLE FOTO + CURATELA DELLO SFOGLIO (le 14 righe di Andrea)** |
-| **Branch git** | `claude/foto-catalogo-maniglie-8sua1k` — **PR #53 MERGIATA** |
-| **Stato deploy** | 🟢 nessuna migrazione, nessuna azione ops |
-| **Gate** | typecheck · lint · 1336 test · integrazione 29/29 · browser 54/54 |
+| **Data** | 2026-08-05 — **LE FOTO DEGLI ARTICOLI COLOMBO + FILTRO COLORI + POMOLI GENERICI** |
+| **PR** | #54 · #55 · #56 — tutte MERGIATE, ops eseguite |
+| **In produzione** | 2.118 codici su 3.456 (61,3%) con foto, 240 file su Vercel Blob privato |
 
 ---
 
 > **▶ RIPRENDI DA QUI**
 >
-> ## LA PROSSIMA SESSIONE NON È UN SEGUITO: È UNA SESSIONE DI DECISIONI
+> ## LA SESSIONE APPENA CHIUSA ERA DI DECISIONI, ED È ARRIVATA IN FONDO
 >
-> L'utente ha dichiarato che vuole **discutere e prendere decisioni progettuali
-> importanti, che porteranno grandi cambiamenti**, e che i dettagli li darà lui.
-> Quindi: **non aprire codice per primo.** Leggi questo file, poi ascolta, poi
-> `/brainstorming` e `/llm-council` **prima** di qualunque riga.
+> L'utente ha portato quattro richieste sullo sfoglio del catalogo maniglie.
+> Workflow completo: `/brainstorming` → **misure sul listino vero** →
+> `/llm-council` (5 advisor + 5 peer review) → `/impeccable` → spec → piano →
+> esecuzione TDD → verifica in browser. Tutto su
+> `claude/ufptrade-catalog-redesign-sy81sv`.
 >
 > ### 📌 LE DECISIONI STRUTTURALI GIÀ PRESE (da conoscere prima di ridiscuterle)
 >
-> Ognuna ha una ragione documentata; cambiarle è legittimo, ma va fatto sapendo
-> **quale argomento le sosteneva**, perché quasi tutte sono state prese contro
-> un'alternativa che sembrava migliore:
->
 > | Decisione | Dove | Perché |
 > |---|---|---|
-> | **Un solo repo, un solo DB, un solo Better Auth**, due reparti affiancati | verdetto **A′** del council, 2026-08-03 | il criterio non era «utenti in comune» ma «esiste una domanda che l'agente fa davanti al cliente e attraversa i due domini?» — sì: *questo è ordinabile oggi?* |
+> | **Un solo repo, un solo DB, un solo Better Auth**, due reparti affiancati | council 2026-08-03 | il criterio non era «utenti in comune» ma «esiste una domanda che l'agente fa davanti al cliente e attraversa i due domini?» |
 > | Il **reparto si deduce dall'URL**, mai da un cookie | `src/lib/reparti.ts` | ricordarlo sarebbe l'ennesimo «valore deciso dal programma e mai dichiarato» |
 > | **Kit generation = engine deterministico, MAI LLM** | Fase 1d | una distinta sbagliata è un ordine sbagliato |
-> | **Gemini unico** (chat + embedding), nessun fallback di provider | council 2026-07-24 | ⚠️ concentrazione vendor: un outage degrada chat **e** ricerca semantica |
-> | **`Product` (AGB) e `Article` (maniglie) NON si condividono** | passo 0 del reparto | la migrazione multi-marca è rimandata alla **marca #3** |
-> | Le **regole di dominio stanno in TypeScript**, mai nel raw SQL | disponibilità, famiglia, finitura | al raw SQL arriva al massimo una lista di id già decisa |
+> | **Gemini unico** (chat + embedding), nessun fallback | council 2026-07-24 | ⚠️ un outage degrada chat **e** ricerca semantica |
+> | **`Product` (AGB) e `Article` (maniglie) NON si condividono** | passo 0 del reparto | migrazione multi-marca rimandata alla **marca #3** |
+> | Le **regole di dominio stanno in TypeScript**, mai nel raw SQL | disponibilità, serie, finitura | al raw SQL arriva al massimo una lista di id già decisa |
+> | **La classificazione avviene sull'insieme INTERO, i filtri si applicano dopo** | 2026-08-05, `browse.ts` | misurato: classificando dopo il filtro, 27 articoli su 3.393 cambiavano serie con `?pronta=1` acceso, e un URL condiviso puntava a una tendina inesistente |
+> | **La curatela delle etichette è PER MARCA** | 2026-08-05, `curatela.ts` | senza, il giorno di HOPPE le correzioni di COLOMBO si sarebbero applicate in silenzio alle sue etichette, e nessun conteggio sarebbe andato a zero |
 >
-> ### 🧨 I DEBITI STRUTTURALI, cioè i candidati naturali a un «grande cambiamento»
+> ### ✅ COS'È STATO FATTO
 >
-> 1. **La migrazione multi-marca**, rimandata alla marca #3: `agbCode @unique`,
->    `ProductImage.agbCode @id`, `LISTINO_TOTAL_PAGES` scalare — **128 occorrenze
->    in 22 file**. Oggi il reparto maniglie ospita solo COLOMBO; HOPPE, OLIVARI,
->    DND e GHIDINI sono attese.
-> 2. **Vercel Hobby vieta l'uso commerciale** → 🔴 **il passaggio a Pro era
->    deciso per sabato 08/08**: verificare se è stato fatto.
-> 3. **Le 7.082 foto AGB dentro Postgres** sono la causa unica dei tre limiti di
->    piattaforma più caldi (storage Neon 72-80%, Fast Origin Transfer 40%). Le
->    foto COLOMBO sono nate su Blob apposta; quelle AGB no.
-> 4. **`nuova-client.tsx` è a 1.383 righe** anche dopo l'estrazione della #48.
-> 5. **Le tre distinte reali di MC, Peruzzi e Fosca** pendono da **cinque
->    sessioni**: senza, i tre clienti principali ricevono distinte mai confrontate
->    con un ordine vero.
+> **1. Le foto sullo sfoglio.** Tessere di livello 1 in due forme: il
+> **gruppo-modello** (63 su 94) ha la foto grande; la **tipologia** (31: BOCCHETTA,
+> MANIGLIONE, KIT…) non ha area immagine affatto, perché una foto sola sarebbe un
+> modello a caso spacciato per la categoria e un riquadro vuoto in una griglia si
+> legge come immagine rotta. Quali gruppi siano un modello **non è un nostro
+> giudizio**: è `ARCHIVI`, la struttura dell'archivio fotografico di COLOMBO.
 >
-> ### ✅ COS'È STATO FATTO IN QUESTA SESSIONE
+> **2. Le serie a tendina.** `<details>` NATIVO controllato dall'URL (`?fam=A,B`),
+> più d'una aperta insieme, tutte chiuse all'arrivo, anteprima nell'intestazione
+> (56px chiusa → 32px aperta). Tutte le righe del gruppo arrivano con la risposta
+> (88 KB nel caso peggiore, MANIGLIONE 338 righe): le tendine si aprono senza rete,
+> e **una tendina chiusa non fa scaricare al browser le sue foto** perché è
+> `display:none`.
 >
-> **Le foto del reparto maniglie, dall'archivio ufficiale COLOMBO alla schermata,
-> e sono in produzione.** 2.118 codici su 3.456 (**61,3%**) con **240 file** su
-> Vercel Blob privato dietro `/api/article-image`.
+> **3. La regola delle serie, tre gradini: 77,8% → 98,2%.** (1) il token della
+> descrizione presente nel codice · (2) assorbimento in una serie **già esistente**
+> del gruppo, per **identità** (+17) o **prefisso unico** (+276) della radice del
+> codice · (3) radici condivise da **almeno due** codici (+400 in 58 voci).
+> Restano 60 codici senza serie su 3.393. 591 serie, di cui il 7,3% da un codice
+> solo (la regola vecchia ne aveva l'8,6%).
 >
-> Tre gradini, tutti cose scritte da COLOMBO: il **codice** nel nome del file
-> (322) · la **finitura** (994) · la foto del **modello** (679) · più i **pomoli
-> generici** aggiunti a fine sessione (+123).
+> **4. Sette fusioni di primo livello**, cercate confrontando **tutte** le etichette
+> a coppie: `MANIG.`+`MANIG.INCASSO`+`MANIGLIA`+`MANIGLIE` → **MANIGLIA INCASSO** ·
+> `MANIGLIONI` → `MANIGLIONE` · `PL.OTT.`+`PL.OTT.YALE` → `PL.` · `RG` → `DUMMY` ·
+> `RONDELLE` esclusa. **102 → 94 gruppi.**
 >
-> **+ IL FILTRO COLORI** (la 14ª riga di Andrea): offre le finiture **presenti nel
-> contesto** — 28 nel catalogo, cinque dentro FEDRA — e **non si restringe con
-> quella già scelta**, perché un filtro che cancella le proprie alternative è un
-> vicolo cieco. `<details>` nativo, 46px chiuso.
+> **5. «famiglia» → «serie»**, la parola di COLOMBO (il suo indice stampa «130 round
+> ID25»); l'URL resta `?fam=` perché i link condivisi valgono più della coerenza del
+> nome interno. E un `?tipo=MANIG.` condiviso prima della fusione **si risolve**
+> sull'etichetta corrente invece di aprire un gruppo vuoto.
 >
-> ### 🔎 SETTE COSE IMPARATE ESEGUENDO (non leggendo)
+> ### 🔎 LE COSE IMPARATE MISURANDO ED ESEGUENDO
 >
-> 1. **La scheda misure sbagliava quattro affermazioni su cinque.** Le 707 foto
->    non sono tutte «5315×5315 pulite su bianco»: **69 sono scatti d'ambiente** su
->    fondo colorato (`Robo4_def.jpg` è 8268×7087 e **34 MB**). Il «39% con la
->    finitura nel nome» contava le parole in **due lingue**; il codice ufficiale
->    sta in 143 file. Il codice intero sta in **29** file, non nel 62%. E **la
->    cartella da sola non basta**: sette gruppi hanno due archivi.
-> 2. **«ZERO» è un prodotto a listino** (156 codici) e l'archivio lo nomina in 71
->    file: la foto liscia su un articolo ZERO è un'altra rosetta.
-> 3. **Il login all'area download non emette cookie**: la POST *è* la pagina, e i
->    file sotto `/download` non sono protetti affatto.
-> 4. **`\b` non è un confine di parola dopo un `_`**: `03_Mood ocean` passava il
->    filtro degli scatti d'ambiente. Si divide per parole.
-> 5. **Il secret del database si chiama `NEON_DIRECT_URL`**, non `DATABASE_URL`.
->    Il primo run ops è morto in **zero secondi** alla guardia dicendo quale
->    variabile fosse vuota — che è esattamente il motivo per cui le guardie ci
->    sono. Ora il workflow ha il commento che lo spiega.
-> 6. **L'idempotenza è provata, non dichiarata**: il secondo run vero ha stampato
->    `12 caricate · 228 già presenti` e ha chiuso in 7 minuti invece di 18.
-> 7. **Un difetto l'hanno trovato gli screenshot**, non i test: col filtro colori
->    acceso il numero sui gruppi contava un altro insieme e la frase non lo
->    diceva.
+> 1. **La diagnosi dell'utente era sbagliata, la destinazione giusta.** I codici
+>    fuori serie non lo erano per lo zero iniziale (`0ID51R-CM` ha lo stesso zero e
+>    la serie la prende): COLOMBO scrive nella descrizione un codice **diverso** da
+>    quello dell'articolo (`ID51RY` contro `ID51RSMY`). Nello stesso gruppo c'era un
+>    **terzo** codice fuori posto per una causa diversa (`0ID51RSB-NM`, spazio
+>    mancante in `S'ID51RSB`): rientra per identità.
+> 2. **`MANIGLIA` sarebbe stata un'etichetta bugiarda**: 56 righe su 57 di `MANIG.`,
+>    28 su 28 di `MANIGLIA` e le altre dicono «INCASSO». Una voce «MANIGLIA»
+>    prometteva tutte le maniglie e ne conteneva 90, mentre le 129 di ROBOT stanno
+>    altrove.
+> 3. **Una proposta del council falsificata da una misura**: usare le 31 finiture
+>    ufficiali per tagliare la coda del codice dà **35,6%** di serie da un codice
+>    solo (MILLA 28/28, ALBA 21/21), perché le code vere del listino sono 57 e 26
+>    sono bicolori. Peggio del taglio all'ultimo trattino (25,4%).
+> 4. **`LUNDCREM` non si fonde in `LUND`**: `abbinaFoto` assegna le foto per
+>    etichetta di sfoglio, quindi una **cremonese** erediterebbe la foto di una
+>    maniglia. Verificato caso per caso: è l'unica delle sette con questa
+>    conseguenza, e un gate d'integrazione lo blinda.
+> 5. **`router.replace` fa un giro sul server**: l'URL resta indietro di un toggle e
+>    aprendo due tendine di fila la seconda scrittura si perde. Lo stato delle
+>    tendine si scrive con `history.replaceState` — nulla, sul server, dipende da
+>    `?fam=`.
+> 6. **Rendere `open` da un URL che arriva in ritardo fa litigare React col DOM**:
+>    React richiude la tendina appena aperta, e quel reset emette un `toggle` con
+>    `open=false` che la toglie dall'elenco. Lo stato di render è locale.
+> 7. **Il mio script di verifica mentiva**: `details summary` prendeva anche il
+>    filtro colori, che è pure lui un `<details>`. Quattro controlli erano rossi per
+>    il motivo sbagliato. (Terza volta che un test browser passa o fallisce per la
+>    ragione sbagliata: guardare gli screenshot resta obbligatorio.)
+> 8. **Un fixture sbagliato, non il codice**: `XROSDK-BR` ha davvero la serie `DK`
+>    scritta nella descrizione. I test si correggono con righe vere del listino.
 >
-> ### ❓ DA CHIEDERE
+> ### 🧾 DEBITO E LIMITI DICHIARATI
 >
-> 1. **A COLOMBO** — quale archivio fotografico è quale serie: `01_Spider_m/_p` →
->    MR11 o MR15? `01_Milla_1/_2` → LC31 o LC41? `01_Trama_1/_2` → LC71 o LC81?
->    Sono **66 codici** che oggi restano senza foto per non indovinare.
-> 2. **Ad Andrea** (aperte da due sessioni) — la sua lista di fusioni non è
->    esaustiva: `MANIG.`/`MANIGLIA`/`MANIGLIONE`… (otto etichette), `PL.`/`PLACCA`…
->    (quattro), più `COPRIAVVOLG.`, `LUNDCREM`, `HEIDI/PETER`, `RG`. E `RONDELLE`
->    (2 codici) è lasciata dentro pur essendo la stessa cosa di `RONDELLA`.
+> - **Dentro un gruppo-modello le anteprime delle serie si somigliano quasi tutte**:
+>   le serie di FEDRA sono varianti della stessa maniglia, e la foto è la stessa.
+>   Dentro una tipologia (BOCCHETTA) invece differiscono davvero. Non è un difetto,
+>   è la forma del catalogo — ma non aspettarsi che la foto distingua le serie di un
+>   modello.
+> - **La paginazione dentro un gruppo non esiste più**: MANIGLIONE è 338 righe in
+>   una pagina sola (88 KB). La usavano 8 gruppi su 102.
+> - **`sfoglia.tsx` non ha un file di test proprio**: le sue componenti sono provate
+>   attraverso `maniglie-client.test.tsx`.
+> - Il gate d'integrazione `foto-archivio.integration.test.ts` resta **skippato**
+>   senza l'indice dell'archivio (serve la password dell'area download).
+> - `updateMany` in `scripts/foto-colombo.ts` (4 minuti per run ops) · preview
+>   Vercel rosse su ogni PR, mai diagnosticate · `articles.image_url` si chiama
+>   «url» e contiene una chiave.
 >
-> ### 🧾 DEBITO DICHIARATO DI QUESTA SESSIONE
+> ### ❓ APERTE
 >
-> - `articles.image_url` si chiama «url» e contiene una **chiave**: rinominarla è
->   una migrazione per un fatto che il commento a schema già chiarisce.
-> - La scrittura di `image_url` è **1.995 `update` singoli in una transazione**:
->   sono i **4 minuti** più lenti di ogni run. Un `updateMany` per chiave li
->   ridurrebbe a pochi secondi.
-> - La verifica in browser delle foto **intercetta** `/api/article-image` servendo
->   i WebP convertiti in locale: il token Blob è un secret di produzione. Tutto il
->   resto è codice di produzione; l'unico tratto non provato dal vivo è la lettura
->   da Blob, che ha la stessa forma di `/api/listino`, già in produzione.
-> - Le **preview Vercel sono rosse su ogni PR** da mesi, anche su PR di soli
->   documenti (verificato sulla #53). Nessuno l'ha mai diagnosticato.
+> 1. **Vercel Pro** (Hobby vieta l'uso commerciale): era deciso per il 08/08.
+> 2. **Le tre distinte reali di MC, Peruzzi e Fosca**: pendono da sei sessioni, ed è
+>    la cosa aperta che vale di più.
+> 3. **A COLOMBO**: quale archivio è MR11 e quale MR15 (idem LC31/LC41, LC71/LC81) —
+>    66 codici senza foto per non indovinare.
+> 4. **Ad Andrea**: le fusioni non ancora decise restano `MANIG.CD213`,
+>    `MANIG.LC413RS`, `LUNDCREM`, `HEIDI/PETER`, `COPRIAVVOLG.`.
+> 5. La **migrazione multi-marca** (128 occorrenze in 22 file), rimandata alla marca
+>    #3. La curatela è già per marca: è il primo pezzo fatto.
+>
+> ### 📄 DOVE SONO SPEC E PIANO
+>
+> `docs/superpowers/specs/2026-08-05-sfoglio-serie-e-foto-design.md` ·
+> `docs/superpowers/plans/2026-08-05-sfoglio-serie-e-foto.md`
+>
+> ---
 
 > ### (Sessione precedente, 2026-08-04) — «SFOGLIA»
 >

@@ -883,3 +883,40 @@ catalogo vero** (provata rossa sabotando la tabella) · **browser 28/28 + 20/20*
 guardati). 🟢 **NESSUNA MIGRAZIONE, nessuna finestra di disservizio.** ✅ **OPS ESEGUITE** (run `30948429475` e
 `30958928985`). **Domanda aperta per COLOMBO**: quale archivio è MR11 e quale MR15 (idem LC31/LC41, LC71/LC81).
 Spec/piano: `docs/superpowers/{specs,plans}/2026-08-05-foto-articoli-colombo*`.
+
++ **SFOGLIO A SERIE: FOTO, TENDINE, FUSIONI ✅ (branch `claude/ufptrade-catalog-redesign-sy81sv`, PR aperta)**:
+sessione di **decisioni** portata fino in fondo (brainstorming → misure sul listino vero → `/llm-council`
+5 advisor + 5 peer review → `/impeccable` → spec → piano → TDD → browser). **(1) FOTO**: tessere di livello 1
+in due forme — il **gruppo-modello** (63 su 94) ha la foto grande, la **tipologia** (31: BOCCHETTA, MANIGLIONE,
+KIT…) **non ha area immagine affatto**, perché una foto sola sarebbe un modello a caso spacciato per la
+categoria e un riquadro vuoto in una griglia si legge come immagine rotta. Quali gruppi siano un modello non è
+un nostro giudizio: è `ARCHIVI`, la struttura dell'archivio fotografico di COLOMBO. **(2) TENDINE**: il livello 2
+smette di essere una navigazione — `<details>` **nativo** controllato dall'URL (`?fam=A,B`), più d'una aperta
+insieme, tutte chiuse all'arrivo, anteprima 56px chiusa → 32px aperta (resta anche aperta: con tre tendine
+aperte le intestazioni sono i soli punti di riferimento). Tutte le righe del gruppo arrivano con la risposta
+(88 KB nel peggiore dei casi) e **una tendina chiusa non fa scaricare le sue foto**, perché è `display:none`.
+**(3) LA REGOLA DELLE SERIE, 77,8% → 98,2%**: token della descrizione presente nel codice · assorbimento in una
+serie **già esistente** per **identità** (+17) o **prefisso unico** (+276) della radice · **radici condivise da
+almeno due codici** (+400 in 58 voci). Restano 60 codici su 3.393; 591 serie, di cui il 7,3% da un codice solo
+(la regola vecchia ne aveva l'8,6%). La soglia dei due non è un numero travestito: una tendina che contiene una
+riga sola è un involucro attorno a una riga. **Deroga circoscritta al divieto §9** («non dedurre dal codice»),
+verificata sul suo stesso controesempio: `0CD63FP-CM` e `0CD63GB-CM` restano separati. **(4) SETTE FUSIONI**,
+cercate confrontando **tutte** le etichette a coppie: `MANIG.`+`MANIG.INCASSO`+`MANIGLIA`+`MANIGLIE` →
+**MANIGLIA INCASSO** (56 righe su 57 dicono «INCASSO»: «MANIGLIA» prometteva tutte le maniglie e ne conteneva
+90) · `MANIGLIONI`→`MANIGLIONE` · `PL.OTT.`+`PL.OTT.YALE`→`PL.` · `RG`→`DUMMY` · `RONDELLE` esclusa (la pagina
+dichiarava già il falso). **102 → 94 gruppi.** Restano fuori `PLACCA` (altro prodotto) e **`LUNDCREM`**, che
+entrando in LUND farebbe ereditare a una **cremonese** la foto di una maniglia. **(5) LA CURATELA È PER MARCA**:
+`browseLabel(brand, name)` — senza, il giorno di HOPPE le correzioni di COLOMBO si applicherebbero in silenzio
+alle sue etichette. **(6) «famiglia» → «serie»** (parola di COLOMBO), URL invariato `?fam=`, e un `?tipo=MANIG.`
+condiviso prima della fusione **si risolve** invece di aprire un gruppo vuoto. **La decisione che regge le
+altre**: si classifica sull'**insieme intero** e si filtra dopo — misurato che, classificando dopo il filtro,
+27 articoli su 3.393 cambiavano serie con «solo pronta consegna» acceso. **Difetti trovati eseguendo**: la
+diagnosi dell'utente sullo zero iniziale era sbagliata (COLOMBO scrive nella descrizione un codice diverso da
+quello dell'articolo) e nello stesso gruppo c'era un **terzo** codice fuori posto che nessuno aveva visto ·
+`router.replace` fa un giro sul server e perdeva la seconda tendina aperta (ora `history.replaceState`) ·
+React richiudeva la tendina appena aperta e quel reset la toglieva dall'elenco (ora stato di render locale) ·
+una foto mancante disegnava l'icona di immagine rotta · e il **mio script di verifica mentiva**, perché
+`details summary` prendeva anche il filtro colori. Gate: typecheck · lint · **1.463 test** · build 23 route ·
+**integrazione 35/35 sul listino vero** · **browser 28/28** (desktop e 375px, screenshot guardati).
+🟢 **NESSUNA MIGRAZIONE, NESSUN RUN OPS, nessuna dipendenza nuova**: tutto si calcola a lettura, quindi il
+listino aggiornato si colloca da solo. Spec/piano: `docs/superpowers/{specs,plans}/2026-08-05-sfoglio-serie-e-foto*`.
