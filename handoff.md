@@ -155,6 +155,172 @@
 >
 > ---
 
+> ---
+>
+> ## ▶ PROMPT PER LA PROSSIMA SESSIONE — LE CINQUE DRITTE DI ANDREA
+>
+> Andrea ha verificato lo sfoglio nuovo (PR #58) e ha mandato cinque correzioni.
+> Le misure preliminari sono già state fatte a fine sessione e stanno qui sotto:
+> **non rifarle**, ma verificare che il listino non sia cambiato.
+>
+> ### 1. Copiare un codice deve copiarlo SENZA separatori
+>
+> Premendo sul codice si copia `0ID41R-CR`; Andrea lo vuole negli appunti come
+> **`0ID41RCR`**. **La preview a schermo resta invariata**: si vede col trattino,
+> si copia senza.
+>
+> ⚠️ **`CopyCodeButton` è CONDIVISO col reparto serramenti**
+> (`src/components/product/copy-code-button.tsx`, usato da `distinta-table.tsx`,
+> `inline-products.tsx`, `product-detail.tsx` e dalla scheda maniglie
+> `maniglie/[id]/articolo-client.tsx`). I codici AGB sono `A50122.08.07`:
+> togliere i punti **lì sarebbe sbagliato**. Serve una prop separata per «cosa
+> copiare», usata dal solo reparto maniglie.
+>
+> 🟢 Il valore esiste già: è `articles.code_norm`, e la funzione è
+> `normalizeArticleCode` in `src/server/maniglie/code-norm.ts`. Non serve calcolarlo
+> in UI né aggiungere colonne.
+>
+> ### 2. `PL.` è l'abbreviazione di `PLACCA`: fondere
+>
+> Questa sessione le aveva tenute separate perché misurate come due prodotti
+> (placche in ottone `PB02*` contro placche dei maniglioni `0AM113PL*`).
+> **Andrea è la fonte di verità sulla sua tassonomia, e ha ragione lui.**
+>
+> 🟢 Misurato che la fusione **non perde la distinzione**: `PL.`+`PLACCA` = 87
+> codici che il livello 2 divide in **14 serie** — `PB02`(8) `PB02Y`(8) `PB02Q`(3)
+> `PB02YQ`(3) da una parte, `AM113`(9) `CD02PL`(9) `PLY85`(9) `PL70`(8) `PL90`(8)
+> `LC113`(5)… dall'altra. Una riga in `FUSIONI`, e i test da aggiornare.
+> **94 → 93 gruppi.**
+>
+> ### 3. 🔴 LE FOTO DELLA FINITURA SBAGLIATA — il punto che vale di più
+>
+> Andrea: *«alcune categorie hanno la foto corretta per ogni prodotto, altre la
+> stessa foto per finiture diverse. Per esempio la DUE CC31R hanno tutte la foto
+> della maniglia blu. Se mancano le foto delle giuste finiture è meglio togliere
+> direttamente le foto per quel prodotto, perché confondono e sono fuorvianti»* —
+> e la ragione è esatta: l'agente **non sa** dedurre la finitura dal codice, quindi
+> l'immagine sbagliata lo inganna invece di aiutarlo.
+>
+> **Misurato sui 2.116 articoli con foto:**
+>
+> | esito | articoli |
+> |---|---|
+> | finitura **provata esatta** | **991** (46,8%) |
+> | finitura **provata sbagliata** | **52** (2,5%) — es. `0BD11R-NM` «ELLE NEROMAT» mostra il **CROMO** |
+> | foto **senza finitura nel nome** → non verificabile | **940** |
+> | codice senza coda di finitura | 133 |
+>
+> **Il caso di Andrea è dentro i 940, e spiega perché quel numero è il vero
+> problema**: tutti gli otto `0CC31R-C01…C08` prendono
+> `maniglie/colombo/01-due/due-capri-blue`. La foto **è** di una finitura precisa
+> (Capri Blue = `C12`), ma COLOMBO l'ha scritta **a parole** e non col codice,
+> quindi `finituraDiFoto` restituisce `null` e il confronto non scatta.
+>
+> 🎯 **Quindi il primo passo NON è togliere le foto: è riconoscere le finiture
+> scritte a parole.** `FINITURE` in `src/server/maniglie/finiture.ts` ha già il
+> campo `nome` per tutte e 31 («Capri Blue», «White», «Neromat»…). Riconoscendole
+> anche a parole, una parte dei 940 diventa *provata esatta* e il resto diventa
+> *provato sbagliato* — e solo allora si sa quanto costa davvero la regola di
+> Andrea. ⚠️ L'handoff del 05/08 avvisa che i nomi nei file sono in **due lingue**:
+> misurare, non assumere.
+>
+> **Il costo della regola, oggi:** tenendo solo le foto con finitura provata si
+> passa da **2.118 (61,3%)** a **991 (28,7%)** articoli con foto. Con le finiture a
+> parole riconosciute il numero sale — di quanto è la misura da fare per prima.
+>
+> **Da decidere con l'utente**, con i numeri davanti: (a) togliere la foto solo
+> dove è *provata sbagliata* (52, costo nullo, guadagno piccolo); (b) tenerla solo
+> dove è *provata giusta* (onesto e costoso); (c) una via di mezzo per gruppi come
+> BOCCHETTA, dove la finitura conta meno della forma.
+> ⚠️ Ricordare che la foto ha **tre gradini** (`abbinaFoto`): il gradino 3 aggancia
+> per **codice nel nome del file** ed è già esatto per costruzione; il problema
+> nasce al gradino 1 (foto del modello), dove `esatta ?? candidate[0]` ripiega
+> sulla prima chiave in ordine alfabetico.
+>
+> ### 4. Una categoria ACCESSORI sopra i gruppi che non sono maniglie
+>
+> Andrea cita QUADRO, PLACCA, POMOLINO, PROLUNGA, NOTTOLINO, MOSTRINA, MOLLA,
+> MOVIMENTO, KIT «ecc.». Serve **l'elenco completo deciso da lui**, perché la
+> divisione non coincide con nessun dato che abbiamo:
+>
+> - **63 gruppi hanno un archivio fotografico di modello**: 963 · ALATO · ALBA ·
+>   AMA · BLAZER · BOLD · CAMEO · **CUT** · DAYTONA · DEA · DROP · DUE · EDO ·
+>   ELECTRA · ELLE · ELLESSE · ESPRIT · FEDRA · FLESSA · GAIA · GIRA · GRYPS ·
+>   HEIDI · IDA · ISY · LARA · LIBRA · LUND · MACH · MADI · MAPO · META · MIXA ·
+>   MOON · OLLY · ONE · PEAK · PEGASO · PETER · PIUMA · **POMOLO** · **PUSH** ·
+>   ROBOCINQUE · ROBOCINQUE S · ROBODUE · ROBOQUATTRO · ROBOQUATTRO S · ROBOT ·
+>   ROBOTRE · **ROUND** · SIRIO · SLIM · **SQUARE** · STAR · TACTA · TAIPAN ·
+>   TECNO · TENDER · TOOL · TWITTY · VIOLA · WING · ZELDA
+> - **31 no**: BATTIPORTA · BLOCCAPORTA · BOCCHETTA · BUSSOLA · COPPIA ·
+>   COPRIAVVOLG. · DISPOSITIVO · DUMMY · FERMAPORTA · GRANO · HEIDI/PETER ·
+>   INSERTO · KIT · LUNDCREM · MANIG.CD213 · MANIG.LC413RS · MANIGLIA INCASSO ·
+>   MANIGLIONE · **MILLA** · MOLLA · MOSTRINA · MOVIMENTO · NOTTOLINO · PL. ·
+>   PLACCA · POMOLINO · PROLUNGA · QUADRO · ROSETTA · **SPIDER** · **TRAMA**
+>
+> ⚠️ **La divisione «ha un archivio» NON è la divisione «è una maniglia»**: in
+> grassetto i cinque gruppi di **pomoli** (POMOLO, PUSH, ROUND, SQUARE, CUT) che
+> hanno l'archivio ma non sono maniglie, e i tre **modelli di maniglia** (MILLA,
+> SPIDER, TRAMA) che l'archivio non ce l'hanno per la questione irrisolta con
+> COLOMBO. Non si può dedurre: **serve la lista di Andrea**.
+>
+> **Domande di disegno da portare a `/llm-council` e `/impeccable`:** ACCESSORI è
+> un **quarto livello** sopra i gruppi, una **sezione** nella stessa pagina, o un
+> **filtro**? Con 63 maniglie e 31 accessori, una sezione «Accessori» in coda alla
+> griglia costa zero navigazione e dice la verità. E: «ACCESSORI» è **una nostra
+> parola**, non di COLOMBO — va dichiarato a schermo come si è fatto per tutto il
+> resto.
+>
+> ### 5. La foto della tendina che si rimpicciolisce: rifarla
+>
+> Andrea: *«la foto della tendina che si rimpicciolisce quando si apre confonde e
+> non serve a nulla quando è piccola perché non si vede»*. Ha ragione, e la scelta
+> era dell'utente fra tre opzioni — quindi **non è una regressione, è una prova sul
+> campo che ha battuto una preferenza**.
+>
+> ⚠️ **Prima di ridisegnare, sapere questo**: dentro un **gruppo-modello** le
+> anteprime delle serie **si somigliano quasi tutte**, perché le serie di FEDRA
+> sono varianti della stessa maniglia e la foto è la stessa. La foto per-serie
+> porta informazione **solo dentro le tipologie** (BOCCHETTA, MANIGLIONE). Una
+> soluzione onesta potrebbe essere mostrarla dove distingue e non dove ripete —
+> che è la stessa regola già adottata al livello 1.
+>
+> **Usare `/impeccable`, e verificare a 375px in browser vero.**
+>
+> ### Come lavorare (regole permanenti dell'utente)
+>
+> `/using-superpowers` → `/brainstorming` → `/llm-council` sui dubbi veri
+> (**verificando nel repo le affermazioni degli advisor**) → `/impeccable` per la
+> UI (mobile **e** desktop) → `/ponytail` sul codice → spec → piano → TDD →
+> **verifica in browser a 375px e desktop, screenshot GUARDATI**.
+>
+> **Dire il costo prima di pagarlo**: migrazione, finestra di disservizio o run ops
+> vanno dichiarati *quando si decide*.
+>
+> ### Come rimontare l'ambiente (serve per misurare)
+>
+> ```bash
+> corepack pnpm install
+> bash scripts/dev-bootstrap.sh          # docker + postgres + migrate + seed
+> pnpm import:listino COLOMBO <listino.xlsx>
+> ```
+> Il listino sta nella cartella Drive registrata in `CLAUDE.md` (riuso già
+> autorizzato). Per le foto serve la **password dell'area download COLOMBO**, che
+> la fornisce l'utente e **non va scritta in nessun file**; con quella,
+> `pnpm foto:colombo --dry-run --dump <file>` dà l'indice dei 79 zip senza
+> scaricare i 3,5 GB. ⚠️ **Docker muore da solo più volte per sessione**:
+> `setsid nohup dockerd & disown` + `docker start ufptrade-db`.
+> ⚠️ **`pnpm build` mentre gira `pnpm dev` rompe il dev server** (condividono
+> `.next`): fermare `dev`, poi `rm -rf .next`.
+>
+> ### Il resto che resta aperto
+>
+> **Le tre distinte reali di MC, Peruzzi e Fosca** (sei sessioni) · **Vercel Pro**
+> (Hobby vieta l'uso commerciale) · le due domande a COLOMBO (quale archivio è
+> MR11/MR15, LC31/LC41, LC71/LC81 — 66 codici senza foto) · la **migrazione
+> multi-marca**, di cui la curatela per marca è il primo pezzo già fatto.
+>
+> ---
+>
 > ### (Sessione precedente, 2026-08-04) — «SFOGLIA»
 >
 > ### Cosa è successo (2026-08-04)
