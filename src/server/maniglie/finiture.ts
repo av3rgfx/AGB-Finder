@@ -62,14 +62,45 @@ export const FINITURE_PER_CODICE: ReadonlyMap<string, Finitura> = new Map(
 
 /**
  * La finitura di un codice articolo, se la sua coda è una delle 31 pubblicate.
- * `null` quando la coda non c'è (237 codici del listino non hanno il trattino) o
- * non è ufficiale.
+ * `null` quando non lo è.
+ *
+ * ⚠️ Il trattino NON è obbligatorio, e prima lo era. **237 codici del listino
+ * non ce l'hanno**, e 126 di loro finiscono comunque con una delle 31:
+ * `0CC15FISSOC01` è «POMOLO ONE **WHITE**», `0AM32DKSMSXOL` è «MADI … **OROP.**».
+ * Leggendo solo la forma col trattino, quei 126 risultavano *senza finitura* —
+ * e chi non dichiara una finitura, per la regola della foto contesa, non può
+ * sbagliarla: `POMOLO ONE WHITE` teneva la foto del pomolo **rosso**, che è
+ * alla lettera la segnalazione da cui è nata questa sessione.
+ *
+ * Non è dedurre dal codice (§9): non si interpreta la struttura del codice, si
+ * confronta la sua coda con un elenco CHIUSO di 31 stringhe pubblicate da
+ * COLOMBO. Una coda che non è fra quelle resta `null` — `CR8` e `OL9`, che sono
+ * bicolori, non entrano.
  */
 export function finituraDiCodice(code: string): string | null {
   const i = code.lastIndexOf("-");
-  if (i < 0) return null;
-  const coda = code.slice(i + 1).toUpperCase();
+  if (i >= 0) {
+    const coda = code.slice(i + 1).toUpperCase();
+    if (FINITURE_PER_CODICE.has(coda)) return coda;
+    return null;
+  }
+  const m = /(C\d\d|[A-Z]{2})$/i.exec(code);
+  if (!m) return null;
+  const coda = m[1]!.toUpperCase();
   return FINITURE_PER_CODICE.has(coda) ? coda : null;
+}
+
+/**
+ * Il codice senza la sua coda di finitura. Serve a chi deve confrontare il
+ * NUCLEO del codice e non la variante di colore, e sta qui perché il taglio
+ * dipende da come `finituraDiCodice` l'ha riconosciuta: col trattino o senza.
+ * Tenerlo altrove significherebbe riscrivere quella scelta una seconda volta.
+ */
+export function codiceSenzaFinitura(code: string): string {
+  const fin = finituraDiCodice(code);
+  if (fin === null) return code;
+  const i = code.lastIndexOf("-");
+  return i >= 0 ? code.slice(0, i) : code.slice(0, code.length - fin.length);
 }
 
 export interface FinituraCount extends Finitura {
@@ -95,4 +126,88 @@ export function contaFiniture(codes: string[]): FinituraCount[] {
     if (f) n.set(f, (n.get(f) ?? 0) + 1);
   }
   return FINITURE.filter((f) => n.has(f.codice)).map((f) => ({ ...f, count: n.get(f.codice)! }));
+}
+
+/**
+ * Le grafie con cui COLOMBO scrive una finitura A PAROLE nei nomi dei file,
+ * quando non usa il suo codice. Ricavate dal vocabolario CHIUSO dei nomi reali
+ * — 638 scatti di prodotto ridotti a 195 code distinte, guardate una per una —
+ * e non indovinate: ognuna compare nell'archivio.
+ *
+ * `cromo mat` è la più importante e la meno ovvia: vale **Cromat**, non Cromo.
+ * Lo dimostra l'archivio `01_Ama`, dove COLOMBO scrive `cromat` sulla variante
+ * zero e `cromo matte` su quella liscia — stessa finitura, due generazioni di
+ * nomi. Senza questa riga il match più lungo direbbe «Cromo» su 64 file.
+ */
+const GRAFIE: Record<string, string> = {
+  cromomat: "CM",
+  oromat: "OM",
+  neromat: "NM", //    «nero matte»
+  biancomat: "BI", //  «bianco matte»
+  matwhite: "BI", //   le stesse due parole in ordine inverso, stesso archivio
+  nickelmat: "NI", //  Nikelmat scritto all'inglese
+};
+
+/** `matte` e `mat` sono la stessa parola; i separatori non contano. */
+function normalizzaTesto(s: string): string {
+  return s
+    .toLowerCase()
+    .split(/[^a-z0-9]+/i)
+    .filter(Boolean)
+    .map((t) => (t === "matte" ? "mat" : t))
+    .join("");
+}
+
+/**
+ * Gli aghi in ordine di LUNGHEZZA DECRESCENTE: quattro nomi ufficiali sono
+ * prefisso di un altro (`Bronze`⊂`Umber Bronze`, `Silver`⊂`Silvermat`,
+ * `Grafite`⊂`Grafite Mat`, `Vintage`⊂`Vintage Mat`), e col primo che capita si
+ * affermerebbe la finitura sbagliata con la stessa sicurezza della giusta.
+ *
+ * Sotto i quattro caratteri un ago aggancerebbe per puro caso.
+ */
+const AGHI: { codice: string; ago: string }[] = [
+  ...FINITURE.map((f) => ({ codice: f.codice, ago: normalizzaTesto(f.nome) })),
+  ...Object.entries(GRAFIE).map(([ago, codice]) => ({ codice, ago })),
+]
+  .filter((x) => x.ago.length >= 4)
+  .sort((a, b) => b.ago.length - a.ago.length);
+
+/** Tutte le posizioni in cui un ago compare, non solo la prima. */
+function occorrenze(testo: string, ago: string): { da: number; a: number }[] {
+  const out: { da: number; a: number }[] = [];
+  for (let i = testo.indexOf(ago); i !== -1; i = testo.indexOf(ago, i + 1)) {
+    out.push({ da: i, a: i + ago.length });
+  }
+  return out;
+}
+
+/**
+ * La finitura NOMINATA in un testo libero, `null` se non ce n'è.
+ *
+ * `null` anche per i **bicolori** (`cromo-cromo matte`, 16 file dell'archivio):
+ * due finiture nello stesso nome non fanno una delle 31, e sceglierne una
+ * sarebbe inventare — la stessa ragione per cui `CR8` e `OL9` non stanno nella
+ * tabella qui sopra.
+ *
+ * ⚠️ «Due finiture nominate» non è «due aghi che agganciano»: in
+ * `Umber bronze` agganciano sia `umberbronze` sia `bronze`, ma è UNA finitura
+ * il cui nome ne CONTIENE un altro. A distinguerli è la SOVRAPPOSIZIONE — un
+ * bicolore ha due nomi in posizioni disgiunte (`cromo`-`cromo mat`), un nome
+ * lungo ha il corto dentro di sé. Senza questo, i quattro nomi che sono
+ * prefisso di un altro sarebbero tutti letti come bicolori e persi.
+ */
+export function finituraDiTesto(s: string): string | null {
+  const n = normalizzaTesto(s);
+  const trovati = AGHI.flatMap(({ codice, ago }) =>
+    occorrenze(n, ago).map((p) => ({ codice, ...p })),
+  );
+  if (trovati.length === 0) return null;
+
+  // Il più lungo vince: `AGHI` è già ordinato, quindi il primo trovato è quello.
+  const scelto = trovati[0]!;
+  const altrove = trovati.some(
+    (t) => t.codice !== scelto.codice && (t.a <= scelto.da || t.da >= scelto.a),
+  );
+  return altrove ? null : scelto.codice;
 }

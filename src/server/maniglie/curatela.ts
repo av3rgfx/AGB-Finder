@@ -37,6 +37,36 @@ interface Curatela {
   escluse: ReadonlySet<string>;
   /** Etichette in cui la «S» del secondo token è un PRODOTTO DIVERSO. */
   divise: ReadonlySet<string>;
+  /**
+   * Prime parole che non nominano il prodotto ma la CONFEZIONE: l'etichetta
+   * viene dal SECONDO token.
+   *
+   * «COPPIA BOCCHETTE YALE» è una bocchetta, e una categoria «COPPIA»
+   * raccoglierebbe oggetti che non hanno niente in comune tranne l'essere
+   * venduti a due a due. Il secondo token ripassa dalle `fusioni`, quindi
+   * `BOCCHETTE`→`BOCCHETTA` e `MANIGLIONI`→`MANIGLIONE` valgono anche qui
+   * senza una seconda regola libera di divergere dalla prima.
+   */
+  trasparenti: ReadonlySet<string>;
+  /**
+   * I gruppi che NON sono maniglie, decisi da Andrea (rifornimento magazzino).
+   *
+   * ⚠️ «Accessori» è la PRIMA parola NOSTRA in questo schermo: tutte le altre
+   * etichette sono parole scritte da COLOMBO, refusi compresi. Va dichiarata a
+   * schermo come nostra, ed è per questo che la sezione ha un'intestazione
+   * mentre il resto della griglia non ne ha nessuna: una banda senza nome non
+   * afferma niente, e non c'è nome che sarebbe vero sopra tutti gli altri 73.
+   *
+   * ⚠️ NON coincide con «ha un archivio fotografico»: i cinque gruppi di pomoli
+   * (POMOLO, PUSH, ROUND, SQUARE, CUT) l'archivio ce l'hanno e maniglie non
+   * sono; MILLA, SPIDER e TRAMA sono maniglie e l'archivio non ce l'hanno. Non
+   * è deducibile da nessun dato: è una lista.
+   *
+   * ⚠️ Da non confondere con gli «archivi di accessori» di `foto-archivio.ts`
+   * (`02_Pomoli`, `03_Maniglioni_Pulls`): quelle sono sezioni dell'archivio
+   * fotografico di COLOMBO, e POMOLO e MANIGLIONE non stanno in questa lista.
+   */
+  accessori: ReadonlySet<string>;
 }
 
 const CURATELE: Record<string, Curatela> = {
@@ -65,13 +95,29 @@ const CURATELE: Record<string, Curatela> = {
       MANIGLIA: "MANIGLIA INCASSO", //   28
       MANIGLIE: "MANIGLIA INCASSO", //    1
       MANIGLIONI: "MANIGLIONE", //        8 — plurale
-      // `PL.OTT. 85mm. + SOTTOPL.NYLON` e `PL.OTT.YALE 93mm+SOTTOPL.NYLON`:
-      // stesso prodotto, codici `PB02*`. NON si fondono con `PLACCA` (65),
-      // che è la placca dei maniglioni (`0AM113PL*`): stessa parola, due
-      // oggetti diversi.
-      "PL.OTT.": "PL.", //                1
-      "PL.OTT.YALE": "PL.", //           11
       RG: "DUMMY", //                     1 — «RG ADAPTOR PER DUMMY»
+
+      // ── 2026-08-05, seconda tornata di Andrea ──────────────────────────
+      // `PL.` è l'abbreviazione di `PLACCA`. La sessione precedente le teneva
+      // separate perché MISURATE come due prodotti (placche in ottone `PB02*`
+      // contro placche dei maniglioni `0AM113PL*`), e la misura era giusta ma
+      // rispondeva alla domanda sbagliata: non «sono lo stesso oggetto» ma
+      // «come li chiama chi li ordina». La distinzione non si perde — la fa il
+      // livello 2, che divide gli 87 codici in 14 serie.
+      "PL.": "PLACCA", //                22
+      "PL.OTT.": "PLACCA", //             1
+      "PL.OTT.YALE": "PLACCA", //        11
+      // Il plurale, che arriva sciogliendo `COPPIA`: senza questa riga
+      // «COPPIA BOCCHETTE YALE» fonderebbe un gruppo nuovo da 28 codici, e
+      // nessun conteggio andrebbe a zero. Trovato misurando, non leggendo.
+      BOCCHETTE: "BOCCHETTA", //         28 (via COPPIA)
+      // Le due cremonesi tornano dalla loro maniglia. ⚠️ La foto NON le segue:
+      // ci pensa la `serie` dichiarata sugli archivi in `foto-archivio.ts`,
+      // perché la regola sulle finiture NON basterebbe — `0CD32-UB`
+      // prenderebbe `Heidi_R_UB`, finitura provata GIUSTA e prodotto
+      // SBAGLIATO.
+      "HEIDI/PETER": "HEIDI", //          2
+      LUNDCREM: "LUND", //                1
     },
     // `RONDELLE` (2 codici) entra qui il 2026-08-05, e non è una svista di
     // tassonomia: la pagina dichiarava già «viti, dadi, chiavi e rondelle non
@@ -82,11 +128,46 @@ const CURATELE: Record<string, Curatela> = {
     // `01_Robot4S.zip` come archivi fotografici separati, e il suo listino
     // elenca «roboquattro» e «roboquattro S» come voci distinte.
     divise: new Set(["ROBOCINQUE", "ROBOQUATTRO"]),
+    // Misurato sul listino vero: 35 codici, e sono puliti — 7 «COPPIA
+    // MANIGLIONI» e 28 «COPPIA BOCCHETTE», nient'altro. Nessuna delle due
+    // destinazioni ha un archivio fotografico, quindi lo scioglimento non può
+    // prestare la foto di un modello a un altro.
+    trasparenti: new Set(["COPPIA"]),
+    // 17 gruppi, 648 codici (19,1% del listino). Misurato: sono il 31,5% di
+    // ciò che è in pronta consegna, cioè proprio la parte che sta sullo
+    // scaffale — l'8,6% degli accessori è pronto contro il 4,4% del resto.
+    // POMOLINO non c'è: il titolare l'ha citato nel primo messaggio e tolto in
+    // quello definitivo.
+    accessori: new Set([
+      "BATTIPORTA",
+      "BLOCCAPORTA",
+      "BUSSOLA",
+      "COPRIAVVOLG.",
+      "DISPOSITIVO",
+      "DUMMY",
+      "FERMAPORTA",
+      "INSERTO",
+      "KIT",
+      "MOLLA",
+      "MOSTRINA",
+      "MOVIMENTO",
+      "NOTTOLINO",
+      "PLACCA",
+      "PROLUNGA",
+      "QUADRO",
+      "ROSETTA",
+    ]),
   },
 };
 
 /** Una marca senza curatela non riceve le correzioni scritte per un'altra. */
-const VUOTA: Curatela = { fusioni: {}, escluse: new Set(), divise: new Set() };
+const VUOTA: Curatela = {
+  fusioni: {},
+  escluse: new Set(),
+  divise: new Set(),
+  trasparenti: new Set(),
+  accessori: new Set(),
+};
 const curatelaDi = (brand: string): Curatela => CURATELE[brand] ?? VUOTA;
 
 /**
@@ -112,6 +193,18 @@ export function browseLabel(brand: string, name: string): string | null {
  */
 function labelFromTokens(brand: string, first: string, second: string | null): string | null {
   const c = curatelaDi(brand);
+  // Le TRASPARENTI per prime: il resto della regola vale sul token che nomina
+  // davvero il prodotto.
+  //
+  // `divise` non si riapplica dopo lo spostamento, e non è una dimenticanza: il
+  // `GROUP BY` del livello 1 restituisce DUE token, non tre, quindi il
+  // marcatore della S dopo una trasparente non sarebbe leggibile. Misurato che
+  // il caso non esiste — dentro COPPIA ci sono solo MANIGLIONI e BOCCHETTE, e
+  // nessuna delle due è divisa.
+  if (c.trasparenti.has(first)) {
+    if (second === null || c.escluse.has(second)) return null;
+    return c.fusioni[second] ?? second;
+  }
   if (c.escluse.has(first)) return null;
   if (c.divise.has(first) && MARCATORE_S.test(second ?? "")) return `${first} S`;
   return c.fusioni[first] ?? first;
@@ -168,6 +261,13 @@ export function sourceFirstWords(brand: string, label: string): string[] {
   for (const [storta, giusta] of Object.entries(c.fusioni)) {
     if (giusta === label) words.add(storta);
   }
+  // Una TRASPARENTE può produrre qualunque etichetta, e da qui non si sa
+  // quale: si includono tutte, e il rifiltro con `browseLabel` — che il
+  // chiamante fa già, ed è documentato sopra — scarta i falsi positivi.
+  // Calcolare quali etichette una trasparente produca davvero vorrebbe dire
+  // scandire il listino da un modulo che non lo vede. Costa una parola nella
+  // `IN` e fino a 35 righe lette per gruppo.
+  for (const t of c.trasparenti) words.add(t);
   return [...words].sort();
 }
 
@@ -183,7 +283,9 @@ export function sourceFirstWords(brand: string, label: string): string[] {
  */
 export function resolveLabel(brand: string, tipo: string): string | null {
   const c = curatelaDi(brand);
-  if (c.escluse.has(tipo)) return null;
+  // Una trasparente non risolve: `COPPIA` produceva DUE etichette, e
+  // sceglierne una sarebbe inventare. «Non si sfoglia» è la risposta vera.
+  if (c.escluse.has(tipo) || c.trasparenti.has(tipo)) return null;
   return c.fusioni[tipo] ?? tipo;
 }
 
@@ -197,5 +299,20 @@ export function resolveLabel(brand: string, tipo: string): string | null {
  */
 export function vociCuratela(brand: string): string[] {
   const c = curatelaDi(brand);
-  return [...Object.keys(c.fusioni), ...c.escluse, ...c.divise].sort();
+  // ⚠️ `accessori` NON entra, e non è una dimenticanza: le altre tre tabelle
+  // elencano parole del FORNITORE che la curatela CORREGGE — nessuna deve
+  // restare a schermo, e ognuna deve ancora agganciare una riga. Gli accessori
+  // sono l'opposto: etichette GIUSTE che restano a schermo, classificate. Le
+  // due sentinelle che leggono questa funzione asseriscono l'esatto contrario
+  // di ciò che vale per loro. La loro sentinella è in `search.integration`.
+  return [...Object.keys(c.fusioni), ...c.escluse, ...c.divise, ...c.trasparenti].sort();
+}
+
+/**
+ * I gruppi che si elencano sotto «Accessori». Vuoto per una marca senza
+ * curatela: il giorno di HOPPE la lista di Andrea non deve applicarsi in
+ * silenzio a un listino che non ha guardato.
+ */
+export function etichetteAccessorio(brand: string): ReadonlySet<string> {
+  return curatelaDi(brand).accessori;
 }

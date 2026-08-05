@@ -88,14 +88,29 @@ function risultati(over: Record<string, unknown> = {}) {
  * `isModello` non è un nostro giudizio: è la struttura dell'archivio
  * fotografico di COLOMBO. LARA ha il suo archivio, BOCCHETTA e KIT no.
  */
-let serieFinta: (righe?: unknown[], senzaSerie?: unknown[]) => Record<string, unknown>;
+let serieFinta: (
+  righe?: unknown[],
+  senzaSerie?: unknown[],
+  isModello?: boolean,
+) => Record<string, unknown>;
 
+/**
+ * `isAccessorio` è invece una lista di ANDREA, e non è deducibile da
+ * `isModello`: KIT e ROSETTA non hanno archivio e sono accessori, BOCCHETTA e
+ * MANIGLIONE non hanno archivio e maniglie sono.
+ */
 const GRUPPI = [
-  { word: "BOCCHETTA", count: 288, isModello: false, preview: null },
-  { word: "KIT", count: 139, isModello: false, preview: null },
-  { word: "LARA", count: 28, isModello: true, preview: "/api/article-image?k=lara&size=320" },
-  { word: "MANIGLIONE", count: 338, isModello: false, preview: null },
-  { word: "ROSETTA", count: 47, isModello: false, preview: null },
+  { word: "BOCCHETTA", count: 318, isModello: false, isAccessorio: false, preview: null },
+  { word: "KIT", count: 140, isModello: false, isAccessorio: true, preview: null },
+  {
+    word: "LARA",
+    count: 28,
+    isModello: true,
+    isAccessorio: false,
+    preview: "/api/article-image?k=lara&size=320",
+  },
+  { word: "MANIGLIONE", count: 353, isModello: false, isAccessorio: false, preview: null },
+  { word: "ROSETTA", count: 105, isModello: false, isAccessorio: true, preview: null },
 ];
 
 beforeEach(() => {
@@ -110,10 +125,18 @@ beforeEach(() => {
   browseSerieQuery
     .mockReset()
     .mockReturnValue({ data: undefined, isPending: false, isError: false, isFetching: false });
-  serieFinta = (righe = [], senzaSerie = []) => ({
+  serieFinta = (righe = [], senzaSerie = [], isModello = false) => ({
     data: {
+      isModello,
       serie: righe.length
-        ? [{ serie: "CB71R", count: righe.length, preview: null, rows: righe }]
+        ? [
+            {
+              serie: "CB71R",
+              count: righe.length,
+              preview: "/api/article-image?k=cb71r&size=320",
+              rows: righe,
+            },
+          ]
         : [],
       senzaSerie,
       total: righe.length + senzaSerie.length,
@@ -388,7 +411,7 @@ describe("ManiglieClient — sfoglio", () => {
     render(<ManiglieClient />);
     expect(screen.getByText("Sfoglia il catalogo")).toBeTruthy();
     expect(screen.getByText("MANIGLIONE")).toBeTruthy();
-    expect(screen.getByLabelText("MANIGLIONE, 338 codici")).toBeTruthy();
+    expect(screen.getByLabelText("MANIGLIONE, 353 codici")).toBeTruthy();
     expect(searchQuery.mock.calls[0]?.[1]).toMatchObject({ enabled: false });
   });
 
@@ -457,15 +480,23 @@ describe("ManiglieClient — sfoglio", () => {
     expect(link?.getAttribute("href")).toBe("/maniglie?tipo=LARA");
   });
 
-  it("i gruppi restano nell'ordine in cui il server li manda (alfabetico)", () => {
-    // L'ordinamento è del server, che lo fissa in TypeScript per non dipendere
-    // dalla collation del database: il client non riordina.
-    render(<ManiglieClient />);
-    const etichette = screen
-      .getAllByRole("listitem")
-      .map((li) => li.querySelector("span")?.textContent)
-      .filter(Boolean);
-    expect(etichette.slice(0, GRUPPI.length)).toEqual(GRUPPI.map((g) => g.word));
+  /**
+   * L'ordinamento è del server, che lo fissa in TypeScript per non dipendere
+   * dalla collation del database: il client non riordina.
+   *
+   * Dal 2026-08-05 il client PARTIZIONA in due bande — ed è un riordino
+   * dichiarato, con un'intestazione che lo annuncia. L'invariante che resta, e
+   * che questo test protegge, è che DENTRO ogni banda l'ordine sia quello che
+   * il server ha mandato.
+   */
+  it("dentro ogni banda i gruppi restano nell'ordine del server", () => {
+    const { container } = render(<ManiglieClient />);
+    const per = [...container.querySelectorAll("ul")].map((ul) =>
+      [...ul.querySelectorAll("li")].map((li) => li.querySelector("span")?.textContent),
+    );
+    const bande = per.filter((b) => b.length > 0 && GRUPPI.some((g) => b.includes(g.word)));
+    expect(bande[0]).toEqual(["BOCCHETTA", "LARA", "MANIGLIONE"]);
+    expect(bande[1]).toEqual(["KIT", "ROSETTA"]);
   });
 
   it("dentro un gruppo mostra le SERIE a tendina, in mono perché sono pezzi di codice", () => {
@@ -826,5 +857,135 @@ describe("ManiglieClient — il numero dichiara di cosa parla", () => {
     expect(screen.getByText(/Il numero è quanti codici/).textContent).toMatch(
       /codici, non quanti modelli/,
     );
+  });
+});
+
+/**
+ * LA SEZIONE «ACCESSORI» (verdetto del council, 2026-08-05: non un livello e
+ * non un filtro — una sezione, zero stato, zero parametri URL).
+ *
+ * La banda di SOPRA non ha intestazione, e non è una svista: qualunque nome
+ * sarebbe falso («Maniglie» starebbe sopra BOCCHETTA 318 e MANIGLIONE 353)
+ * oppure sarebbe una SECONDA parola nostra. Non affermare nulla è ciò che la
+ * rende onesta, e fa sì che un gruppo nuovo mai classificato non dica il falso.
+ */
+describe("ManiglieClient — la sezione Accessori", () => {
+  it("dimostra prima di guardare nel posto giusto: le tessere ci sono tutte", () => {
+    render(<ManiglieClient />);
+    for (const g of GRUPPI) expect(screen.getByText(g.word)).toBeTruthy();
+  });
+
+  it("una sola intestazione, ed è quella degli accessori", () => {
+    const { container } = render(<ManiglieClient />);
+    const titoli = [...container.querySelectorAll("h3")].map((h) => h.textContent);
+    expect(titoli).toEqual(["Accessori"]);
+  });
+
+  it("dichiara che «Accessori» è parola nostra e non di COLOMBO", () => {
+    render(<ManiglieClient />);
+    const riga = screen.getByText(/raggruppamento nostro/i);
+    expect(riga.textContent).toContain("COLOMBO");
+  });
+
+  it("gli accessori stanno DOPO gli altri nell'ordine del documento", () => {
+    const { container } = render(<ManiglieClient />);
+    const href = [...container.querySelectorAll("a[href*='tipo=']")].map((a) =>
+      a.getAttribute("href"),
+    );
+    expect(href.indexOf("/maniglie?tipo=KIT")).toBeGreaterThan(
+      href.indexOf("/maniglie?tipo=MANIGLIONE"),
+    );
+  });
+
+  it("il collegamento in cima porta alla banda e ne dice il numero", () => {
+    render(<ManiglieClient />);
+    const salto = screen.getByRole("link", { name: /Accessori \(2\)/ });
+    expect(salto.getAttribute("href")).toBe("#accessori");
+  });
+
+  // «accessori» non è il nome di NESSUN gruppo: senza questo, digitarla non
+  // troverebbe nulla mentre la parola si legge sopra la griglia.
+  it("digitando «accessori» compaiono i 17, che non la contengono nel nome", () => {
+    render(<ManiglieClient />);
+    fireEvent.change(screen.getByPlaceholderText("Filtra i gruppi…"), {
+      target: { value: "accessori" },
+    });
+    expect(screen.getByText("KIT")).toBeTruthy();
+    expect(screen.getByText("ROSETTA")).toBeTruthy();
+    expect(screen.queryByText("LARA")).toBeNull();
+  });
+
+  it("quando il filtro svuota la banda, spariscono sezione e collegamento", () => {
+    const { container } = render(<ManiglieClient />);
+    fireEvent.change(screen.getByPlaceholderText("Filtra i gruppi…"), {
+      target: { value: "LARA" },
+    });
+    expect(container.querySelectorAll("h3")).toHaveLength(0);
+    expect(screen.queryByRole("link", { name: /Accessori \(/ })).toBeNull();
+  });
+});
+
+/**
+ * L'ANTEPRIMA DELLA TENDINA, rifatta il 2026-08-05.
+ *
+ * Andrea: «la foto della tendina che si rimpicciolisce quando si apre confonde
+ * e non serve a nulla quando è piccola perché non si vede». La scelta era
+ * dell'utente fra tre opzioni: non è una regressione, è una prova sul campo che
+ * ha battuto una preferenza.
+ *
+ * La regola è quella già scritta al livello 1: **la foto compare dove
+ * distingue, non dove ripete.** Dentro FEDRA le serie sono la stessa maniglia
+ * in varianti — la foto non era piccola, era RIPETUTA. Dentro BOCCHETTA (22
+ * modelli) e MANIGLIONE (52) distingue davvero.
+ */
+describe("ManiglieClient — l'anteprima della tendina", () => {
+  beforeEach(() => {
+    sp = new URLSearchParams("tipo=BOCCHETTA");
+  });
+
+  it("dimostra di guardare nel posto giusto: la tendina c'è", () => {
+    browseSerieQuery.mockReturnValue(serieFinta([articoli[0]], [], false));
+    const { container } = render(<ManiglieClient />);
+    expect(container.querySelectorAll("details summary").length).toBeGreaterThan(0);
+  });
+
+  it("dentro una TIPOLOGIA l'anteprima c'è", () => {
+    browseSerieQuery.mockReturnValue(serieFinta([articoli[0]], [], false));
+    const { container } = render(<ManiglieClient />);
+    expect(container.querySelectorAll("summary img")).toHaveLength(1);
+  });
+
+  it("dentro un GRUPPO-MODELLO non c'è area immagine affatto", () => {
+    browseSerieQuery.mockReturnValue(serieFinta([articoli[0]], [], true));
+    const { container } = render(<ManiglieClient />);
+    expect(container.querySelectorAll("summary img")).toHaveLength(0);
+  });
+
+  it("l'anteprima non cambia misura all'apertura", () => {
+    sp = new URLSearchParams("tipo=BOCCHETTA&fam=CB71R");
+    browseSerieQuery.mockReturnValue(serieFinta([articoli[0]], [], false));
+    const { container } = render(<ManiglieClient />);
+    const img = container.querySelector("summary img");
+    expect(img?.className).toContain("size-14");
+    expect(img?.className).not.toContain("size-8");
+  });
+
+  // Con la copertura scesa al 46,5% le anteprime mancanti sono frequenti: otto
+  // riquadri grigi in colonna si leggono come «il programma è rotto».
+  it("una preview mancante non disegna un segnaposto", () => {
+    browseSerieQuery.mockReturnValue({
+      data: {
+        isModello: false,
+        serie: [{ serie: "CB71R", count: 1, preview: null, rows: [articoli[0]] }],
+        senzaSerie: [],
+        total: 1,
+      },
+      isPending: false,
+      isError: false,
+      isFetching: false,
+    });
+    const { container } = render(<ManiglieClient />);
+    const summary = container.querySelector("summary");
+    expect(summary?.querySelector("svg")?.classList.contains("lucide-package")).not.toBe(true);
   });
 });

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import {
   browseLabel,
+  etichetteAccessorio,
   foldBrowseGroups,
   resolveLabel,
   sourceFirstWords,
@@ -91,7 +92,7 @@ describe("browseLabel — divisioni", () => {
  */
 describe("sourceFirstWords", () => {
   test("un'etichetta fusa raccoglie anche la parola storta", () => {
-    expect(sourceFirstWords("COLOMBO", "BOCCHETTA")).toEqual(["BOCCEHTTA", "BOCCHETTA"]);
+    expect(sourceFirstWords("COLOMBO", "BOCCHETTA")).toContain("BOCCEHTTA");
   });
 
   test("un'etichetta divisa risale al gruppo da cui è stata staccata", () => {
@@ -99,7 +100,13 @@ describe("sourceFirstWords", () => {
   });
 
   test("il gruppo base di una divisione raccoglie anche il suo refuso", () => {
-    expect(sourceFirstWords("COLOMBO", "ROBOCINQUE")).toEqual(["ROBOCINQUE", "ROBOCINQUQ"]);
+    expect(sourceFirstWords("COLOMBO", "ROBOCINQUE")).toEqual([
+      // Le trasparenti compaiono ovunque: da qui non si sa quali etichette
+      // producano, e il rifiltro con `browseLabel` scarta i falsi positivi.
+      "COPPIA",
+      "ROBOCINQUE",
+      "ROBOCINQUQ",
+    ]);
   });
 
   // Senza questo, `?tipo=VITE` nell'URL rimetterebbe a schermo un gruppo che
@@ -108,8 +115,11 @@ describe("sourceFirstWords", () => {
     expect(sourceFirstWords("COLOMBO", "VITE")).toEqual([]);
   });
 
-  test("un'etichetta non toccata è la sua sola sorgente", () => {
-    expect(sourceFirstWords("COLOMBO", "ALBA")).toEqual(["ALBA"]);
+  // «Sola sorgente» più le trasparenti, che non si sa dove finiscano: leggono
+  // 35 righe in più per gruppo e le buttano. È il prezzo del non dedurre da un
+  // modulo foglia quali etichette `COPPIA` possa produrre.
+  test("un'etichetta non toccata ha se stessa e le trasparenti", () => {
+    expect(sourceFirstWords("COLOMBO", "ALBA")).toEqual(["ALBA", "COPPIA"]);
   });
 });
 
@@ -168,8 +178,6 @@ describe("browseLabel — le fusioni del 2026-08-05", () => {
     ["MANIGLIA INCASSO ID411", "MANIGLIA INCASSO"],
     ["MANIGLIE INCASSO Q PER A/S", "MANIGLIA INCASSO"],
     ["MANIGLIONI AM213Y ACC.A/S CRMT", "MANIGLIONE"],
-    ["PL.OTT. 85mm. + SOTTOPL.NYLON", "PL."],
-    ["PL.OTT.YALE 93mm+SOTTOPL.NYLON", "PL."],
     ["RG ADAPTOR PER DUMMY", "DUMMY"],
   ])("«%s» si elenca sotto %s", (name, atteso) => {
     expect(browseLabel("COLOMBO", name)).toBe(atteso);
@@ -179,36 +187,57 @@ describe("browseLabel — le fusioni del 2026-08-05", () => {
     expect(browseLabel("COLOMBO", "MANIG.CD213 SCOR.COMPLAN. CM")).toBe("MANIG.CD213");
   });
 
-  /**
-   * Fonderlo in LUND farebbe ereditare a una CREMONESE la foto di una maniglia:
-   * `abbinaFoto` assegna le foto di modello per etichetta di sfoglio, e LUND ha
-   * un archivio fotografico. Una foto che esiste, si vede benissimo, ed è di un
-   * altro prodotto — la lezione che il progetto ha già pagato con la variante
-   * ZERO. Verificato caso per caso: è l'unica delle sette con questa
-   * conseguenza.
-   */
-  test("LUNDCREM resta fuori da LUND: erediterebbe la foto sbagliata", () => {
-    expect(browseLabel("COLOMBO", "LUNDCREM SE12 GRAFITE MAT")).toBe("LUNDCREM");
-  });
-
-  test("PLACCA non si fonde con PL.: stessa parola, due prodotti", () => {
-    // PL.* sono placche in ottone `PB02*` con sottoplacca in nylon; PLACCA è
-    // la placca dei maniglioni, codici `0AM113PL*`.
-    expect(browseLabel("COLOMBO", "PLACCA AM113 CROMAT")).toBe("PLACCA");
-  });
-
   test("le sorgenti dell'etichetta fusa comprendono tutte e quattro le grafie", () => {
-    expect(sourceFirstWords("COLOMBO", "MANIGLIA INCASSO")).toEqual([
-      "MANIG.",
-      "MANIG.INCASSO",
-      "MANIGLIA",
-      "MANIGLIA INCASSO",
-      "MANIGLIE",
-    ]);
+    expect(sourceFirstWords("COLOMBO", "MANIGLIA INCASSO")).toContain("MANIG.");
+    expect(sourceFirstWords("COLOMBO", "MANIGLIA INCASSO")).toContain("MANIG.INCASSO");
+    expect(sourceFirstWords("COLOMBO", "MANIGLIA INCASSO")).toContain("MANIGLIA");
+    expect(sourceFirstWords("COLOMBO", "MANIGLIA INCASSO")).toContain("MANIGLIE");
+  });
+});
+
+/**
+ * LA SECONDA TORNATA DI ANDREA (2026-08-05).
+ *
+ * Due di queste CAPOVOLGONO una decisione della sessione precedente, ed è il
+ * punto: `PL.`/`PLACCA` e `LUNDCREM` erano state tenute separate da una misura
+ * giusta che rispondeva alla domanda sbagliata. La misura diceva «sono due
+ * prodotti»; la domanda era «come li chiama chi li ordina». Andrea è la fonte
+ * di verità sulla propria tassonomia.
+ *
+ * I test che asserivano il contrario non erano sentinelle di quella scelta:
+ * erano la sua codifica, e sono stati rimossi con questa nota al posto loro.
+ */
+describe("browseLabel — la seconda tornata di Andrea", () => {
+  test.each([
+    // `PL.` è l'abbreviazione di `PLACCA`. La distinzione misurata non si
+    // perde: la fa il livello 2, che divide gli 87 codici in 14 serie
+    // (`PB02*` da una parte, `AM113`/`CD02PL`/`PLY85`… dall'altra).
+    ["PL.OTT. 85mm. + SOTTOPL.NYLON", "PLACCA"],
+    ["PL.OTT.YALE 93mm+SOTTOPL.NYLON", "PLACCA"],
+    ["PLACCA AM113 CROMAT", "PLACCA"],
+    // Le due cremonesi tornano dalla loro maniglia. La foto NON le segue: ci
+    // pensa la `serie` dichiarata sugli archivi in `foto-archivio.ts`, perché
+    // la regola sulle finiture non basterebbe — `0CD32-UB` prenderebbe
+    // `Heidi_R_UB`, finitura provata GIUSTA e prodotto SBAGLIATO.
+    ["HEIDI/PETER CREM CD32 OROPLUS", "HEIDI"],
+    ["LUNDCREM SE12 GRAFITE MAT", "LUND"],
+  ])("«%s» si elenca sotto %s", (name, atteso) => {
+    expect(browseLabel("COLOMBO", name)).toBe(atteso);
   });
 
-  test("PL. resta una sorgente di se stessa, oltre alle due fuse", () => {
-    expect(sourceFirstWords("COLOMBO", "PL.")).toEqual(["PL.", "PL.OTT.", "PL.OTT.YALE"]);
+  // Il plurale arriva sciogliendo COPPIA. Senza questa riga nascerebbe un
+  // gruppo nuovo da 28 codici, e nessun conteggio andrebbe a zero: l'ho
+  // scoperto misurando, non leggendo.
+  test("il plurale BOCCHETTE è BOCCHETTA", () => {
+    expect(browseLabel("COLOMBO", "BOCCHETTE YALE ZERO")).toBe("BOCCHETTA");
+  });
+
+  test("PLACCA raccoglie anche le tre grafie con PL.", () => {
+    const s = sourceFirstWords("COLOMBO", "PLACCA");
+    expect(s).toContain("PL.");
+    expect(s).toContain("PL.OTT.");
+    expect(s).toContain("PL.OTT.YALE");
+    expect(s).toContain("PLACCA");
   });
 });
 
@@ -251,7 +280,7 @@ describe("resolveLabel", () => {
     expect(resolveLabel("COLOMBO", "MANIG.")).toBe("MANIGLIA INCASSO");
     expect(resolveLabel("COLOMBO", "MANIGLIA")).toBe("MANIGLIA INCASSO");
     expect(resolveLabel("COLOMBO", "ROS.")).toBe("ROSETTA");
-    expect(resolveLabel("COLOMBO", "PL.OTT.YALE")).toBe("PL.");
+    expect(resolveLabel("COLOMBO", "PL.OTT.YALE")).toBe("PLACCA");
   });
 
   test("un'etichetta corrente resta se stessa", () => {
@@ -267,5 +296,131 @@ describe("resolveLabel", () => {
 
   test("non attraversa le marche", () => {
     expect(resolveLabel("HOPPE", "MANIG.")).toBe("MANIG.");
+  });
+});
+
+/**
+ * `COPPIA` non è un prodotto, è una CONFEZIONE. Andrea: «al suo interno c'è
+ * COPPIA BOCCHETTE YALE, ma tutta quella sottocategoria dovrebbe stare dentro
+ * BOCCHETTE. Vale lo stesso per tutto il resto che c'è dentro COPPIA».
+ *
+ * Misurato sul listino vero: 35 codici, e sono puliti — 7 `COPPIA MANIGLIONI`
+ * e 28 `COPPIA BOCCHETTE`, nient'altro. L'etichetta viene dal SECONDO token,
+ * che poi ripassa dalla stessa tabella di fusioni di tutti gli altri: è ciò
+ * che manda `BOCCHETTE` in `BOCCHETTA` e `MANIGLIONI` in `MANIGLIONE` senza
+ * una seconda regola che possa divergere.
+ */
+describe("browseLabel — prime parole trasparenti", () => {
+  test.each([
+    ["COPPIA BOCCHETTE YALE ZERO", "BOCCHETTA"],
+    ["COPPIA BOCCHETTE PATENT Q ZERO", "BOCCHETTA"],
+    ["COPPIA MANIGLIONI CLOUD LC26", "MANIGLIONE"],
+    ["COPPIA MANIGLIONI WIND LC36", "MANIGLIONE"],
+  ])("«%s» si elenca sotto %s", (name, atteso) => {
+    expect(browseLabel("COLOMBO", name)).toBe(atteso);
+  });
+
+  // Una parola trasparente da sola non dice che prodotto sia: meglio non
+  // sfogliarla che inventarle una categoria.
+  test("«COPPIA» da sola non si sfoglia", () => {
+    expect(browseLabel("COLOMBO", "COPPIA")).toBeNull();
+  });
+
+  // Il `WHERE` del livello 2 sa leggere solo la prima parola cruda: se COPPIA
+  // non fosse fra le sorgenti, i 28 codici entrerebbero nel CONTEGGIO di
+  // BOCCHETTA e poi sparirebbero aprendolo — un gruppo che promette 318 righe
+  // e ne mostra 290.
+  test("le trasparenti sono fra le sorgenti di ogni etichetta", () => {
+    expect(sourceFirstWords("COLOMBO", "BOCCHETTA")).toContain("COPPIA");
+    expect(sourceFirstWords("COLOMBO", "MANIGLIONE")).toContain("COPPIA");
+  });
+
+  test("ma non di un'etichetta esclusa, che resta irraggiungibile", () => {
+    expect(sourceFirstWords("COLOMBO", "VITE")).toEqual([]);
+  });
+
+  // Un link condiviso prima dello scioglimento porta `?tipo=COPPIA`. COPPIA
+  // non è più un'etichetta e non se ne può scegliere una delle due: la
+  // risposta vera è «non si sfoglia».
+  test("un ?tipo=COPPIA vecchio non risolve a nulla", () => {
+    expect(resolveLabel("COLOMBO", "COPPIA")).toBeNull();
+  });
+
+  test("la sentinella della curatela cita anche le trasparenti", () => {
+    expect(vociCuratela("COLOMBO")).toContain("COPPIA");
+  });
+
+  // La prova che i due destinatari assorbono davvero, ai numeri veri.
+  test("foldBrowseGroups somma COPPIA nei due gruppi giusti", () => {
+    expect(
+      foldBrowseGroups("COLOMBO", [
+        { first: "BOCCHETTA", second: "CD41", count: 290 },
+        { first: "COPPIA", second: "BOCCHETTE", count: 28 },
+        { first: "COPPIA", second: "MANIGLIONI", count: 7 },
+        { first: "MANIGLIONE", second: "AM113", count: 346 },
+      ]),
+    ).toEqual([
+      { word: "BOCCHETTA", count: 318 },
+      { word: "MANIGLIONE", count: 353 },
+    ]);
+  });
+});
+
+/**
+ * I 17 gruppi che Andrea rifornisce. NON sono deducibili da nessun dato: i
+ * cinque gruppi di pomoli hanno l'archivio fotografico e maniglie non sono, e
+ * MILLA, SPIDER e TRAMA sono maniglie che l'archivio non ce l'hanno. È una
+ * lista, e a schermo va dichiarata come parola nostra.
+ */
+describe("etichetteAccessorio", () => {
+  test("sono i 17 di Andrea", () => {
+    expect([...etichetteAccessorio("COLOMBO")].sort()).toEqual([
+      "BATTIPORTA",
+      "BLOCCAPORTA",
+      "BUSSOLA",
+      "COPRIAVVOLG.",
+      "DISPOSITIVO",
+      "DUMMY",
+      "FERMAPORTA",
+      "INSERTO",
+      "KIT",
+      "MOLLA",
+      "MOSTRINA",
+      "MOVIMENTO",
+      "NOTTOLINO",
+      "PLACCA",
+      "PROLUNGA",
+      "QUADRO",
+      "ROSETTA",
+    ]);
+  });
+
+  // POMOLINO era nel primo messaggio e non nel definitivo: resta prodotto
+  // principale finché Andrea non dice altro.
+  test("POMOLINO, BOCCHETTA e MANIGLIONE non sono accessori", () => {
+    const acc = etichetteAccessorio("COLOMBO");
+    expect(acc.has("POMOLINO")).toBe(false);
+    expect(acc.has("BOCCHETTA")).toBe(false);
+    expect(acc.has("MANIGLIONE")).toBe(false);
+  });
+
+  // La sentinella: se una di queste etichette smettesse di esistere, la voce
+  // sarebbe morta e nessun conteggio andrebbe a zero.
+  test("ogni accessorio è un'etichetta che la curatela produce davvero", () => {
+    for (const a of etichetteAccessorio("COLOMBO")) {
+      expect(browseLabel("COLOMBO", `${a} QUALCOSA`), a).toBe(a);
+    }
+  });
+
+  test("una marca senza curatela non eredita gli accessori di COLOMBO", () => {
+    expect(etichetteAccessorio("HOPPE").size).toBe(0);
+  });
+
+  // Gli accessori NON stanno in : quella elenca le parole del
+  // fornitore da CORREGGERE, e le sue due sentinelle asseriscono che non
+  // compaiano a schermo. Un accessorio a schermo ci deve stare.
+  test("NON stanno in vociCuratela, che elenca le correzioni", () => {
+    expect(vociCuratela("COLOMBO")).not.toContain("NOTTOLINO");
+    expect(vociCuratela("COLOMBO")).toContain("COPPIA");
   });
 });

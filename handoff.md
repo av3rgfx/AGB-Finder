@@ -9,15 +9,201 @@
 
 | Campo | Valore |
 |-------|--------|
-| **Data** | 2026-08-05 — **LO SFOGLIO A SERIE: FOTO, TENDINE, FUSIONI** |
+| **Data** | 2026-08-05 — **LE SETTE DRITTE DI ANDREA** |
 | **Fase in corso** | Fase 1 — MVP Gestionale · reparto maniglie |
-| **Sotto-fase** | Chiusa. Sessione di DECISIONI portata fino all'esecuzione completa. |
-| **Branch** | `claude/ufptrade-catalog-redesign-sy81sv` — PR aperta |
-| **Stato deploy** | 🟢 **NESSUNA MIGRAZIONE, NESSUN RUN OPS, nessuna dipendenza nuova.** Tutto si calcola a lettura: al deploy si applica da solo |
-| **Gate** | typecheck · lint · **1.463 test** · build 23 route · **integrazione 35/35 sul listino VERO** · **browser 28/28** (desktop e 375px) |
-| **In produzione al merge** | 94 gruppi (erano 102) · **98,2%** dei codici sfogliabili in una serie (era 77,8%) · foto su 63 gruppi-modello |
+| **Sotto-fase** | Chiusa. Correzioni dal campo, misurate e applicate. |
+| **Branch** | `claude/uftrade-handles-catalog-fixes-q5mc0o` — PR da aprire |
+| **Stato deploy** | 🟢 **NESSUNA MIGRAZIONE.** 🔴 **UN RUN OPS**: «Ops — Foto COLOMBO» |
+| **Gate** | typecheck · lint · **test 1.546** · build 23 route · **integrazione 358 sul catalogo VERO** · **browser 38/38** (desktop e 375px) |
+| **In produzione al merge** | 94 → **90 gruppi** · foto 2.118 → **1.609** (61,3% → 46,6%), provate sbagliate **350 → 0** |
 
 ---
+
+> **▶ RIPRENDI DA QUI**
+>
+> ## COSA HA CHIESTO ANDREA, E COSA È VENUTO FUORI
+>
+> Andrea ha verificato lo sfoglio della PR #58 e ha mandato **cinque** correzioni;
+> rispondendo alle mie domande ne ha aggiunte **due**. Sono sette, tutte fatte.
+>
+> ### ✅ LE SETTE
+>
+> 1. **Copiare un codice lo copia senza separatori.** Si vede `0ID41R-CR`, si copia
+>    `0ID41RCR`. `CopyCodeButton` guadagna `copyAs`, che di **default è ciò che
+>    mostra**: il reparto serramenti (`A50122.08.07`, punti compresi) non cambia di
+>    una riga. Il valore è `articles.code_norm`, non un calcolo in UI.
+> 2. **`PL.` → `PLACCA`.** Capovolge una decisione della sessione precedente, presa
+>    su una misura giusta che rispondeva alla domanda sbagliata («sono lo stesso
+>    oggetto» invece di «come li chiama chi li ordina»). La distinzione non si
+>    perde: gli 87 codici restano 14 serie al livello 2.
+> 3. **Le foto della finitura sbagliata** — il punto che vale di più. Sotto.
+> 4. **La sezione «Accessori»**, 17 gruppi decisi da Andrea. Sotto.
+> 5. **L'anteprima della tendina rifatta.** Sotto.
+> 6. **`HEIDI/PETER` → HEIDI e `LUNDCREM` → LUND** (arrivate rispondendo). Sono
+>    cremonesi, e la foto NON le segue: la `serie` dichiarata sugli archivi
+>    (`01_Heidi`→CD31, `01_Lund`→SE11) le tiene fuori.
+> 7. **`COPPIA` si scioglie** (idem). Non è un prodotto, è una confezione: 35
+>    codici, 7 `COPPIA MANIGLIONI` e 28 `COPPIA BOCCHETTE`, nient'altro.
+>
+> **94 → 90 gruppi.** BOCCHETTA 290→318 · MANIGLIONE 346→353 · PLACCA 65→87.
+>
+> ### 🔴 LE FOTO: IL RICONOSCITORE NON SERVE A MISURARE, SERVE A SCEGLIERE
+>
+> Andrea: *«alcune categorie hanno la foto corretta per ogni prodotto, altre la
+> stessa foto per finiture diverse … se mancano le foto delle giuste finiture è
+> meglio togliere direttamente le foto, perché confondono e sono fuorvianti».*
+>
+> **Il match ingenuo sarebbe stato peggio del silenzio.** `Cromo` è sottostringa
+> di «cromo matte», che è **Cromat**: lo prova l'archivio `01_Ama`, dove COLOMBO
+> scrive `cromat` sulla variante zero e `cromo matte` su quella liscia. Estratto
+> il **vocabolario chiuso** (638 scatti → 195 code, guardate una per una): match
+> più lungo + 6 grafie + rifiuto dei bicolori.
+>
+> **I bicolori si riconoscono dalla SOVRAPPOSIZIONE, non dal conteggio**: «Umber
+> bronze» aggancia due aghi ma è una finitura sola col nome che ne contiene un
+> altro; «cromo-cromo matte» li ha in posizioni disgiunte. Col conteggio nudo i
+> quattro nomi-prefisso si perdevano tutti.
+>
+> | | foto | provate esatte | provate SBAGLIATE |
+> |---|---|---|---|
+> | prima | 2.118 (61,3%) | 1.033 | **350** |
+> | col solo riconoscitore | 2.118 | 1.298 | 149 |
+> | **con la regola (finale)** | **1.609 (46,6%)** | **1.402** | **0** |
+>
+> **Il caso segnalato si chiude da solo**: DUE e ONE (Mood) passano da 88
+> sbagliate su 96 a zero — l'archivio *ha* la foto di ogni colore, non sapevamo
+> leggerne il nome.
+>
+> **La regola scelta dall'utente (opzione b): una foto contesa resta solo a chi
+> può dimostrare che è sua.** Tiene la foto chi non ha coda di finitura (non
+> afferma nulla), chi la prova uguale, e chi ha un file che nessuno contende.
+> Il fondamento è dimostrabile senza leggere la finitura della foto: **667
+> articoli si contendevano 72 file**, quindi almeno 595 mostravano il colore di
+> un altro codice.
+>
+> ### 🔎 DUE IMPRECISIONI TROVATE **ESEGUENDO**, non leggendo
+>
+> Il gate d'integrazione mandava **14 gruppi a zero**: troppi per essere tutti
+> ambiguità vera. Erano entrambe dalla stessa parte — sapevo leggere le foto
+> meglio degli articoli.
+>
+> 1. **La coda del NOME FILE pretendeva una cifra.** `Heidi_R_UB` dice «Umber
+>    Bronze» a chiunque. Sono **48 file su 638**, ed erano esattamente quelli dei
+>    gruppi azzerati (MANIGLIA INCASSO, ROSETTA, PLACCA, KIT, HEIDI).
+> 2. **La coda del CODICE pretendeva il trattino.** 237 codici non ce l'hanno e
+>    **126 finiscono comunque con una delle 31**: `0CC15FISSOC01` è «POMOLO ONE
+>    **WHITE**», e non dichiarando una finitura teneva la foto del pomolo
+>    **rosso**. La segnalazione di Andrea, sopravvissuta nel punto meno visibile.
+>
+> Gruppi azzerati: **14 → 7**.
+>
+> ### ⛔ MISURATO E SCARTATO: leggere la finitura dal NOME dell'articolo
+>
+> 62 conflitti col codice, e **ha torto il nome**: «VINTAGE SATINATO» *è* Vintage
+> Mat (satinato = matte), «CROMO» è la troncatura di `CR8` che è un **bicolore**,
+> «ANODIC SILVER» non è Silver. Le descrizioni del listino sono troncate a
+> colonna; i nomi delle foto no. Non si fa.
+>
+> ### ⚠️ IL PREZZO, DICHIARATO: quattro gruppi perdono TUTTE le foto
+>
+> **ROUND, SQUARE, CUT, PUSH** — la copertura dei «pomoli generici» della PR #56 —
+> vanno a **zero**: i loro file (`round25_45`, `square35_45`) non dicono alcuna
+> finitura e dieci codici se li contendono. È il caso `CC113Q ocean blue` senza il
+> vantaggio di poterlo dimostrare. Recuperarli richiede **foto per finitura**, cioè
+> un dato che COLOMBO oggi non pubblica: è una domanda per il fornitore.
+> Il test è stato **girato con la decisione**, non allentato in silenzio.
+>
+> ### 🏛️ IL COUNCIL SU «ACCESSORI»: sezione, non livello e non filtro
+>
+> 5 advisor + 3 peer review, con **le affermazioni verificate nel repo**. 4 su 5
+> per la sezione; (A) quarto livello scartato all'unanimità.
+>
+> **Il dissenziente (Primi Principi) aveva l'argomento più elegante** — «le
+> proprietà del *compito* vanno nelle lenti, quelle dell'*oggetto* nella
+> struttura» — e **si è rovesciato sul codice**: sosteneva che il filtro
+> «sparisce entrando in un gruppo, quindi il gruppo pieno che sembra vuoto è
+> impossibile», ma `codaFiltri()` (`sfoglia.tsx:56`) incolla i filtri a **ogni
+> link di gruppo** proprio perché non si spengano in silenzio scendendo. E il suo
+> `?cat=maniglie` conierebbe una **seconda** parola nostra, per giunta falsa.
+>
+> **La banda di sopra NON ha intestazione.** Qualunque nome sarebbe falso —
+> misurato che dei 27 gruppi di solo testo **17 sono accessori e 10 no**
+> (BOCCHETTA, MANIGLIONE, POMOLINO, GRANO, MILLA, SPIDER, TRAMA…) — oppure
+> sarebbe una seconda parola nostra. E ha un effetto che nessun test darebbe: il
+> giorno che COLOMBO aggiunge un gruppo e nessuno lo classifica, quel gruppo cade
+> in una banda che **non afferma nulla**.
+>
+> Misurato anche, su richiesta di un advisor: gli accessori sono il **31,5% della
+> pronta consegna** contro il 19,1% del listino. La pagina **non** si riordina in
+> base al filtro (la griglia si sposterebbe fra un tocco e l'altro).
+>
+> ### 📐 L'ANTEPRIMA: la foto compare dove distingue, non dove ripete
+>
+> Andrea: *«la foto della tendina che si rimpicciolisce confonde e da piccola non
+> si vede».* Il rimedio non è ingrandirla: dentro FEDRA le serie sono la stessa
+> maniglia in varianti, quindi **era ripetuta**. Dentro una TIPOLOGIA distingue, e
+> lì resta — **ferma** (rimpicciolirsi è anche un'animazione di layout).
+>
+> ⚠️ **Sembra il contrario del livello 1 e non lo è**, ed è scritto nel codice
+> perché qualcuno lo «correggerà» per simmetria: lì `isModello` **accende** la
+> foto, qui la **spegne**. Stesso principio, unità diversa.
+>
+> ### 🖼️ COSA HANNO SCOPERTO GLI SCREENSHOT (e i test no)
+>
+> Il collegamento «Accessori ↓» scrollava — il test controllava `scrollY > 100`,
+> ed era vero — ma il titolo finiva **nascosto sotto la fascia sticky** della
+> pronta consegna (36px misurati). Si arrivava a una banda senza nome, cioè senza
+> la riga che dichiara che «Accessori» è parola nostra. `scroll-mt-14`, e il
+> controllo ora verifica che il titolo sia **visibile**, non solo raggiunto.
+>
+> ### 🔴 L'AZIONE OPS (una sola)
+>
+> **«Ops — Foto COLOMBO»** (`ops-foto-colombo.yml`), ~7 minuti, idempotente.
+> Ricalcola gli abbinamenti; non carica foto nuove (le 240 su Blob bastano).
+> `scripts/foto-colombo.ts:207` **azzera** `image_url` su tutta la marca prima di
+> riscrivere, quindi le foto tolte spariscono da sole.
+> Secret: `COLOMBO_DOWNLOAD_PASSWORD`, `BLOB_READ_WRITE_TOKEN`, **`NEON_DIRECT_URL`**
+> (non `DATABASE_URL`: è la lezione del run morto in zero secondi).
+>
+> 🟢 **NESSUNA MIGRAZIONE, nessuna finestra di disservizio**: fra deploy e run le
+> foto restano quelle di oggi, che è uno stato coerente e non uno stato rotto.
+>
+> ### 🧾 DEBITO E RESIDUI DICHIARATI
+>
+> - **Le miniature di RIGA mostrano il segnaposto `<Package>` molto più spesso**
+>   di prima (la copertura scende di 14 punti). Nella tendina il segnaposto l'ho
+>   tolto — «otto riquadri grigi in colonna si leggono come il programma è
+>   rotto» — ma nelle righe articolo è rimasto: è preesistente, non l'ho toccato
+>   perché è un'altra superficie e la decisione è dell'utente. **Da guardare.**
+> - `ROUND/SQUARE/CUT/PUSH` senza foto (sopra).
+> - Il warning lint `react-hooks/exhaustive-deps` in `maniglie-client.tsx:195` è
+>   **preesistente** (verificato con `git stash`): è l'idratazione-una-volta-sola
+>   delle tendine, deliberata.
+> - `sfoglia.tsx` non ha un file di test proprio (provata via `maniglie-client`).
+> - Verifica browser: le foto vere stanno su Blob **privato**, assente in locale.
+>   Si è intercettata `/api/article-image` con un PNG per provare il **layout**;
+>   i pixel li prova il gate sul catalogo vero.
+>
+> ### ❓ APERTE
+>
+> 1. **Vercel Pro** (Hobby vieta l'uso commerciale): deciso per il 08/08.
+> 2. **Le tre distinte reali** di MC, Peruzzi e Fosca: pendono da sette sessioni.
+> 3. **A COLOMBO**: quale archivio è MR11 e quale MR15 (idem LC31/LC41,
+>    LC71/LC81) · i codici finitura `OP` (19 file), `NK`, `GR`, `SS` che non sono
+>    fra le 31 pubblicate · **esistono foto per finitura dei pomoli** (ROUND,
+>    SQUARE, CUT, PUSH)?
+> 4. **Ad Andrea**: le fusioni non decise restano `MANIG.CD213`, `MANIG.LC413RS`.
+>    E POMOLINO è accessorio? L'ha citato nel primo messaggio e tolto nel secondo.
+> 5. La **migrazione multi-marca**, rimandata alla marca #3.
+>
+> ### 📄 SPEC E PIANO
+>
+> `docs/superpowers/specs/2026-08-05-sette-dritte-andrea-design.md` ·
+> `docs/superpowers/plans/2026-08-05-sette-dritte-andrea.md`
+>
+> ---
+
+### (Sessione precedente, 2026-08-05) — LO SFOGLIO A SERIE
 
 ## Sessione precedente
 

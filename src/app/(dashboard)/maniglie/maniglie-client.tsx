@@ -320,6 +320,7 @@ export function ManiglieClient() {
                 aperte={aperteLocali}
                 onToggle={toggleSerie}
                 senzaSerie={serie.data?.senzaSerie ?? []}
+                isModello={serie.data?.isModello ?? false}
                 renderRiga={(articolo) => <ArticoloRow key={articolo.id} articolo={articolo} />}
               />
             </>

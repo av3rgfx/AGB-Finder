@@ -26,6 +26,12 @@ export interface Gruppo {
   count: number;
   /** Il gruppo È un modello: COLOMBO gli dedica un archivio fotografico. */
   isModello: boolean;
+  /**
+   * Il gruppo non è una maniglia. È una lista di Andrea, non un dato: i pomoli
+   * hanno l'archivio e maniglie non sono, MILLA e SPIDER sono maniglie senza
+   * archivio. «Accessori» è la sola parola NOSTRA di questo schermo.
+   */
+  isAccessorio: boolean;
   /** Percorso della foto di anteprima, o `null`. */
   preview: string | null;
 }
@@ -102,14 +108,38 @@ export function SfogliaGruppi({
 }) {
   const [filtro, setFiltro] = useState("");
   const cerca = filtro.trim().toUpperCase();
-  const visibili = cerca ? groups.filter((g) => g.word.includes(cerca)) : groups;
+  // «Accessori» è a schermo ma non è il nome di nessun gruppo: senza questo,
+  // digitarla non troverebbe nulla mentre la parola si legge sopra la griglia.
+  // Da tre caratteri, così «AC» non svuota la ricerca di chi cerca altro.
+  const cercaAccessori = cerca.length >= 3 && "ACCESSORI".startsWith(cerca);
+  const visibili = cerca
+    ? groups.filter((g) => g.word.includes(cerca) || (cercaAccessori && g.isAccessorio))
+    : groups;
+  const accessori = visibili.filter((g) => g.isAccessorio);
+  const resto = visibili.filter((g) => !g.isAccessorio);
+  const coda = codaFiltri(soloPronta, finitura);
 
   return (
     <section aria-labelledby="sfoglia-titolo" className="flex flex-col gap-3">
       <div className="flex flex-col gap-0.5">
-        <h2 id="sfoglia-titolo" className="text-sm font-semibold text-ink">
-          Sfoglia il catalogo
-        </h2>
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 id="sfoglia-titolo" className="text-sm font-semibold text-ink">
+            Sfoglia il catalogo
+          </h2>
+          {/* Un'ANCORA, non un filtro: 73 tessere a 375px sono ~37 righe, e la
+              banda in fondo altrimenti si troverebbe solo scorrendo. `<a href="#">`
+              e non uno scroll in JS, così il tasto indietro funziona da sé.
+              Sparisce quando il filtro svuota la banda: un collegamento che
+              porta a un'ancora inesistente è peggio della sua assenza. */}
+          {accessori.length > 0 ? (
+            <a
+              href="#accessori"
+              className="shrink-0 rounded text-xs font-medium text-ink-muted transition-colors duration-150 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+            >
+              Accessori ({accessori.length}) ↓
+            </a>
+          ) : null}
+        </div>
         {/* L'origine dichiarata: è ciò che impedisce all'etichetta di sembrare
             una classificazione nostra. Le parole sono di COLOMBO, refusi
             compresi, e chi le legge deve saperlo. E il numero è quanti CODICI,
@@ -159,13 +189,64 @@ export function SfogliaGruppi({
             : "Nessun articolo in pronta consegna."}
         </p>
       ) : (
-        <ul className="grid list-none grid-cols-2 items-start gap-2 sm:grid-cols-3 lg:grid-cols-4">
-          {visibili.map((g) => (
-            <TesseraGruppo key={g.word} gruppo={g} coda={codaFiltri(soloPronta, finitura)} />
-          ))}
-        </ul>
+        <>
+          {resto.length > 0 ? <GrigliaGruppi gruppi={resto} coda={coda} /> : null}
+
+          {/* ⚠️ LA BANDA DI SOPRA NON HA INTESTAZIONE, ed è una scelta.
+              Qualunque nome sarebbe FALSO — «Maniglie» starebbe sopra BOCCHETTA
+              (318), MANIGLIONE (353), POMOLINO (41), GRANO (3): misurato che
+              dei 27 gruppi di solo testo 17 sono accessori e 10 no — oppure
+              sarebbe una SECONDA parola nostra.
+              Ha anche un effetto che nessun test potrebbe dare: il giorno che
+              COLOMBO aggiunge un gruppo e nessuno lo classifica, quel gruppo
+              cade in una banda che non afferma nulla. */}
+          {accessori.length > 0 ? (
+            <section
+              aria-labelledby="accessori"
+              className="flex flex-col gap-3 border-t border-line pt-4"
+            >
+              <div className="flex flex-col gap-0.5">
+                {/* `scroll-mt-14` e non `-4`: sopra l'elenco c'è la fascia
+                    STICKY con la data della pronta consegna (36px misurati), e
+                    con un margine più piccolo l'ancora atterrava lasciando il
+                    titolo NASCOSTO sotto di essa. Il salto sembrava funzionare
+                    — lo scroll avveniva — ma portava a una banda senza nome.
+                    L'ha visto lo screenshot, non l'asserzione: il test
+                    controllava `scrollY > 100`, ed era vero. */}
+                <h3 id="accessori" className="scroll-mt-14 text-sm font-semibold text-ink">
+                  Accessori
+                </h3>
+                {/* L'unica parola NOSTRA di questo schermo, e lo dice. Tutte le
+                    altre etichette sono parole del listino COLOMBO, refusi
+                    compresi: se questa non si dichiarasse, sembrerebbe una loro
+                    categoria — la classe di difetto chiusa otto volte. */}
+                <p className="text-xs text-ink-subtle">
+                  «Accessori» è un raggruppamento nostro: le altre etichette sono parole del listino
+                  COLOMBO.
+                </p>
+              </div>
+              <GrigliaGruppi gruppi={accessori} coda={coda} />
+            </section>
+          ) : null}
+        </>
       )}
     </section>
+  );
+}
+
+/**
+ * La griglia, uguale per le due bande — stessa densità e stessa forma di
+ * tessera. Un accessorio e un MANIGLIONE sono LO STESSO OGGETTO a schermo
+ * (entrambi tessere di solo testo): renderli diversi affermerebbe una
+ * differenza che non c'è.
+ */
+function GrigliaGruppi({ gruppi, coda }: { gruppi: Gruppo[]; coda: string }) {
+  return (
+    <ul className="grid list-none grid-cols-2 items-start gap-2 sm:grid-cols-3 lg:grid-cols-4">
+      {gruppi.map((g) => (
+        <TesseraGruppo key={g.word} gruppo={g} coda={coda} />
+      ))}
+    </ul>
   );
 }
 
@@ -298,12 +379,15 @@ export function SfogliaSerie({
   aperte,
   onToggle,
   senzaSerie,
+  isModello,
   renderRiga,
 }: {
   serie: Serie[];
   aperte: string[];
   onToggle: (serie: string, aperta: boolean) => void;
   senzaSerie: ArticleSummary[];
+  /** Il gruppo è un MODELLO: qui la foto per-serie ripeterebbe. */
+  isModello: boolean;
   renderRiga: (a: ArticleSummary) => ReactNode;
 }) {
   return (
@@ -319,7 +403,7 @@ export function SfogliaSerie({
                   onToggle={(e) => onToggle(s.serie, (e.currentTarget as HTMLDetailsElement).open)}
                 >
                   <summary className="flex min-h-[56px] cursor-pointer list-none items-center gap-3 bg-surface px-3 py-2 transition-colors duration-150 hover:bg-surface-sunken sm:px-4">
-                    <AnteprimaSerie url={s.preview} piccola={aperta} />
+                    {isModello ? null : <AnteprimaSerie url={s.preview} />}
                     {/* La serie è un pezzo di CODICE e sta in mono, come ogni
                         codice nell'app: guardando lo schermo si capisce a che
                         livello si è anche senza leggere le briciole. */}
@@ -365,30 +449,27 @@ export function SfogliaSerie({
 }
 
 /**
- * L'anteprima nell'intestazione di una tendina: 56px chiusa, 32px aperta.
+ * L'anteprima di una serie: **56px, FERMA**, e solo dentro una TIPOLOGIA.
  *
- * Resta anche aperta, contro la richiesta iniziale di mostrarla solo da chiusa:
- * con tre tendine aperte le intestazioni sono i soli punti di riferimento in una
- * colonna di righe quasi identiche, e toglierla la toglierebbe proprio quando
- * serve a orientarsi. Non è una ripetizione: qui si ritrae il MODELLO, nelle
- * righe le singole FINITURE. Rimpicciolendosi, l'intestazione aperta lascia il
- * peso visivo alle righe.
+ * ⚠️ SEMBRA IL CONTRARIO DEL LIVELLO 1, E NON LO È. Lì `isModello` ACCENDE la
+ * foto, qui la SPEGNE. Stesso principio, unità diversa: la tessera di livello 1
+ * ritrae il MODELLO INTERO, e una foto lo rappresenta davvero; la riga di
+ * livello 2 ritrae UNA SERIE dentro quel modello, e le serie di FEDRA sono la
+ * stessa maniglia in varianti — la foto sarebbe identica su ognuna. Dentro una
+ * tipologia (BOCCHETTA raccoglie 22 modelli, MANIGLIONE 52) distingue davvero.
+ * Chi legge questo codice non lo «corregga» per simmetria.
  *
- * Nessuna transizione sulla dimensione: sarebbe un'animazione di layout.
+ * Non si rimpicciolisce aprendo. Era una scelta nostra, e Andrea — che il
+ * programma lo usa — l'ha smentita sul campo: «confonde, e da piccola non si
+ * vede». Era anche un'animazione di layout, vietata dal sistema.
+ *
+ * Preview mancante = spazio vuoto, NON segnaposto: con la copertura al 46,5% le
+ * assenze sono frequenti, e otto riquadri grigi in colonna si leggono come «il
+ * programma è rotto». L'allineamento regge, e l'assenza si dice tacendo.
  */
-function AnteprimaSerie({ url, piccola }: { url: string | null; piccola: boolean }) {
+function AnteprimaSerie({ url }: { url: string | null }) {
   const [fallita, setFallita] = useState(false);
-  const dim = piccola ? "size-8" : "size-14";
-  if (!url || fallita) {
-    return (
-      <span
-        aria-hidden
-        className={`grid ${dim} shrink-0 place-items-center rounded border border-line bg-surface-sunken`}
-      >
-        <Package className="size-4 text-ink-subtle" />
-      </span>
-    );
-  }
+  if (!url || fallita) return <span aria-hidden className="size-14 shrink-0" />;
   return (
     // eslint-disable-next-line @next/next/no-img-element -- sorgente dinamica dietro auth, non da ottimizzare
     <img
@@ -396,7 +477,7 @@ function AnteprimaSerie({ url, piccola }: { url: string | null; piccola: boolean
       alt=""
       loading="lazy"
       onError={() => setFallita(true)}
-      className={`${dim} shrink-0 rounded border border-line bg-white object-contain`}
+      className="size-14 shrink-0 rounded border border-line bg-white object-contain"
     />
   );
 }

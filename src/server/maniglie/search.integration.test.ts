@@ -3,7 +3,7 @@ import { Prisma, PrismaClient } from "@prisma/client";
 import { seedManiglie } from "../../../prisma/seed-maniglie";
 import { searchArticleIds, browseFirstWords, articleIdsByFirstWord } from "./search";
 import { firstWord, secondToken, SQL_FIRST_WORD, SQL_SECOND_WORD } from "./taxonomy";
-import { browseLabel, vociCuratela } from "./curatela";
+import { browseLabel, etichetteAccessorio, vociCuratela } from "./curatela";
 import { serieDelGruppo, splitGroup, type BrowseRow } from "./browse";
 import {
   currentStockImport,
@@ -338,9 +338,16 @@ describe.runIf(Boolean(url))("sfoglio — il GROUP BY SQL e la funzione TypeScri
       where: { brand: "COLOMBO" },
       select: { name: true },
     });
-    const prime = new Set(rows.map((r) => firstWord(r.name)));
+    // Prime parole E secondi token: una prima parola TRASPARENTE (`COPPIA`)
+    // cede l'etichetta al secondo token, quindi `BOCCHETTE` è una voce viva
+    // della curatela che come prima parola non compare mai. Guardando le sole
+    // prime parole, quella voce risulterebbe morta senza esserlo.
+    const token = new Set([
+      ...rows.map((r) => firstWord(r.name)),
+      ...rows.map((r) => secondToken(r.name)).filter((t): t is string => t !== null),
+    ]);
     for (const voce of vociCuratela("COLOMBO")) {
-      expect(prime.has(voce), `voce morta nella curatela: «${voce}»`).toBe(true);
+      expect(token.has(voce), `voce morta nella curatela: «${voce}»`).toBe(true);
     }
   });
 
@@ -595,5 +602,75 @@ describe.runIf(Boolean(url))("sfoglio — le serie del livello 2", () => {
     // vecchia da sola.
     expect(serie).toBeGreaterThan(500);
     expect(singole / serie).toBeLessThan(0.1);
+  });
+});
+
+/**
+ * LE CORREZIONI DI ANDREA, sul listino VERO. Non su venti righe di seed: le
+ * fusioni sono affermazioni sul listino `LP 02-26`, e una fusione che non
+ * aggancia più nulla è invisibile a schermo perché nessun conteggio va a zero.
+ */
+describe.runIf(Boolean(url))("le sette dritte di Andrea, sul listino vero", () => {
+  let db: PrismaClient;
+
+  beforeAll(async () => {
+    db = new PrismaClient({ datasourceUrl: url });
+  });
+
+  afterAll(async () => {
+    await db.$disconnect();
+  });
+
+  it("nessun gruppo si chiama più con le etichette fuse", async () => {
+    const nomi = (await browseFirstWords(db, "COLOMBO")).map((g) => g.word);
+    for (const sparita of ["COPPIA", "BOCCHETTE", "PL.", "HEIDI/PETER", "LUNDCREM"]) {
+      expect(nomi, sparita).not.toContain(sparita);
+    }
+  });
+
+  /**
+   * I CONTRIBUTI, non i totali: il gate gira su un database che il seed
+   * arricchisce di righe finte, quindi un totale assoluto fallirebbe per la
+   * ragione sbagliata. Ciò che le fusioni cambiano davvero è quante righe di
+   * un'altra etichetta arrivano qui, e quello si misura esattamente.
+   */
+  it("i contributi delle fusioni sono quelli misurati sul listino", async () => {
+    const cont = async (label: string, prefisso: string) =>
+      (await articleIdsByFirstWord(db, "COLOMBO", label)).filter((r) =>
+        r.name.toUpperCase().startsWith(prefisso),
+      ).length;
+    expect(await cont("BOCCHETTA", "COPPIA BOCCHETTE")).toBe(28);
+    expect(await cont("MANIGLIONE", "COPPIA MANIGLIONI")).toBe(7);
+    // 22 in tutto: la vecchia etichetta «PL.» aveva già assorbito «PL.OTT.» (1)
+    // e «PL.OTT.YALE» (11), quindi il contributo a PLACCA è il suo totale.
+    expect(await cont("PLACCA", "PL.")).toBe(22);
+    expect(await cont("HEIDI", "HEIDI/PETER")).toBe(2);
+    expect(await cont("LUND", "LUNDCREM")).toBe(1);
+  });
+
+  // Il conteggio del livello 1 e le righe del livello 2 devono contare lo
+  // STESSO insieme: se COPPIA non fosse fra le sorgenti del `WHERE`, il gruppo
+  // prometterebbe 318 righe e ne mostrerebbe 290.
+  it("il conteggio del livello 1 e le righe del livello 2 coincidono", async () => {
+    const gruppi = await browseFirstWords(db, "COLOMBO");
+    for (const g of ["BOCCHETTA", "MANIGLIONE", "PLACCA", "HEIDI", "LUND"]) {
+      const righe = await articleIdsByFirstWord(db, "COLOMBO", g);
+      expect(righe.length, g).toBe(gruppi.find((x) => x.word === g)?.count);
+    }
+  });
+
+  // La sentinella della lista di Andrea: una voce morta non si vede a schermo.
+  it("ogni accessorio dichiarato esiste fra i gruppi del listino", async () => {
+    const nomi = new Set((await browseFirstWords(db, "COLOMBO")).map((g) => g.word));
+    for (const a of etichetteAccessorio("COLOMBO")) expect(nomi, a).toContain(a);
+  });
+
+  it("gli accessori sono 17 gruppi, tutti presenti a listino", async () => {
+    const gruppi = await browseFirstWords(db, "COLOMBO");
+    const acc = gruppi.filter((g) => etichetteAccessorio("COLOMBO").has(g.word));
+    expect(acc).toHaveLength(17);
+    // Sul listino puro sono 648 codici su 3.391 sfogliabili (19,1%); qui il
+    // seed aggiunge righe finte, quindi si verifica l'ordine di grandezza.
+    expect(acc.reduce((n, g) => n + g.count, 0)).toBeGreaterThanOrEqual(648);
   });
 });

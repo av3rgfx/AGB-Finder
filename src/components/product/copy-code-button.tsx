@@ -4,12 +4,22 @@ import { useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export function CopyCodeButton({ code }: { code: string }) {
+/**
+ * `copyAs` esiste perché i due reparti scrivono i codici in modo diverso e uno
+ * solo dei due va normalizzato: le maniglie si ORDINANO `0ID41RCR` e si LEGGONO
+ * `0ID41R-CR`, mentre i serramenti si ordinano `A50122.08.07`, punti compresi.
+ *
+ * Il default è «copia ciò che mostri»: nessuna chiamata esistente cambia
+ * comportamento, e chi aggiunge una schermata non deve ricordarsi di nulla.
+ * Il valore per le maniglie non si ricalcola qui — è `articles.code_norm`, cioè
+ * la stessa chiave con cui si aggancia la pronta consegna.
+ */
+export function CopyCodeButton({ code, copyAs }: { code: string; copyAs?: string }) {
   const [copied, setCopied] = useState(false);
 
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(code);
+      await navigator.clipboard.writeText(copyAs ?? code);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {

@@ -12,7 +12,7 @@ import {
   fotoRappresentativa,
   type BrowseRow,
 } from "@/server/maniglie/browse";
-import { resolveLabel } from "@/server/maniglie/curatela";
+import { etichetteAccessorio, resolveLabel } from "@/server/maniglie/curatela";
 import { articleTotal } from "@/server/maniglie/price";
 import {
   allAvailableArticleIds,
@@ -38,6 +38,7 @@ const ARTICLE_FIELDS = {
   id: true,
   brand: true,
   code: true,
+  codeNorm: true,
   name: true,
   priceList: true,
   surcharge: true,
@@ -66,6 +67,9 @@ function toSummary(a: ArticleRow, inStock: boolean) {
     id: a.id,
     brand: a.brand,
     code: a.code,
+    /** La forma SENZA separatori: è ciò che si copia negli appunti, ed è la
+        chiave con cui si aggancia la pronta consegna. Non si ricalcola in UI. */
+    codeNorm: a.codeNorm,
     name: a.name,
     /** Totale DERIVATO (prezzo + surcharge), arrotondato a 2 decimali in Decimal. */
     total: articleTotal(a.priceList, a.surcharge).toNumber(),
@@ -188,6 +192,9 @@ export const articleRouter = createTRPCRouter({
       const filtrati = await idsFiltrati(ctx.db, input.brand, input);
       const groups = await browseFirstWords(ctx.db, input.brand, filtrati);
       const modelli = etichetteModello();
+      // «Accessori» è una parola NOSTRA, non di COLOMBO: la schermata lo
+      // dichiara, e questo è il dato che le permette di farlo.
+      const accessori = etichetteAccessorio(input.brand);
 
       // Una sola lettura in più, e SOLO delle righe che una foto ce l'hanno
       // (2.118 su 3.456): serve a scegliere l'anteprima di ogni gruppo-modello.
@@ -219,6 +226,7 @@ export const articleRouter = createTRPCRouter({
           word: g.word,
           count: g.count,
           isModello: modelli.has(g.word),
+          isAccessorio: accessori.has(g.word),
           preview: urlFoto(perGruppo.get(g.word)?.imageUrl ?? null, 320),
         })),
       };
@@ -291,10 +299,16 @@ export const articleRouter = createTRPCRouter({
       // `tipo` torna al chiamante RISOLTO: con un `?tipo=MANIG.` condiviso
       // prima della fusione, il chip «dove sei» mostrerebbe altrimenti un nome
       // che non è quello del gruppo che si sta guardando.
-      if (tipo === null) return { tipo: input.tipo, serie: [], senzaSerie: [], total: 0 };
+      if (tipo === null)
+        return { tipo: input.tipo, isModello: false, serie: [], senzaSerie: [], total: 0 };
 
       const all = await articleIdsByFirstWord(ctx.db, input.brand, tipo);
-      if (all.length === 0) return { tipo, serie: [], senzaSerie: [], total: 0 };
+      // `isModello` serve al livello 2 per SPEGNERE le anteprime: dentro un
+      // gruppo-modello le serie sono lo stesso pezzo in varianti, e la foto
+      // ripeterebbe. Sembra il contrario del livello 1 e non lo è — cambia
+      // l'unità ritratta, non il principio. Vedi `SfogliaSerie`.
+      const isModello = etichetteModello().has(tipo);
+      if (all.length === 0) return { tipo, isModello, serie: [], senzaSerie: [], total: 0 };
 
       const filtrati = await idsFiltrati(ctx.db, input.brand, input);
       const visible = filtrati === undefined ? undefined : new Set(filtrati);
@@ -322,6 +336,7 @@ export const articleRouter = createTRPCRouter({
 
       return {
         tipo,
+        isModello,
         serie: serie.map((s) => ({
           serie: s.serie,
           count: s.count,

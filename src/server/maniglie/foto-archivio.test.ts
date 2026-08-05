@@ -174,12 +174,18 @@ describe("finitura dal nome del file", () => {
     expect(finituraDiFoto("roboquattroS_5VM")).toBe("VM");
   });
 
-  it("non legge le parole per esteso", () => {
-    // `cromo` è scritto in italiano in 106 nomi e `bronze` in inglese in 18: due
-    // lingue e nessun elenco chiuso. La finitura si legge SOLO dove COLOMBO ha
-    // scritto il suo codice.
-    expect(finituraDiFoto("roboquattro cromo matte")).toBeNull();
-    expect(finituraDiFoto("due frontale bronze")).toBeNull();
+  /**
+   * Questo test diceva l'OPPOSTO — «non legge le parole per esteso, sono due
+   * lingue e nessun elenco chiuso» — ed era la codifica di una limitazione, non
+   * la sentinella di una scelta. L'elenco chiuso esiste: sono le 31 finiture
+   * pubblicate, e le loro grafie reali stanno in `finiture.ts`.
+   *
+   * Costava caro: 268 file su 638 dicono la finitura a parole, ed è la ragione
+   * per cui tutti gli otto `0CC31R-C0x` mostravano la maniglia blu.
+   */
+  it("legge anche le parole per esteso, ed erano 268 file su 638", () => {
+    expect(finituraDiFoto("roboquattro cromo matte")).toBe("CM");
+    expect(finituraDiFoto("due frontale bronze")).toBe("C02");
   });
 
   it("i bicolori non sono una delle 31", () => {
@@ -242,9 +248,30 @@ describe("abbinamento articolo → foto", () => {
     expect(m.get("0AC11R-CR")).toBe("maniglie/colombo/01-fedra/fedra-2cr");
   });
 
-  it("gradino 1: senza la sua finitura prende la foto del modello", () => {
+  /**
+   * Questo test diceva l'OPPOSTO: senza la propria finitura, l'articolo
+   * ripiegava sulla prima foto del modello in ordine alfabetico. Era il difetto
+   * segnalato da Andrea, in miniatura — un FEDRA vintage che mostra un FEDRA
+   * oroplus, con la stessa sicurezza di una foto giusta.
+   *
+   * Dal 2026-08-05 la foto è contesa (OL e CR la reclamano insieme a VM) e
+   * resta solo a chi la dimostra sua.
+   */
+  it("gradino 1: senza la sua finitura NON ripiega su quella di un altro", () => {
     const m = abbinaFoto("COLOMBO", [art("0AC11R-VM", "FEDRA AC11R VINTAGE SAT.")], fedra);
-    expect(m.get("0AC11R-VM")).toBe("maniglie/colombo/01-fedra/fedra-1ol");
+    expect(m.has("0AC11R-VM")).toBe(false);
+  });
+
+  /**
+   * Ma se la foto non è contesa da nessuno resta, anche senza poter provare la
+   * finitura: togliere qui non renderebbe più onesto niente, e il modello è
+   * comunque quello giusto.
+   */
+  it("gradino 1: una foto che nessuno si contende resta", () => {
+    const m = abbinaFoto("COLOMBO", [art("0AC11R-VM", "FEDRA AC11R VINTAGE SAT.")], [
+      { archivio: "01_Fedra", nome: "Fedra_frontale" },
+    ]);
+    expect(m.get("0AC11R-VM")).toBe(chiaveFoto("01_Fedra", "Fedra_frontale"));
   });
 
   it("non usa mai uno scatto d'ambiente, nemmeno come ultima risorsa", () => {
@@ -395,5 +422,197 @@ describe("abbinamento con le regole per file", () => {
       [{ archivio: "02_Pomoli", nome: "spider_45" }],
     );
     expect(m.size).toBe(0);
+  });
+});
+
+/**
+ * Le fusioni del 2026-08-05 mandano tre cremonesi dentro il gruppo della loro
+ * maniglia (`HEIDI/PETER`→HEIDI, `LUNDCREM`→LUND). Senza guardia
+ * erediterebbero la foto della maniglia — e la regola sulle finiture NON le
+ * intercetta: `0CD32-UB` prenderebbe `Heidi_R_UB`, cioè finitura provata
+ * GIUSTA e prodotto SBAGLIATO. È la stessa forma della trappola ZERO.
+ *
+ * La guardia è la `serie`, già usata per ROBOT (CD41/CD75) e MOOD (CC11/CC21).
+ * ⚠️ La fonte qui è il LISTINO e non i nomi dei file: COLOMBO scrive
+ * «HEIDI CD31R» contro «HEIDI/PETER CREM CD32». È scritta da lui, altrove.
+ */
+describe("le cremonesi non ereditano la foto della loro maniglia", () => {
+  const foto: FotoArchivio[] = [
+    { archivio: "01_Heidi", nome: "Heidi_R_UB" },
+    { archivio: "01_Lund", nome: "lund_2CM" },
+  ];
+
+  it("la maniglia HEIDI la prende", () => {
+    const m = abbinaFoto("COLOMBO", [art("0CD31R-UB", "HEIDI CD31R UMBER BRONZE")], foto);
+    expect(m.get("0CD31R-UB")).toBe(chiaveFoto("01_Heidi", "Heidi_R_UB"));
+  });
+
+  it("la cremonese CD32 no, benché ora si elenchi sotto HEIDI", () => {
+    const m = abbinaFoto("COLOMBO", [art("0CD32-UB", "HEIDI/PETER CREM CD32 UMBER")], foto);
+    expect(m.has("0CD32-UB")).toBe(false);
+  });
+
+  it("la maniglia LUND la prende, la cremonese SE12 no", () => {
+    const m = abbinaFoto(
+      "COLOMBO",
+      [art("0SE11R-CM", "LUND SE11R CROMAT"), art("0SE12-GM", "LUNDCREM SE12 GRAFITE MAT")],
+      foto,
+    );
+    expect(m.get("0SE11R-CM")).toBe(chiaveFoto("01_Lund", "lund_2CM"));
+    expect(m.has("0SE12-GM")).toBe(false);
+  });
+
+  /**
+   * ⚠️ SCOPERTO MISURANDO LA GUARDIA, non prevedendolo: la `serie` toglie 11
+   * foto e non 3, e le altre OTTO erano già sbagliate in produzione **prima**
+   * della fusione di Andrea.
+   *
+   * Sono le cremonesi che COLOMBO scrive con lo SPAZIO (`LUND CREM SE12`) o
+   * senza movimento (`HEIDI CD32DK SENZA MOV.`): la loro prima parola era già
+   * LUND e HEIDI, quindi ricevevano la foto della maniglia da sempre, e nessun
+   * conteggio andava a zero. La fusione non ha creato il difetto: l'ha reso
+   * visibile portando qui anche i suoi fratelli scritti attaccati.
+   */
+  it("anche le cremonesi scritte con lo spazio, già sbagliate da prima", () => {
+    const m = abbinaFoto(
+      "COLOMBO",
+      [
+        art("0SE12-CM", "LUND CREM SE12 CROMAT"),
+        art("0SE12DK/SM-CR", "LUND SE12DK SENZA MOV. CROMO"),
+        art("0CD32DK/SM-OL", "HEIDI CD32DK SENZA MOV.OROPLUS"),
+      ],
+      foto,
+    );
+    expect(m.size).toBe(0);
+  });
+});
+
+describe("finituraDiFoto legge entrambe le grafie di COLOMBO", () => {
+  it("il codice, come prima", () => {
+    expect(finituraDiFoto("Fedra_1OL")).toBe("OL");
+    expect(finituraDiFoto("robot41_4NM_new")).toBe("NM");
+  });
+
+  // 268 file su 638: senza, l'archivio DUE sembrava avere una foto sola.
+  it("e ora anche le parole", () => {
+    expect(finituraDiFoto("due frontale capri blue")).toBe("C12");
+    expect(finituraDiFoto("ama cromo matte")).toBe("CM");
+  });
+
+  it("un codice che COLOMBO non pubblica resta illeggibile, non indovinato", () => {
+    // `OP` compare in 19 file e non è fra le 31: dedurre «Oroplus» sarebbe la
+    // classe di errore che ha fatto disattivare i moduli kit PVC e battente.
+    expect(finituraDiFoto("heidi_1OP")).toBeNull();
+    expect(finituraDiFoto("Flessa_5NK")).toBeNull();
+  });
+});
+
+/**
+ * LA REGOLA (decisione dell'utente, 2026-08-05): **una foto contesa resta solo
+ * a chi può dimostrare che è sua.**
+ *
+ * Andrea: «se mancano le foto delle giuste finiture è meglio togliere
+ * direttamente le foto per quel prodotto, perché confondono e sono
+ * fuorvianti». Misurato sul catalogo vero che aveva ragione con un margine:
+ * 667 articoli si contendevano 72 file, quindi al più 72 mostravano la
+ * finitura giusta e almeno 595 no. E si dimostra SENZA saper leggere la
+ * finitura della foto — se n articoli di finiture diverse ricevono lo stesso
+ * file, al più uno è giusto.
+ */
+describe("la foto contesa resta solo a chi la dimostra sua", () => {
+  it("fra i contendenti resta solo quello provato", () => {
+    // Un maniglione CC113/Q, dodici colori a listino e UNA foto in archivio:
+    // è il caso che Andrea ha segnalato, al gradino 3.
+    const m = abbinaFoto(
+      "COLOMBO",
+      ["C01", "C06", "C12"].map((f) =>
+        art(`0CC113/Q-${f}`, "MANIGLIONE CC113 Q SINGOLO A/S"),
+      ),
+      [{ archivio: "03_Maniglioni_Pulls", nome: "CC113Q ocean blue" }],
+    );
+    expect([...m.keys()]).toEqual(["0CC113/Q-C06"]); // «ocean blue» è C06
+  });
+
+  it("una finitura provata DIVERSA non tiene la foto nemmeno da sola", () => {
+    const m = abbinaFoto("COLOMBO", [art("0BD11R-NM", "ELLE BD11R NEROMAT RAL 9005")], [
+      { archivio: "01_Elle", nome: "Elle_1CR" },
+    ]);
+    expect(m.size).toBe(0);
+  });
+
+  it("un file NON conteso resta anche se la sua finitura non si legge", () => {
+    // `OP` non è fra le 31 pubblicate: la foto non afferma una finitura, e
+    // nessun altro codice se la contende. Toglierla non renderebbe più onesto
+    // niente.
+    const m = abbinaFoto("COLOMBO", [art("0CD31R-OL", "HEIDI CD31R OROPLUS")], [
+      { archivio: "01_Heidi", nome: "heidi_1OP" },
+    ]);
+    expect(m.get("0CD31R-OL")).toBe(chiaveFoto("01_Heidi", "heidi_1OP"));
+  });
+
+  it("un articolo senza coda di finitura non afferma nulla e tiene la foto", () => {
+    const m = abbinaFoto("COLOMBO", [art("XKIT/PS", "KITPORTE SCORREVOLI OPER S/SER")], [
+      { archivio: "06_Complementi", nome: "XKIT PS_45" },
+    ]);
+    expect(m.get("XKIT/PS")).toBe(chiaveFoto("06_Complementi", "XKIT PS_45"));
+  });
+
+  it("quando la foto della finitura giusta ESISTE, la contesa non si apre", () => {
+    // È il caso DUE/ONE: l'archivio ha una foto per colore, e col
+    // riconoscitore dei nomi ognuno prende la sua. Zero foto tolte.
+    const m = abbinaFoto(
+      "COLOMBO",
+      [art("0CC31R-C12", "DUE CC31R CAPRI BLUE"), art("0CC31R-C09", "DUE CC31R LEMON YELLOW")],
+      [
+        { archivio: "01_Due", nome: "due frontale capri blue" },
+        { archivio: "01_Due", nome: "due frontale lemon yellow" },
+      ],
+    );
+    expect(m.get("0CC31R-C12")).toBe(chiaveFoto("01_Due", "due frontale capri blue"));
+    expect(m.get("0CC31R-C09")).toBe(chiaveFoto("01_Due", "due frontale lemon yellow"));
+  });
+});
+
+/**
+ * ⚠️ LA CIFRA PRIMA DELLE DUE LETTERE ERA OBBLIGATORIA, e non doveva esserlo.
+ *
+ * `Heidi_R_UB` dice «Umber Bronze» a chiunque lo legga, ma la regexp pretendeva
+ * la forma `_1OL`: sono **48 file su 638**, e non erano una coda — erano
+ * esattamente i file dei gruppi che la regola sulle contese mandava a zero
+ * (MANIGLIA INCASSO, ROSETTA, PLACCA, KIT, HEIDI).
+ *
+ * Trovato eseguendo il gate d'integrazione, non leggendo il codice: 14 gruppi
+ * andati a zero erano troppi per essere tutti ambiguità vera.
+ */
+describe("la finitura in coda, senza la cifra", () => {
+  it.each([
+    ["Heidi_R_UB", "UB"],
+    ["Peter_R45_UB", "UB"],
+    ["cd511CF_CR", "CR"],
+    ["id411_CM", "CM"],
+    ["cb111_OL", "OL"],
+    ["pb09_CR_new", "CR"],
+    ["Lara_DK_OM", "OM"],
+  ])("«%s» è %s", (nome, atteso) => {
+    expect(finituraDiFoto(nome)).toBe(atteso);
+  });
+
+  // Col trattino la coda di un bicolore sembrerebbe un codice solo: `963_4GL-GM`
+  // NON è «GM», è GRAFITE/GRAFITE MAT. Lo si riconosce da ciò che precede.
+  it.each(["963_4GL-GM", "963_3CR-CM"])("«%s» resta un bicolore", (nome) => {
+    expect(finituraDiFoto(nome)).toBeNull();
+  });
+
+  // E quelli attaccati cadono già da soli: in coda ci sono quattro lettere.
+  it.each(["milla1_1OLOM", "Alba_2CRNM", "trama 1_1CMCR"])(
+    "«%s» resta un bicolore anche attaccato",
+    (nome) => {
+      expect(finituraDiFoto(nome)).toBeNull();
+    },
+  );
+
+  it("una coda di due lettere che non è una finitura resta illeggibile", () => {
+    expect(finituraDiFoto("Heidi_DK_OP")).toBeNull(); // OP non è fra le 31
+    expect(finituraDiFoto("Flessa_5NK")).toBeNull();
   });
 });
