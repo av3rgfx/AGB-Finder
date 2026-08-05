@@ -288,10 +288,13 @@ export const articleRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       const tipo = resolveLabel(input.brand, input.tipo);
-      if (tipo === null) return { serie: [], senzaSerie: [], total: 0 };
+      // `tipo` torna al chiamante RISOLTO: con un `?tipo=MANIG.` condiviso
+      // prima della fusione, il chip «dove sei» mostrerebbe altrimenti un nome
+      // che non è quello del gruppo che si sta guardando.
+      if (tipo === null) return { tipo: input.tipo, serie: [], senzaSerie: [], total: 0 };
 
       const all = await articleIdsByFirstWord(ctx.db, input.brand, tipo);
-      if (all.length === 0) return { serie: [], senzaSerie: [], total: 0 };
+      if (all.length === 0) return { tipo, serie: [], senzaSerie: [], total: 0 };
 
       const filtrati = await idsFiltrati(ctx.db, input.brand, input);
       const visible = filtrati === undefined ? undefined : new Set(filtrati);
@@ -318,6 +321,7 @@ export const articleRouter = createTRPCRouter({
       const vive = <T,>(x: T | null): x is T => x !== null;
 
       return {
+        tipo,
         serie: serie.map((s) => ({
           serie: s.serie,
           count: s.count,

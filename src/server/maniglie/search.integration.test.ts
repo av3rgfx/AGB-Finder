@@ -4,6 +4,7 @@ import { seedManiglie } from "../../../prisma/seed-maniglie";
 import { searchArticleIds, browseFirstWords, articleIdsByFirstWord } from "./search";
 import { firstWord, secondToken, SQL_FIRST_WORD, SQL_SECOND_WORD } from "./taxonomy";
 import { browseLabel, vociCuratela } from "./curatela";
+import { serieDelGruppo, splitGroup, type BrowseRow } from "./browse";
 import {
   currentStockImport,
   availableArticleIds,
@@ -494,5 +495,105 @@ describe.runIf(Boolean(url))("sfoglio — il filtro «solo pronta consegna»", (
     const righe = await db.stockLine.count({ where: { importId: imp!.id } });
     const orfani = await db.stockLine.count({ where: { importId: imp!.id, articleId: null } });
     expect(pronti.length).toBe(righe - orfani);
+  });
+});
+
+/**
+ * LE SERIE, sul catalogo vero e non su venti righe finte. I numeri sono quelli
+ * misurati il 2026-08-05 sul listino `LP 02-26`: se il listino nuovo li sposta,
+ * questo test lo dice invece di lasciarlo scoprire a schermo.
+ */
+describe.runIf(Boolean(url))("sfoglio — le serie del livello 2", () => {
+  let db: PrismaClient;
+
+  beforeAll(async () => {
+    db = new PrismaClient({ datasourceUrl: url });
+  });
+
+  afterAll(async () => {
+    await db.$disconnect();
+  });
+
+  async function perGruppo(): Promise<Map<string, BrowseRow[]>> {
+    const rows = await db.article.findMany({
+      where: { brand: "COLOMBO" },
+      select: { id: true, code: true, codeNorm: true, name: true },
+    });
+    const out = new Map<string, BrowseRow[]>();
+    for (const r of rows) {
+      const l = browseLabel("COLOMBO", r.name);
+      if (l === null) continue;
+      if (!out.has(l)) out.set(l, []);
+      out.get(l)!.push(r);
+    }
+    return out;
+  }
+
+  it("le tre regole coprono il 98% dei codici sfogliabili", async () => {
+    const gruppi = await perGruppo();
+    let sfogliabili = 0;
+    let conSerie = 0;
+    for (const [g, rs] of gruppi) {
+      sfogliabili += rs.length;
+      conSerie += serieDelGruppo(rs, g).size;
+    }
+    expect(sfogliabili).toBeGreaterThan(3_300);
+    expect(conSerie / sfogliabili).toBeGreaterThan(0.98);
+  });
+
+  it("nessun articolo cambia serie quando si accende un filtro", async () => {
+    // Il difetto che ha riscritto il contratto di `splitGroup`: classificando
+    // DOPO il filtro, 27 articoli finivano in una serie diversa e un URL
+    // condiviso apriva una tendina che non esisteva più.
+    const gruppi = await perGruppo();
+    for (const [g, rs] of gruppi) {
+      const intera = serieDelGruppo(rs, g);
+      const visibili = new Set(rs.filter((_, i) => i % 5 === 0).map((r) => r.id));
+      const { serie, senzaSerie } = splitGroup(rs, g, visibili);
+      for (const s of serie) {
+        for (const r of s.rows) {
+          expect(s.serie, `${r.code} in ${g}`).toBe(intera.get(r.id));
+        }
+      }
+      for (const r of senzaSerie) {
+        expect(intera.get(r.id), `${r.code} in ${g}`).toBeUndefined();
+      }
+    }
+  });
+
+  it("il caso portato dal campo: le due maniglie ROBOQUATTRO S hanno la loro serie", async () => {
+    const gruppi = await perGruppo();
+    const rs = gruppi.get("ROBOQUATTRO S")!;
+    const m = serieDelGruppo(rs, "ROBOQUATTRO S");
+    const perCodice = new Map(rs.map((r) => [r.code, m.get(r.id) ?? null]));
+    expect(perCodice.get("0ID51RSMY-CM")).toBe("ID51R");
+    expect(perCodice.get("0ID51RSMY-CR")).toBe("ID51R");
+    expect(perCodice.get("0ID51RSB-NM")).toBe("ID51RSB");
+  });
+
+  it("ROSETTA non ha più ottanta codici fuori da ogni serie", async () => {
+    const gruppi = await perGruppo();
+    const rs = gruppi.get("ROSETTA")!;
+    const { senzaSerie } = splitGroup(rs, "ROSETTA");
+    expect(rs.length).toBeGreaterThan(100);
+    expect(senzaSerie.length).toBe(0);
+  });
+
+  it("una serie da un codice solo non nasce: la soglia dei due regge sul vero", async () => {
+    const gruppi = await perGruppo();
+    let serie = 0;
+    let singole = 0;
+    for (const [g, rs] of gruppi) {
+      const conta = new Map<string, number>();
+      for (const s of serieDelGruppo(rs, g).values()) conta.set(s, (conta.get(s) ?? 0) + 1);
+      serie += conta.size;
+      singole += [...conta.values()].filter((n) => n === 1).length;
+    }
+    // Le serie da un codice solo esistono ancora, ma vengono TUTTE dal primo
+    // gradino (il token della descrizione): il terzo non ne crea mai.
+    // Misurato: 43 su 591, l'8% scarso, meno di quante ne aveva la regola
+    // vecchia da sola.
+    expect(serie).toBeGreaterThan(500);
+    expect(singole / serie).toBeLessThan(0.1);
   });
 });

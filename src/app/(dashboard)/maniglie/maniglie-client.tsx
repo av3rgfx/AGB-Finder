@@ -165,27 +165,56 @@ export function ManiglieClient() {
   );
 
   /**
-   * Aprire o chiudere una tendina riscrive l'URL, senza scroll: la posizione
-   * dell'agente non deve saltare mentre apre una sezione più in basso.
+   * LE TENDINE APERTE: stato locale, e l'URL scritto con `history.replaceState`.
+   *
+   * Due cose imparate in browser, nessuna delle quali si vedeva dai test.
+   *
+   * (1) Rendere `open` direttamente da `?fam=` non funziona: fra il momento in
+   * cui si scrive l'URL e il render successivo React riporta a CHIUSA la
+   * tendina appena aperta, e quel reset emette un altro `toggle` — con
+   * `open=false` — che la toglie dall'elenco.
+   *
+   * (2) `router.replace` fa un giro sul server: l'URL resta indietro di un
+   * toggle, e aprendone due di fila la seconda scrittura si perde nella corsa
+   * (misurato: due tendine aperte a schermo, `?fam=` con una sola, e la seconda
+   * sparita al primo ricaricamento). Ma nulla, sul server, dipende da `?fam=`:
+   * è memoria per il ricaricamento e per il link che si manda a un collega.
+   * `history.replaceState` la scrive subito, senza rifetch e senza render.
    */
-  const toggleSerie = useCallback(
-    (nome: string, aperta: boolean) => {
-      const correnti = leggiSerieAperte(searchParams.get("fam"));
-      const prossime = aperta
-        ? [...new Set([...correnti, nome])]
-        : correnti.filter((x) => x !== nome);
-      const next = new URLSearchParams(searchParams.toString());
-      const v = scriviSerieAperte(prossime);
-      if (v) next.set("fam", v);
-      else next.delete("fam");
-      const qs = next.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-    },
-    [pathname, router, searchParams],
-  );
+  const [aperteLocali, setAperteLocali] = useState<string[]>(aperte);
+  const aperteRef = useRef(aperteLocali);
+
+  // Cambiando gruppo si riparte da ciò che dice l'URL di ARRIVO: un link
+  // `?tipo=X&fam=Y` apre Y, un link al solo gruppo non apre niente.
+  // SOLO su `tipo`: con `aperte` fra le dipendenze l'effetto si riattiverebbe
+  // a ogni nostra scrittura e riporterebbe indietro lo stato.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    aperteRef.current = aperte;
+    setAperteLocali(aperte);
+  }, [tipo]);
+
+  const toggleSerie = useCallback((nome: string, aperta: boolean) => {
+    const correnti = aperteRef.current;
+    // Eco della riconciliazione di React, non un gesto dell'agente: si ignora.
+    if (aperta === correnti.includes(nome)) return;
+    const prossime = aperta ? [...correnti, nome] : correnti.filter((x) => x !== nome);
+    aperteRef.current = prossime;
+    setAperteLocali(prossime);
+
+    // `fam` si riscrive per intero, quindi la sua eventuale staleness in
+    // `searchParams` non conta; gli altri parametri non cambiano aprendo una
+    // tendina.
+    const next = new URLSearchParams(searchParams.toString());
+    const v = scriviSerieAperte(prossime);
+    if (v) next.set("fam", v);
+    else next.delete("fam");
+    const qs = next.toString();
+    window.history.replaceState(null, "", qs ? `${pathname}?${qs}` : pathname);
+  }, [pathname, searchParams]);
 
   useScrollRestore(
-    `${committed}|${tipo}|${aperte.join(",")}|${page}|${soloPronta}|${finitura}`,
+    `${committed}|${tipo}|${aperteLocali.join(",")}|${page}|${soloPronta}|${finitura}`,
     Boolean(search.data ?? gruppi.data ?? serie.data),
   );
 
@@ -244,7 +273,14 @@ export function ManiglieClient() {
       ) : null}
 
       {sfogliando ? (
-        <FiltriSfoglia tipo={tipo} soloPronta={soloPronta} finitura={finituraScelta} />
+        <FiltriSfoglia
+          // L'etichetta RISOLTA dal server: un `?tipo=MANIG.` condiviso prima
+          // della fusione mostrerebbe altrimenti un nome che non è quello del
+          // gruppo che si ha davanti.
+          tipo={serie.data?.tipo ?? tipo}
+          soloPronta={soloPronta}
+          finitura={finituraScelta}
+        />
       ) : null}
 
       <section
@@ -281,7 +317,7 @@ export function ManiglieClient() {
               </p>
               <SfogliaSerie
                 serie={serie.data?.serie ?? []}
-                aperte={aperte}
+                aperte={aperteLocali}
                 onToggle={toggleSerie}
                 senzaSerie={serie.data?.senzaSerie ?? []}
                 renderRiga={(articolo) => <ArticoloRow key={articolo.id} articolo={articolo} />}

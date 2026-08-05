@@ -503,7 +503,43 @@ describe("ManiglieClient — sfoglio", () => {
     const dettaglio = document.querySelector("details")!;
     dettaglio.open = true;
     fireEvent(dettaglio, new Event("toggle", { bubbles: false }));
-    expect(replace).toHaveBeenCalledWith("/maniglie?tipo=LARA&fam=CB71R", { scroll: false });
+    // `history.replaceState` e non `router.replace`: quest'ultimo fa un giro
+    // sul server, e aprendo due tendine di fila la seconda scrittura si perdeva
+    // nella corsa. Niente, sul server, dipende da `?fam=`.
+    expect(window.location.search).toContain("fam=CB71R");
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it("aprendo DUE serie di fila l'URL le elenca entrambe", () => {
+    // Il difetto trovato in browser e non dai test: il secondo `toggle` scatta
+    // prima che React abbia recepito la scrittura del primo, quindi leggendo
+    // `searchParams` avrebbe sovrascritto con la sola serie appena aperta —
+    // due tendine aperte a schermo, una sola nell'URL, e la seconda persa al
+    // primo ricaricamento.
+    sp = new URLSearchParams("tipo=LARA");
+    browseSerieQuery.mockReturnValue({
+      data: {
+        serie: [
+          { serie: "CB71R", count: 1, preview: null, rows: [articoli[0]] },
+          { serie: "CB72DK", count: 1, preview: null, rows: [articoli[0]] },
+        ],
+        senzaSerie: [],
+        total: 2,
+      },
+      isPending: false,
+      isError: false,
+      isFetching: false,
+    });
+    render(<ManiglieClient />);
+    const dettagli = document.querySelectorAll("details");
+    for (const d of dettagli) {
+      d.open = true;
+      fireEvent(d, new Event("toggle", { bubbles: false }));
+    }
+    // L'URL si scrive con `history.replaceState` e non con `router.replace`:
+    // quest'ultimo fa un giro sul server e la seconda scrittura si perdeva
+    // nella corsa (misurato in browser). Niente, sul server, dipende da `?fam=`.
+    expect(window.location.search).toContain("fam=CB71R%2CCB72DK");
   });
 
   it("i codici SENZA serie restano raggiungibili, sotto le serie", () => {

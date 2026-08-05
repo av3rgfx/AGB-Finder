@@ -247,9 +247,15 @@ function TesseraGruppo({ gruppo, coda }: { gruppo: Gruppo; coda: string }) {
  * La foto di un gruppo-modello. Tutti e 63 ne hanno una (misurato), ma il
  * segnaposto resta: un listino nuovo può portare un modello prima che
  * l'archivio fotografico lo segua, e allora la tessera deve reggere.
+ *
+ * `onError` non è prudenza teorica: la foto arriva da una route che risponde
+ * 404 quando il file non c'è su Blob, e senza questo il browser disegnerebbe
+ * la sua icona di immagine rotta — che in una griglia si legge come «il
+ * programma è guasto». È lo stesso patto della miniatura nelle righe articolo.
  */
 function FotoGruppo({ url }: { url: string | null }) {
-  if (!url) {
+  const [fallita, setFallita] = useState(false);
+  if (!url || fallita) {
     return (
       <span
         aria-hidden
@@ -265,6 +271,7 @@ function FotoGruppo({ url }: { url: string | null }) {
       src={url}
       alt=""
       loading="lazy"
+      onError={() => setFallita(true)}
       className="aspect-square w-full rounded bg-white object-contain"
     />
   );
@@ -370,8 +377,9 @@ export function SfogliaSerie({
  * Nessuna transizione sulla dimensione: sarebbe un'animazione di layout.
  */
 function AnteprimaSerie({ url, piccola }: { url: string | null; piccola: boolean }) {
+  const [fallita, setFallita] = useState(false);
   const dim = piccola ? "size-8" : "size-14";
-  if (!url) {
+  if (!url || fallita) {
     return (
       <span
         aria-hidden
@@ -387,6 +395,7 @@ function AnteprimaSerie({ url, piccola }: { url: string | null; piccola: boolean
       src={url}
       alt=""
       loading="lazy"
+      onError={() => setFallita(true)}
       className={`${dim} shrink-0 rounded border border-line bg-white object-contain`}
     />
   );
