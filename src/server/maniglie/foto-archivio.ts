@@ -327,17 +327,26 @@ function nucleo(a: ArticoloDaAbbinare): string {
  * Articolo → chiave Blob della sua foto. Gli articoli senza foto **non compaiono**
  * nella mappa: `undefined` è la risposta, e non esiste una chiave «di riserva».
  *
- * Tre gradini, in ordine di forza, e tutti e tre sono cose che COLOMBO ha scritto:
+ * Due gradini per SCEGLIERE, uno per DECIDERE SE TENERE, e tutti e tre poggiano
+ * su cose che COLOMBO ha scritto:
  *
  *  3. il **codice** dell'articolo è nel nome del file (`ID313 RS_45.jpg`). È
  *     l'unica affermazione che COLOMBO faccia su un codice d'ordine, quindi vince
  *     su tutto, e raggiunge maniglioni, pomoli, bocchette e complementi — che per
- *     nome di modello sarebbero irraggiungibili. 322 codici sul listino vero.
- *  2. la **finitura** del file è quella dell'articolo (`Fedra_1OL` → `0AC11R-OL`):
- *     l'agente vede il colore che il cliente comprerà. 994 codici.
- *  1. la foto del **modello**, in una finitura qualunque. 679 codici.
+ *     nome di modello sarebbero irraggiungibili.
+ *  1. la foto del **modello**, preferendo quella della finitura giusta.
  *
- * Su tutti e tre pesa il filtro della variante ZERO, e sul gradino 1 la `serie`
+ * Poi la regola che decide chi la tiene: **una foto contesa resta solo a chi può
+ * dimostrare che è sua**. Sul listino 02-26 e sull'archivio 2026:
+ * **1.528 codici su 3.456 (44,2%)**, zero dei quali mostra una finitura provata
+ * diversa dalla propria.
+ *
+ * ⚠️ Il gradino 3 NON è «esatto per costruzione», come diceva l'handoff: è vero
+ * sul MODELLO e falso sulla FINITURA, perché aggancia il codice senza la sua
+ * coda — i dodici colori di `CC113/Q` cadevano tutti sull'unico file
+ * `CC113Q ocean blue`.
+ *
+ * Su tutti pesa il filtro della variante ZERO, e sul gradino 1 la `serie`
  * dichiarata in `ARCHIVI`.
  */
 export function abbinaFoto(
@@ -358,17 +367,36 @@ export function abbinaFoto(
     // letti gli zip, o la stessa richiesta darebbe due chiavi diverse a due run.
     .sort((a, b) => a.chiave.localeCompare(b.chiave));
 
-  const out = new Map<string, string>();
+  // ── prima passata: la SCELTA ───────────────────────────────────────────────
+  // Si conserva anche la finitura di ciò che si è scelto: serve alla seconda
+  // passata, che è dove vive la regola.
+  interface Scelta {
+    chiave: string;
+    finituraFoto: string | null;
+    finituraArt: string | null;
+  }
+  const scelte = new Map<string, Scelta>();
+
   for (const a of articoli) {
+    const finitura = finituraDiCodice(a.code);
     const nu = nucleo(a);
     if (nu.length >= MIN_NUCLEO) {
       const perCodice = usabili.filter((f) => f.nomeNorm.includes(nu));
       if (perCodice.length > 0) {
         // Il match più lungo: fra `PB13` e `PB1304` vince chi dice di più.
-        const scelta = [...perCodice].sort(
+        const ordinate = [...perCodice].sort(
           (x, y) => y.nomeNorm.length - x.nomeNorm.length || x.chiave.localeCompare(y.chiave),
-        )[0]!;
-        out.set(a.id, scelta.chiave);
+        );
+        // Fra i file che nominano il codice, se ce n'è uno della finitura giusta
+        // si prende QUELLO. Sul catalogo vero recupera poco (13 → 17 esatte):
+        // per quegli accessori l'archivio ha una foto sola e basta.
+        const scelta =
+          (finitura ? ordinate.find((f) => f.finitura === finitura) : undefined) ?? ordinate[0]!;
+        scelte.set(a.id, {
+          chiave: scelta.chiave,
+          finituraFoto: scelta.finitura,
+          finituraArt: finitura,
+        });
         continue;
       }
     }
@@ -384,9 +412,52 @@ export function abbinaFoto(
     });
     if (candidate.length === 0) continue;
 
-    const finitura = finituraDiCodice(a.code);
     const esatta = finitura ? candidate.find((f) => f.finitura === finitura) : undefined;
-    out.set(a.id, (esatta ?? candidate[0]!).chiave);
+    const scelta = esatta ?? candidate[0]!;
+    scelte.set(a.id, {
+      chiave: scelta.chiave,
+      finituraFoto: scelta.finitura,
+      finituraArt: finitura,
+    });
+  }
+
+  // ── seconda passata: UNA FOTO CONTESA RESTA SOLO A CHI LA DIMOSTRA SUA ─────
+  //
+  // Quante finiture DIVERSE puntano allo stesso file? Se più d'una, al più un
+  // articolo mostra la propria — e non serve saper leggere la finitura della
+  // foto per saperlo. Misurato sul catalogo vero: 667 articoli su 72 file,
+  // quindi almeno 595 vedevano il colore di un altro codice.
+  //
+  // Andrea, che il programma lo usa: «se mancano le foto delle giuste finiture
+  // è meglio togliere direttamente le foto, perché confondono e sono
+  // fuorvianti». Non è pignoleria: l'agente non sa dedurre la finitura dal
+  // codice, quindi all'immagine ci crede.
+  const finiturePerChiave = new Map<string, Set<string>>();
+  for (const s of scelte.values()) {
+    if (s.finituraArt === null) continue;
+    const set = finiturePerChiave.get(s.chiave) ?? new Set<string>();
+    set.add(s.finituraArt);
+    finiturePerChiave.set(s.chiave, set);
+  }
+
+  const out = new Map<string, string>();
+  for (const [id, s] of scelte) {
+    // 1. Chi non ha coda di finitura non AFFERMA nulla, quindi non può
+    //    sbagliare: nessuna ragione di togliergli la foto.
+    if (s.finituraArt === null) {
+      out.set(id, s.chiave);
+      continue;
+    }
+    // 2. Provata uguale: è sua.
+    if (s.finituraFoto === s.finituraArt) {
+      out.set(id, s.chiave);
+      continue;
+    }
+    // 3. Provata diversa: non è sua, e questo si SA.
+    if (s.finituraFoto !== null) continue;
+    // 4. Illeggibile: resta solo se nessun altro se la contende. Con due
+    //    finiture sullo stesso file, tenerla vorrebbe dire scommettere.
+    if ((finiturePerChiave.get(s.chiave)?.size ?? 0) <= 1) out.set(id, s.chiave);
   }
   return out;
 }

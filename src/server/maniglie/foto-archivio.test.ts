@@ -248,9 +248,30 @@ describe("abbinamento articolo → foto", () => {
     expect(m.get("0AC11R-CR")).toBe("maniglie/colombo/01-fedra/fedra-2cr");
   });
 
-  it("gradino 1: senza la sua finitura prende la foto del modello", () => {
+  /**
+   * Questo test diceva l'OPPOSTO: senza la propria finitura, l'articolo
+   * ripiegava sulla prima foto del modello in ordine alfabetico. Era il difetto
+   * segnalato da Andrea, in miniatura — un FEDRA vintage che mostra un FEDRA
+   * oroplus, con la stessa sicurezza di una foto giusta.
+   *
+   * Dal 2026-08-05 la foto è contesa (OL e CR la reclamano insieme a VM) e
+   * resta solo a chi la dimostra sua.
+   */
+  it("gradino 1: senza la sua finitura NON ripiega su quella di un altro", () => {
     const m = abbinaFoto("COLOMBO", [art("0AC11R-VM", "FEDRA AC11R VINTAGE SAT.")], fedra);
-    expect(m.get("0AC11R-VM")).toBe("maniglie/colombo/01-fedra/fedra-1ol");
+    expect(m.has("0AC11R-VM")).toBe(false);
+  });
+
+  /**
+   * Ma se la foto non è contesa da nessuno resta, anche senza poter provare la
+   * finitura: togliere qui non renderebbe più onesto niente, e il modello è
+   * comunque quello giusto.
+   */
+  it("gradino 1: una foto che nessuno si contende resta", () => {
+    const m = abbinaFoto("COLOMBO", [art("0AC11R-VM", "FEDRA AC11R VINTAGE SAT.")], [
+      { archivio: "01_Fedra", nome: "Fedra_frontale" },
+    ]);
+    expect(m.get("0AC11R-VM")).toBe(chiaveFoto("01_Fedra", "Fedra_frontale"));
   });
 
   it("non usa mai uno scatto d'ambiente, nemmeno come ultima risorsa", () => {
@@ -483,5 +504,71 @@ describe("finituraDiFoto legge entrambe le grafie di COLOMBO", () => {
     // classe di errore che ha fatto disattivare i moduli kit PVC e battente.
     expect(finituraDiFoto("heidi_1OP")).toBeNull();
     expect(finituraDiFoto("Flessa_5NK")).toBeNull();
+  });
+});
+
+/**
+ * LA REGOLA (decisione dell'utente, 2026-08-05): **una foto contesa resta solo
+ * a chi può dimostrare che è sua.**
+ *
+ * Andrea: «se mancano le foto delle giuste finiture è meglio togliere
+ * direttamente le foto per quel prodotto, perché confondono e sono
+ * fuorvianti». Misurato sul catalogo vero che aveva ragione con un margine:
+ * 667 articoli si contendevano 72 file, quindi al più 72 mostravano la
+ * finitura giusta e almeno 595 no. E si dimostra SENZA saper leggere la
+ * finitura della foto — se n articoli di finiture diverse ricevono lo stesso
+ * file, al più uno è giusto.
+ */
+describe("la foto contesa resta solo a chi la dimostra sua", () => {
+  it("fra i contendenti resta solo quello provato", () => {
+    // Un maniglione CC113/Q, dodici colori a listino e UNA foto in archivio:
+    // è il caso che Andrea ha segnalato, al gradino 3.
+    const m = abbinaFoto(
+      "COLOMBO",
+      ["C01", "C06", "C12"].map((f) =>
+        art(`0CC113/Q-${f}`, "MANIGLIONE CC113 Q SINGOLO A/S"),
+      ),
+      [{ archivio: "03_Maniglioni_Pulls", nome: "CC113Q ocean blue" }],
+    );
+    expect([...m.keys()]).toEqual(["0CC113/Q-C06"]); // «ocean blue» è C06
+  });
+
+  it("una finitura provata DIVERSA non tiene la foto nemmeno da sola", () => {
+    const m = abbinaFoto("COLOMBO", [art("0BD11R-NM", "ELLE BD11R NEROMAT RAL 9005")], [
+      { archivio: "01_Elle", nome: "Elle_1CR" },
+    ]);
+    expect(m.size).toBe(0);
+  });
+
+  it("un file NON conteso resta anche se la sua finitura non si legge", () => {
+    // `OP` non è fra le 31 pubblicate: la foto non afferma una finitura, e
+    // nessun altro codice se la contende. Toglierla non renderebbe più onesto
+    // niente.
+    const m = abbinaFoto("COLOMBO", [art("0CD31R-OL", "HEIDI CD31R OROPLUS")], [
+      { archivio: "01_Heidi", nome: "heidi_1OP" },
+    ]);
+    expect(m.get("0CD31R-OL")).toBe(chiaveFoto("01_Heidi", "heidi_1OP"));
+  });
+
+  it("un articolo senza coda di finitura non afferma nulla e tiene la foto", () => {
+    const m = abbinaFoto("COLOMBO", [art("XKIT/PS", "KITPORTE SCORREVOLI OPER S/SER")], [
+      { archivio: "06_Complementi", nome: "XKIT PS_45" },
+    ]);
+    expect(m.get("XKIT/PS")).toBe(chiaveFoto("06_Complementi", "XKIT PS_45"));
+  });
+
+  it("quando la foto della finitura giusta ESISTE, la contesa non si apre", () => {
+    // È il caso DUE/ONE: l'archivio ha una foto per colore, e col
+    // riconoscitore dei nomi ognuno prende la sua. Zero foto tolte.
+    const m = abbinaFoto(
+      "COLOMBO",
+      [art("0CC31R-C12", "DUE CC31R CAPRI BLUE"), art("0CC31R-C09", "DUE CC31R LEMON YELLOW")],
+      [
+        { archivio: "01_Due", nome: "due frontale capri blue" },
+        { archivio: "01_Due", nome: "due frontale lemon yellow" },
+      ],
+    );
+    expect(m.get("0CC31R-C12")).toBe(chiaveFoto("01_Due", "due frontale capri blue"));
+    expect(m.get("0CC31R-C09")).toBe(chiaveFoto("01_Due", "due frontale lemon yellow"));
   });
 });
