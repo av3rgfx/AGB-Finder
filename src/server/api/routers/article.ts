@@ -8,6 +8,7 @@ import {
   articleIdsByFirstWord,
 } from "@/server/maniglie/search";
 import { splitGroup, filterByFamily } from "@/server/maniglie/browse";
+import { resolveLabel } from "@/server/maniglie/curatela";
 import { articleTotal } from "@/server/maniglie/price";
 import {
   allAvailableArticleIds,
@@ -202,13 +203,20 @@ async function browseSlice(
     offset: number;
   },
 ) {
+  // Un `?tipo=` che arriva dall'URL può portare una parola FUSA: si risolve
+  // sull'etichetta corrente, o un link condiviso prima della fusione aprirebbe
+  // un gruppo vuoto senza spiegazione.
+  const tipo = resolveLabel(input.brand, input.tipo!);
+  if (tipo === null) {
+    return { hits: [], total: 0, stockUpdates: [] };
+  }
   const all = await articleIdsByFirstWord(
     db,
     input.brand,
-    input.tipo!,
+    tipo,
     await idsFiltrati(db, input.brand, input),
   );
-  const selected = input.famiglia ? filterByFamily(all, input.tipo!, input.famiglia) : all;
+  const selected = input.famiglia ? filterByFamily(all, tipo, input.famiglia) : all;
   const page = selected.slice(input.offset, input.offset + input.limit);
 
   if (page.length === 0) {
@@ -313,13 +321,16 @@ export const articleRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
+      const tipo = resolveLabel(input.brand, input.tipo);
+      if (tipo === null) return { families: [], loose: [], total: 0 };
+
       const rows = await articleIdsByFirstWord(
         ctx.db,
         input.brand,
-        input.tipo,
+        tipo,
         await idsFiltrati(ctx.db, input.brand, input),
       );
-      const { families, loose } = splitGroup(rows, input.tipo);
+      const { families, loose } = splitGroup(rows, tipo);
 
       // Senza famiglie il gruppo non è diviso: le sue righe si impaginano con
       // `search({tipo})`, e restituirle anche qui sarebbe la stessa lista per

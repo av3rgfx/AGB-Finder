@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import {
   browseLabel,
   foldBrowseGroups,
+  resolveLabel,
   sourceFirstWords,
   vociCuratela,
 } from "./curatela";
@@ -236,5 +237,35 @@ describe("la curatela è per marca", () => {
     expect(vociCuratela("COLOMBO")).toContain("RONDELLE");
     expect(vociCuratela("COLOMBO")).toContain("MANIG.");
     expect(vociCuratela("HOPPE")).toEqual([]);
+  });
+});
+
+/**
+ * Un link mandato a un collega prima di una fusione porta la parola VECCHIA.
+ * Senza risoluzione il gruppo si aprirebbe VUOTO: il `WHERE` trova le righe,
+ * e il rifiltro con `browseLabel` le scarta tutte perché ora rispondono a un
+ * altro nome. Uno schermo vuoto senza spiegazione, su un link che funzionava.
+ */
+describe("resolveLabel", () => {
+  test("una prima parola fusa risolve sull'etichetta corrente", () => {
+    expect(resolveLabel("COLOMBO", "MANIG.")).toBe("MANIGLIA INCASSO");
+    expect(resolveLabel("COLOMBO", "MANIGLIA")).toBe("MANIGLIA INCASSO");
+    expect(resolveLabel("COLOMBO", "ROS.")).toBe("ROSETTA");
+    expect(resolveLabel("COLOMBO", "PL.OTT.YALE")).toBe("PL.");
+  });
+
+  test("un'etichetta corrente resta se stessa", () => {
+    expect(resolveLabel("COLOMBO", "ROSETTA")).toBe("ROSETTA");
+    expect(resolveLabel("COLOMBO", "ROBOCINQUE S")).toBe("ROBOCINQUE S");
+    expect(resolveLabel("COLOMBO", "MANIGLIA INCASSO")).toBe("MANIGLIA INCASSO");
+  });
+
+  test("un'etichetta esclusa non apre nulla", () => {
+    expect(resolveLabel("COLOMBO", "RONDELLE")).toBeNull();
+    expect(resolveLabel("COLOMBO", "VITE")).toBeNull();
+  });
+
+  test("non attraversa le marche", () => {
+    expect(resolveLabel("HOPPE", "MANIG.")).toBe("MANIG.");
   });
 });

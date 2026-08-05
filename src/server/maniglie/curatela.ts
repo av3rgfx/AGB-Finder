@@ -172,6 +172,22 @@ export function sourceFirstWords(brand: string, label: string): string[] {
 }
 
 /**
+ * L'etichetta corrente per un `tipo` che arriva dall'URL.
+ *
+ * Un link condiviso prima di una fusione porta la parola VECCHIA: senza questa
+ * risoluzione il gruppo si aprirebbe vuoto, perché `articleIdsByFirstWord`
+ * rifiltra con `browseLabel` e nessuna riga risponde più a quel nome. Uno
+ * schermo vuoto senza spiegazione, su un link che prima funzionava.
+ *
+ * `null` = quella parola non si sfoglia.
+ */
+export function resolveLabel(brand: string, tipo: string): string | null {
+  const c = curatelaDi(brand);
+  if (c.escluse.has(tipo)) return null;
+  return c.fusioni[tipo] ?? tipo;
+}
+
+/**
  * Tutte le prime parole citate dalle tabelle di una marca.
  *
  * Serve al gate che impedisce alla curatela di marcire: il test esistente
