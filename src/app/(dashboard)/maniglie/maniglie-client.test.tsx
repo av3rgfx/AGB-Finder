@@ -90,12 +90,23 @@ function risultati(over: Record<string, unknown> = {}) {
  */
 let serieFinta: (righe?: unknown[], senzaSerie?: unknown[]) => Record<string, unknown>;
 
+/**
+ * `isAccessorio` è invece una lista di ANDREA, e non è deducibile da
+ * `isModello`: KIT e ROSETTA non hanno archivio e sono accessori, BOCCHETTA e
+ * MANIGLIONE non hanno archivio e maniglie sono.
+ */
 const GRUPPI = [
-  { word: "BOCCHETTA", count: 288, isModello: false, preview: null },
-  { word: "KIT", count: 139, isModello: false, preview: null },
-  { word: "LARA", count: 28, isModello: true, preview: "/api/article-image?k=lara&size=320" },
-  { word: "MANIGLIONE", count: 338, isModello: false, preview: null },
-  { word: "ROSETTA", count: 47, isModello: false, preview: null },
+  { word: "BOCCHETTA", count: 318, isModello: false, isAccessorio: false, preview: null },
+  { word: "KIT", count: 140, isModello: false, isAccessorio: true, preview: null },
+  {
+    word: "LARA",
+    count: 28,
+    isModello: true,
+    isAccessorio: false,
+    preview: "/api/article-image?k=lara&size=320",
+  },
+  { word: "MANIGLIONE", count: 353, isModello: false, isAccessorio: false, preview: null },
+  { word: "ROSETTA", count: 105, isModello: false, isAccessorio: true, preview: null },
 ];
 
 beforeEach(() => {
@@ -388,7 +399,7 @@ describe("ManiglieClient — sfoglio", () => {
     render(<ManiglieClient />);
     expect(screen.getByText("Sfoglia il catalogo")).toBeTruthy();
     expect(screen.getByText("MANIGLIONE")).toBeTruthy();
-    expect(screen.getByLabelText("MANIGLIONE, 338 codici")).toBeTruthy();
+    expect(screen.getByLabelText("MANIGLIONE, 353 codici")).toBeTruthy();
     expect(searchQuery.mock.calls[0]?.[1]).toMatchObject({ enabled: false });
   });
 
@@ -457,15 +468,23 @@ describe("ManiglieClient — sfoglio", () => {
     expect(link?.getAttribute("href")).toBe("/maniglie?tipo=LARA");
   });
 
-  it("i gruppi restano nell'ordine in cui il server li manda (alfabetico)", () => {
-    // L'ordinamento è del server, che lo fissa in TypeScript per non dipendere
-    // dalla collation del database: il client non riordina.
-    render(<ManiglieClient />);
-    const etichette = screen
-      .getAllByRole("listitem")
-      .map((li) => li.querySelector("span")?.textContent)
-      .filter(Boolean);
-    expect(etichette.slice(0, GRUPPI.length)).toEqual(GRUPPI.map((g) => g.word));
+  /**
+   * L'ordinamento è del server, che lo fissa in TypeScript per non dipendere
+   * dalla collation del database: il client non riordina.
+   *
+   * Dal 2026-08-05 il client PARTIZIONA in due bande — ed è un riordino
+   * dichiarato, con un'intestazione che lo annuncia. L'invariante che resta, e
+   * che questo test protegge, è che DENTRO ogni banda l'ordine sia quello che
+   * il server ha mandato.
+   */
+  it("dentro ogni banda i gruppi restano nell'ordine del server", () => {
+    const { container } = render(<ManiglieClient />);
+    const per = [...container.querySelectorAll("ul")].map((ul) =>
+      [...ul.querySelectorAll("li")].map((li) => li.querySelector("span")?.textContent),
+    );
+    const bande = per.filter((b) => b.length > 0 && GRUPPI.some((g) => b.includes(g.word)));
+    expect(bande[0]).toEqual(["BOCCHETTA", "LARA", "MANIGLIONE"]);
+    expect(bande[1]).toEqual(["KIT", "ROSETTA"]);
   });
 
   it("dentro un gruppo mostra le SERIE a tendina, in mono perché sono pezzi di codice", () => {
@@ -826,5 +845,70 @@ describe("ManiglieClient — il numero dichiara di cosa parla", () => {
     expect(screen.getByText(/Il numero è quanti codici/).textContent).toMatch(
       /codici, non quanti modelli/,
     );
+  });
+});
+
+/**
+ * LA SEZIONE «ACCESSORI» (verdetto del council, 2026-08-05: non un livello e
+ * non un filtro — una sezione, zero stato, zero parametri URL).
+ *
+ * La banda di SOPRA non ha intestazione, e non è una svista: qualunque nome
+ * sarebbe falso («Maniglie» starebbe sopra BOCCHETTA 318 e MANIGLIONE 353)
+ * oppure sarebbe una SECONDA parola nostra. Non affermare nulla è ciò che la
+ * rende onesta, e fa sì che un gruppo nuovo mai classificato non dica il falso.
+ */
+describe("ManiglieClient — la sezione Accessori", () => {
+  it("dimostra prima di guardare nel posto giusto: le tessere ci sono tutte", () => {
+    render(<ManiglieClient />);
+    for (const g of GRUPPI) expect(screen.getByText(g.word)).toBeTruthy();
+  });
+
+  it("una sola intestazione, ed è quella degli accessori", () => {
+    const { container } = render(<ManiglieClient />);
+    const titoli = [...container.querySelectorAll("h3")].map((h) => h.textContent);
+    expect(titoli).toEqual(["Accessori"]);
+  });
+
+  it("dichiara che «Accessori» è parola nostra e non di COLOMBO", () => {
+    render(<ManiglieClient />);
+    const riga = screen.getByText(/raggruppamento nostro/i);
+    expect(riga.textContent).toContain("COLOMBO");
+  });
+
+  it("gli accessori stanno DOPO gli altri nell'ordine del documento", () => {
+    const { container } = render(<ManiglieClient />);
+    const href = [...container.querySelectorAll("a[href*='tipo=']")].map((a) =>
+      a.getAttribute("href"),
+    );
+    expect(href.indexOf("/maniglie?tipo=KIT")).toBeGreaterThan(
+      href.indexOf("/maniglie?tipo=MANIGLIONE"),
+    );
+  });
+
+  it("il collegamento in cima porta alla banda e ne dice il numero", () => {
+    render(<ManiglieClient />);
+    const salto = screen.getByRole("link", { name: /Accessori \(2\)/ });
+    expect(salto.getAttribute("href")).toBe("#accessori");
+  });
+
+  // «accessori» non è il nome di NESSUN gruppo: senza questo, digitarla non
+  // troverebbe nulla mentre la parola si legge sopra la griglia.
+  it("digitando «accessori» compaiono i 17, che non la contengono nel nome", () => {
+    render(<ManiglieClient />);
+    fireEvent.change(screen.getByPlaceholderText("Filtra i gruppi…"), {
+      target: { value: "accessori" },
+    });
+    expect(screen.getByText("KIT")).toBeTruthy();
+    expect(screen.getByText("ROSETTA")).toBeTruthy();
+    expect(screen.queryByText("LARA")).toBeNull();
+  });
+
+  it("quando il filtro svuota la banda, spariscono sezione e collegamento", () => {
+    const { container } = render(<ManiglieClient />);
+    fireEvent.change(screen.getByPlaceholderText("Filtra i gruppi…"), {
+      target: { value: "LARA" },
+    });
+    expect(container.querySelectorAll("h3")).toHaveLength(0);
+    expect(screen.queryByRole("link", { name: /Accessori \(/ })).toBeNull();
   });
 });

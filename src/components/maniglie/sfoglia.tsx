@@ -26,6 +26,12 @@ export interface Gruppo {
   count: number;
   /** Il gruppo È un modello: COLOMBO gli dedica un archivio fotografico. */
   isModello: boolean;
+  /**
+   * Il gruppo non è una maniglia. È una lista di Andrea, non un dato: i pomoli
+   * hanno l'archivio e maniglie non sono, MILLA e SPIDER sono maniglie senza
+   * archivio. «Accessori» è la sola parola NOSTRA di questo schermo.
+   */
+  isAccessorio: boolean;
   /** Percorso della foto di anteprima, o `null`. */
   preview: string | null;
 }
@@ -102,14 +108,38 @@ export function SfogliaGruppi({
 }) {
   const [filtro, setFiltro] = useState("");
   const cerca = filtro.trim().toUpperCase();
-  const visibili = cerca ? groups.filter((g) => g.word.includes(cerca)) : groups;
+  // «Accessori» è a schermo ma non è il nome di nessun gruppo: senza questo,
+  // digitarla non troverebbe nulla mentre la parola si legge sopra la griglia.
+  // Da tre caratteri, così «AC» non svuota la ricerca di chi cerca altro.
+  const cercaAccessori = cerca.length >= 3 && "ACCESSORI".startsWith(cerca);
+  const visibili = cerca
+    ? groups.filter((g) => g.word.includes(cerca) || (cercaAccessori && g.isAccessorio))
+    : groups;
+  const accessori = visibili.filter((g) => g.isAccessorio);
+  const resto = visibili.filter((g) => !g.isAccessorio);
+  const coda = codaFiltri(soloPronta, finitura);
 
   return (
     <section aria-labelledby="sfoglia-titolo" className="flex flex-col gap-3">
       <div className="flex flex-col gap-0.5">
-        <h2 id="sfoglia-titolo" className="text-sm font-semibold text-ink">
-          Sfoglia il catalogo
-        </h2>
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 id="sfoglia-titolo" className="text-sm font-semibold text-ink">
+            Sfoglia il catalogo
+          </h2>
+          {/* Un'ANCORA, non un filtro: 73 tessere a 375px sono ~37 righe, e la
+              banda in fondo altrimenti si troverebbe solo scorrendo. `<a href="#">`
+              e non uno scroll in JS, così il tasto indietro funziona da sé.
+              Sparisce quando il filtro svuota la banda: un collegamento che
+              porta a un'ancora inesistente è peggio della sua assenza. */}
+          {accessori.length > 0 ? (
+            <a
+              href="#accessori"
+              className="shrink-0 rounded text-xs font-medium text-ink-muted transition-colors duration-150 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+            >
+              Accessori ({accessori.length}) ↓
+            </a>
+          ) : null}
+        </div>
         {/* L'origine dichiarata: è ciò che impedisce all'etichetta di sembrare
             una classificazione nostra. Le parole sono di COLOMBO, refusi
             compresi, e chi le legge deve saperlo. E il numero è quanti CODICI,
@@ -159,13 +189,57 @@ export function SfogliaGruppi({
             : "Nessun articolo in pronta consegna."}
         </p>
       ) : (
-        <ul className="grid list-none grid-cols-2 items-start gap-2 sm:grid-cols-3 lg:grid-cols-4">
-          {visibili.map((g) => (
-            <TesseraGruppo key={g.word} gruppo={g} coda={codaFiltri(soloPronta, finitura)} />
-          ))}
-        </ul>
+        <>
+          {resto.length > 0 ? <GrigliaGruppi gruppi={resto} coda={coda} /> : null}
+
+          {/* ⚠️ LA BANDA DI SOPRA NON HA INTESTAZIONE, ed è una scelta.
+              Qualunque nome sarebbe FALSO — «Maniglie» starebbe sopra BOCCHETTA
+              (318), MANIGLIONE (353), POMOLINO (41), GRANO (3): misurato che
+              dei 27 gruppi di solo testo 17 sono accessori e 10 no — oppure
+              sarebbe una SECONDA parola nostra.
+              Ha anche un effetto che nessun test potrebbe dare: il giorno che
+              COLOMBO aggiunge un gruppo e nessuno lo classifica, quel gruppo
+              cade in una banda che non afferma nulla. */}
+          {accessori.length > 0 ? (
+            <section
+              aria-labelledby="accessori"
+              className="flex flex-col gap-3 border-t border-line pt-4"
+            >
+              <div className="flex flex-col gap-0.5">
+                <h3 id="accessori" className="scroll-mt-4 text-sm font-semibold text-ink">
+                  Accessori
+                </h3>
+                {/* L'unica parola NOSTRA di questo schermo, e lo dice. Tutte le
+                    altre etichette sono parole del listino COLOMBO, refusi
+                    compresi: se questa non si dichiarasse, sembrerebbe una loro
+                    categoria — la classe di difetto chiusa otto volte. */}
+                <p className="text-xs text-ink-subtle">
+                  «Accessori» è un raggruppamento nostro: le altre etichette sono parole del listino
+                  COLOMBO.
+                </p>
+              </div>
+              <GrigliaGruppi gruppi={accessori} coda={coda} />
+            </section>
+          ) : null}
+        </>
       )}
     </section>
+  );
+}
+
+/**
+ * La griglia, uguale per le due bande — stessa densità e stessa forma di
+ * tessera. Un accessorio e un MANIGLIONE sono LO STESSO OGGETTO a schermo
+ * (entrambi tessere di solo testo): renderli diversi affermerebbe una
+ * differenza che non c'è.
+ */
+function GrigliaGruppi({ gruppi, coda }: { gruppi: Gruppo[]; coda: string }) {
+  return (
+    <ul className="grid list-none grid-cols-2 items-start gap-2 sm:grid-cols-3 lg:grid-cols-4">
+      {gruppi.map((g) => (
+        <TesseraGruppo key={g.word} gruppo={g} coda={coda} />
+      ))}
+    </ul>
   );
 }
 
