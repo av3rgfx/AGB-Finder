@@ -927,6 +927,70 @@ describe("ManiglieClient — la sezione Accessori", () => {
 });
 
 /**
+ * LA FORMA DELLA TESSERA, 2026-08-06.
+ *
+ * Segue `preview`, non `isModello`. Con `isModello` i quattro gruppi di pomoli
+ * — modelli rimasti senza foto dopo la PR #60 — mostravano un riquadro grigio
+ * VUOTO: esattamente la cosa che la regola della PR #58 esisteva per impedire
+ * («in una griglia un buco si legge come immagine rotta»), in produzione per un
+ * mese. Ora un riquadro vuoto è impossibile per costruzione.
+ */
+describe("ManiglieClient — la forma della tessera", () => {
+  const soloGruppo = (g: Record<string, unknown>) =>
+    browseGroupsQuery.mockReturnValue({
+      data: { groups: [g] },
+      isPending: false,
+      isError: false,
+      isFetching: false,
+    });
+
+  it("una tessera senza foto non ha area immagine né segnaposto", () => {
+    const { container } = render(<ManiglieClient />);
+    const kit = container.querySelector("a[href*='tipo=KIT']")!;
+    expect(kit.querySelector("img")).toBeNull();
+    expect(kit.querySelector("svg")).toBeNull();
+  });
+
+  it("un MODELLO senza preview è una tessera-parola, non un riquadro vuoto", () => {
+    soloGruppo({ word: "CUT", count: 11, isModello: true, isAccessorio: false, preview: null });
+    const { container } = render(<ManiglieClient />);
+    const cut = container.querySelector("a[href*='tipo=CUT']")!;
+    expect(cut.querySelector("img")).toBeNull();
+    expect(cut.querySelector("svg")).toBeNull();
+    expect(cut.textContent).toContain("CUT");
+  });
+
+  it("un gruppo con preview mostra la foto", () => {
+    soloGruppo({
+      word: "CUT",
+      count: 11,
+      isModello: true,
+      isAccessorio: false,
+      preview: "/api/article-image?k=cut&size=320",
+    });
+    const { container } = render(<ManiglieClient />);
+    expect(container.querySelector("a[href*='tipo=CUT'] img")).toBeTruthy();
+  });
+
+  /**
+   * La griglia allunga le tessere. Senza, quella senza foto resta appesa in
+   * cima a una riga di tessere alte e lascia il buco sotto di sé — ed è per
+   * QUESTO che si legge come «immagine mancante», non perché la foto manchi.
+   */
+  it("la griglia dei gruppi allunga le tessere alla stessa altezza", () => {
+    const { container } = render(<ManiglieClient />);
+    const griglia = container.querySelector("ul.grid")!;
+    expect(griglia.className).toContain("items-stretch");
+    expect(griglia.className).not.toContain("items-start");
+  });
+
+  it("dichiara che la foto è del modello e non della finitura", () => {
+    render(<ManiglieClient />);
+    expect(screen.getByText(/del modello, non della finitura/i)).toBeTruthy();
+  });
+});
+
+/**
  * L'ANTEPRIMA DELLA TENDINA, rifatta il 2026-08-05.
  *
  * Andrea: «la foto della tendina che si rimpicciolisce quando si apre confonde
