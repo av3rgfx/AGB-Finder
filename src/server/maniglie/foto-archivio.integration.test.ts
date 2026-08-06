@@ -5,12 +5,14 @@ import {
   abbinaFoto,
   ARCHIVI,
   chiaveFoto,
+  copertineDichiarate,
   finituraDiFoto,
   scattoDiProdotto,
   FILE_MODELLO,
   varianteZero,
   type FotoArchivio,
 } from "./foto-archivio";
+import { previewDiGruppo } from "./copertina";
 import { browseLabel } from "./curatela";
 import { finituraDiCodice } from "./finiture";
 
@@ -221,6 +223,11 @@ describe.skipIf(!attivo)("foto ↔ catalogo vero", () => {
     // scritto da nessuna parte. Possono ricevere una foto SOLO dal gradino 3 —
     // il codice scritto da COLOMBO nel nome del file — che vale comunque, e
     // arriva sempre da un archivio di accessori.
+    //
+    // ⚠️ Dal 2026-08-06 quei tre archivi UN'ETICHETTA CE L'HANNO (serve alla
+    // copertina), ed è `soloCopertina` a impedire il prestito: il controllo si
+    // sposta su quel flag, o passerebbe a vuoto proprio dopo il cambiamento che
+    // doveva sorvegliare.
     const perArchivio = new Map(
       foto.map((f) => [chiaveFoto(f.archivio, f.nome), f.archivio] as const),
     );
@@ -229,8 +236,55 @@ describe.skipIf(!attivo)("foto ↔ catalogo vero", () => {
       if (l !== "SPIDER" && l !== "MILLA" && l !== "TRAMA") continue;
       const chiave = abbinati.get(a.id);
       if (chiave === undefined) continue;
-      const archivio = perArchivio.get(chiave)!;
-      expect(ARCHIVI[archivio]?.etichetta, `${a.code} → ${chiave}`).toBeNull();
+      const voce = ARCHIVI[perArchivio.get(chiave)!];
+      expect(
+        voce?.etichetta === null || voce?.soloCopertina === true,
+        `${a.code} → ${chiave}`,
+      ).toBe(true);
+    }
+  });
+
+  /**
+   * LE COPERTINE, sull'archivio vero.
+   *
+   * Senza questo, `FILE_MODELLO` è un elenco di stringhe che nessuno confronta
+   * con la realtà: un nome sbagliato darebbe una chiave Blob che non esiste, un
+   * 404, e la tessera tornerebbe SILENZIOSAMENTE una tessera-parola — cioè lo
+   * stato di prima, senza che nulla vada a zero.
+   */
+  it("ogni copertina dichiarata esiste davvero nell'archivio", () => {
+    const usabili = new Set(
+      foto.filter((f) => scattoDiProdotto(f.nome)).map((f) => chiaveFoto(f.archivio, f.nome)),
+    );
+    for (const [etichetta, chiave] of copertineDichiarate()) {
+      expect(usabili.has(chiave), `${etichetta} → ${chiave}`).toBe(true);
+    }
+  });
+
+  /**
+   * IL PAVIMENTO DI QUESTA SESSIONE: i sette gruppi che Andrea ha segnalato
+   * devono avere una preview. È la differenza fra «l'abbiamo sistemato» e «lo
+   * crediamo sistemato».
+   */
+  it("i sette gruppi segnalati hanno una copertina", () => {
+    for (const g of ["CUT", "PUSH", "ROUND", "SQUARE", "MILLA", "SPIDER", "TRAMA"]) {
+      expect(previewDiGruppo(g, null), g).not.toBeNull();
+    }
+  });
+
+  /**
+   * E le tre TIPOLOGIE della banda principale restano senza, anche avendo
+   * articoli fotografati: MANIGLIONE ne ha 17 su 353. È il verdetto del
+   * council, e senza questa riga basterebbe una svista in `previewDiGruppo`
+   * perché l'esemplare rientrasse dalla finestra.
+   */
+  it("le tipologie restano senza copertina anche se un loro articolo ha la foto", () => {
+    for (const t of ["MANIGLIONE", "MANIGLIA INCASSO", "POMOLINO"]) {
+      const conFoto = articoli.find(
+        (a) => browseLabel("COLOMBO", a.name) === t && abbinati.has(a.id),
+      );
+      expect(conFoto, t).toBeDefined();
+      expect(previewDiGruppo(t, abbinati.get(conFoto!.id)!), t).toBeNull();
     }
   });
 
