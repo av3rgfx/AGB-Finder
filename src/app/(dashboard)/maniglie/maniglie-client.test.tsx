@@ -927,6 +927,38 @@ describe("ManiglieClient — la sezione Accessori", () => {
 });
 
 /**
+ * LA MINIATURA DELLE RIGHE, 2026-08-06.
+ *
+ * In MANIGLIONE il segnaposto grigio compariva su 336 righe su 353, e — visto
+ * in browser — sotto un'intestazione di serie che la foto CE L'HA: non diceva
+ * «non l'abbiamo», diceva «ce l'abbiamo e non te la mostriamo».
+ *
+ * Non è una decisione nuova: è già scritta in `AnteprimaSerie` («otto riquadri
+ * grigi in colonna si leggono come *il programma è rotto*») e non era stata
+ * applicata alle righe.
+ */
+describe("ManiglieClient — la miniatura delle righe", () => {
+  beforeEach(() => {
+    sp = new URLSearchParams("q=cd41");
+  });
+
+  it("una riga CON foto la mostra", () => {
+    const { container } = render(<ManiglieClient />);
+    const riga = container.querySelector("a[href='/maniglie/a1']")!.closest("li")!;
+    expect(riga.querySelector("img")).toBeTruthy();
+  });
+
+  it("una riga SENZA foto lascia lo spazio, non un segnaposto", () => {
+    const { container } = render(<ManiglieClient />);
+    const riga = container.querySelector("a[href='/maniglie/a2']")!.closest("li")!;
+    expect(riga.querySelector("img")).toBeNull();
+    expect(riga.querySelector("svg")).toBeNull();
+    // La colonna resta, o l'allineamento si muoverebbe riga per riga.
+    expect(riga.className).toContain("44px");
+  });
+});
+
+/**
  * LA FORMA DELLA TESSERA, 2026-08-06.
  *
  * Segue `preview`, non `isModello`. Con `isModello` i quattro gruppi di pomoli

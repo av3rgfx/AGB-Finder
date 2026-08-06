@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { keepPreviousData } from "@tanstack/react-query";
-import { Package, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import type { ArticleSummary } from "@/server/api/routers/article";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
@@ -480,23 +480,23 @@ function ArticoloRow({ articolo }: { articolo: ArticleSummary }) {
 }
 
 /**
- * Miniatura, servita da `/api/article-image` (Blob privato, dietro auth). Il 42%
- * dei codici è minuteria e accessoristica che nessun catalogo fotografa una per
- * una: la foto mancante è la normalità, non un errore, e si disegna come un
- * segnaposto neutro — mai come un messaggio.
+ * Miniatura, servita da `/api/article-image` (Blob privato, dietro auth).
+ *
+ * Foto mancante = **spazio vuoto**, non segnaposto, ed è la stessa regola già
+ * scritta per l'anteprima delle serie: con la copertura al 46,6% l'assenza è la
+ * maggioranza — in MANIGLIONE sono 336 righe su 353 — e una colonna di riquadri
+ * grigi si legge come «il programma è rotto». Peggio ancora sotto
+ * un'intestazione di serie che la foto ce l'ha: non dice «non l'abbiamo», dice
+ * «ce l'abbiamo e non te la mostriamo». Lo spazio resta, così l'allineamento
+ * non si muove riga per riga.
+ *
+ * ⚠️ La scheda del singolo articolo tiene invece il suo segnaposto: lì l'oggetto
+ * è uno solo, un vuoto grande è peggio di un riquadro neutro, e l'argomento «N
+ * buchi si leggono come guasto» richiede la ripetizione.
  */
 function Foto({ url }: { url: string | null }) {
   const [failed, setFailed] = useState(false);
-  if (!url || failed) {
-    return (
-      <span
-        aria-hidden
-        className="grid size-11 shrink-0 place-items-center rounded border border-line bg-surface-sunken"
-      >
-        <Package className="size-4 text-ink-subtle" />
-      </span>
-    );
-  }
+  if (!url || failed) return <span aria-hidden className="size-11 shrink-0" />;
   return (
     // eslint-disable-next-line @next/next/no-img-element -- sorgente dinamica dietro auth, non da ottimizzare
     <img
