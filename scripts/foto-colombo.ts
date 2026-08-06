@@ -25,6 +25,7 @@ import {
   abbinaFoto,
   ARCHIVI,
   chiaveFoto,
+  copertineDichiarate,
   type FotoArchivio,
 } from "../src/server/maniglie/foto-archivio";
 import {
@@ -153,10 +154,15 @@ async function main() {
     select: { id: true, code: true, codeNorm: true, name: true },
   });
   const perArticolo = abbinaFoto(MARCA, articoli, foto);
-  const chiaviScelte = new Set(perArticolo.values());
+  // Le COPERTINE non le sceglie nessun articolo, ed è il motivo per cui
+  // esistono: dei gruppi che ne hanno una, nessuno ha un codice con la finitura
+  // provata. Senza questa riga il run non le caricherebbe affatto e la tessera
+  // resterebbe una tessera-parola — stato coerente, ma non quello voluto.
+  const copertine = copertineDichiarate();
+  const chiaviScelte = new Set([...perArticolo.values(), ...copertine.values()]);
   const pct = ((100 * perArticolo.size) / articoli.length).toFixed(1);
   console.log(
-    `▶ abbinamento: ${perArticolo.size}/${articoli.length} articoli (${pct}%) con ${chiaviScelte.size} foto`,
+    `▶ abbinamento: ${perArticolo.size}/${articoli.length} articoli (${pct}%) con ${new Set(perArticolo.values()).size} foto · ${copertine.size} copertine di gruppo`,
   );
 
   if (dryRun) {
