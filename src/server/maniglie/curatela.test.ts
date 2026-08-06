@@ -367,21 +367,23 @@ describe("browseLabel — prime parole trasparenti", () => {
 });
 
 /**
- * I 17 gruppi che Andrea rifornisce. NON sono deducibili da nessun dato: i
+ * I 19 gruppi che Andrea rifornisce. NON sono deducibili da nessun dato: i
  * cinque gruppi di pomoli hanno l'archivio fotografico e maniglie non sono, e
- * MILLA, SPIDER e TRAMA sono maniglie che l'archivio non ce l'hanno. È una
+ * MILLA, SPIDER e TRAMA sono maniglie che l'archivio ce l'hanno ambiguo. È una
  * lista, e a schermo va dichiarata come parola nostra.
  */
 describe("etichetteAccessorio", () => {
-  test("sono i 17 di Andrea", () => {
+  test("sono i 19 di Andrea", () => {
     expect([...etichetteAccessorio("COLOMBO")].sort()).toEqual([
       "BATTIPORTA",
       "BLOCCAPORTA",
+      "BOCCHETTA",
       "BUSSOLA",
       "COPRIAVVOLG.",
       "DISPOSITIVO",
       "DUMMY",
       "FERMAPORTA",
+      "GRANO",
       "INSERTO",
       "KIT",
       "MOLLA",
@@ -395,13 +397,17 @@ describe("etichetteAccessorio", () => {
     ]);
   });
 
-  // POMOLINO era nel primo messaggio e non nel definitivo: resta prodotto
-  // principale finché Andrea non dice altro.
-  test("POMOLINO, BOCCHETTA e MANIGLIONE non sono accessori", () => {
+  // ⚠️ Questo test diceva l'opposto fino al 2026-08-06, e diceva il vero:
+  // BOCCHETTA e GRANO NON erano accessori. Era la codifica di una decisione,
+  // non la sua sentinella — come i due capovolti nella PR #60. Si gira con la
+  // decisione. POMOLINO e MANIGLIONE restano fuori: il titolare ha citato il
+  // primo e poi l'ha tolto, e finché non dice altro è prodotto principale.
+  test("POMOLINO e MANIGLIONE non sono accessori; BOCCHETTA e GRANO sì", () => {
     const acc = etichetteAccessorio("COLOMBO");
     expect(acc.has("POMOLINO")).toBe(false);
-    expect(acc.has("BOCCHETTA")).toBe(false);
     expect(acc.has("MANIGLIONE")).toBe(false);
+    expect(acc.has("BOCCHETTA")).toBe(true);
+    expect(acc.has("GRANO")).toBe(true);
   });
 
   // La sentinella: se una di queste etichette smettesse di esistere, la voce

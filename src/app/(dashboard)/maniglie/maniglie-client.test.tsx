@@ -96,11 +96,12 @@ let serieFinta: (
 
 /**
  * `isAccessorio` è invece una lista di ANDREA, e non è deducibile da
- * `isModello`: KIT e ROSETTA non hanno archivio e sono accessori, BOCCHETTA e
- * MANIGLIONE non hanno archivio e maniglie sono.
+ * `isModello`: KIT e ROSETTA non hanno archivio e sono accessori, MANIGLIONE
+ * non ha archivio e maniglia è. BOCCHETTA è passata fra gli accessori il
+ * 2026-08-06, quindi non serve più come controesempio: MANIGLIONE lo è ancora.
  */
 const GRUPPI = [
-  { word: "BOCCHETTA", count: 318, isModello: false, isAccessorio: false, preview: null },
+  { word: "BOCCHETTA", count: 318, isModello: false, isAccessorio: true, preview: null },
   { word: "KIT", count: 140, isModello: false, isAccessorio: true, preview: null },
   {
     word: "LARA",
@@ -495,8 +496,8 @@ describe("ManiglieClient — sfoglio", () => {
       [...ul.querySelectorAll("li")].map((li) => li.querySelector("span")?.textContent),
     );
     const bande = per.filter((b) => b.length > 0 && GRUPPI.some((g) => b.includes(g.word)));
-    expect(bande[0]).toEqual(["BOCCHETTA", "LARA", "MANIGLIONE"]);
-    expect(bande[1]).toEqual(["KIT", "ROSETTA"]);
+    expect(bande[0]).toEqual(["LARA", "MANIGLIONE"]);
+    expect(bande[1]).toEqual(["BOCCHETTA", "KIT", "ROSETTA"]);
   });
 
   it("dentro un gruppo mostra le SERIE a tendina, in mono perché sono pezzi di codice", () => {
@@ -899,13 +900,13 @@ describe("ManiglieClient — la sezione Accessori", () => {
 
   it("il collegamento in cima porta alla banda e ne dice il numero", () => {
     render(<ManiglieClient />);
-    const salto = screen.getByRole("link", { name: /Accessori \(2\)/ });
+    const salto = screen.getByRole("link", { name: /Accessori \(3\)/ });
     expect(salto.getAttribute("href")).toBe("#accessori");
   });
 
   // «accessori» non è il nome di NESSUN gruppo: senza questo, digitarla non
   // troverebbe nulla mentre la parola si legge sopra la griglia.
-  it("digitando «accessori» compaiono i 17, che non la contengono nel nome", () => {
+  it("digitando «accessori» compaiono i 19, che non la contengono nel nome", () => {
     render(<ManiglieClient />);
     fireEvent.change(screen.getByPlaceholderText("Filtra i gruppi…"), {
       target: { value: "accessori" },

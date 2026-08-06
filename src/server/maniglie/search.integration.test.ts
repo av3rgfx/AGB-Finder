@@ -665,12 +665,12 @@ describe.runIf(Boolean(url))("le sette dritte di Andrea, sul listino vero", () =
     for (const a of etichetteAccessorio("COLOMBO")) expect(nomi, a).toContain(a);
   });
 
-  it("gli accessori sono 17 gruppi, tutti presenti a listino", async () => {
+  it("gli accessori sono 19 gruppi, tutti presenti a listino", async () => {
     const gruppi = await browseFirstWords(db, "COLOMBO");
     const acc = gruppi.filter((g) => etichetteAccessorio("COLOMBO").has(g.word));
-    expect(acc).toHaveLength(17);
-    // Sul listino puro sono 648 codici su 3.391 sfogliabili (19,1%); qui il
+    expect(acc).toHaveLength(19);
+    // Sul listino puro sono 969 codici su 3.391 sfogliabili (28,6%); qui il
     // seed aggiunge righe finte, quindi si verifica l'ordine di grandezza.
-    expect(acc.reduce((n, g) => n + g.count, 0)).toBeGreaterThanOrEqual(648);
+    expect(acc.reduce((n, g) => n + g.count, 0)).toBeGreaterThanOrEqual(969);
   });
 });
