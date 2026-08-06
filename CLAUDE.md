@@ -975,6 +975,22 @@ livello 1 (`isModello` lì accende, qui spegne) ed è scritto nel codice perché
 vero) ma il titolo finiva **sotto la fascia sticky**, cioè si arrivava a una banda senza la riga che
 dichiara «Accessori» come parola nostra. Gate: typecheck · lint · **test 1.546** · build 23 route ·
 **integrazione 358 sul catalogo VERO** · **browser 38/38** (desktop e 375px, screenshot guardati).
-🟢 **NESSUNA MIGRAZIONE.** 🔴 **UN RUN OPS**: «Ops — Foto COLOMBO» (~7 min, idempotente; lo script azzera
-`image_url` prima di riscrivere, quindi le foto tolte spariscono da sole). Secret `NEON_DIRECT_URL`, non
-`DATABASE_URL`. Spec/piano: `docs/superpowers/{specs,plans}/2026-08-05-sette-dritte-andrea*`.
+🟢 **NESSUNA MIGRAZIONE.** ✅ **PR #60 APERTA e RUN OPS ESEGUITO** («Ops — Foto COLOMBO», run `31035369045`
+sul **ref del branch**: `1609 articoli con foto, 1847 senza`). Il primo tentativo era caduto su
+`UND_ERR_HEADERS_TIMEOUT` del server COLOMBO dopo 75 foto, e **non ha lasciato nulla a metà per
+costruzione** — la scrittura di `image_url` è una `$transaction` in fondo, dopo tutti i caricamenti —
+mentre l'idempotenza ha fatto ripartire il secondo giro con 9 file invece di 299. Residuo: `scarica()`
+non ha retry (primo timeout in quattro run; venti righe con backoff se ricapita). Secret
+`NEON_DIRECT_URL`, non `DATABASE_URL`.
+Spec/piano: `docs/superpowers/{specs,plans}/2026-08-05-sette-dritte-andrea*`.
+
+**▶ PROSSIMA SESSIONE — L'OTTAVA TORNATA DI ANDREA.** Ha verificato questa versione e ha altri feedback;
+la sessione si è chiusa mentre li dettava, quindi **l'elenco è incompleto** e in `handoff.md` c'è lo
+spazio per completarlo. I due presi: **(1) BOCCHETTA va in ACCESSORI** — una riga in `curatela.ts`, ma
+sono **318 codici**, quindi gli accessori passano da 648 a 966 (19,1% → 28,5%) e da 17 a 18 gruppi, con
+tre punti da aggiornare che asseriscono «17». **(2) Foto mancanti a CUT e GRANO** — e sono **due problemi
+diversi**, verificato: CUT era 11 e ora è 0 (**l'abbiamo causata noi**, è il prezzo dichiarato della
+regola sulle foto contese, e recuperarlo richiede foto per finitura che COLOMBO non pubblica), mentre
+GRANO era 0 e resta 0 (**non è una regressione**: nessun archivio fotografa i grani). ⚠️ La domanda che i
+due insieme fanno emergere, e che vale più di entrambi: **oggi un gruppo senza foto e un gruppo le cui
+foto abbiamo tolto si vedono identici** — la schermata dovrebbe dire *perché* mancano. Da `/impeccable`.

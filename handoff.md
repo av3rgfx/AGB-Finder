@@ -12,8 +12,8 @@
 | **Data** | 2026-08-05 — **LE SETTE DRITTE DI ANDREA** |
 | **Fase in corso** | Fase 1 — MVP Gestionale · reparto maniglie |
 | **Sotto-fase** | Chiusa. Correzioni dal campo, misurate e applicate. |
-| **Branch** | `claude/uftrade-handles-catalog-fixes-q5mc0o` — PR da aprire |
-| **Stato deploy** | 🟢 **NESSUNA MIGRAZIONE.** 🔴 **UN RUN OPS**: «Ops — Foto COLOMBO» |
+| **Branch** | `claude/uftrade-handles-catalog-fixes-q5mc0o` — **PR #60 APERTA** |
+| **Stato deploy** | 🟢 **NESSUNA MIGRAZIONE.** ✅ **RUN OPS ESEGUITO** (`31035369045`): 1.609 articoli con foto su Neon |
 | **Gate** | typecheck · lint · **test 1.546** · build 23 route · **integrazione 358 sul catalogo VERO** · **browser 38/38** (desktop e 375px) |
 | **In produzione al merge** | 94 → **90 gruppi** · foto 2.118 → **1.609** (61,3% → 46,6%), provate sbagliate **350 → 0** |
 
@@ -156,17 +156,29 @@
 > la riga che dichiara che «Accessori» è parola nostra. `scroll-mt-14`, e il
 > controllo ora verifica che il titolo sia **visibile**, non solo raggiunto.
 >
-> ### 🔴 L'AZIONE OPS (una sola)
+> ### ✅ L'AZIONE OPS, ESEGUITA
 >
-> **«Ops — Foto COLOMBO»** (`ops-foto-colombo.yml`), ~7 minuti, idempotente.
-> Ricalcola gli abbinamenti; non carica foto nuove (le 240 su Blob bastano).
-> `scripts/foto-colombo.ts:207` **azzera** `image_url` su tutta la marca prima di
-> riscrivere, quindi le foto tolte spariscono da sole.
-> Secret: `COLOMBO_DOWNLOAD_PASSWORD`, `BLOB_READ_WRITE_TOKEN`, **`NEON_DIRECT_URL`**
-> (non `DATABASE_URL`: è la lezione del run morto in zero secondi).
+> **«Ops — Foto COLOMBO»** lanciato **sul ref del branch** (il workflow fa
+> `checkout` del ref che riceve: su `main` avrebbe girato il codice vecchio e
+> riscritto le stesse 2.118 foto, cioè un no-op).
 >
-> 🟢 **NESSUNA MIGRAZIONE, nessuna finestra di disservizio**: fra deploy e run le
-> foto restano quelle di oggi, che è uno stato coerente e non uno stato rotto.
+> | run | esito |
+> |---|---|
+> | `31034132177` (dry) | ✅ `1609/3456 (46.6%) con 299 foto` — **combacia con la misura locale** |
+> | `31034410686` | ❌ `UND_ERR_HEADERS_TIMEOUT` dopo 75 foto — il server COLOMBO ha smesso di rispondere |
+> | `31035369045` | ✅ `Blob: 9 caricate · 290 già presenti` → `✓ 1609 articoli con foto, 1847 senza` |
+>
+> **Il fallimento non ha lasciato nulla a metà, ed è per costruzione**: la
+> scrittura di `image_url` è una `$transaction` in fondo, dopo tutti i
+> caricamenti. Il timeout è avvenuto durante il download, quindi Neon era
+> intatto e la produzione mostrava ancora le foto vecchie. E l'idempotenza ha
+> fatto il resto: il secondo giro ha caricato **9** file invece di 299, in 6
+> minuti invece di 10.
+>
+> ⚠️ **Da qui deriva un residuo**: `scarica()` in `scripts/foto-colombo.ts` non
+> ha alcun retry. È il **primo timeout in quattro run completi**, quindi non l'ho
+> aggiunto per non cambiare codice durante un'azione ops — ma se ricapita valgono
+> venti righe con backoff, e toglie il bisogno di guardare l'esito a mano.
 >
 > ### 🧾 DEBITO E RESIDUI DICHIARATI
 >
@@ -202,6 +214,123 @@
 > `docs/superpowers/plans/2026-08-05-sette-dritte-andrea.md`
 >
 > ---
+
+---
+
+## ▶ PROMPT PER LA PROSSIMA SESSIONE — L'OTTAVA TORNATA DI ANDREA
+
+Andrea ha verificato **questa** versione (PR #60, con le foto già ricalcolate su
+Neon) e ha altri feedback. La sessione precedente si è chiusa mentre li stava
+dettando, quindi **l'elenco qui sotto è INCOMPLETO**: i primi due sono presi,
+il resto va scritto.
+
+### 📝 I FEEDBACK DI ANDREA — DA COMPLETARE
+
+> **Spazio per l'utente.** Scrivi qui il resto di ciò che ha detto Andrea. Non
+> serve ordinarli né interpretarli: le misure le fa Claude.
+
+```
+(1) BOCCHETTA deve andare in ACCESSORI.
+
+(2) Mancano le foto alle categorie: CUT, GRANO, …
+    ⚠️ l'elenco era in corso quando la sessione si è interrotta: completarlo.
+
+(3) …
+
+(4) …
+
+(5) …
+```
+
+### 🔎 COSA SO GIÀ SUI DUE PRESI, misurato e non assunto
+
+**(1) BOCCHETTA → ACCESSORI.** È una riga in `curatela.ts`, nel set `accessori`
+di COLOMBO. Ma attenzione a due cose:
+- BOCCHETTA ha **318 codici**, cioè il secondo gruppo del catalogo dopo
+  MANIGLIONE (353). Gli accessori passerebbero da 648 a **966 codici**, dal
+  19,1% al **28,5%** del listino, e da 17 a **18 gruppi**.
+- I test da aggiornare: `curatela.test.ts` (l'elenco esatto dei 17),
+  `search.integration.test.ts` (`toHaveLength(17)`), e il controllo browser
+  che verifica «Accessori (17) ↓» e «digitando accessori restano i 17».
+- 🟢 Nessuna migrazione, nessun run ops: si calcola a lettura.
+
+**(2) Le foto mancanti — sono DUE problemi diversi, non uno.** Verificato
+confrontando la mappatura prima/dopo:
+
+| gruppo | prima | dopo | |
+|---|---|---|---|
+| **CUT** | 11 | **0** | 🔴 **l'abbiamo causata noi** |
+| **GRANO** | 0 | **0** | 🟢 **non è una regressione** |
+
+- **CUT** (con ROUND, SQUARE, PUSH) è il **prezzo dichiarato** della regola
+  sulle foto contese: i suoi file (`cut15_45`, `cut25_45`) non dicono alcuna
+  finitura e dieci codici se li contendono, quindi al più uno è giusto. Sta
+  scritto nella PR #60 e in un test che è stato *girato con la decisione*.
+  → Recuperarli richiede **foto per finitura**, che COLOMBO oggi non pubblica.
+  È una domanda per il fornitore, non un rimedio nostro. **Da riportare ad
+  Andrea come scelta consapevole**, e da riaprire solo se lui dice che
+  preferisce una foto approssimata a nessuna foto — che è l'opposto di quello
+  che ci aveva detto la volta scorsa, quindi va chiesto esplicitamente.
+- **GRANO** (3 codici: `XGRANO 5MA`, `XGRANO 6MA`, `XGRANO 6X6`) **non ha mai
+  avuto una foto**, né prima né dopo: nessun archivio COLOMBO fotografa i grani.
+  Non c'è niente da ripristinare — c'è semmai da decidere se dirlo a schermo.
+
+⚠️ **La domanda che questi due feedback insieme fanno emergere, e che vale più
+di entrambi**: se Andrea nota le foto mancanti gruppo per gruppo, forse la
+schermata dovrebbe **dire perché** mancano invece di lasciare un segnaposto muto.
+Oggi un gruppo senza foto e un gruppo le cui foto abbiamo tolto si vedono
+identici. Da portare a `/impeccable`.
+
+### 🧾 IL RESIDUO PIÙ VISIBILE, se Andrea non l'ha già nominato
+
+**Le miniature nelle RIGHE articolo** mostrano il segnaposto `<Package>` molto
+più spesso di prima (copertura 61,3% → 46,6%). Nella tendina il segnaposto l'ho
+tolto — «otto riquadri grigi in colonna si leggono come *il programma è rotto*» —
+ma nelle righe è rimasto, perché è un'altra superficie e la decisione è
+dell'utente. **Guardare uno screenshot di `/maniglie?tipo=MANIGLIONE` prima di
+decidere.**
+
+### Come lavorare (regole permanenti dell'utente)
+
+`/using-superpowers` → `/brainstorming` → `/llm-council` sui dubbi veri
+(**verificando nel repo le affermazioni degli advisor**) → `/impeccable` per la
+UI (mobile **e** desktop) → `/ponytail` sul codice → spec → piano → TDD →
+**verifica in browser a 375px e desktop, screenshot GUARDATI**.
+
+**Dire il costo prima di pagarlo**: migrazione, finestra di disservizio o run ops
+vanno dichiarati *quando si decide*, non dopo.
+
+### Come rimontare l'ambiente
+
+```bash
+corepack pnpm install
+bash scripts/dev-bootstrap.sh                    # docker + postgres + migrate + seed
+pnpm import:listino COLOMBO <listino.xlsx>       # cartella Drive in CLAUDE.md
+```
+Per le foto serve la **password dell'area download COLOMBO** (la fornisce
+l'utente, **non va scritta in nessun file**); con quella,
+`pnpm foto:colombo --dry-run --dump /tmp/foto.json` dà l'indice dei 79 zip senza
+scaricare i 3,5 GB, e serve al gate d'integrazione (`COLOMBO_FOTO_INDEX`).
+
+⚠️ **Docker muore da solo più volte per sessione**:
+`pgrep dockerd || (setsid nohup dockerd >/tmp/dockerd.log 2>&1 & disown)` poi
+`docker start ufptrade-db`.
+⚠️ **`pnpm build` mentre gira `pnpm dev` rompe il dev server** (condividono
+`.next`): fermare `dev`, poi `rm -rf .next`.
+⚠️ **Il gate d'integrazione SEEDA il database**: dopo averlo girato, i conteggi
+assoluti non sono più quelli del listino puro (13 righe finte in più). I test
+nuovi asseriscono *contributi* e *proprietà* proprio per questo.
+
+### Il resto che resta aperto
+
+**Vercel Pro** (Hobby vieta l'uso commerciale, deciso per il 08/08) · **le tre
+distinte reali** di MC, Peruzzi e Fosca (sette sessioni) · le domande a COLOMBO
+(foto per finitura dei pomoli · MR11/MR15, LC31/LC41, LC71/LC81 · i codici `OP`,
+`NK`, `GR`, `SS`) · le fusioni non decise `MANIG.CD213` e `MANIG.LC413RS` ·
+POMOLINO è accessorio? · il **retry con backoff** su `scarica()` · la
+**migrazione multi-marca**, rimandata alla marca #3.
+
+---
 
 ### (Sessione precedente, 2026-08-05) — LO SFOGLIO A SERIE
 
