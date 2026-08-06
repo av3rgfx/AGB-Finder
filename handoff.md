@@ -2361,13 +2361,16 @@ prima del merge. E la regola che vale doppio: NON TOCCARE LA SEZIONE
 SERRAMENTI (catalogo AGB, assistente, kit, clienti).
 
 ═══ STATO ═══
-Verifica tu la PR invece di fidarti dell'handoff. La sessione scorsa ha chiuso
-«le copertine dei gruppi» (ottava tornata di Andrea) sul branch
-claude/ufptrade-andrea-feedback-f0s2re, PR #61. Il run ops «Foto COLOMBO» è
-GIÀ ESEGUITO (31105799102, verde). Se la PR è ancora aperta il primo passo è
-mergiarla; se è mergiata NON serve alcun run ops per quel lavoro.
-Il rosso di Vercel sulla PR è il debito noto delle preview, non una
-regressione: la #60 aveva la failure identica ed è in produzione.
+Verifica tu le PR invece di fidarti dell'handoff.
+· #61 «le copertine dei gruppi» (ottava tornata di Andrea): MERGIATA e in
+  produzione. Il run ops «Foto COLOMBO» è GIÀ ESEGUITO (31105799102, verde):
+  NON serve rilanciarlo.
+· #62, stesso branch: SOLO DOCUMENTAZIONE (handoff.md + CLAUDE.md). Nasce
+  perché la #61 è stata mergiata prima che arrivassero i commit di chiusura.
+  Se è ancora aperta MERGIALA PER PRIMA COSA: senza, stai leggendo un handoff
+  che non contiene niente di ciò che c'è scritto qui sotto.
+Sul rosso di Vercel vedi la sezione dedicata in fondo: non è una regressione,
+ma la diagnosi è avanzata e c'è una cosa da chiedere all'utente.
 
 ═══ IL LAVORO: IL LISTINO NUOVO ═══
 Andrea ha portato il listino ufficiale COLOMBO 2026. Te lo allego nel prompt:
@@ -2576,10 +2579,36 @@ provate sbagliate da 350 a 0.
   Sapendo che l'alternativa è mostrare UN modello su 56 spacciato per la
   categoria, va bene così?
 - Vercel Pro: Hobby VIETA l'uso commerciale, ed era previsto per l'08/08.
-- Le preview Vercel rotte su ogni PR (env solo per Production, mai smentita).
-- Le TRE DISTINTE REALI di MC, Peruzzi e Fosca: aperte da otto sessioni.
+- Le TRE DISTINTE REALI di MC, Peruzzi e Fosca: aperte da otto sessioni. È il
+  collaudo mai fatto del generatore, e vale più di quasi tutto il resto.
 - La migrazione multi-marca (`agbCode @unique`, 128 occorrenze in 22 file),
   rimandata alla marca #3.
+
+═══ LA PREVIEW VERCEL, E UN BUCO PIÙ SERIO ═══
+🔴 `ci.yml` esegue SOLO `corepack enable`, `pnpm install`, `pnpm test`. NON
+c'è `pnpm build`. Quindi il segno verde su una PR NON dice che l'app si
+costruisce: l'unico posto dove la build viene provata è Vercel (rotta) e la
+macchina di chi sviluppa. Aggiungerlo è un passo solo, ma la build ha bisogno
+di un ambiente valido: o le sei variabili nei secret del workflow, o uno
+`skipValidation` in `src/env.ts` per la sola CI. L'utente ha detto che lo
+vuole valutare: CHIEDIGLIELO prima di farlo, e falla in una PR sua.
+
+La preview Vercel è rotta da sempre. Diagnosi ristretta il 06/08, NON rifarla:
+· NON è il codice: `pnpm build` passa con le SOLE sei variabili obbligatorie
+  (DATABASE_URL, DIRECT_URL, NEXTAUTH_URL, NEXTAUTH_SECRET ≥32, REDIS_URL,
+  IP_HASH_SECRET), tutte le opzionali spente e stringhe di connessione FINTE
+  (23 route). Quindi non serve nemmeno un database raggiungibile.
+· `src/env.ts` fa `export const env = parseEnv(process.env)` al caricamento
+  del modulo: se mancano, l'errore dice testualmente «Invalid environment
+  variables:» coi nomi.
+· Restano candidate SOLO cose dell'ambiente di build Vercel: la versione di
+  **pnpm** (pnpm 11 ignora `pnpm.overrides`, scarta `better-call@1.3.7` e
+  `better-auth` crasha al caricamento — trabocchetto già in CLAUDE.md; il repo
+  si difende col pin `packageManager: pnpm@10.17.0`, che però vale solo se
+  Vercel passa da corepack) e la versione di **Node** (in package.json non c'è
+  `engines`). Non c'è alcun `vercel.json`.
+· Si distinguono nelle PRIME ~20 RIGHE del log di build. CHIEDILE ALL'UTENTE
+  (`npx vercel inspect <dpl> --logs`, o la dashboard) invece di indovinare.
 ```
 
 ---
