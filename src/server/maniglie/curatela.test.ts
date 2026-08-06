@@ -183,9 +183,12 @@ describe("browseLabel — le fusioni del 2026-08-05", () => {
     expect(browseLabel("COLOMBO", name)).toBe(atteso);
   });
 
-  test("MANIG.CD213 NON entra fra le maniglie da incasso: è uno scorrevole", () => {
-    expect(browseLabel("COLOMBO", "MANIG.CD213 SCOR.COMPLAN. CM")).toBe("MANIG.CD213");
-  });
+  // ⚠️ Qui stava «MANIG.CD213 NON entra fra le maniglie da incasso: è uno
+  // scorrevole». Andrea l'ha smentito il 2026-08-06 chiedendo di unirle, e
+  // misurando ha ragione lui: `0LC413RS-CR` sta in MANIGLIA INCASSO da sempre,
+  // perché in quella riga lo spazio dopo `MANIG.` c'è. Il test era la codifica
+  // di una scelta nostra, non la sua sentinella. La regola nuova, con la sua
+  // prova, sta in «browseLabel — la terza tornata di Andrea».
 
   test("le sorgenti dell'etichetta fusa comprendono tutte e quattro le grafie", () => {
     expect(sourceFirstWords("COLOMBO", "MANIGLIA INCASSO")).toContain("MANIG.");
@@ -238,6 +241,53 @@ describe("browseLabel — la seconda tornata di Andrea", () => {
     expect(s).toContain("PL.OTT.");
     expect(s).toContain("PL.OTT.YALE");
     expect(s).toContain("PLACCA");
+  });
+});
+
+/**
+ * LA TERZA TORNATA: «MANIG.CD213 e MANIG.LC413RS vanno unite».
+ *
+ * Le due etichette esistono solo perché COLOMBO ha scritto il codice attaccato
+ * a `MANIG.`. Vanno in MANIGLIA INCASSO — che è già la destinazione di
+ * `MANIG.` — e non in un gruppo nuovo dei due, e la prova sta nel listino:
+ *
+ *   0LC413RS-CM  «MANIG.LC413RS SCRO.COMPL.CM»     → MANIG.LC413RS
+ *   0LC413RS-CR  «MANIG. LC413RS SCOR.COMPLAN.CR»  → MANIGLIA INCASSO
+ *
+ * lo STESSO prodotto in due finiture, in due gruppi diversi, per uno spazio che
+ * il fornitore ha messo in una riga e non nell'altra. Un gruppo nuovo dei due
+ * lascerebbe il `-CR` dov'è: sposterebbe la spaccatura invece di chiuderla.
+ */
+describe("browseLabel — la terza tornata di Andrea", () => {
+  test.each([
+    ["MANIG.CD213 SCOR.COMPLAN. CM", "MANIGLIA INCASSO"],
+    ["MANIG.CD213 SCOR.COMPLAN. OROP", "MANIGLIA INCASSO"],
+    ["MANIG.LC413RS SCRO.COMPL.CM", "MANIGLIA INCASSO"],
+    // Il gemello che stava già dall'altra parte, e che la fusione riunisce.
+    ["MANIG. LC413RS SCOR.COMPLAN.CR", "MANIGLIA INCASSO"],
+  ])("«%s» si elenca sotto %s", (name, atteso) => {
+    expect(browseLabel("COLOMBO", name)).toBe(atteso);
+  });
+
+  test("un ?tipo=MANIG.CD213 condiviso prima della fusione si risolve", () => {
+    expect(resolveLabel("COLOMBO", "MANIG.CD213")).toBe("MANIGLIA INCASSO");
+    expect(resolveLabel("COLOMBO", "MANIG.LC413RS")).toBe("MANIGLIA INCASSO");
+  });
+
+  test("sourceFirstWords di MANIGLIA INCASSO cita le due parole storte", () => {
+    const w = sourceFirstWords("COLOMBO", "MANIGLIA INCASSO");
+    expect(w).toContain("MANIG.CD213");
+    expect(w).toContain("MANIG.LC413RS");
+  });
+
+  test("foldBrowseGroups somma i due MANIG. in MANIGLIA INCASSO", () => {
+    expect(
+      foldBrowseGroups("COLOMBO", [
+        { first: "MANIG.", second: "INCASSO", count: 89 },
+        { first: "MANIG.CD213", second: "SCOR.COMPLAN.", count: 2 },
+        { first: "MANIG.LC413RS", second: "SCRO.COMPL.CM", count: 1 },
+      ]),
+    ).toEqual([{ word: "MANIGLIA INCASSO", count: 92 }]);
   });
 });
 
@@ -367,21 +417,23 @@ describe("browseLabel — prime parole trasparenti", () => {
 });
 
 /**
- * I 17 gruppi che Andrea rifornisce. NON sono deducibili da nessun dato: i
+ * I 19 gruppi che Andrea rifornisce. NON sono deducibili da nessun dato: i
  * cinque gruppi di pomoli hanno l'archivio fotografico e maniglie non sono, e
- * MILLA, SPIDER e TRAMA sono maniglie che l'archivio non ce l'hanno. È una
+ * MILLA, SPIDER e TRAMA sono maniglie che l'archivio ce l'hanno ambiguo. È una
  * lista, e a schermo va dichiarata come parola nostra.
  */
 describe("etichetteAccessorio", () => {
-  test("sono i 17 di Andrea", () => {
+  test("sono i 19 di Andrea", () => {
     expect([...etichetteAccessorio("COLOMBO")].sort()).toEqual([
       "BATTIPORTA",
       "BLOCCAPORTA",
+      "BOCCHETTA",
       "BUSSOLA",
       "COPRIAVVOLG.",
       "DISPOSITIVO",
       "DUMMY",
       "FERMAPORTA",
+      "GRANO",
       "INSERTO",
       "KIT",
       "MOLLA",
@@ -395,13 +447,17 @@ describe("etichetteAccessorio", () => {
     ]);
   });
 
-  // POMOLINO era nel primo messaggio e non nel definitivo: resta prodotto
-  // principale finché Andrea non dice altro.
-  test("POMOLINO, BOCCHETTA e MANIGLIONE non sono accessori", () => {
+  // ⚠️ Questo test diceva l'opposto fino al 2026-08-06, e diceva il vero:
+  // BOCCHETTA e GRANO NON erano accessori. Era la codifica di una decisione,
+  // non la sua sentinella — come i due capovolti nella PR #60. Si gira con la
+  // decisione. POMOLINO e MANIGLIONE restano fuori: il titolare ha citato il
+  // primo e poi l'ha tolto, e finché non dice altro è prodotto principale.
+  test("POMOLINO e MANIGLIONE non sono accessori; BOCCHETTA e GRANO sì", () => {
     const acc = etichetteAccessorio("COLOMBO");
     expect(acc.has("POMOLINO")).toBe(false);
-    expect(acc.has("BOCCHETTA")).toBe(false);
     expect(acc.has("MANIGLIONE")).toBe(false);
+    expect(acc.has("BOCCHETTA")).toBe(true);
+    expect(acc.has("GRANO")).toBe(true);
   });
 
   // La sentinella: se una di queste etichette smettesse di esistere, la voce

@@ -83,10 +83,12 @@ function risultati(over: Record<string, unknown> = {}) {
   };
 }
 
-/** Gruppi veri del listino COLOMBO, coi conteggi veri, in ordine alfabetico. */
 /**
- * `isModello` non è un nostro giudizio: è la struttura dell'archivio
- * fotografico di COLOMBO. LARA ha il suo archivio, BOCCHETTA e KIT no.
+ * L'`isModello` del LIVELLO 2, che arriva da `browseSerie` e serve a SPEGNERE
+ * le anteprime di serie dentro un gruppo-modello (lì la foto ripeterebbe).
+ * Non è un nostro giudizio: è la struttura dell'archivio fotografico di
+ * COLOMBO. È l'ultimo `isModello` rimasto lato client — quello del livello 1 è
+ * stato tolto dalla risposta il 2026-08-06, perché non lo leggeva più nessuno.
  */
 let serieFinta: (
   righe?: unknown[],
@@ -95,22 +97,24 @@ let serieFinta: (
 ) => Record<string, unknown>;
 
 /**
- * `isAccessorio` è invece una lista di ANDREA, e non è deducibile da
- * `isModello`: KIT e ROSETTA non hanno archivio e sono accessori, BOCCHETTA e
- * MANIGLIONE non hanno archivio e maniglie sono.
+ * `isAccessorio` è una lista di ANDREA e non è deducibile da nient'altro: KIT e
+ * ROSETTA sono accessori, MANIGLIONE è una maniglia, e nessuno dei tre ha una
+ * copertina. BOCCHETTA è passata fra gli accessori il 2026-08-06.
+ *
+ * ⚠️ `isModello` non c'è: dal 2026-08-06 la forma della tessera segue `preview`,
+ * e il campo è stato tolto dalla risposta perché non lo leggeva più nessuno.
  */
 const GRUPPI = [
-  { word: "BOCCHETTA", count: 318, isModello: false, isAccessorio: false, preview: null },
-  { word: "KIT", count: 140, isModello: false, isAccessorio: true, preview: null },
+  { word: "BOCCHETTA", count: 318, isAccessorio: true, preview: null },
+  { word: "KIT", count: 140, isAccessorio: true, preview: null },
   {
     word: "LARA",
     count: 28,
-    isModello: true,
     isAccessorio: false,
     preview: "/api/article-image?k=lara&size=320",
   },
-  { word: "MANIGLIONE", count: 353, isModello: false, isAccessorio: false, preview: null },
-  { word: "ROSETTA", count: 105, isModello: false, isAccessorio: true, preview: null },
+  { word: "MANIGLIONE", count: 353, isAccessorio: false, preview: null },
+  { word: "ROSETTA", count: 105, isAccessorio: true, preview: null },
 ];
 
 beforeEach(() => {
@@ -495,8 +499,8 @@ describe("ManiglieClient — sfoglio", () => {
       [...ul.querySelectorAll("li")].map((li) => li.querySelector("span")?.textContent),
     );
     const bande = per.filter((b) => b.length > 0 && GRUPPI.some((g) => b.includes(g.word)));
-    expect(bande[0]).toEqual(["BOCCHETTA", "LARA", "MANIGLIONE"]);
-    expect(bande[1]).toEqual(["KIT", "ROSETTA"]);
+    expect(bande[0]).toEqual(["LARA", "MANIGLIONE"]);
+    expect(bande[1]).toEqual(["BOCCHETTA", "KIT", "ROSETTA"]);
   });
 
   it("dentro un gruppo mostra le SERIE a tendina, in mono perché sono pezzi di codice", () => {
@@ -865,7 +869,7 @@ describe("ManiglieClient — il numero dichiara di cosa parla", () => {
  * non un filtro — una sezione, zero stato, zero parametri URL).
  *
  * La banda di SOPRA non ha intestazione, e non è una svista: qualunque nome
- * sarebbe falso («Maniglie» starebbe sopra BOCCHETTA 318 e MANIGLIONE 353)
+ * sarebbe falso («Maniglie» starebbe sopra MANIGLIONE 353 e POMOLINO 41)
  * oppure sarebbe una SECONDA parola nostra. Non affermare nulla è ciò che la
  * rende onesta, e fa sì che un gruppo nuovo mai classificato non dica il falso.
  */
@@ -899,13 +903,13 @@ describe("ManiglieClient — la sezione Accessori", () => {
 
   it("il collegamento in cima porta alla banda e ne dice il numero", () => {
     render(<ManiglieClient />);
-    const salto = screen.getByRole("link", { name: /Accessori \(2\)/ });
+    const salto = screen.getByRole("link", { name: /Accessori \(3\)/ });
     expect(salto.getAttribute("href")).toBe("#accessori");
   });
 
   // «accessori» non è il nome di NESSUN gruppo: senza questo, digitarla non
   // troverebbe nulla mentre la parola si legge sopra la griglia.
-  it("digitando «accessori» compaiono i 17, che non la contengono nel nome", () => {
+  it("digitando «accessori» compaiono i 19, che non la contengono nel nome", () => {
     render(<ManiglieClient />);
     fireEvent.change(screen.getByPlaceholderText("Filtra i gruppi…"), {
       target: { value: "accessori" },
@@ -922,6 +926,103 @@ describe("ManiglieClient — la sezione Accessori", () => {
     });
     expect(container.querySelectorAll("h3")).toHaveLength(0);
     expect(screen.queryByRole("link", { name: /Accessori \(/ })).toBeNull();
+  });
+});
+
+/**
+ * LA MINIATURA DELLE RIGHE, 2026-08-06.
+ *
+ * In MANIGLIONE il segnaposto grigio compariva su 336 righe su 353, e — visto
+ * in browser — sotto un'intestazione di serie che la foto CE L'HA: non diceva
+ * «non l'abbiamo», diceva «ce l'abbiamo e non te la mostriamo».
+ *
+ * Non è una decisione nuova: è già scritta in `AnteprimaSerie` («otto riquadri
+ * grigi in colonna si leggono come *il programma è rotto*») e non era stata
+ * applicata alle righe.
+ */
+describe("ManiglieClient — la miniatura delle righe", () => {
+  beforeEach(() => {
+    sp = new URLSearchParams("q=cd41");
+  });
+
+  it("una riga CON foto la mostra", () => {
+    const { container } = render(<ManiglieClient />);
+    const riga = container.querySelector("a[href='/maniglie/a1']")!.closest("li")!;
+    expect(riga.querySelector("img")).toBeTruthy();
+  });
+
+  it("una riga SENZA foto lascia lo spazio, non un segnaposto", () => {
+    const { container } = render(<ManiglieClient />);
+    const riga = container.querySelector("a[href='/maniglie/a2']")!.closest("li")!;
+    expect(riga.querySelector("img")).toBeNull();
+    expect(riga.querySelector("svg")).toBeNull();
+    // La colonna resta, o l'allineamento si muoverebbe riga per riga.
+    expect(riga.className).toContain("44px");
+  });
+});
+
+/**
+ * LA FORMA DELLA TESSERA, 2026-08-06.
+ *
+ * Segue `preview`, non `isModello`. Con `isModello` i quattro gruppi di pomoli
+ * — modelli rimasti senza foto dopo la PR #60 — mostravano un riquadro grigio
+ * VUOTO: esattamente la cosa che la regola della PR #58 esisteva per impedire
+ * («in una griglia un buco si legge come immagine rotta»), in produzione per un
+ * mese. Ora un riquadro vuoto è impossibile per costruzione.
+ */
+describe("ManiglieClient — la forma della tessera", () => {
+  const soloGruppo = (g: Record<string, unknown>) =>
+    browseGroupsQuery.mockReturnValue({
+      data: { groups: [g] },
+      isPending: false,
+      isError: false,
+      isFetching: false,
+    });
+
+  it("una tessera senza foto non ha area immagine né segnaposto", () => {
+    const { container } = render(<ManiglieClient />);
+    const kit = container.querySelector("a[href*='tipo=KIT']")!;
+    expect(kit.querySelector("img")).toBeNull();
+    expect(kit.querySelector("svg")).toBeNull();
+  });
+
+  it("un gruppo senza preview è una tessera-parola, non un riquadro vuoto", () => {
+    // CUT è un MODELLO — COLOMBO gli dedica un archivio — rimasto senza foto
+    // dopo la PR #60. Con la vecchia regola mostrava il riquadro grigio vuoto.
+    soloGruppo({ word: "CUT", count: 11, isAccessorio: false, preview: null });
+    const { container } = render(<ManiglieClient />);
+    const cut = container.querySelector("a[href*='tipo=CUT']")!;
+    expect(cut.querySelector("img")).toBeNull();
+    expect(cut.querySelector("svg")).toBeNull();
+    expect(cut.textContent).toContain("CUT");
+  });
+
+  it("un gruppo con preview mostra la foto", () => {
+    soloGruppo({
+      word: "CUT",
+      count: 11,
+      isAccessorio: false,
+      preview: "/api/article-image?k=cut&size=320",
+    });
+    const { container } = render(<ManiglieClient />);
+    expect(container.querySelector("a[href*='tipo=CUT'] img")).toBeTruthy();
+  });
+
+  /**
+   * La griglia allunga le tessere. Senza, quella senza foto resta appesa in
+   * cima a una riga di tessere alte e lascia il buco sotto di sé — ed è per
+   * QUESTO che si legge come «immagine mancante», non perché la foto manchi.
+   */
+  it("la griglia dei gruppi allunga le tessere alla stessa altezza", () => {
+    const { container } = render(<ManiglieClient />);
+    const griglia = container.querySelector("ul.grid")!;
+    expect(griglia.className).toContain("items-stretch");
+    expect(griglia.className).not.toContain("items-start");
+  });
+
+  it("dichiara che la foto è del modello e non della finitura", () => {
+    render(<ManiglieClient />);
+    expect(screen.getByText(/del modello, non della finitura/i)).toBeTruthy();
   });
 });
 

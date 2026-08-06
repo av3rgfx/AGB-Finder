@@ -32,6 +32,16 @@ export interface VoceArchivio {
   etichetta: string | null;
   /** Prefisso di codice; solo dove un'etichetta ha più archivi. */
   serie?: string;
+  /**
+   * L'archivio **nomina** il gruppo ma **non presta foto ai suoi codici**.
+   *
+   * Serve dove COLOMBO tiene due archivi per lo stesso gruppo e non dice quale
+   * serie sia quale (MR11/MR15, LC31/LC41, LC71/LC81): «che aspetto ha una
+   * MILLA» ha una risposta, «questo codice quale delle due è» no. Sono due
+   * domande diverse, e prima erano lo stesso campo — si negava l'etichetta per
+   * negare il prestito, e si perdeva la copertina insieme alle righe.
+   */
+  soloCopertina?: true;
 }
 
 export const ARCHIVI: Record<string, VoceArchivio> = {
@@ -135,18 +145,20 @@ export const ARCHIVI: Record<string, VoceArchivio> = {
   "01_Bold_m": { etichetta: "BOLD" },
   "01_Bold_p": { etichetta: null },
 
-  // ── i tre casi NON DECIDIBILI ──────────────────────────────────────────────
+  // ── i tre casi in cui la SERIE non è decidibile ────────────────────────────
   // SPIDER ha due maniglie a listino (MR11 e MR15), MILLA due (LC31, LC41),
   // TRAMA due (LC71, LC81). Gli archivi sono due per ciascuno, ma l'ordinale
   // della cartella non è la serie e nessuna fonte di COLOMBO li accoppia.
-  // 66 codici restano senza foto: è il prezzo dichiarato di non indovinare.
+  // I 66 codici restano senza foto DI RIGA: è il prezzo dichiarato di non
+  // indovinare. La COPERTINA no — «che aspetto ha una MILLA» ha una risposta,
+  // ed è per questo che dal 2026-08-06 l'etichetta c'è e il prestito no.
   // → domanda aperta per COLOMBO (handoff.md §DA CHIEDERE).
-  "01_Spider_m": { etichetta: null },
-  "01_Spider_p": { etichetta: null },
-  "01_Milla_1": { etichetta: null },
-  "01_Milla_2": { etichetta: null },
-  "01_Trama_1": { etichetta: null },
-  "01_Trama_2": { etichetta: null },
+  "01_Spider_m": { etichetta: "SPIDER", soloCopertina: true },
+  "01_Spider_p": { etichetta: "SPIDER", soloCopertina: true },
+  "01_Milla_1": { etichetta: "MILLA", soloCopertina: true },
+  "01_Milla_2": { etichetta: "MILLA", soloCopertina: true },
+  "01_Trama_1": { etichetta: "TRAMA", soloCopertina: true },
+  "01_Trama_2": { etichetta: "TRAMA", soloCopertina: true },
 
   // ── accessori: qui il codice sta nel NOME DEL FILE (gradino 3) ─────────────
   // Sono le sezioni che per nome di modello sarebbero irraggiungibili —
@@ -202,25 +214,73 @@ export const FILE_MODELLO: Record<string, VoceArchivio> = {
   // Le parole sono di COLOMBO da entrambe le parti.
   "02_Pomoli/pomolo one strawberry red": { etichetta: "POMOLO", serie: "CC15" },
   "02_Pomoli/pomolo one q lime green": { etichetta: "POMOLO", serie: "CC25" },
+
+  // ── le copertine dei tre gruppi ad archivio ambiguo (2026-08-06) ───────────
+  // Non agganciano codici — l'archivio è `soloCopertina` — e non è una
+  // contraddizione: dicono QUALE scatto è la faccia del gruppo, non a chi
+  // appartiene. Scelti guardandoli, non dal nome: sono scatti maniglia-sola in
+  // cromo su bianco, la stessa grammatica di `Fedra_2CR` che è già nella
+  // griglia. Le alternative erano scatti con la bocchetta accanto o in oro.
+  "01_Milla_1/milla1_2CRCM": { etichetta: "MILLA", soloCopertina: true },
+  "01_Spider_m/spider1_1CR": { etichetta: "SPIDER", soloCopertina: true },
+  "01_Trama_1/trama 1_1CMCR": { etichetta: "TRAMA", soloCopertina: true },
 };
 
 /**
  * Le etichette di sfoglio che COLOMBO fotografa come MODELLO: quelle a cui
  * `ARCHIVI` o `FILE_MODELLO` assegnano un archivio.
  *
- * Misurate sul listino 02-26: **63 gruppi su 102**, e tutti e 63 hanno almeno
- * una foto. Gli altri 39 sono TIPOLOGIE (BOCCHETTA raccoglie 22 serie diverse,
- * MANIGLIONE 52): lì una foto sola sarebbe un modello a caso spacciato per la
- * categoria, e la tessera di livello 1 non ne mostra nessuna.
+ * Misurate sul listino 02-26: **66 gruppi su 88** dopo che MILLA, SPIDER e
+ * TRAMA hanno riavuto l'etichetta (2026-08-06). Gli altri 22 sono TIPOLOGIE
+ * (BOCCHETTA raccoglie 28 serie diverse, MANIGLIONE 56): lì una foto sola
+ * sarebbe un modello a caso spacciato per la categoria.
  *
  * La distinzione NON è un nostro giudizio: è come il fornitore ha organizzato
  * il suo archivio fotografico.
+ *
+ * ⚠️ Questa funzione decide se un gruppo può ricevere una preview DAI PROPRI
+ * ARTICOLI; NON decide la forma della tessera, che segue `preview` (vedi
+ * `previewDiGruppo` in `copertina.ts`). Erano la stessa cosa fino al
+ * 2026-08-06, ed è per questo che quattro modelli rimasti senza foto
+ * mostravano un riquadro vuoto.
  */
 export function etichetteModello(): ReadonlySet<string> {
   const out = new Set<string>();
   for (const v of Object.values(ARCHIVI)) if (v.etichetta) out.add(v.etichetta);
   for (const v of Object.values(FILE_MODELLO)) if (v.etichetta) out.add(v.etichetta);
   return out;
+}
+
+/**
+ * LA COPERTINA DICHIARATA di un gruppo: etichetta → chiave Blob.
+ *
+ * È una proprietà del GRUPPO, non di un suo articolo, e la differenza non è
+ * accademica: la copertina afferma «questo gruppo è così», la foto di una riga
+ * afferma «questo codice è così». La finitura conta nella seconda e non nella
+ * prima — ed è per questo che una copertina può esistere dove nessun codice ha
+ * una foto provata, cioè nei quattro gruppi di pomoli e nei tre modelli ad
+ * archivio ambiguo.
+ *
+ * Si deriva da `FILE_MODELLO`, che è già la tabella «questo FILE appartiene a
+ * questa etichetta»: nessun dato nuovo, nessuna colonna, nessun elenco da
+ * tenere allineato a mano. In ordine di chiave crescente, così due esecuzioni
+ * danno la stessa copertina allo stesso gruppo — altrimenti la tessera
+ * cambierebbe faccia fra un run e l'altro senza che nessuno l'abbia chiesto.
+ */
+export function copertineDichiarate(): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const key of Object.keys(FILE_MODELLO).sort()) {
+    const etichetta = FILE_MODELLO[key]!.etichetta;
+    if (etichetta === null || out.has(etichetta)) continue;
+    const i = key.indexOf("/");
+    out.set(etichetta, chiaveFoto(key.slice(0, i), key.slice(i + 1)));
+  }
+  return out;
+}
+
+/** La copertina dichiarata per un'etichetta, o `null`. */
+export function copertinaDiGruppo(etichetta: string): string | null {
+  return copertineDichiarate().get(etichetta) ?? null;
 }
 
 /**
@@ -425,6 +485,11 @@ export function abbinaFoto(
     const serieDelCodice = senzaZeroIniziale(a.codeNorm);
     const candidate = usabili.filter((f) => {
       if (!f.voce || f.voce.etichetta !== etichetta) return false;
+      // L'archivio nomina il gruppo ma non presta foto ai codici: vedi
+      // `soloCopertina`. Senza questa riga, aver dato l'etichetta a
+      // MILLA/SPIDER/TRAMA rimetterebbe 66 foto dell'archivio sbagliato — una
+      // foto che esiste, si vede benissimo, ed è di un altro prodotto.
+      if (f.voce.soloCopertina) return false;
       if (f.voce.serie && !serieDelCodice.startsWith(f.voce.serie)) return false;
       return f.zero === zero;
     });

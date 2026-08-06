@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
-import { ChevronDown, Package, Palette, X } from "lucide-react";
+import { ChevronDown, Palette, X } from "lucide-react";
 import type { ArticleSummary } from "@/server/api/routers/article";
 
 /**
@@ -24,8 +24,13 @@ import type { ArticleSummary } from "@/server/api/routers/article";
 export interface Gruppo {
   word: string;
   count: number;
-  /** Il gruppo È un modello: COLOMBO gli dedica un archivio fotografico. */
-  isModello: boolean;
+  /**
+   * ⚠️ `isModello` NON sta qui, e non è una dimenticanza. Ci stava finché la
+   * forma della tessera lo seguiva; da quando segue `preview` (2026-08-06) non
+   * lo leggeva più nessuno, e un campo che il server calcola, manda al browser
+   * e nessuno guarda è la classe di difetto che questo progetto ha chiuso otto
+   * volte. Al livello 2 `isModello` c'è ancora, e arriva da `browseSerie`.
+   */
   /**
    * Il gruppo non è una maniglia. È una lista di Andrea, non un dato: i pomoli
    * hanno l'archivio e maniglie non sono, MILLA e SPIDER sono maniglie senza
@@ -155,10 +160,18 @@ export function SfogliaGruppi({
             meccanismo che non è più quello, ed era la stessa forma del difetto
             che questo reparto ha già corretto una volta (una sezione chiamata
             «Disponibilità» che nominava un attributo falso 95 volte su 100). */}
+        {/* «Le foto sono del modello, non della finitura» paga un debito che il
+            council ha trovato all'unanimità: la copertina di un gruppo mostra
+            la finitura del PRIMO CODICE IN ORDINE ALFABETICO (`article.ts`), e
+            nessuno l'aveva mai dichiarato. È la classe «valore deciso dal
+            programma e mai dichiarato», chiusa otto volte da questo progetto.
+            NON si ripete dentro il gruppo, dove sarebbe falsa: le foto delle
+            righe la finitura ce l'hanno provata, ed è tutto il senso della
+            PR #60. */}
         <p className="text-xs text-ink-subtle">
           {groups.length} gruppi in ordine alfabetico. Il numero è quanti codici
           {insiemeContato(soloPronta, finitura)}, non quanti modelli: lo stesso pezzo compare una
-          volta per finitura.
+          volta per finitura. Le foto sono del modello, non della finitura del singolo codice.
         </p>
         {/* Ciò che il programma ha deciso e che senza questa riga non direbbe:
             cinque categorie non si sfogliano affatto. Chi cercasse una vite qui
@@ -193,11 +206,13 @@ export function SfogliaGruppi({
           {resto.length > 0 ? <GrigliaGruppi gruppi={resto} coda={coda} /> : null}
 
           {/* ⚠️ LA BANDA DI SOPRA NON HA INTESTAZIONE, ed è una scelta.
-              Qualunque nome sarebbe FALSO — «Maniglie» starebbe sopra BOCCHETTA
-              (318), MANIGLIONE (353), POMOLINO (41), GRANO (3): misurato che
-              dei 27 gruppi di solo testo 17 sono accessori e 10 no — oppure
+              Qualunque nome sarebbe FALSO — «Maniglie» starebbe sopra
+              MANIGLIONE (353), MANIGLIA INCASSO (93), POMOLINO (41) — oppure
               sarebbe una SECONDA parola nostra.
-              Ha anche un effetto che nessun test potrebbe dare: il giorno che
+              ⚠️ RI-MISURATO il 2026-08-06: con BOCCHETTA (318) e GRANO passati
+              fra gli accessori, i controesempi scendono da 10 gruppi / 787
+              codici a 3 / 487. L'argomento non regge più sui NUMERI, regge
+              sulla metà più forte, che nessun test potrebbe dare: il giorno che
               COLOMBO aggiunge un gruppo e nessuno lo classifica, quel gruppo
               cade in una banda che non afferma nulla. */}
           {accessori.length > 0 ? (
@@ -242,7 +257,13 @@ export function SfogliaGruppi({
  */
 function GrigliaGruppi({ gruppi, coda }: { gruppi: Gruppo[]; coda: string }) {
   return (
-    <ul className="grid list-none grid-cols-2 items-start gap-2 sm:grid-cols-3 lg:grid-cols-4">
+    // `items-stretch` e non `items-start`: senza, la tessera senza foto non si
+    // allunga, resta appesa in cima a una riga di tessere alte e lascia il buco
+    // sotto di sé — ed è per QUESTO che si legge come «immagine mancante», non
+    // perché la foto manchi. Il `Link` ha già `h-full` e il nome ha già
+    // `flex-1 items-center`: il codice era scritto per allungarsi, e
+    // `items-start` lo annullava. Verificato in browser a 375px, prima e dopo.
+    <ul className="grid list-none grid-cols-2 items-stretch gap-2 sm:grid-cols-3 lg:grid-cols-4">
       {gruppi.map((g) => (
         <TesseraGruppo key={g.word} gruppo={g} coda={coda} />
       ))}
@@ -281,17 +302,25 @@ export function SoloPronta({ value, onChange }: { value: boolean; onChange: (v: 
 /**
  * La tessera di un gruppo, in DUE forme, e la differenza non è estetica.
  *
- * **Modello** (63 gruppi su 102): foto grande, nome, conteggio. La foto è quella
- * di un suo articolo, e dentro un gruppo-modello tutti gli articoli sono lo
- * stesso modello in finiture diverse — quindi ritrae il gruppo, non un suo
- * membro a caso. Quali gruppi siano un modello NON è un nostro giudizio: è la
- * struttura dell'archivio fotografico ufficiale di COLOMBO (`ARCHIVI`).
+ * **Con copertina** (66 gruppi su 88): foto grande, nome, conteggio. La
+ * copertina è una proprietà del GRUPPO — dice «questo gruppo è così», non
+ * «questo codice è così» — e per questo esiste anche dove nessun codice ha una
+ * foto provata: i quattro gruppi di pomoli, i tre modelli ad archivio ambiguo.
+ * Quali gruppi ne abbiano una NON è un nostro giudizio: è la struttura
+ * dell'archivio fotografico ufficiale di COLOMBO (`ARCHIVI`, `FILE_MODELLO`).
  *
- * **Tipologia** (39): solo testo, nome più grande. NESSUNA area immagine: una
- * tipologia raccoglie modelli diversi (BOCCHETTA ne ha 22), e una foto sola
- * sarebbe un modello spacciato per la categoria. Lasciare il riquadro vuoto
- * sarebbe peggio che non averlo: in una griglia un buco si legge come immagine
- * rotta, mentre una tessera di testo si legge come una tessera di testo.
+ * **Senza** (22): solo testo, nome più grande, tessera piena. Le TIPOLOGIE non
+ * hanno copertina perché una foto della categoria NON ESISTE: quella di un suo
+ * membro sarebbe un modello su 56 spacciato per tutti — e sbaglierebbe
+ * l'oggetto là dove la regola delle finiture non tollera nemmeno di sbagliare
+ * il colore (verdetto del council, 2026-08-06).
+ *
+ * ⚠️ LA FORMA SEGUE `preview`, NON `isModello`. Con `isModello` i quattro
+ * gruppi di pomoli — modelli rimasti senza foto dopo la PR #60 — mostravano il
+ * riquadro grigio VUOTO: proprio la cosa che quella regola esisteva per
+ * impedire, in produzione per un mese. Ora è impossibile per costruzione, e lo
+ * è anche quando la foto non arriva (404 su Blob): `onError` fa tornare la
+ * tessera-parola, che è uno stato coerente e non un guasto a schermo.
  *
  * L'etichetta va a capo invece di troncarsi: fra i gruppi veri ci sono
  * `ROBOQUATTRO`, `FERMAPORTA`, `MANIGLIA INCASSO`, e a 375px in due colonne non
@@ -299,6 +328,8 @@ export function SoloPronta({ value, onChange }: { value: boolean; onChange: (v: 
  * cosa che la tessera contiene.
  */
 function TesseraGruppo({ gruppo, coda }: { gruppo: Gruppo; coda: string }) {
+  const [fallita, setFallita] = useState(false);
+  const foto = gruppo.preview !== null && !fallita;
   return (
     <li>
       <Link
@@ -306,10 +337,19 @@ function TesseraGruppo({ gruppo, coda }: { gruppo: Gruppo; coda: string }) {
         aria-label={`${gruppo.word}, ${conteggio(gruppo.count)}`}
         className="flex h-full flex-col gap-1 rounded-md border border-line bg-surface p-2 transition-colors duration-150 hover:border-line-strong hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
       >
-        {gruppo.isModello ? <FotoGruppo url={gruppo.preview} /> : null}
+        {foto ? (
+          // eslint-disable-next-line @next/next/no-img-element -- sorgente dinamica dietro auth, non da ottimizzare
+          <img
+            src={gruppo.preview!}
+            alt=""
+            loading="lazy"
+            onError={() => setFallita(true)}
+            className="aspect-square w-full rounded bg-white object-contain"
+          />
+        ) : null}
         <span
           className={
-            gruppo.isModello
+            foto
               ? "break-words text-sm font-medium leading-tight text-ink"
               : "flex min-h-[40px] flex-1 items-center break-words text-base font-semibold leading-tight text-ink"
           }
@@ -321,40 +361,6 @@ function TesseraGruppo({ gruppo, coda }: { gruppo: Gruppo; coda: string }) {
         </span>
       </Link>
     </li>
-  );
-}
-
-/**
- * La foto di un gruppo-modello. Tutti e 63 ne hanno una (misurato), ma il
- * segnaposto resta: un listino nuovo può portare un modello prima che
- * l'archivio fotografico lo segua, e allora la tessera deve reggere.
- *
- * `onError` non è prudenza teorica: la foto arriva da una route che risponde
- * 404 quando il file non c'è su Blob, e senza questo il browser disegnerebbe
- * la sua icona di immagine rotta — che in una griglia si legge come «il
- * programma è guasto». È lo stesso patto della miniatura nelle righe articolo.
- */
-function FotoGruppo({ url }: { url: string | null }) {
-  const [fallita, setFallita] = useState(false);
-  if (!url || fallita) {
-    return (
-      <span
-        aria-hidden
-        className="grid aspect-square w-full place-items-center rounded bg-surface-sunken"
-      >
-        <Package className="size-6 text-ink-subtle" />
-      </span>
-    );
-  }
-  return (
-    // eslint-disable-next-line @next/next/no-img-element -- sorgente dinamica dietro auth, non da ottimizzare
-    <img
-      src={url}
-      alt=""
-      loading="lazy"
-      onError={() => setFallita(true)}
-      className="aspect-square w-full rounded bg-white object-contain"
-    />
   );
 }
 
@@ -451,13 +457,18 @@ export function SfogliaSerie({
 /**
  * L'anteprima di una serie: **56px, FERMA**, e solo dentro una TIPOLOGIA.
  *
- * ⚠️ SEMBRA IL CONTRARIO DEL LIVELLO 1, E NON LO È. Lì `isModello` ACCENDE la
- * foto, qui la SPEGNE. Stesso principio, unità diversa: la tessera di livello 1
- * ritrae il MODELLO INTERO, e una foto lo rappresenta davvero; la riga di
- * livello 2 ritrae UNA SERIE dentro quel modello, e le serie di FEDRA sono la
- * stessa maniglia in varianti — la foto sarebbe identica su ognuna. Dentro una
- * tipologia (BOCCHETTA raccoglie 22 modelli, MANIGLIONE 52) distingue davvero.
- * Chi legge questo codice non lo «corregga» per simmetria.
+ * ⚠️ SEMBRA IL CONTRARIO DEL LIVELLO 1, E NON LO È. Lì un gruppo-modello la foto
+ * ce l'ha (è la sua COPERTINA), qui `isModello` la SPEGNE. Stesso principio,
+ * unità diversa: la tessera di livello 1 ritrae il MODELLO INTERO, e una foto lo
+ * rappresenta davvero; la riga di livello 2 ritrae UNA SERIE dentro quel
+ * modello, e le serie di FEDRA sono la stessa maniglia in varianti — la foto
+ * sarebbe identica su ognuna. Dentro una tipologia (BOCCHETTA raccoglie 28
+ * serie, MANIGLIONE 56) distingue davvero. Chi legge questo codice non lo
+ * «corregga» per simmetria.
+ *
+ * Questo `isModello` arriva da `browseSerie` ed è l'ULTIMO rimasto lato client:
+ * al livello 1 la forma della tessera segue `preview`, e il campo è stato tolto
+ * dalla risposta perché nessuno lo leggeva più.
  *
  * Non si rimpicciolisce aprendo. Era una scelta nostra, e Andrea — che il
  * programma lo usa — l'ha smentita sul campo: «confonde, e da piccola non si

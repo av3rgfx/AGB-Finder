@@ -9,6 +9,200 @@
 
 | Campo | Valore |
 |-------|--------|
+| **Data** | 2026-08-06 — **LE COPERTINE DEI GRUPPI (ottava tornata di Andrea)** |
+| **Fase in corso** | Fase 1 — MVP Gestionale · reparto maniglie |
+| **Branch** | `claude/ufptrade-andrea-feedback-f0s2re` |
+| **Stato deploy** | 🟢 **NESSUNA MIGRAZIONE, nessuna finestra di disservizio.** 🔴 **UN RUN OPS**: «Ops — Foto COLOMBO» |
+| **Gate** | typecheck · lint · **test 1.583** · **integrazione 15/15 su listino e archivio VERI** · **browser 30/30** (desktop e 375px) |
+| **In produzione al merge** | 90 → **88 gruppi** · Accessori 17 → **19** (648 → **969** codici) · banda principale **69**, di cui **66 con copertina e 3 senza** |
+
+---
+
+> **▶ RIPRENDI DA QUI**
+>
+> ## COSA HA CHIESTO ANDREA, E COSA HA RIVELATO MISURARLO
+>
+> Tre righe: **BOCCHETTA in Accessori** · **`MANIG.CD213` e `MANIG.LC413RS` unite** ·
+> **«mancano le foto» a dodici gruppi**. Rispondendo ha aggiunto la quarta:
+> **GRANO non è una maniglia**, va anche lui in Accessori.
+>
+> **I dodici non sono dodici segnalazioni.** Misurando sono, *esattamente*, i
+> gruppi della banda principale che non mostrano una foto sulla tessera, meno
+> BOCCHETTA che nello stesso messaggio sta spostando altrove. Non ha elencato
+> difetti: ha descritto **lo stato della griglia di primo livello**, e i suoi
+> due feedback sono la stessa osservazione da due lati.
+>
+> ### 🔎 LA DISTINZIONE CHE ANDREA CHIEDEVA: sono DUE problemi
+>
+> | | gruppi | cosa vede | perché |
+> |---|---|---|---|
+> | **A** | GRANO · i due MANIG. · MANIGLIA INCASSO · MANIGLIONE · MILLA · POMOLINO · SPIDER · TRAMA | tessera di **solo testo** | sono TIPOLOGIE: per disegno (PR #58) non hanno area immagine |
+> | **B** | CUT · PUSH · ROUND · SQUARE | riquadro grigio **vuoto** | sono MODELLI, e le foto **le abbiamo tolte noi** nella PR #60 |
+>
+> Dentro A ci sono a loro volta due casi: **MILLA, SPIDER e TRAMA sono modelli
+> veri** e COLOMBO li fotografa (due archivi ciascuno); portavano la tessera di
+> tipologia solo perché l'archivio è ambiguo **per i codici**.
+>
+> **Su CUT la ragione era esattamente quella dichiarata**, e ora è provata: gli
+> 11 codici hanno tutti una coda di finitura, i due file (`cut15_45`,
+> `cut25_45`) non ne dichiarano nessuna, e otto codici in due finiture si
+> contendono il primo. Idem PUSH (5 codici, 5 finiture, **1** file), ROUND,
+> SQUARE. **59 codici**, ed è la regola di Andrea applicata dove morde di più.
+>
+> ### 💡 IL PRINCIPIO CHE SCIOGLIE IL NODO
+>
+> **La copertina di un gruppo e la foto di una riga sono due affermazioni
+> diverse.** La riga dice «*questo codice* è così» e la finitura conta — la
+> regola severa di Andrea resta intatta. La copertina dice «*questo gruppo* è
+> così»: la finitura è irrilevante, purché dichiarata. Quindi le copertine
+> tornano **senza rimettere una sola foto sbagliata sulle righe**.
+>
+> ### 🏛️ IL COUNCIL: no all'esemplare sulle tipologie, con la MINORANZA
+>
+> 5 advisor + 3 peer review; 3 su 5 dicevano sì. Il no vince su un fatto che
+> viene da Andrea stesso: **ha fatto togliere 509 foto perché sbagliavano il
+> COLORE dello stesso oggetto; un esemplare sbaglia l'OGGETTO**, e non può
+> dimostrare niente. E non è lo stesso arbitrio ingrandito: sulla tessera-modello
+> cade sulla **finitura**, un asse che non porta il riconoscimento; sulla
+> tipologia cade sulla **forma**, l'unico che l'agente usa.
+>
+> **Tre affermazioni degli advisor verificate nel repo e CADUTE:**
+>
+> | affermazione | esito |
+> |---|---|
+> | «3 tipologie con foto e 24 senza → difetto strutturale» | **falso**: sono **11 e 11**. Cade l'argomento strutturale, regge quello semantico |
+> | «mosaico di 4 foto per tessera» | **falso sui dati**: 9 tipologie su 11 hanno ≤4 foto, **4 ne hanno UNA** |
+> | «lancia il run ops, chiude 7 dei 12» | **è un no-op**: quelle foto non sono su Blob perché nessun articolo le ha scelte |
+>
+> E una **quarta, misurata dopo**: «riga di fatto: N modelli · N codici, il
+> contenuto che una tipologia ha e un modello no» → POMOLINO ha **2** serie e
+> FEDRA **8**. Il numero di serie non distingue le due cose, e «N modelli» non è
+> calcolabile dai nostri dati. Costava anche 210 ms sulla schermata d'ingresso.
+>
+> **Il punto cieco che nessuno dei cinque aveva visto** è il predicato: la forma
+> della tessera seguiva `isModello`, quindi CUT/PUSH/ROUND/SQUARE avevano il
+> riquadro e lo mostravano **vuoto** — la cosa che la regola della PR #58
+> esisteva per impedire, in produzione da un mese.
+>
+> ### ✅ COS'È STATO FATTO (12 task TDD, un commit per task)
+>
+> 1. **BOCCHETTA e GRANO fra gli accessori.** 17 → 19 gruppi, 648 → **969**
+>    codici (19,1% → 28,6%), 31,5% → **38,2%** della pronta consegna.
+> 2. **I due MANIG. in MANIGLIA INCASSO**, e non in un gruppo nuovo dei due: il
+>    listino ha `0LC413RS-CM` («MANIG.LC413RS…») e `0LC413RS-CR` («MANIG.
+>    LC413RS…»), **lo stesso prodotto in due gruppi** per uno spazio. Un gruppo
+>    nuovo avrebbe spostato la spaccatura invece di chiuderla.
+> 3. **`soloCopertina`**: un archivio può **nominare** il gruppo senza
+>    **prestare** foto ai codici. `ARCHIVI.etichetta` faceva due mestieri, e per
+>    negare il secondo si negava anche il primo. MILLA/SPIDER/TRAMA riprendono la
+>    copertina; i 66 codici restano senza foto di riga (verificato: la copertura
+>    resta 1.609/3.456 — se il flag cadesse SALIREBBE, e nulla andrebbe a zero).
+> 4. **`copertineDichiarate()`**, derivata da `FILE_MODELLO`: nessuna colonna,
+>    nessuna migrazione. Tre nomi di file nuovi, **guardati** e non scelti dal
+>    nome (maniglia-sola in cromo su bianco, come `Fedra_2CR`).
+> 5. **`previewDiGruppo`**: la forma della tessera segue **la foto**, non
+>    `isModello`. Il riquadro vuoto è ora impossibile *per costruzione*, anche
+>    su 404 di Blob.
+> 6. **`items-start` → `items-stretch`**: **una parola**. La tessera senza foto
+>    non si allungava e lasciava il buco sotto di sé — ed è per QUESTO che si
+>    legge come «immagine mancante». Il `Link` aveva già `h-full`.
+> 7. **Le righe: spazio vuoto, non segnaposto.** 336 su 353 in MANIGLIONE, sotto
+>    un'intestazione di serie che la foto ce l'ha. Decisione già scritta in
+>    `AnteprimaSerie` e mai applicata alle righe. **Eccezione dichiarata**: la
+>    scheda del singolo articolo il segnaposto lo tiene.
+> 8. **La dichiarazione, una volta sola**: «Le foto sono del modello, non della
+>    finitura del singolo codice». Paga il debito trovato all'unanimità dal
+>    council — la copertina mostra la finitura del *primo codice in ordine
+>    alfabetico* e non era dichiarato da nessuna parte. Dentro il gruppo NON si
+>    ripete, dove sarebbe falsa.
+>
+> ### 🔍 COSA HA TROVATO LA REVIEW DI BRANCH (coi gate tutti verdi)
+>
+> **`isModello` al livello 1 era diventato un campo che nessuno legge.** Il
+> router lo calcolava e lo spediva al browser, e da quando la forma della
+> tessera segue `preview` non lo guardava più nessuno — la classe di difetto che
+> questo progetto ha chiuso otto volte, introdotta dalla sessione stessa che la
+> cita. Tolto dalla risposta e dal tipo `Gruppo`; al livello 2 resta, perché lì
+> SPEGNE le anteprime di serie. Con lui è caduto un commento diventato falso
+> («lì `isModello` ACCENDE la foto»).
+>
+> ### 🎯 LA TERZA DOMANDA — si dissolve, non è né rimedio né feature
+>
+> «Un gruppo senza foto e uno le cui foto abbiamo tolto si vedono identici.»
+> Dopo il punto 3 **non esiste più un gruppo la cui copertina abbiamo tolto**, e
+> le tre tipologie non ce l'hanno perché *una foto della categoria non esiste*.
+> Dentro il gruppo l'assenza torna ad avere **un solo significato**. Nessun
+> distintivo per riga: sarebbe rumore che non cambia nessuna decisione.
+>
+> ### 📐 I NUMERI FINALI, misurati sul listino e sull'archivio veri
+>
+> ```
+> gruppi 88 · accessori 19 (969 codici) · banda principale 69 (2.422)
+> banda principale: 66 CON copertina · 3 SENZA
+>   → MANIGLIONE (353) · MANIGLIA INCASSO (93) · POMOLINO (41) = 487 codici
+> tessere senza area immagine in tutto: 22 · etichette MODELLO: 66
+> articoli con foto: 1.609/3.456 (46,6%) — INVARIATO
+> ```
+>
+> ### 🖼️ COSA HANNO MOSTRATO GLI SCREENSHOT
+>
+> - **Prima**: BOCCHETTA era una tessera corta appesa in cima a una riga di
+>   tessere alte, con un buco sotto. Andrea leggeva giusto.
+> - **Dopo**: POMOLINO accanto a PIUMA si allunga alla stessa altezza, parola
+>   centrata, conteggio allineato. CUT e PUSH hanno la loro copertina.
+> - **Dentro MANIGLIONE** il contrasto era peggiore del previsto: l'intestazione
+>   della serie CC113 **ha** la foto e le righe sotto avevano tre riquadri
+>   grigi. Non diceva «non l'abbiamo», diceva «ce l'abbiamo e non te la
+>   mostriamo».
+> - ⚠️ **Il mio script di verifica ha mentito una volta**: `ul.grid` prendeva
+>   anche la lista del filtro finitura (misurava tessere alte 36px). È la
+>   **quarta** volta che un controllo browser passa o fallisce per la ragione
+>   sbagliata: guardare gli screenshot resta obbligatorio.
+>
+> ### 🔴 L'AZIONE OPS (una sola)
+>
+> **«Ops — Foto COLOMBO»** (`ops-foto-colombo.yml`), ~7 minuti, idempotente.
+> Serve perché le **7 foto di copertina non sono su Blob** — nessun articolo le
+> aveva scelte, e lo script carica solo `chiaviScelte`. Ora carica anche le
+> copertine (dry run verificato: `299 foto · 9 copertine di gruppo`).
+> Secret: `COLOMBO_DOWNLOAD_PASSWORD`, `BLOB_READ_WRITE_TOKEN`, **`NEON_DIRECT_URL`**.
+>
+> 🟢 **Nessuna migrazione, nessuna finestra di disservizio**: prima del run le
+> sette tessere sono tessere-parola, che è uno stato coerente e non uno rotto.
+>
+> ### 🧾 DEBITO E RESIDUI
+>
+> - `ROUND/SQUARE/CUT/PUSH` e i 66 di MILLA/SPIDER/TRAMA restano senza foto **di
+>   riga**: servono le due risposte di COLOMBO (sotto).
+> - Il warning lint `react-hooks/exhaustive-deps` in `maniglie-client.tsx:195` è
+>   **preesistente** e deliberato.
+> - `sfoglia.tsx` non ha ancora un file di test proprio.
+> - Le foto vere stanno su Blob privato, assente in locale: il browser prova il
+>   **layout** con una route intercettata; i pixel li prova il gate.
+>
+> ### ❓ APERTE
+>
+> 1. **A COLOMBO**: quale archivio è MR11 e quale MR15 (idem LC31/LC41,
+>    LC71/LC81) → **66 codici** riprendono la foto di riga · esistono **foto per
+>    finitura** dei pomoli ROUND/SQUARE/CUT/PUSH? → **59 codici**.
+> 2. **Ad Andrea**: MANIGLIONE, MANIGLIA INCASSO e POMOLINO restano senza
+>    copertina. Sapendo che l'unica alternativa è mostrare *un* modello su 56
+>    spacciato per la categoria, va bene così?
+> 3. **Vercel Pro** (Hobby vieta l'uso commerciale): era deciso per il 08/08.
+> 4. **Le tre distinte reali** di MC, Peruzzi e Fosca: pendono da otto sessioni.
+> 5. La **migrazione multi-marca**, rimandata alla marca #3.
+>
+> ### 📄 SPEC E PIANO
+>
+> `docs/superpowers/specs/2026-08-06-copertine-gruppo-design.md` ·
+> `docs/superpowers/plans/2026-08-06-copertine-gruppo.md`
+>
+> ---
+
+### (Sessione precedente, 2026-08-05) — LE SETTE DRITTE DI ANDREA
+
+| Campo | Valore |
+|-------|--------|
 | **Data** | 2026-08-05 — **LE SETTE DRITTE DI ANDREA** |
 | **Fase in corso** | Fase 1 — MVP Gestionale · reparto maniglie |
 | **Sotto-fase** | Chiusa. Correzioni dal campo, misurate e applicate. |

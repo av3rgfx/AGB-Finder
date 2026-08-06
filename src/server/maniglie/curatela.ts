@@ -97,6 +97,16 @@ const CURATELE: Record<string, Curatela> = {
       MANIGLIONI: "MANIGLIONE", //        8 — plurale
       RG: "DUMMY", //                     1 — «RG ADAPTOR PER DUMMY»
 
+      // ── 2026-08-06, ottava tornata: «vanno unite» ───────────────────────
+      // Le due etichette esistono solo perché COLOMBO ha scritto il codice
+      // ATTACCATO a `MANIG.`. Vanno in MANIGLIA INCASSO, che è già dove
+      // `MANIG.` finisce, e non in un gruppo nuovo dei due: `0LC413RS-CR` —
+      // lo stesso prodotto in un'altra finitura — sta già là, perché in QUELLA
+      // riga lo spazio c'è. Un gruppo nuovo sposterebbe la spaccatura invece
+      // di chiuderla.
+      "MANIG.CD213": "MANIGLIA INCASSO", //   2
+      "MANIG.LC413RS": "MANIGLIA INCASSO", // 1
+
       // ── 2026-08-05, seconda tornata di Andrea ──────────────────────────
       // `PL.` è l'abbreviazione di `PLACCA`. La sessione precedente le teneva
       // separate perché MISURATE come due prodotti (placche in ottone `PB02*`
@@ -133,19 +143,25 @@ const CURATELE: Record<string, Curatela> = {
     // destinazioni ha un archivio fotografico, quindi lo scioglimento non può
     // prestare la foto di un modello a un altro.
     trasparenti: new Set(["COPPIA"]),
-    // 17 gruppi, 648 codici (19,1% del listino). Misurato: sono il 31,5% di
-    // ciò che è in pronta consegna, cioè proprio la parte che sta sullo
-    // scaffale — l'8,6% degli accessori è pronto contro il 4,4% del resto.
-    // POMOLINO non c'è: il titolare l'ha citato nel primo messaggio e tolto in
-    // quello definitivo.
+    // 19 gruppi, 969 codici (28,6% dei 3.391 sfogliabili). Misurato sul listino
+    // `LP 02-26` e sulla pronta consegna del 03/08: sono il 38,2% di ciò che è
+    // in pronta consegna (68 su 178), cioè proprio la parte che sta sullo
+    // scaffale. POMOLINO non c'è: il titolare l'ha citato nel primo messaggio e
+    // tolto in quello definitivo.
     accessori: new Set([
       "BATTIPORTA",
       "BLOCCAPORTA",
+      // 2026-08-06, ottava tornata: BOCCHETTA (318 codici) e GRANO (3) su
+      // richiesta del titolare, che ha verificato la versione in produzione.
+      // BOCCHETTA sta accanto a ROSETTA (105), che era già qui ed è lo stesso
+      // genere di oggetto; GRANO è arrivato rispondendo, «non è una maniglia».
+      "BOCCHETTA",
       "BUSSOLA",
       "COPRIAVVOLG.",
       "DISPOSITIVO",
       "DUMMY",
       "FERMAPORTA",
+      "GRANO",
       "INSERTO",
       "KIT",
       "MOLLA",

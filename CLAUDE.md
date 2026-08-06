@@ -978,3 +978,45 @@ dichiara «Accessori» come parola nostra. Gate: typecheck · lint · **test 1.5
 🟢 **NESSUNA MIGRAZIONE.** 🔴 **UN RUN OPS**: «Ops — Foto COLOMBO» (~7 min, idempotente; lo script azzera
 `image_url` prima di riscrivere, quindi le foto tolte spariscono da sole). Secret `NEON_DIRECT_URL`, non
 `DATABASE_URL`. Spec/piano: `docs/superpowers/{specs,plans}/2026-08-05-sette-dritte-andrea*`.
+
++ **LE COPERTINE DEI GRUPPI — ottava tornata di Andrea ✅ (branch
+`claude/ufptrade-andrea-feedback-f0s2re`)**: tre richieste (BOCCHETTA in Accessori · i due `MANIG.`
+uniti · «mancano le foto» a 12 gruppi) più una quarta arrivata rispondendo (GRANO non è una maniglia).
+**I dodici non erano dodici segnalazioni**: misurando sono *esattamente* i gruppi della banda principale
+che non mostrano una foto sulla tessera, meno BOCCHETTA che nello stesso messaggio spostava altrove —
+non ha elencato difetti, ha descritto **lo stato della griglia**. E sono **due problemi**: nove TIPOLOGIE
+che un'area immagine non ce l'hanno per disegno (PR #58) e quattro MODELLI che il riquadro ce l'hanno e
+lo mostrano **vuoto** perché le foto le abbiamo tolte noi nella #60 (provato: gli 11 codici CUT hanno
+tutti una coda di finitura, i due file non ne dichiarano nessuna, otto codici in due finiture si
+contendono il primo → 59 codici in tutto). **IL PRINCIPIO**: *la copertina di un gruppo e la foto di una
+riga sono due affermazioni diverse* — la riga dice «questo codice è così» e la finitura conta (regola di
+Andrea, intatta), la copertina dice «questo gruppo è così» e la finitura è irrilevante purché
+dichiarata. Quindi le copertine tornano **senza rimettere una foto sbagliata sulle righe**.
+**`/llm-council`** (5 advisor + 3 peer review): **no all'esemplare sulle tipologie, con la MINORANZA** —
+Andrea ha fatto togliere **509 foto** perché sbagliavano il *colore* dello stesso oggetto, e un esemplare
+sbaglia l'*oggetto*. Cadute **quattro** affermazioni degli advisor verificate nel repo: «3 con e 24
+senza» (sono **11 e 11**) · il «mosaico di 4 foto» (9 tipologie su 11 ne hanno ≤4, **4 ne hanno una**) ·
+«lancia il run ops, chiude 7 su 12» (**è un no-op**: quelle foto non sono su Blob) · «N modelli · N
+codici, il contenuto che una tipologia ha e un modello no» (POMOLINO ha **2** serie, FEDRA **8**).
+**Il punto cieco che nessuno aveva visto**: il predicato sbagliato era `isModello`. Cosa c'è:
+`soloCopertina` (un archivio **nomina** il gruppo senza **prestare** foto ai codici → MILLA/SPIDER/TRAMA
+riprendono la copertina, i 66 codici restano senza foto di riga) · `copertineDichiarate()` derivata da
+`FILE_MODELLO` (**nessuna colonna, nessuna migrazione**; 3 nomi di file nuovi, **guardati**) ·
+`previewDiGruppo` (la forma della tessera segue **la foto**, e il riquadro vuoto diventa impossibile per
+costruzione, anche su 404) · **`items-start` → `items-stretch`**, una parola: la tessera senza foto non
+si allungava e lasciava il buco sotto di sé, ed è per QUESTO che si leggeva come «immagine mancante» ·
+righe con **spazio vuoto** invece del segnaposto (336 su 353 in MANIGLIONE, sotto un'intestazione di
+serie che la foto ce l'ha; eccezione dichiarata per la scheda articolo) · la **dichiarazione una volta
+sola** «le foto sono del modello, non della finitura», che paga il debito trovato all'unanimità dal
+council (la copertina mostrava la finitura del primo codice in ordine alfabetico, mai dichiarato).
+**La domanda «foto mai esistita vs foto tolta da noi» si dissolve**: non esiste più un gruppo la cui
+copertina abbiamo tolto, e dentro il gruppo l'assenza torna ad avere un solo significato — nessun
+distintivo per riga, sarebbe rumore che non cambia nessuna decisione. Numeri finali sul listino vero:
+**88 gruppi · accessori 19 (969 codici) · banda principale 69, di cui 66 con copertina e 3 senza**
+(MANIGLIONE 353, MANIGLIA INCASSO 93, POMOLINO 41) · articoli con foto **1.609/3.456 invariato**.
+Gate: typecheck · lint · **test 1.583** · **integrazione 15/15 su listino e archivio VERI** (provata
+rossa sabotando un nome di copertina) · **browser 30/30** desktop e 375px, screenshot guardati — ed è
+la **quarta** volta che uno script di verifica mente (`ul.grid` prendeva anche il filtro finitura).
+🟢 **NESSUNA MIGRAZIONE, nessuna finestra di disservizio.** 🔴 **UN RUN OPS**: «Ops — Foto COLOMBO»
+(~7 min, idempotente) — le 7 copertine non sono su Blob perché nessun articolo le aveva scelte.
+Spec/piano: `docs/superpowers/{specs,plans}/2026-08-06-copertine-gruppo*`.
