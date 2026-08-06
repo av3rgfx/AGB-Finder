@@ -4,6 +4,8 @@ import {
   ARCHIVI,
   FILE_MODELLO,
   chiaveFoto,
+  copertinaDiGruppo,
+  copertineDichiarate,
   etichetteModello,
   finituraDiFoto,
   scattoDiProdotto,
@@ -154,12 +156,18 @@ describe("le regole per singolo FILE, dentro un archivio di accessori", () => {
     });
   });
 
-  it("riguardano SOLO archivi che non hanno un'etichetta propria", () => {
-    // Una regola per file dentro un archivio di modello sarebbe una seconda
-    // verità sullo stesso insieme di foto.
+  it("riguardano SOLO archivi che non prestano foto per conto loro", () => {
+    // Una regola per file dentro un archivio che PRESTA sarebbe una seconda
+    // verità sullo stesso insieme di foto: lo stesso scatto agganciato una
+    // volta dalla cartella e una dal file, con esiti che possono divergere.
+    //
+    // Dentro un archivio `soloCopertina` invece non c'è nulla con cui
+    // divergere — quello non aggancia niente — e la regola per file serve a
+    // dire QUALE scatto è la copertina (2026-08-06, MILLA/SPIDER/TRAMA).
     for (const chiave of Object.keys(FILE_MODELLO)) {
       const archivio = chiave.slice(0, chiave.indexOf("/"));
-      expect(ARCHIVI[archivio]?.etichetta, chiave).toBeNull();
+      const voce = ARCHIVI[archivio];
+      expect(voce?.etichetta === null || voce?.soloCopertina === true, chiave).toBe(true);
     }
   });
 
@@ -684,5 +692,51 @@ describe("un archivio soloCopertina non presta foto ai codici", () => {
     ];
     const scatti: FotoArchivio[] = [{ archivio: "01_Fedra", nome: "Fedra_2CR" }];
     expect([...abbinaFoto("COLOMBO", fedra, scatti).keys()]).toEqual(["f"]);
+  });
+});
+
+/**
+ * LA COPERTINA È DEL GRUPPO, LA FOTO È DEL CODICE.
+ *
+ * La copertina afferma «questo gruppo è così», la foto di una riga afferma
+ * «questo codice è così». La finitura conta nella seconda e non nella prima, ed
+ * è per questo che una copertina può esistere dove nessun codice ha una foto
+ * provata: i quattro gruppi di pomoli e i tre modelli ad archivio ambiguo.
+ */
+describe("copertine di gruppo", () => {
+  it("i sette gruppi senza foto di riga hanno una copertina dichiarata", () => {
+    expect(copertinaDiGruppo("CUT")).toBe("maniglie/colombo/02-pomoli/cut15-45");
+    expect(copertinaDiGruppo("PUSH")).toBe("maniglie/colombo/02-pomoli/push-45");
+    expect(copertinaDiGruppo("ROUND")).toBe("maniglie/colombo/02-pomoli/round25-45");
+    expect(copertinaDiGruppo("SQUARE")).toBe("maniglie/colombo/02-pomoli/square25-45");
+    expect(copertinaDiGruppo("MILLA")).toBe("maniglie/colombo/01-milla-1/milla1-2crcm");
+    expect(copertinaDiGruppo("SPIDER")).toBe("maniglie/colombo/01-spider-m/spider1-1cr");
+    expect(copertinaDiGruppo("TRAMA")).toBe("maniglie/colombo/01-trama-1/trama-1-1cmcr");
+  });
+
+  it("una TIPOLOGIA non ha copertina", () => {
+    // Nessuna copertina d'ufficio: sarebbe l'ESEMPLARE, cioè un modello su 56
+    // spacciato per la categoria. Verdetto del council del 2026-08-06.
+    for (const t of ["MANIGLIONE", "MANIGLIA INCASSO", "POMOLINO", "BOCCHETTA"]) {
+      expect(copertinaDiGruppo(t), t).toBeNull();
+    }
+  });
+
+  it("un gruppo che non esiste non ha copertina", () => {
+    expect(copertinaDiGruppo("NON ESISTE")).toBeNull();
+  });
+
+  it("con più file dichiarati sceglie sempre lo stesso", () => {
+    // Deterministica, o la tessera cambierebbe faccia fra due esecuzioni senza
+    // che nessuno l'abbia chiesto. ROUND e SQUARE hanno DUE file ciascuno.
+    expect(copertinaDiGruppo("ROUND")).toBe(copertinaDiGruppo("ROUND"));
+    expect(copertineDichiarate().get("SQUARE")).toBe(copertinaDiGruppo("SQUARE"));
+  });
+
+  it("ogni copertina appartiene a un gruppo che COLOMBO fotografa come modello", () => {
+    // Se una copertina finisse su una tipologia sarebbe l'esemplare travestito.
+    for (const etichetta of copertineDichiarate().keys()) {
+      expect(etichetteModello().has(etichetta), etichetta).toBe(true);
+    }
   });
 });

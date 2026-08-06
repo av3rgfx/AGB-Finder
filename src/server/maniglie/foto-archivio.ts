@@ -214,6 +214,16 @@ export const FILE_MODELLO: Record<string, VoceArchivio> = {
   // Le parole sono di COLOMBO da entrambe le parti.
   "02_Pomoli/pomolo one strawberry red": { etichetta: "POMOLO", serie: "CC15" },
   "02_Pomoli/pomolo one q lime green": { etichetta: "POMOLO", serie: "CC25" },
+
+  // ── le copertine dei tre gruppi ad archivio ambiguo (2026-08-06) ───────────
+  // Non agganciano codici — l'archivio è `soloCopertina` — e non è una
+  // contraddizione: dicono QUALE scatto è la faccia del gruppo, non a chi
+  // appartiene. Scelti guardandoli, non dal nome: sono scatti maniglia-sola in
+  // cromo su bianco, la stessa grammatica di `Fedra_2CR` che è già nella
+  // griglia. Le alternative erano scatti con la bocchetta accanto o in oro.
+  "01_Milla_1/milla1_2CRCM": { etichetta: "MILLA", soloCopertina: true },
+  "01_Spider_m/spider1_1CR": { etichetta: "SPIDER", soloCopertina: true },
+  "01_Trama_1/trama 1_1CMCR": { etichetta: "TRAMA", soloCopertina: true },
 };
 
 /**
@@ -233,6 +243,38 @@ export function etichetteModello(): ReadonlySet<string> {
   for (const v of Object.values(ARCHIVI)) if (v.etichetta) out.add(v.etichetta);
   for (const v of Object.values(FILE_MODELLO)) if (v.etichetta) out.add(v.etichetta);
   return out;
+}
+
+/**
+ * LA COPERTINA DICHIARATA di un gruppo: etichetta → chiave Blob.
+ *
+ * È una proprietà del GRUPPO, non di un suo articolo, e la differenza non è
+ * accademica: la copertina afferma «questo gruppo è così», la foto di una riga
+ * afferma «questo codice è così». La finitura conta nella seconda e non nella
+ * prima — ed è per questo che una copertina può esistere dove nessun codice ha
+ * una foto provata, cioè nei quattro gruppi di pomoli e nei tre modelli ad
+ * archivio ambiguo.
+ *
+ * Si deriva da `FILE_MODELLO`, che è già la tabella «questo FILE appartiene a
+ * questa etichetta»: nessun dato nuovo, nessuna colonna, nessun elenco da
+ * tenere allineato a mano. In ordine di chiave crescente, così due esecuzioni
+ * danno la stessa copertina allo stesso gruppo — altrimenti la tessera
+ * cambierebbe faccia fra un run e l'altro senza che nessuno l'abbia chiesto.
+ */
+export function copertineDichiarate(): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const key of Object.keys(FILE_MODELLO).sort()) {
+    const etichetta = FILE_MODELLO[key]!.etichetta;
+    if (etichetta === null || out.has(etichetta)) continue;
+    const i = key.indexOf("/");
+    out.set(etichetta, chiaveFoto(key.slice(0, i), key.slice(i + 1)));
+  }
+  return out;
+}
+
+/** La copertina dichiarata per un'etichetta, o `null`. */
+export function copertinaDiGruppo(etichetta: string): string | null {
+  return copertineDichiarate().get(etichetta) ?? null;
 }
 
 /**
