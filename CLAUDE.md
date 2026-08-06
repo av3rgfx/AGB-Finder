@@ -1017,6 +1017,33 @@ distintivo per riga, sarebbe rumore che non cambia nessuna decisione. Numeri fin
 Gate: typecheck · lint · **test 1.583** · **integrazione 15/15 su listino e archivio VERI** (provata
 rossa sabotando un nome di copertina) · **browser 30/30** desktop e 375px, screenshot guardati — ed è
 la **quarta** volta che uno script di verifica mente (`ul.grid` prendeva anche il filtro finitura).
-🟢 **NESSUNA MIGRAZIONE, nessuna finestra di disservizio.** 🔴 **UN RUN OPS**: «Ops — Foto COLOMBO»
-(~7 min, idempotente) — le 7 copertine non sono su Blob perché nessun articolo le aveva scelte.
-Spec/piano: `docs/superpowers/{specs,plans}/2026-08-06-copertine-gruppo*`.
+🟢 **NESSUNA MIGRAZIONE, nessuna finestra di disservizio.** ✅ **RUN OPS ESEGUITO** («Ops — Foto
+COLOMBO», run `31105799102`, sul ref del branch): `abbinamento 1609/3456 (46,6%) con 299 foto · 9
+copertine di gruppo` · `Blob: 3 caricate · 304 già presenti` · `1609 articoli con foto` — **fermo**,
+cioè le copertine sono tornate senza spostare una foto di riga. ⚠️ Avevo scritto «le 7 copertine non
+sono su Blob»: per **quattro era falso** — avevo misurato se fossero *scelte da un articolo*, non se
+fossero *presenti sullo store*, e i file dei pomoli erano lì dal run dell'epoca della #56 (la #60 toglie
+`image_url` ma non cancella i file). Caricate davvero: **tre** (MILLA, SPIDER, TRAMA). **PR #61 APERTA**,
+check `test` verde; il rosso è **Vercel**, la stessa failure che aveva la #60 mergiata (debito noto delle
+preview). Spec/piano: `docs/superpowers/{specs,plans}/2026-08-06-copertine-gruppo*`.
+
+**▶ PROSSIMA SESSIONE — IL LISTINO COLOMBO 2026.** Andrea ha portato il listino ufficiale nuovo
+(`Vision2026_pricelist.pdf`, nella cartella Drive registrata sopra). **Misurato a fine sessione 06/08, non
+rifarlo**: il PDF **si legge benissimo** — stesso shift di **+29 per byte** di `ER MAN 2026` (`9LVLRQ` →
+`Vision`), 778 righe, 259 prezzi, 38 modelli — a patto di NON shiftare `\n`, `\f`, `\r` e gli spazi di
+`-layout`, e soprattutto di **non saltare i byte < 32, che sono ESATTAMENTE le cifre** (lo `0` cifrato è
+`\x13`): sbagliando così si conclude che i prezzi non ci siano. 🔴 **Ma il PDF non contiene NESSUN codice
+d'ordine**: zero occorrenze di `0AM41R-CM` in 16 pagine. Pubblica **modello + finitura + prezzo**, mentre
+`articles.code` **è** il codice d'ordine — quello che Andrea digita e su cui si aggancia la pronta
+consegna. Comporlo per concatenazione è ciò che il progetto ha già pagato due volte (`A50904.22` non
+esiste), e qui sarebbe **inverificabile per costruzione** perché sono prodotti nuovi assenti da ogni file
+che abbiamo. Quindi «vecchio xlsx + nuovo PDF = listino completo» **non si può costruire**, non per
+mancanza di un parser ma di codici. → **Serve il 2026 in xlsx CON i codici d'ordine**: testo della
+richiesta pronto nel prompt. ✅ **Il PDF ha però chiuso una previsione**: i suoi prodotti nuovi (Laconica ·
+Robot6 · Robot6 S · Halo AM15/AM25 · Kubo ID45/ID55) sono **uno a uno** i cinque archivi fotografici con
+`etichetta: null` annotati «non ancora a listino» — le foto ce le abbiamo già. ⚠️ E il file è un **delta**:
+`import:listino` significa «questo file È il listino» (riscrive `lastListingAt` e poi stampa «N articoli
+NON erano in questo listino»), quindi su un delta direbbe «3.456 articoli non sono più a listino», falso.
+Nessuna migrazione attesa — i gruppi si calcolano a lettura — ma due sentinelle **devono** diventare rosse
+se un'etichetta accessorio sparisce dal listino: non si allentano. Il prompt completo è in fondo a
+`handoff.md`.

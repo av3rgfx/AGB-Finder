@@ -159,16 +159,41 @@
 >   **quarta** volta che un controllo browser passa o fallisce per la ragione
 >   sbagliata: guardare gli screenshot resta obbligatorio.
 >
-> ### 🔴 L'AZIONE OPS (una sola)
+> ### ✅ L'AZIONE OPS — GIÀ ESEGUITA
 >
-> **«Ops — Foto COLOMBO»** (`ops-foto-colombo.yml`), ~7 minuti, idempotente.
-> Serve perché le **7 foto di copertina non sono su Blob** — nessun articolo le
-> aveva scelte, e lo script carica solo `chiaviScelte`. Ora carica anche le
-> copertine (dry run verificato: `299 foto · 9 copertine di gruppo`).
-> Secret: `COLOMBO_DOWNLOAD_PASSWORD`, `BLOB_READ_WRITE_TOKEN`, **`NEON_DIRECT_URL`**.
+> **«Ops — Foto COLOMBO»**, run [`31105799102`](https://github.com/av3rgfx/AGB-Finder/actions/runs/31105799102),
+> lanciato **sul ref del branch** (su `main` lo script è ancora quello vecchio e
+> non caricherebbe le copertine). Verde in 5 minuti:
+>
+> ```
+> ▶ abbinamento: 1609/3456 articoli (46.6%) con 299 foto · 9 copertine di gruppo
+> ▶ Blob: 3 caricate · 304 già presenti
+> ✓ 1609 articoli con foto, 1847 senza
+> ```
+>
+> **Il numero che conta è fermo**: 1.609 articoli con foto, identico a prima del
+> run. Le copertine sono tornate senza spostare una sola foto di riga.
+>
+> ⚠️ **Una mia affermazione era troppo forte, e va corretta qui perché non si
+> ripeta**: avevo scritto «le sette copertine non sono su Blob». Per **quattro
+> delle sette era falso**. In fase di misura avevo controllato se quelle chiavi
+> fossero *scelte da un articolo* (`scelte.has(chiave)`), non se fossero
+> *presenti sullo store*: sono due domande diverse. I file di CUT, PUSH, ROUND e
+> SQUARE erano già lì dal run dell'epoca della #56 — la #60 tolse `image_url` dal
+> database ma **non cancella i file dallo store**. Le caricate davvero sono
+> **tre**: MILLA, SPIDER, TRAMA. Il run serviva comunque, o quelle tre tessere
+> avrebbero puntato a un file inesistente.
 >
 > 🟢 **Nessuna migrazione, nessuna finestra di disservizio**: prima del run le
-> sette tessere sono tessere-parola, che è uno stato coerente e non uno rotto.
+> sette tessere erano tessere-parola, che è uno stato coerente e non uno rotto.
+>
+> ### 📬 STATO DELLA PR
+>
+> **PR [#61](https://github.com/av3rgfx/AGB-Finder/pull/61) APERTA**. Check `test`
+> su GitHub Actions **verde**; nessun commento di review. Il rosso è **Vercel**,
+> ed è il debito noto delle preview: la **#60 aveva la failure identica** sullo
+> stesso progetto ed è mergiata e in produzione. Ipotesi mai smentita: env
+> impostate per Production e non per Preview.
 >
 > ### 🧾 DEBITO E RESIDUI
 >
@@ -2317,7 +2342,279 @@ Actions** (rete aperta → Neon:5432 ok).
 
 ---
 
-## PROMPT PER LA PROSSIMA SESSIONE
+## PROMPT PER LA PROSSIMA SESSIONE — IL LISTINO COLOMBO 2026
+
+```
+Nuova sessione. Riparti leggendo handoff.md (§«RIPRENDI DA QUI») e CLAUDE.md.
+
+WORKFLOW (regole permanenti CLAUDE.md): /using-superpowers → /brainstorming →
+/llm-council sui dubbi veri, VERIFICANDO nel repo le affermazioni degli advisor
+→ /impeccable per ogni schermata (SEMPRE mobile ≤375px + desktop, screenshot
+GUARDATI) → /ponytail ogni volta che scrivi codice → spec → piano → TDD, un
+commit per task → review indipendente del branch PRIMA della PR.
+
+VINCOLI: TypeScript strict · tutto via tRPC · query via Prisma, regole di
+dominio in TypeScript e MAI nel raw SQL · UI in italiano, codici in monospace ·
+il repo è PUBBLICO, quindi listino, giacenze e foto del fornitore non si
+committano mai · un run ops con migrazione va lanciato sul ref del branch,
+prima del merge. E la regola che vale doppio: NON TOCCARE LA SEZIONE
+SERRAMENTI (catalogo AGB, assistente, kit, clienti).
+
+═══ STATO ═══
+Verifica tu le PR invece di fidarti dell'handoff.
+· #61 «le copertine dei gruppi» (ottava tornata di Andrea): MERGIATA e in
+  produzione. Il run ops «Foto COLOMBO» è GIÀ ESEGUITO (31105799102, verde):
+  NON serve rilanciarlo.
+· #62, stesso branch: SOLO DOCUMENTAZIONE (handoff.md + CLAUDE.md). Nasce
+  perché la #61 è stata mergiata prima che arrivassero i commit di chiusura.
+  Se è ancora aperta MERGIALA PER PRIMA COSA: senza, stai leggendo un handoff
+  che non contiene niente di ciò che c'è scritto qui sotto.
+Sul rosso di Vercel vedi la sezione dedicata in fondo: non è una regressione,
+ma la diagnosi è avanzata e c'è una cosa da chiedere all'utente.
+
+═══ IL LAVORO: IL LISTINO NUOVO ═══
+Andrea ha portato il listino ufficiale COLOMBO 2026. Te lo allego nel prompt:
+«Vision2026_pricelist.pdf». Serve a sistemare le maniglie che MANCAVANO dal
+listino vecchio.
+
+✅ IL PDF È GIÀ STATO MISURATO A FINE SESSIONE 06/08 — NON RIFARE QUESTE MISURE,
+LEGGI L'ESITO. Il file è nella cartella Drive registrata in CLAUDE.md (id
+`1BO66H81J3-JlOh8vl4htwX_rHl93B1mM`), 16 pagine, 519 KB.
+
+【1】 IL PDF SI LEGGE, ECCOME. Il timore «indice dei codici in curve» era
+INFONDATO per questo file: `pdftotext -layout` restituisce tutto, cifrato con
+lo STESSO shift di +29 per byte già noto da `ER MAN 2026` (`9LVLRQ` → `Vision`).
+Il decodificatore giusto — e ci ho sbagliato due volte, quindi copialo:
+
+    raw = open('vision.txt','rb').read()
+    STRUTTURA = {10, 12, 13, 32}   # \n, \f, \r e la spaziatura di -layout:
+                                   # NON sono testo del PDF e non vanno shiftati
+    dec = ''.join(chr(b) if b in STRUTTURA else chr((b+29) % 256) for b in raw)
+
+  I due errori da non ripetere: (i) saltare i byte < 32 perde ESATTAMENTE le
+  cifre (lo '0' cifrato è `\x13`), e fa concludere che i prezzi non ci siano;
+  (ii) shiftare gli spazi li trasforma in `=` e riempie lo schermo di rumore.
+  Misurato dopo la decodifica corretta: 2.207 cifre, 778 righe, 259 prezzi nella
+  forma `NN,NN` (124 distinti), 38 riferimenti di modello.
+
+🔴【1 bis】 MA IL PDF NON CONTIENE NESSUN CODICE D'ORDINE. Misurato: **ZERO**
+occorrenze della forma `0AM41R-CM` in tutte e 16 le pagine. Pubblica MODELLO +
+FINITURA + PREZZO (`AM41 R` · `oroplus` · `105,30`), e il codice con cui si
+ORDINA non c'è. Ma `articles.code` È il codice d'ordine: è quello che Andrea
+digita, quello su cui si aggancia la pronta consegna, quello che l'agente copia.
+
+  → Comporre `0` + `AM41R` + `-` + (sigla di «oroplus») sarebbe INVENTARE
+    CODICI PER CONCATENAZIONE, l'unica cosa che questo progetto ha già pagato
+    due volte (`A50904.22` non esiste; §9 della spec sfoglio: non dedurre dal
+    codice). E qui sarebbe peggio: sono prodotti NUOVI, assenti da ogni file che
+    abbiamo, quindi la composizione sarebbe **inverificabile per costruzione**.
+    Non c'è niente contro cui controllarla. NON FARLO.
+
+  → Quindi «vecchio xlsx + nuovo PDF = listino completo» NON si può costruire.
+    Non per mancanza di un parser: per mancanza dei codici.
+
+  → 🔴 E NEMMENO «ricavare il codice dal CATALOGO». Misurato il 06/08 su
+    `ER MAN 2026` (261 pagine, 448.005 caratteri, letti sia in chiaro sia
+    decodificati +29): **ZERO codici d'ordine**, con una regexp verificata
+    riconoscere quelli veri. Il catalogo pubblica PAGINA + MODELLO + SERIE
+    (`184 Cut MS15`, `189 Robot CD45`, `97 Spider MR11`) e marca i nuovi con
+    `65 Laconica NEW`, `186 Halo NEW`, `186 Kubo NEW`. Niente codici.
+
+  → LA PROVA CHE CHIUDE LA QUESTIONE, ed è una riga del listino nuovo stesso.
+    Il 2026 elenca fra i complementi `12 FF19 BZG  Robot6` e
+    `12 BT19 BZG  Robot6 S`. Quei due prodotti sono GIÀ a DB, e i codici veri
+    sono `0FF19BZG6-CM` e `0BT19BZG6-CM`: c'è un **`6`** che nessuna fonte
+    pubblica come regola. Da `FF19 BZG` si comporrebbe `0FF19BZG-CM`, che non
+    esiste. Ed è il PRIMO complemento della lista, cioè l'unico dei prodotti
+    del 2026 su cui la verifica era possibile: tutti gli altri (AM15, AM25,
+    ID45, ID55, AM41, AM313, ID713) hanno **zero** codici a DB, essendo nuovi.
+    Sull'unico verificabile la composizione sbaglia; sugli altri sbaglierebbe
+    in silenzio. `articles.code` è il campo che Andrea digita, su cui si
+    aggancia la pronta consegna e che l'agente copia al cliente: un codice
+    inventato non dà errore, dà un ordine sbagliato.
+
+  → 💡 PISTA PER UN'ALTRA DOMANDA APERTA: il catalogo pubblica la SERIE accanto
+    al modello (`Spider MR11`, `Cut MS15`, `Robot CD45`). Non dice da solo
+    quale ARCHIVIO fotografico sia MR11 e quale MR15, ma dà un secondo
+    appiglio da confrontare con le foto — vedi le domande a COLOMBO in fondo.
+
+✅【1 ter】 COSA IL PDF HA GIÀ CHIUSO, e vale la pena saperlo. L'indice elenca i
+prodotti nuovi: Laconica · Robot6 · Robot6 S · Halo AM15/AM25 · Kubo ID45/ID55
+(+ i maniglioni Laconico e Robot6 e i complementi). Sono UNO A UNO i cinque
+archivi fotografici che in `ARCHIVI` hanno `etichetta: null` col commento
+«prodotti nuovi: a catalogo 2026, non ancora a listino» (`00a_Laconica`,
+`00b_Robot6`, `00c_Robot6S`, `00d_Halo`, `00e_Kubo`). Quella previsione, scritta
+due sessioni fa, è confermata dal listino del fornitore: **le foto dei prodotti
+nuovi le abbiamo già**, si aggancieranno da sole appena i codici arrivano.
+
+【2】 ⚠️ IL LISTINO 2026 CONTIENE (per quanto ne sa l'utente) SOLO I PRODOTTI
+NUOVI. È un DELTA, non un listino che sostituisce quello vecchio, e cambia la
+natura del lavoro:
+
+ · `import:listino` significa «QUESTO FILE È IL LISTINO». Riscrive
+   `lastListingAt` sulle sole righe importate e poi CONTA quelle rimaste
+   indietro, stampando «N articoli NON erano in questo listino: restano a DB e
+   risultano non più a listino» (`scripts/import-listino.ts:117`). Dandogli un
+   file di soli prodotti nuovi direbbe «3.456 articoli non sono più a listino»:
+   FALSO, ed è proprio la riga che l'operatore legge per capire se l'import è
+   andato bene. NON lanciarlo a cuor leggero su un delta.
+   (Il campo non è ancora mostrato a schermo — sta nel router `article.ts:428`
+   e in una fixture — quindi il danno sarebbe nel log, non nella UI. Ma è la
+   forma del difetto che questo progetto chiude da nove sessioni: un'affermazione
+   falsa prodotta senza che nessun conteggio vada a zero.)
+ · UN DELTA NON AGGIORNA I PREZZI degli altri 3.456 codici. Se il 2026 ha
+   ritoccato i prezzi esistenti — e di solito un listino nuovo lo fa — quelli
+   restano fermi al 02-26 col «temporary surcharge» del 3,5%. Va CHIESTO.
+ · L'ASPETTATIVA SUI 23 ORFANI VA MISURATA, NON DATA PER BUONA. La sessione
+   che li ha classificati disse «18 spariscono col listino aggiornato», ma
+   quella frase presupponeva un listino COMPLETO. Con un delta spariscono solo
+   quelli che sono anche PRODOTTI NUOVI: verificalo prima di prometterlo.
+
+ → LA DOMANDA GIUSTA PER ANDREA, che copre 【1 bis】 e 【2】 insieme, ed è
+   l'UNICA cosa che sblocca la sessione:
+   «Ci serve il listino COLOMBO 2026 in xlsx, con i CODICI D'ORDINE. Il PDF che
+   ci hai dato si legge benissimo, ma pubblica modello, finitura e prezzo senza
+   il codice con cui si ordina — e noi il codice non possiamo inventarlo. Se
+   c'è la versione completa (tutti i codici, non solo i prodotti nuovi) è
+   ancora meglio, perché così si aggiornano anche i prezzi di quelli che
+   trattiamo già.»
+   SE LA RISPOSTA NON ARRIVA, non c'è lavoro da fare su questo fronte: scegli
+   un altro dei task aperti in fondo e dillo all'utente. Non ripiegare su una
+   composizione dei codici.
+
+⚠️ LA PIPELINE OGGI È SOLO-XLSX, e lo verifica: `ops-neon.yml` scarica il file
+da un URL Drive e fa `head -c 2 | grep 'PK'` prima di importare. Un PDF fallisce
+lì, subito e rumorosamente (fallisce chiuso, ed è giusto così). Se la strada è
+(a), il workflow va esteso — e se il file è un delta serve comunque una
+semantica d'import diversa da «questo file è il listino».
+
+═══ COSA SI MUOVE QUANDO IL LISTINO CAMBIA (e perché quasi tutto va bene) ═══
+- 🟢 NESSUNA MIGRAZIONE ATTESA. I gruppi dello sfoglio si calcolano A LETTURA
+  (`browseLabel` + GROUP BY): un listino nuovo si colloca da solo.
+- 🟢 `lastListingAt` viene riscritto a ogni import: è ciò che rende visibile
+  «non più a listino» senza cancellare nulla. Gli zombie non spariscono da
+  soli, ma sono riconoscibili.
+- ⚠️ I 23 ORFANI della pronta consegna: 18 esistono a catalogo e mancavano solo
+  dal listino PERCHÉ IL LISTINO ERA VECCHIO. Con un listino COMPLETO sparirebbero
+  da soli, ed è la misura che dice se il lavoro è riuscito; con un DELTA di soli
+  prodotti nuovi spariscono solo quelli che sono anche nuovi. Misura, non
+  promettere. 2 sono refusi con due codici giusti ciascuno, 3 sono spazzatura.
+- ⚠️ LA CURATELA È SCRITTA SULLE PAROLE DEL FORNITORE. `curatela.ts` fonde,
+  esclude e classifica per PRIMA PAROLA della descrizione. Un listino nuovo può
+  portare parole mai viste → gruppi nuovi che nessuno ha classificato. Il
+  disegno regge (cadono nella banda che non afferma nulla), ma VA MISURATO:
+  quali prime parole nuove compaiono, e con quanti codici.
+- 🔴 DUE SENTINELLE FALLIRANNO SE UN'ETICHETTA SPARISCE, ed è il loro mestiere:
+  «ogni accessorio è un'etichetta che la curatela produce davvero»
+  (curatela.test.ts) e «ogni accessorio dichiarato esiste fra i gruppi del
+  listino» (search.integration.test.ts). Se diventano rosse NON allentarle:
+  significa che uno dei 19 accessori non è più a listino, ed è una notizia.
+- ⚠️ LE FOTO SI RIABBINANO: codici nuovi possono prendere o perdere una foto.
+  Il gate ha pavimenti espliciti (≥40% coperti, ≥30% con finitura PROVATA) e
+  una regola che non tollera una finitura provata diversa. Dopo l'import serve
+  un run di «Ops — Foto COLOMBO» per riallineare `image_url`.
+- ⚠️ `FOTO_ATTESE = 707` in scripts/foto-colombo.ts è informativo, non
+  un'asserzione: se l'archivio cambia, lo dice e prosegue.
+
+═══ ORDINE SUGGERITO ═══
+ 1. NON rifare le misure sul PDF: sono in 【1】 e 【1 bis】, già fatte. Il file
+    si legge, e non contiene codici d'ordine.
+ 2. La prima cosa è la RICHIESTA AD ANDREA (testo pronto sopra). Senza i codici
+    non c'è import possibile, e non si inventano. Se l'utente l'ha già girata e
+    l'xlsx è arrivato, si parte da lì.
+ 3. col listino in mano, importalo IN LOCALE e MISURA prima di scrivere codice:
+    quanti codici in più/in meno, quali prime parole nuove (la curatela è
+    scritta sulle parole del fornitore), quanti dei 23 orfani spariscono, come
+    si muovono gli 88 gruppi e le 66 copertine.
+ 4. solo dopo decidi se serve codice, e cosa.
+ 5. ops: «Ops — Neon» con `listino_colombo_url` aggiornato, poi «Ops — Foto
+    COLOMBO». Il secret del database si chiama NEON_DIRECT_URL, non
+    DATABASE_URL (un run è già morto in zero secondi su quello).
+
+═══ NON ROMPERE ═══
+Reparto serramenti intatto: golden del kit 16 righe / 21 pezzi / 90,20 €,
+gemello a entrata 7,5 96,29 €, antieffrazione 17 / 22 / 110,13 €, bilico
+450,03 · 766,51 · 433,46 €.
+Reparto maniglie, stato a fine sessione: 88 gruppi · accessori 19 (969 codici)
+· banda principale 69, di cui 66 con copertina e 3 senza (MANIGLIONE,
+MANIGLIA INCASSO, POMOLINO) · 1.609 articoli con foto su 3.456.
+La regola di Andrea sulle finiture NON si tocca: «se manca la foto della
+finitura giusta è meglio togliere la foto». È quella che ha portato le foto
+provate sbagliate da 350 a 0.
+
+═══ AMBIENTE (ti fa risparmiare un'ora) ═══
+- il container arriva senza node_modules e senza .env: `corepack pnpm install`,
+  `cp .env.example .env`, `bash scripts/setup-prisma-engines.sh`,
+  `corepack pnpm prisma generate`.
+- Docker MUORE da solo più volte per sessione, e Postgres con lui:
+  `(setsid nohup dockerd > /tmp/dockerd.log 2>&1 &)` poi
+  `docker start ufptrade-db ufptrade-redis`. Controllalo PRIMA di sospettare
+  qualunque altra cosa (costato dieci minuti anche stavolta).
+- Docker Hub dà 429 sui pull: riprova a intervalli, non è un guasto.
+- `bash scripts/dev-bootstrap.sh` monta tutto, migra e semina.
+- prima di prisma/tsx: `set -a; source .env; set +a`.
+- il listino COLOMBO xlsx VECCHIO e la pronta consegna stanno nella cartella
+  Drive registrata in CLAUDE.md (riuso autorizzato, non serve richiederla).
+- Playwright non è nel progetto: installalo FUORI dal repo (scratchpad) con
+  `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm i playwright`, Chromium in
+  /opt/pw-browsers/chromium-1194/chrome-linux/chrome.
+- il login in browser: aspetta l'IDRATAZIONE prima di cliccare (4s), o il form
+  parte nativamente con GET /login? e il login non avviene mai.
+- `pnpm build` scrive nella STESSA .next del dev server: non lanciarli insieme,
+  e dopo una build fai `rm -rf .next` prima di ripartire.
+- le foto stanno su Blob PRIVATO, assente in locale: per provare il LAYOUT
+  intercetta `/api/article-image` con un PNG vero. Per i pixel c'è il gate.
+- gli script di verifica in browser MENTONO: `ul.grid` prende anche il filtro
+  finitura, `details summary` prende anche il filtro colori. Scopa i selettori
+  alla sezione (`section[aria-labelledby='sfoglia-titolo']`) e GUARDA gli
+  screenshot: è la quarta volta che succede.
+- la password dell'area download COLOMBO la fornisce l'utente a richiesta e non
+  va scritta in nessun file. Serve solo per `pnpm foto:colombo`.
+
+═══ RESTANO APERTE (non bloccanti) ═══
+- A COLOMBO: quale archivio è MR11 e quale MR15 (idem LC31/LC41, LC71/LC81) →
+  66 codici riprenderebbero la foto di riga · esistono foto PER FINITURA dei
+  pomoli ROUND/SQUARE/CUT/PUSH? → altri 59.
+- Ad ANDREA: MANIGLIONE, MANIGLIA INCASSO e POMOLINO restano senza copertina.
+  Sapendo che l'alternativa è mostrare UN modello su 56 spacciato per la
+  categoria, va bene così?
+- Vercel Pro: Hobby VIETA l'uso commerciale, ed era previsto per l'08/08.
+- Le TRE DISTINTE REALI di MC, Peruzzi e Fosca: aperte da otto sessioni. È il
+  collaudo mai fatto del generatore, e vale più di quasi tutto il resto.
+- La migrazione multi-marca (`agbCode @unique`, 128 occorrenze in 22 file),
+  rimandata alla marca #3.
+
+═══ LA PREVIEW VERCEL, E UN BUCO PIÙ SERIO ═══
+🔴 `ci.yml` esegue SOLO `corepack enable`, `pnpm install`, `pnpm test`. NON
+c'è `pnpm build`. Quindi il segno verde su una PR NON dice che l'app si
+costruisce: l'unico posto dove la build viene provata è Vercel (rotta) e la
+macchina di chi sviluppa. Aggiungerlo è un passo solo, ma la build ha bisogno
+di un ambiente valido: o le sei variabili nei secret del workflow, o uno
+`skipValidation` in `src/env.ts` per la sola CI. L'utente ha detto che lo
+vuole valutare: CHIEDIGLIELO prima di farlo, e falla in una PR sua.
+
+La preview Vercel è rotta da sempre. Diagnosi ristretta il 06/08, NON rifarla:
+· NON è il codice: `pnpm build` passa con le SOLE sei variabili obbligatorie
+  (DATABASE_URL, DIRECT_URL, NEXTAUTH_URL, NEXTAUTH_SECRET ≥32, REDIS_URL,
+  IP_HASH_SECRET), tutte le opzionali spente e stringhe di connessione FINTE
+  (23 route). Quindi non serve nemmeno un database raggiungibile.
+· `src/env.ts` fa `export const env = parseEnv(process.env)` al caricamento
+  del modulo: se mancano, l'errore dice testualmente «Invalid environment
+  variables:» coi nomi.
+· Restano candidate SOLO cose dell'ambiente di build Vercel: la versione di
+  **pnpm** (pnpm 11 ignora `pnpm.overrides`, scarta `better-call@1.3.7` e
+  `better-auth` crasha al caricamento — trabocchetto già in CLAUDE.md; il repo
+  si difende col pin `packageManager: pnpm@10.17.0`, che però vale solo se
+  Vercel passa da corepack) e la versione di **Node** (in package.json non c'è
+  `engines`). Non c'è alcun `vercel.json`.
+· Si distinguono nelle PRIME ~20 RIGHE del log di build. CHIEDILE ALL'UTENTE
+  (`npx vercel inspect <dpl> --logs`, o la dashboard) invece di indovinare.
+```
+
+---
+
+## PROMPT (STORICO — avvio del reparto maniglie, superato)
+
 
 ```
 Nuova sessione. Riparti leggendo handoff.md (§«RIPRENDI DA QUI») e CLAUDE.md.
