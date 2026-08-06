@@ -1017,6 +1017,23 @@ distintivo per riga, sarebbe rumore che non cambia nessuna decisione. Numeri fin
 Gate: typecheck · lint · **test 1.583** · **integrazione 15/15 su listino e archivio VERI** (provata
 rossa sabotando un nome di copertina) · **browser 30/30** desktop e 375px, screenshot guardati — ed è
 la **quarta** volta che uno script di verifica mente (`ul.grid` prendeva anche il filtro finitura).
-🟢 **NESSUNA MIGRAZIONE, nessuna finestra di disservizio.** 🔴 **UN RUN OPS**: «Ops — Foto COLOMBO»
-(~7 min, idempotente) — le 7 copertine non sono su Blob perché nessun articolo le aveva scelte.
-Spec/piano: `docs/superpowers/{specs,plans}/2026-08-06-copertine-gruppo*`.
+🟢 **NESSUNA MIGRAZIONE, nessuna finestra di disservizio.** ✅ **RUN OPS ESEGUITO** («Ops — Foto
+COLOMBO», run `31105799102`, sul ref del branch): `abbinamento 1609/3456 (46,6%) con 299 foto · 9
+copertine di gruppo` · `Blob: 3 caricate · 304 già presenti` · `1609 articoli con foto` — **fermo**,
+cioè le copertine sono tornate senza spostare una foto di riga. ⚠️ Avevo scritto «le 7 copertine non
+sono su Blob»: per **quattro era falso** — avevo misurato se fossero *scelte da un articolo*, non se
+fossero *presenti sullo store*, e i file dei pomoli erano lì dal run dell'epoca della #56 (la #60 toglie
+`image_url` ma non cancella i file). Caricate davvero: **tre** (MILLA, SPIDER, TRAMA). **PR #61 APERTA**,
+check `test` verde; il rosso è **Vercel**, la stessa failure che aveva la #60 mergiata (debito noto delle
+preview). Spec/piano: `docs/superpowers/{specs,plans}/2026-08-06-copertine-gruppo*`.
+
+**▶ PROSSIMA SESSIONE — IL LISTINO COLOMBO 2026.** Andrea ha portato il listino nuovo
+(`Vision2026_pricelist.pdf`, allegato nel prompt), per sistemare le maniglie che mancavano da quello
+vecchio. 🔴 **La prima misura decide tutto e va fatta prima di qualunque disegno**: il listino PDF di
+COLOMBO già esaminato (ed. 06/25) ha l'**indice dei codici convertito in CURVE**, quindi `pdftotext` non
+restituisce i codici affatto — se è così anche questo, la risposta giusta NON è un OCR ma **una riga ad
+Andrea per avere l'xlsx**, il formato che ci ha già dato. E la pipeline oggi è **solo-xlsx** e lo
+verifica (`ops-neon.yml` fa `head -c 2 | grep PK` prima di importare): un PDF fallisce lì, chiuso.
+Nessuna migrazione attesa — i gruppi si calcolano a lettura — ma due sentinelle **devono** diventare
+rosse se un'etichetta accessorio sparisce dal listino, ed è il loro mestiere: non si allentano.
+Il prompt completo è in fondo a `handoff.md`.
