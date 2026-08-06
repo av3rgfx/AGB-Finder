@@ -24,8 +24,13 @@ import type { ArticleSummary } from "@/server/api/routers/article";
 export interface Gruppo {
   word: string;
   count: number;
-  /** Il gruppo È un modello: COLOMBO gli dedica un archivio fotografico. */
-  isModello: boolean;
+  /**
+   * ⚠️ `isModello` NON sta qui, e non è una dimenticanza. Ci stava finché la
+   * forma della tessera lo seguiva; da quando segue `preview` (2026-08-06) non
+   * lo leggeva più nessuno, e un campo che il server calcola, manda al browser
+   * e nessuno guarda è la classe di difetto che questo progetto ha chiuso otto
+   * volte. Al livello 2 `isModello` c'è ancora, e arriva da `browseSerie`.
+   */
   /**
    * Il gruppo non è una maniglia. È una lista di Andrea, non un dato: i pomoli
    * hanno l'archivio e maniglie non sono, MILLA e SPIDER sono maniglie senza
@@ -452,13 +457,18 @@ export function SfogliaSerie({
 /**
  * L'anteprima di una serie: **56px, FERMA**, e solo dentro una TIPOLOGIA.
  *
- * ⚠️ SEMBRA IL CONTRARIO DEL LIVELLO 1, E NON LO È. Lì `isModello` ACCENDE la
- * foto, qui la SPEGNE. Stesso principio, unità diversa: la tessera di livello 1
- * ritrae il MODELLO INTERO, e una foto lo rappresenta davvero; la riga di
- * livello 2 ritrae UNA SERIE dentro quel modello, e le serie di FEDRA sono la
- * stessa maniglia in varianti — la foto sarebbe identica su ognuna. Dentro una
- * tipologia (BOCCHETTA raccoglie 22 modelli, MANIGLIONE 52) distingue davvero.
- * Chi legge questo codice non lo «corregga» per simmetria.
+ * ⚠️ SEMBRA IL CONTRARIO DEL LIVELLO 1, E NON LO È. Lì un gruppo-modello la foto
+ * ce l'ha (è la sua COPERTINA), qui `isModello` la SPEGNE. Stesso principio,
+ * unità diversa: la tessera di livello 1 ritrae il MODELLO INTERO, e una foto lo
+ * rappresenta davvero; la riga di livello 2 ritrae UNA SERIE dentro quel
+ * modello, e le serie di FEDRA sono la stessa maniglia in varianti — la foto
+ * sarebbe identica su ognuna. Dentro una tipologia (BOCCHETTA raccoglie 28
+ * serie, MANIGLIONE 56) distingue davvero. Chi legge questo codice non lo
+ * «corregga» per simmetria.
+ *
+ * Questo `isModello` arriva da `browseSerie` ed è l'ULTIMO rimasto lato client:
+ * al livello 1 la forma della tessera segue `preview`, e il campo è stato tolto
+ * dalla risposta perché nessuno lo leggeva più.
  *
  * Non si rimpicciolisce aprendo. Era una scelta nostra, e Andrea — che il
  * programma lo usa — l'ha smentita sul campo: «confonde, e da piccola non si

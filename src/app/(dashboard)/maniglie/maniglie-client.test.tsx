@@ -83,10 +83,12 @@ function risultati(over: Record<string, unknown> = {}) {
   };
 }
 
-/** Gruppi veri del listino COLOMBO, coi conteggi veri, in ordine alfabetico. */
 /**
- * `isModello` non è un nostro giudizio: è la struttura dell'archivio
- * fotografico di COLOMBO. LARA ha il suo archivio, BOCCHETTA e KIT no.
+ * L'`isModello` del LIVELLO 2, che arriva da `browseSerie` e serve a SPEGNERE
+ * le anteprime di serie dentro un gruppo-modello (lì la foto ripeterebbe).
+ * Non è un nostro giudizio: è la struttura dell'archivio fotografico di
+ * COLOMBO. È l'ultimo `isModello` rimasto lato client — quello del livello 1 è
+ * stato tolto dalla risposta il 2026-08-06, perché non lo leggeva più nessuno.
  */
 let serieFinta: (
   righe?: unknown[],
@@ -95,23 +97,24 @@ let serieFinta: (
 ) => Record<string, unknown>;
 
 /**
- * `isAccessorio` è invece una lista di ANDREA, e non è deducibile da
- * `isModello`: KIT e ROSETTA non hanno archivio e sono accessori, MANIGLIONE
- * non ha archivio e maniglia è. BOCCHETTA è passata fra gli accessori il
- * 2026-08-06, quindi non serve più come controesempio: MANIGLIONE lo è ancora.
+ * `isAccessorio` è una lista di ANDREA e non è deducibile da nient'altro: KIT e
+ * ROSETTA sono accessori, MANIGLIONE è una maniglia, e nessuno dei tre ha una
+ * copertina. BOCCHETTA è passata fra gli accessori il 2026-08-06.
+ *
+ * ⚠️ `isModello` non c'è: dal 2026-08-06 la forma della tessera segue `preview`,
+ * e il campo è stato tolto dalla risposta perché non lo leggeva più nessuno.
  */
 const GRUPPI = [
-  { word: "BOCCHETTA", count: 318, isModello: false, isAccessorio: true, preview: null },
-  { word: "KIT", count: 140, isModello: false, isAccessorio: true, preview: null },
+  { word: "BOCCHETTA", count: 318, isAccessorio: true, preview: null },
+  { word: "KIT", count: 140, isAccessorio: true, preview: null },
   {
     word: "LARA",
     count: 28,
-    isModello: true,
     isAccessorio: false,
     preview: "/api/article-image?k=lara&size=320",
   },
-  { word: "MANIGLIONE", count: 353, isModello: false, isAccessorio: false, preview: null },
-  { word: "ROSETTA", count: 105, isModello: false, isAccessorio: true, preview: null },
+  { word: "MANIGLIONE", count: 353, isAccessorio: false, preview: null },
+  { word: "ROSETTA", count: 105, isAccessorio: true, preview: null },
 ];
 
 beforeEach(() => {
@@ -983,8 +986,10 @@ describe("ManiglieClient — la forma della tessera", () => {
     expect(kit.querySelector("svg")).toBeNull();
   });
 
-  it("un MODELLO senza preview è una tessera-parola, non un riquadro vuoto", () => {
-    soloGruppo({ word: "CUT", count: 11, isModello: true, isAccessorio: false, preview: null });
+  it("un gruppo senza preview è una tessera-parola, non un riquadro vuoto", () => {
+    // CUT è un MODELLO — COLOMBO gli dedica un archivio — rimasto senza foto
+    // dopo la PR #60. Con la vecchia regola mostrava il riquadro grigio vuoto.
+    soloGruppo({ word: "CUT", count: 11, isAccessorio: false, preview: null });
     const { container } = render(<ManiglieClient />);
     const cut = container.querySelector("a[href*='tipo=CUT']")!;
     expect(cut.querySelector("img")).toBeNull();
@@ -996,7 +1001,6 @@ describe("ManiglieClient — la forma della tessera", () => {
     soloGruppo({
       word: "CUT",
       count: 11,
-      isModello: true,
       isAccessorio: false,
       preview: "/api/article-image?k=cut&size=320",
     });

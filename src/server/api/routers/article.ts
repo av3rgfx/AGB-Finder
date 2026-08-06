@@ -229,7 +229,11 @@ export const articleRouter = createTRPCRouter({
         groups: groups.map((g) => ({
           word: g.word,
           count: g.count,
-          isModello: modelli.has(g.word),
+          // ⚠️ `isModello` NON si manda più: dal 2026-08-06 la forma della
+          // tessera segue `preview`, e nessuno lo leggeva più. Un campo che il
+          // server calcola, spedisce e nessuno guarda è la classe di difetto
+          // chiusa otto volte da questo progetto. Al livello 2 c'è ancora,
+          // perché lì SPEGNE le anteprime di serie.
           isAccessorio: accessori.has(g.word),
           // La FORMA della tessera segue `preview`, non `isModello`: vedi
           // `previewDiGruppo`. Prima seguiva `isModello`, e i quattro gruppi di

@@ -116,6 +116,16 @@
 >    alfabetico* e non era dichiarato da nessuna parte. Dentro il gruppo NON si
 >    ripete, dove sarebbe falsa.
 >
+> ### 🔍 COSA HA TROVATO LA REVIEW DI BRANCH (coi gate tutti verdi)
+>
+> **`isModello` al livello 1 era diventato un campo che nessuno legge.** Il
+> router lo calcolava e lo spediva al browser, e da quando la forma della
+> tessera segue `preview` non lo guardava più nessuno — la classe di difetto che
+> questo progetto ha chiuso otto volte, introdotta dalla sessione stessa che la
+> cita. Tolto dalla risposta e dal tipo `Gruppo`; al livello 2 resta, perché lì
+> SPEGNE le anteprime di serie. Con lui è caduto un commento diventato falso
+> («lì `isModello` ACCENDE la foto»).
+>
 > ### 🎯 LA TERZA DOMANDA — si dissolve, non è né rimedio né feature
 >
 > «Un gruppo senza foto e uno le cui foto abbiamo tolto si vedono identici.»
