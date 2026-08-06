@@ -201,11 +201,13 @@ export function SfogliaGruppi({
           {resto.length > 0 ? <GrigliaGruppi gruppi={resto} coda={coda} /> : null}
 
           {/* ⚠️ LA BANDA DI SOPRA NON HA INTESTAZIONE, ed è una scelta.
-              Qualunque nome sarebbe FALSO — «Maniglie» starebbe sopra BOCCHETTA
-              (318), MANIGLIONE (353), POMOLINO (41), GRANO (3): misurato che
-              dei 27 gruppi di solo testo 17 sono accessori e 10 no — oppure
+              Qualunque nome sarebbe FALSO — «Maniglie» starebbe sopra
+              MANIGLIONE (353), MANIGLIA INCASSO (93), POMOLINO (41) — oppure
               sarebbe una SECONDA parola nostra.
-              Ha anche un effetto che nessun test potrebbe dare: il giorno che
+              ⚠️ RI-MISURATO il 2026-08-06: con BOCCHETTA (318) e GRANO passati
+              fra gli accessori, i controesempi scendono da 10 gruppi / 787
+              codici a 3 / 487. L'argomento non regge più sui NUMERI, regge
+              sulla metà più forte, che nessun test potrebbe dare: il giorno che
               COLOMBO aggiunge un gruppo e nessuno lo classifica, quel gruppo
               cade in una banda che non afferma nulla. */}
           {accessori.length > 0 ? (

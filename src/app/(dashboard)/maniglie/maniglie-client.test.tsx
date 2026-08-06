@@ -866,7 +866,7 @@ describe("ManiglieClient — il numero dichiara di cosa parla", () => {
  * non un filtro — una sezione, zero stato, zero parametri URL).
  *
  * La banda di SOPRA non ha intestazione, e non è una svista: qualunque nome
- * sarebbe falso («Maniglie» starebbe sopra BOCCHETTA 318 e MANIGLIONE 353)
+ * sarebbe falso («Maniglie» starebbe sopra MANIGLIONE 353 e POMOLINO 41)
  * oppure sarebbe una SECONDA parola nostra. Non affermare nulla è ciò che la
  * rende onesta, e fa sì che un gruppo nuovo mai classificato non dica il falso.
  */

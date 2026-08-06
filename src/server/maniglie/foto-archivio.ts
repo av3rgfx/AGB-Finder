@@ -230,13 +230,19 @@ export const FILE_MODELLO: Record<string, VoceArchivio> = {
  * Le etichette di sfoglio che COLOMBO fotografa come MODELLO: quelle a cui
  * `ARCHIVI` o `FILE_MODELLO` assegnano un archivio.
  *
- * Misurate sul listino 02-26: **63 gruppi su 102**, e tutti e 63 hanno almeno
- * una foto. Gli altri 39 sono TIPOLOGIE (BOCCHETTA raccoglie 22 serie diverse,
- * MANIGLIONE 52): lì una foto sola sarebbe un modello a caso spacciato per la
- * categoria, e la tessera di livello 1 non ne mostra nessuna.
+ * Misurate sul listino 02-26: **66 gruppi su 88** dopo che MILLA, SPIDER e
+ * TRAMA hanno riavuto l'etichetta (2026-08-06). Gli altri 22 sono TIPOLOGIE
+ * (BOCCHETTA raccoglie 28 serie diverse, MANIGLIONE 56): lì una foto sola
+ * sarebbe un modello a caso spacciato per la categoria.
  *
  * La distinzione NON è un nostro giudizio: è come il fornitore ha organizzato
  * il suo archivio fotografico.
+ *
+ * ⚠️ Questa funzione decide se un gruppo può ricevere una preview DAI PROPRI
+ * ARTICOLI; NON decide la forma della tessera, che segue `preview` (vedi
+ * `previewDiGruppo` in `copertina.ts`). Erano la stessa cosa fino al
+ * 2026-08-06, ed è per questo che quattro modelli rimasti senza foto
+ * mostravano un riquadro vuoto.
  */
 export function etichetteModello(): ReadonlySet<string> {
   const out = new Set<string>();
