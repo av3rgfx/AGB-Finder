@@ -2370,33 +2370,68 @@ Il rosso di Vercel sulla PR è il debito noto delle preview, non una
 regressione: la #60 aveva la failure identica ed è in produzione.
 
 ═══ IL LAVORO: IL LISTINO NUOVO ═══
-Andrea ha portato il listino COLOMBO 2026. Te lo allego nel prompt:
+Andrea ha portato il listino ufficiale COLOMBO 2026. Te lo allego nel prompt:
 «Vision2026_pricelist.pdf». Serve a sistemare le maniglie che MANCAVANO dal
 listino vecchio.
 
-⚠️ LA PRIMA MISURA DECIDE TUTTA LA SESSIONE, E VA FATTA PRIMA DI QUALUNQUE
-DISEGNO: il file è un PDF, e il listino PDF di COLOMBO che abbiamo già
-esaminato (edizione 06/25, area download) ha l'INDICE DEI CODICI CONVERTITO IN
-CURVE — cioè `pdftotext` non restituisce i codici affatto. Misurato in una
-sessione precedente, non ipotizzato.
+🔴 DUE COSE DA SAPERE PRIMA DI TOCCARE QUALUNQUE COSA, ED È LA SECONDA QUELLA
+CHE FA PIÙ DANNO SE LA IGNORI.
+
+【1】 IL FILE È UN PDF, e il listino PDF di COLOMBO che abbiamo già esaminato
+(edizione 06/25, area download) ha l'INDICE DEI CODICI CONVERTITO IN CURVE —
+cioè `pdftotext` non restituisce i codici affatto. Misurato in una sessione
+precedente, non ipotizzato.
 
   pdftotext -layout Vision2026_pricelist.pdf - | head -100
 
-Due strade, e la risposta cambia tutto:
- (a) i CODICI e i PREZZI si estraggono come testo → si scrive un lettore PDF
-     accanto a `listino-parse.ts`. Quel modulo è PURO e riceve già delle
-     RIGHE (`Record<string, unknown>[]`): il pezzo nuovo è solo «dal PDF alle
-     righe», e tutta la validazione (colonne, somma prezzo+surcharge,
-     collisioni di code_norm) si riusa senza toccarla.
- (b) sono curve → NON costruire un OCR. La risposta giusta è UNA RIGA ad
-     Andrea: «ci mandi lo stesso listino in xlsx?», che è il formato che ci ha
-     già dato l'altra volta. Chiedi all'utente di inoltrargliela.
-NON saltare questa misura: costruire il parser sbagliato è mezza sessione.
+ (a) CODICI e PREZZI si estraggono come testo → si scrive un lettore PDF
+     accanto a `listino-parse.ts`. Quel modulo è PURO e riceve già delle RIGHE
+     (`Record<string, unknown>[]`): il pezzo nuovo è solo «dal PDF alle righe»,
+     e tutta la validazione (colonne, somma prezzo+surcharge, collisioni di
+     code_norm) si riusa senza toccarla.
+ (b) sono curve → NON costruire un OCR. La risposta è UNA RIGA ad Andrea, e
+     vedi 【2】 per come formularla bene.
+
+【2】 ⚠️ IL LISTINO 2026 CONTIENE (per quanto ne sa l'utente) SOLO I PRODOTTI
+NUOVI. È un DELTA, non un listino che sostituisce quello vecchio, e cambia la
+natura del lavoro:
+
+ · `import:listino` significa «QUESTO FILE È IL LISTINO». Riscrive
+   `lastListingAt` sulle sole righe importate e poi CONTA quelle rimaste
+   indietro, stampando «N articoli NON erano in questo listino: restano a DB e
+   risultano non più a listino» (`scripts/import-listino.ts:117`). Dandogli un
+   file di soli prodotti nuovi direbbe «3.456 articoli non sono più a listino»:
+   FALSO, ed è proprio la riga che l'operatore legge per capire se l'import è
+   andato bene. NON lanciarlo a cuor leggero su un delta.
+   (Il campo non è ancora mostrato a schermo — sta nel router `article.ts:428`
+   e in una fixture — quindi il danno sarebbe nel log, non nella UI. Ma è la
+   forma del difetto che questo progetto chiude da nove sessioni: un'affermazione
+   falsa prodotta senza che nessun conteggio vada a zero.)
+ · UN DELTA NON AGGIORNA I PREZZI degli altri 3.456 codici. Se il 2026 ha
+   ritoccato i prezzi esistenti — e di solito un listino nuovo lo fa — quelli
+   restano fermi al 02-26 col «temporary surcharge» del 3,5%. Va CHIESTO.
+ · L'ASPETTATIVA SUI 23 ORFANI VA MISURATA, NON DATA PER BUONA. La sessione
+   che li ha classificati disse «18 spariscono col listino aggiornato», ma
+   quella frase presupponeva un listino COMPLETO. Con un delta spariscono solo
+   quelli che sono anche PRODOTTI NUOVI: verificalo prima di prometterlo.
+
+ → LA DOMANDA GIUSTA PER ANDREA, che copre (b) e 【2】 insieme:
+   «Ci serve il listino COLOMBO 2026 COMPLETO in xlsx — tutti i codici con
+   prezzo, non solo i prodotti nuovi. Il PDF che ci hai dato ha i codici non
+   estraibili come testo, e da solo non aggiorna i prezzi di quelli che
+   trattiamo già.» Chiedi all'utente di inoltrargliela: è mezza sessione
+   risparmiata, ed è il formato che Andrea ci ha già dato l'altra volta.
+
+ → LA SECONDA MISURA, se il PDF si legge: quanti dei suoi codici SONO GIÀ NEI
+   NOSTRI 3.456 e quanti sono davvero nuovi. Dice se è un delta per davvero e
+   quanto vale. Falla con `normalizeArticleCode` (`code-norm.ts`), non a occhio:
+   lo stesso codice COLOMBO lo scrive in tre modi.
 
 ⚠️ LA PIPELINE OGGI È SOLO-XLSX, e lo verifica: `ops-neon.yml` scarica il file
 da un URL Drive e fa `head -c 2 | grep 'PK'` prima di importare. Un PDF fallisce
 lì, subito e rumorosamente (fallisce chiuso, ed è giusto così). Se la strada è
-(a), il workflow va esteso; se è (b), non si tocca niente.
+(a), il workflow va esteso — e se il file è un delta serve comunque una
+semantica d'import diversa da «questo file è il listino».
 
 ═══ COSA SI MUOVE QUANDO IL LISTINO CAMBIA (e perché quasi tutto va bene) ═══
 - 🟢 NESSUNA MIGRAZIONE ATTESA. I gruppi dello sfoglio si calcolano A LETTURA
@@ -2405,9 +2440,10 @@ lì, subito e rumorosamente (fallisce chiuso, ed è giusto così). Se la strada 
   «non più a listino» senza cancellare nulla. Gli zombie non spariscono da
   soli, ma sono riconoscibili.
 - ⚠️ I 23 ORFANI della pronta consegna: 18 esistono a catalogo e mancavano solo
-  dal listino PERCHÉ IL LISTINO ERA VECCHIO. Col nuovo devono sparire da soli —
-  ed è la misura che dice se il lavoro è riuscito. 2 sono refusi con due codici
-  giusti ciascuno, 3 sono spazzatura.
+  dal listino PERCHÉ IL LISTINO ERA VECCHIO. Con un listino COMPLETO sparirebbero
+  da soli, ed è la misura che dice se il lavoro è riuscito; con un DELTA di soli
+  prodotti nuovi spariscono solo quelli che sono anche nuovi. Misura, non
+  promettere. 2 sono refusi con due codici giusti ciascuno, 3 sono spazzatura.
 - ⚠️ LA CURATELA È SCRITTA SULLE PAROLE DEL FORNITORE. `curatela.ts` fonde,
   esclude e classifica per PRIMA PAROLA della descrizione. Un listino nuovo può
   portare parole mai viste → gruppi nuovi che nessuno ha classificato. Il
@@ -2426,12 +2462,18 @@ lì, subito e rumorosamente (fallisce chiuso, ed è giusto così). Se la strada 
   un'asserzione: se l'archivio cambia, lo dice e prosegue.
 
 ═══ ORDINE SUGGERITO ═══
- 1. la misura del PDF (sopra). Se è (b), fermati e chiedi l'xlsx.
- 2. importa il listino nuovo IN LOCALE e MISURA il delta prima di scrivere
-    codice: quanti codici in più/in meno, quali prime parole nuove, quanti dei
-    23 orfani spariscono, come si muovono i 90→88 gruppi e le copertine.
- 3. solo dopo decidi se serve codice, e cosa.
- 4. ops: «Ops — Neon» con `listino_colombo_url` aggiornato, poi «Ops — Foto
+ 1. le due misure di 【1】 e 【2】: il PDF si legge? e quanti dei suoi codici
+    sono davvero nuovi? Costano dieci minuti e decidono tutto il resto.
+ 2. se il PDF non si legge O se è davvero un delta: FERMATI e fai fare la
+    richiesta ad Andrea (testo pronto sopra). Non costruire un OCR e non
+    inventare una semantica d'import per un file che potrebbe arrivare intero
+    fra un'ora.
+ 3. col listino in mano, importalo IN LOCALE e MISURA prima di scrivere codice:
+    quanti codici in più/in meno, quali prime parole nuove (la curatela è
+    scritta sulle parole del fornitore), quanti dei 23 orfani spariscono, come
+    si muovono gli 88 gruppi e le 66 copertine.
+ 4. solo dopo decidi se serve codice, e cosa.
+ 5. ops: «Ops — Neon» con `listino_colombo_url` aggiornato, poi «Ops — Foto
     COLOMBO». Il secret del database si chiama NEON_DIRECT_URL, non
     DATABASE_URL (un run è già morto in zero secondi su quello).
 

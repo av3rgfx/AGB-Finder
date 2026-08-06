@@ -1027,13 +1027,18 @@ fossero *presenti sullo store*, e i file dei pomoli erano lì dal run dell'epoca
 check `test` verde; il rosso è **Vercel**, la stessa failure che aveva la #60 mergiata (debito noto delle
 preview). Spec/piano: `docs/superpowers/{specs,plans}/2026-08-06-copertine-gruppo*`.
 
-**▶ PROSSIMA SESSIONE — IL LISTINO COLOMBO 2026.** Andrea ha portato il listino nuovo
+**▶ PROSSIMA SESSIONE — IL LISTINO COLOMBO 2026.** Andrea ha portato il listino ufficiale nuovo
 (`Vision2026_pricelist.pdf`, allegato nel prompt), per sistemare le maniglie che mancavano da quello
-vecchio. 🔴 **La prima misura decide tutto e va fatta prima di qualunque disegno**: il listino PDF di
-COLOMBO già esaminato (ed. 06/25) ha l'**indice dei codici convertito in CURVE**, quindi `pdftotext` non
-restituisce i codici affatto — se è così anche questo, la risposta giusta NON è un OCR ma **una riga ad
-Andrea per avere l'xlsx**, il formato che ci ha già dato. E la pipeline oggi è **solo-xlsx** e lo
-verifica (`ops-neon.yml` fa `head -c 2 | grep PK` prima di importare): un PDF fallisce lì, chiuso.
-Nessuna migrazione attesa — i gruppi si calcolano a lettura — ma due sentinelle **devono** diventare
-rosse se un'etichetta accessorio sparisce dal listino, ed è il loro mestiere: non si allentano.
-Il prompt completo è in fondo a `handoff.md`.
+vecchio. 🔴 **Due misure decidono tutto, e vanno fatte prima di qualunque disegno.** (1) Il listino PDF
+di COLOMBO già esaminato (ed. 06/25) ha l'**indice dei codici convertito in CURVE**, quindi `pdftotext`
+non restituisce i codici affatto; se è così anche questo, la risposta NON è un OCR. (2) Il file
+contiene — per quanto ne sa l'utente — **solo i prodotti NUOVI**: è un **delta**, e
+`import:listino` significa «questo file È il listino» (riscrive `lastListingAt` e poi stampa «N articoli
+NON erano in questo listino»): su un delta direbbe **«3.456 articoli non sono più a listino»**, falso, ed
+è la riga che l'operatore legge per capire se l'import è andato bene. Un delta inoltre **non aggiorna i
+prezzi** degli altri 3.456, e l'aspettativa «col listino nuovo 18 dei 23 orfani spariscono» valeva per un
+listino COMPLETO: va misurata, non promessa. → **La richiesta giusta ad Andrea copre entrambe: il listino
+2026 COMPLETO in xlsx.** La pipeline oggi è **solo-xlsx** e lo verifica (`ops-neon.yml` fa
+`head -c 2 | grep PK`): un PDF fallisce lì, chiuso. Nessuna migrazione attesa — i gruppi si calcolano a
+lettura — ma due sentinelle **devono** diventare rosse se un'etichetta accessorio sparisce dal listino,
+ed è il loro mestiere: non si allentano. Il prompt completo è in fondo a `handoff.md`.
