@@ -97,6 +97,16 @@ const CURATELE: Record<string, Curatela> = {
       MANIGLIONI: "MANIGLIONE", //        8 — plurale
       RG: "DUMMY", //                     1 — «RG ADAPTOR PER DUMMY»
 
+      // ── 2026-08-06, ottava tornata: «vanno unite» ───────────────────────
+      // Le due etichette esistono solo perché COLOMBO ha scritto il codice
+      // ATTACCATO a `MANIG.`. Vanno in MANIGLIA INCASSO, che è già dove
+      // `MANIG.` finisce, e non in un gruppo nuovo dei due: `0LC413RS-CR` —
+      // lo stesso prodotto in un'altra finitura — sta già là, perché in QUELLA
+      // riga lo spazio c'è. Un gruppo nuovo sposterebbe la spaccatura invece
+      // di chiuderla.
+      "MANIG.CD213": "MANIGLIA INCASSO", //   2
+      "MANIG.LC413RS": "MANIGLIA INCASSO", // 1
+
       // ── 2026-08-05, seconda tornata di Andrea ──────────────────────────
       // `PL.` è l'abbreviazione di `PLACCA`. La sessione precedente le teneva
       // separate perché MISURATE come due prodotti (placche in ottone `PB02*`
