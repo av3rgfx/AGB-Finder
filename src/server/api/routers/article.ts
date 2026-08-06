@@ -12,6 +12,7 @@ import {
   fotoRappresentativa,
   type BrowseRow,
 } from "@/server/maniglie/browse";
+import { previewDiGruppo } from "@/server/maniglie/copertina";
 import { etichetteAccessorio, resolveLabel } from "@/server/maniglie/curatela";
 import { articleTotal } from "@/server/maniglie/price";
 import {
@@ -211,6 +212,9 @@ export const articleRouter = createTRPCRouter({
       const perGruppo = new Map<string, { code: string; imageUrl: string }>();
       for (const r of conFoto) {
         const label = browseLabel(input.brand, r.name);
+        // Il filtro sui modelli è ridondante con `previewDiGruppo`, che lo
+        // riapplica, ed è tenuto apposta: evita di costruire 22 voci che
+        // nessuno leggerà.
         if (label === null || !modelli.has(label)) continue;
         // La prima per codice, deterministicamente: dentro un gruppo-modello
         // ogni articolo ritrae lo stesso modello, quindi l'arbitrio si riduce
@@ -227,7 +231,12 @@ export const articleRouter = createTRPCRouter({
           count: g.count,
           isModello: modelli.has(g.word),
           isAccessorio: accessori.has(g.word),
-          preview: urlFoto(perGruppo.get(g.word)?.imageUrl ?? null, 320),
+          // La FORMA della tessera segue `preview`, non `isModello`: vedi
+          // `previewDiGruppo`. Prima seguiva `isModello`, e i quattro gruppi di
+          // pomoli — modelli rimasti senza foto dopo la PR #60 — mostravano il
+          // riquadro VUOTO, cioè proprio la cosa che quella regola esisteva per
+          // impedire.
+          preview: urlFoto(previewDiGruppo(g.word, perGruppo.get(g.word)?.imageUrl ?? null), 320),
         })),
       };
     }),
