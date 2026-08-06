@@ -4,6 +4,7 @@ import {
   ARCHIVI,
   FILE_MODELLO,
   chiaveFoto,
+  etichetteModello,
   finituraDiFoto,
   scattoDiProdotto,
   varianteZero,
@@ -33,19 +34,28 @@ describe("tabella degli archivi", () => {
     expect(ARCHIVI["01_Robot4"]).toEqual({ etichetta: "ROBOQUATTRO" });
   });
 
-  it("gli archivi la cui serie NON è scritta da nessuna parte non hanno etichetta", () => {
-    // MR11 vs MR15, LC31 vs LC41, LC71 vs LC81: l'ordinale della cartella non è
-    // la serie, e nessuna fonte di COLOMBO le accoppia. Indovinare produrrebbe
-    // una foto giusta di un prodotto sbagliato — che non dà errori né warning.
-    for (const a of [
-      "01_Spider_m",
-      "01_Spider_p",
-      "01_Milla_1",
-      "01_Milla_2",
-      "01_Trama_1",
-      "01_Trama_2",
-    ]) {
-      expect(ARCHIVI[a], a).toEqual({ etichetta: null });
+  /**
+   * ⚠️ Questo test asseriva `etichetta: null` per tutti e sei. Diceva il vero su
+   * una cosa (nessuna foto ai codici) e il falso su un'altra (l'archivio non
+   * nomina il gruppo): un campo solo faceva due mestieri, e per negare il
+   * secondo si negava anche il primo — perdendo la COPERTINA insieme alle
+   * righe. Dal 2026-08-06 i due mestieri sono separati.
+   *
+   * MR11 vs MR15, LC31 vs LC41, LC71 vs LC81 restano non decidibili: l'ordinale
+   * della cartella non è la serie, e nessuna fonte di COLOMBO le accoppia.
+   */
+  it("i tre archivi ambigui nominano il gruppo ma non prestano foto ai codici", () => {
+    expect(ARCHIVI["01_Spider_m"]).toEqual({ etichetta: "SPIDER", soloCopertina: true });
+    expect(ARCHIVI["01_Spider_p"]).toEqual({ etichetta: "SPIDER", soloCopertina: true });
+    expect(ARCHIVI["01_Milla_1"]).toEqual({ etichetta: "MILLA", soloCopertina: true });
+    expect(ARCHIVI["01_Milla_2"]).toEqual({ etichetta: "MILLA", soloCopertina: true });
+    expect(ARCHIVI["01_Trama_1"]).toEqual({ etichetta: "TRAMA", soloCopertina: true });
+    expect(ARCHIVI["01_Trama_2"]).toEqual({ etichetta: "TRAMA", soloCopertina: true });
+  });
+
+  it("i tre gruppi ambigui sono MODELLI: COLOMBO li fotografa", () => {
+    for (const e of ["MILLA", "SPIDER", "TRAMA"]) {
+      expect(etichetteModello().has(e), e).toBe(true);
     }
   });
 
@@ -69,17 +79,36 @@ describe("tabella degli archivi", () => {
     }
   });
 
-  it("nessuna etichetta è dichiarata due volte senza una serie che le separi", () => {
+  it("nessuna etichetta PRESTA foto da due sorgenti senza una serie che le separi", () => {
     // È l'invariante che tiene in piedi il gradino 1: se due sorgenti finissero
     // sulla stessa etichetta senza serie, la foto verrebbe scelta a caso fra due
     // prodotti diversi — e nulla andrebbe a zero. Guarda ENTRAMBE le tabelle:
     // controllarne una sola lascerebbe scoperto proprio il caso misto.
+    //
+    // ⚠️ Le voci `soloCopertina` sono fuori perché non prestano niente: sono
+    // esattamente i sei archivi in cui la sorgente doppia c'è ed è irrisolta
+    // (MILLA, SPIDER, TRAMA), e il flag è il modo di dichiararlo invece di
+    // negare l'etichetta. L'invariante vale su chi presta.
     const perEtichetta = new Map<string, number>();
     for (const voce of [...Object.values(ARCHIVI), ...Object.values(FILE_MODELLO)]) {
-      if (voce.etichetta === null || voce.serie) continue;
+      if (voce.etichetta === null || voce.serie || voce.soloCopertina) continue;
       perEtichetta.set(voce.etichetta, (perEtichetta.get(voce.etichetta) ?? 0) + 1);
     }
     expect([...perEtichetta.entries()].filter(([, n]) => n > 1)).toEqual([]);
+  });
+
+  it("un'etichetta soloCopertina non ha ANCHE una sorgente che presta", () => {
+    // Il caso misto è il pericolo vero: se MILLA avesse un archivio
+    // `soloCopertina` e un altro normale, il flag sembrerebbe attivo e metà dei
+    // suoi codici prenderebbe comunque la foto — la copertura salirebbe e
+    // nessun conteggio andrebbe a zero.
+    const soloCopertina = new Set<string>();
+    const prestano = new Set<string>();
+    for (const voce of [...Object.values(ARCHIVI), ...Object.values(FILE_MODELLO)]) {
+      if (voce.etichetta === null) continue;
+      (voce.soloCopertina ? soloCopertina : prestano).add(voce.etichetta);
+    }
+    expect([...soloCopertina].filter((e) => prestano.has(e))).toEqual([]);
   });
 
   it("nessuna coppia (etichetta, serie) è dichiarata da due sorgenti", () => {
@@ -614,5 +643,46 @@ describe("la finitura in coda, senza la cifra", () => {
   it("una coda di due lettere che non è una finitura resta illeggibile", () => {
     expect(finituraDiFoto("Heidi_DK_OP")).toBeNull(); // OP non è fra le 31
     expect(finituraDiFoto("Flessa_5NK")).toBeNull();
+  });
+});
+
+/**
+ * LA PROPRIETÀ CHE VALE 66 CODICI.
+ *
+ * `soloCopertina` esiste per dare a MILLA, SPIDER e TRAMA la copertina SENZA
+ * dare ai loro codici la foto dell'archivio sbagliato. Se qualcuno togliesse il
+ * flag, la tabella continuerebbe a compilare, la copertura SALIREBBE, e 66
+ * codici mostrerebbero una foto che esiste, si vede benissimo, ed è di un altro
+ * prodotto. Nessun conteggio andrebbe a zero.
+ */
+describe("un archivio soloCopertina non presta foto ai codici", () => {
+  const articoli: ArticoloDaAbbinare[] = [
+    { id: "milla", code: "0LC31R-CM", codeNorm: "0LC31RCM", name: "MILLA LC31R CROMAT" },
+    { id: "spider", code: "0MR11R-CR", codeNorm: "0MR11RCR", name: "SPIDER MR11R CROMO" },
+    { id: "trama", code: "0LC71R-CM", codeNorm: "0LC71RCM", name: "TRAMA LC71R CROMAT" },
+  ];
+  const foto: FotoArchivio[] = [
+    { archivio: "01_Milla_1", nome: "milla1_2CRCM" },
+    { archivio: "01_Milla_2", nome: "milla2_1OLOM" },
+    { archivio: "01_Spider_m", nome: "spider1_1CR" },
+    { archivio: "01_Spider_p", nome: "spider2_p_1CR" },
+    { archivio: "01_Trama_1", nome: "trama 1_1CMCR" },
+    { archivio: "01_Trama_2", nome: "trama2_1CMCR" },
+  ];
+
+  it("nessuno dei tre gruppi riceve una foto di riga", () => {
+    expect([...abbinaFoto("COLOMBO", articoli, foto).keys()]).toEqual([]);
+  });
+
+  /**
+   * La prova che il test sopra non passa per la ragione sbagliata: con lo
+   * stesso impianto, un archivio SENZA il flag la foto la presta eccome.
+   */
+  it("lo stesso impianto su un archivio normale la foto la presta", () => {
+    const fedra: ArticoloDaAbbinare[] = [
+      { id: "f", code: "0AC11R-CR", codeNorm: "0AC11RCR", name: "FEDRA AC11R CROMO" },
+    ];
+    const scatti: FotoArchivio[] = [{ archivio: "01_Fedra", nome: "Fedra_2CR" }];
+    expect([...abbinaFoto("COLOMBO", fedra, scatti).keys()]).toEqual(["f"]);
   });
 });

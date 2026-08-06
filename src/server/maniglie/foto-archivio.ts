@@ -32,6 +32,16 @@ export interface VoceArchivio {
   etichetta: string | null;
   /** Prefisso di codice; solo dove un'etichetta ha più archivi. */
   serie?: string;
+  /**
+   * L'archivio **nomina** il gruppo ma **non presta foto ai suoi codici**.
+   *
+   * Serve dove COLOMBO tiene due archivi per lo stesso gruppo e non dice quale
+   * serie sia quale (MR11/MR15, LC31/LC41, LC71/LC81): «che aspetto ha una
+   * MILLA» ha una risposta, «questo codice quale delle due è» no. Sono due
+   * domande diverse, e prima erano lo stesso campo — si negava l'etichetta per
+   * negare il prestito, e si perdeva la copertina insieme alle righe.
+   */
+  soloCopertina?: true;
 }
 
 export const ARCHIVI: Record<string, VoceArchivio> = {
@@ -135,18 +145,20 @@ export const ARCHIVI: Record<string, VoceArchivio> = {
   "01_Bold_m": { etichetta: "BOLD" },
   "01_Bold_p": { etichetta: null },
 
-  // ── i tre casi NON DECIDIBILI ──────────────────────────────────────────────
+  // ── i tre casi in cui la SERIE non è decidibile ────────────────────────────
   // SPIDER ha due maniglie a listino (MR11 e MR15), MILLA due (LC31, LC41),
   // TRAMA due (LC71, LC81). Gli archivi sono due per ciascuno, ma l'ordinale
   // della cartella non è la serie e nessuna fonte di COLOMBO li accoppia.
-  // 66 codici restano senza foto: è il prezzo dichiarato di non indovinare.
+  // I 66 codici restano senza foto DI RIGA: è il prezzo dichiarato di non
+  // indovinare. La COPERTINA no — «che aspetto ha una MILLA» ha una risposta,
+  // ed è per questo che dal 2026-08-06 l'etichetta c'è e il prestito no.
   // → domanda aperta per COLOMBO (handoff.md §DA CHIEDERE).
-  "01_Spider_m": { etichetta: null },
-  "01_Spider_p": { etichetta: null },
-  "01_Milla_1": { etichetta: null },
-  "01_Milla_2": { etichetta: null },
-  "01_Trama_1": { etichetta: null },
-  "01_Trama_2": { etichetta: null },
+  "01_Spider_m": { etichetta: "SPIDER", soloCopertina: true },
+  "01_Spider_p": { etichetta: "SPIDER", soloCopertina: true },
+  "01_Milla_1": { etichetta: "MILLA", soloCopertina: true },
+  "01_Milla_2": { etichetta: "MILLA", soloCopertina: true },
+  "01_Trama_1": { etichetta: "TRAMA", soloCopertina: true },
+  "01_Trama_2": { etichetta: "TRAMA", soloCopertina: true },
 
   // ── accessori: qui il codice sta nel NOME DEL FILE (gradino 3) ─────────────
   // Sono le sezioni che per nome di modello sarebbero irraggiungibili —
@@ -425,6 +437,11 @@ export function abbinaFoto(
     const serieDelCodice = senzaZeroIniziale(a.codeNorm);
     const candidate = usabili.filter((f) => {
       if (!f.voce || f.voce.etichetta !== etichetta) return false;
+      // L'archivio nomina il gruppo ma non presta foto ai codici: vedi
+      // `soloCopertina`. Senza questa riga, aver dato l'etichetta a
+      // MILLA/SPIDER/TRAMA rimetterebbe 66 foto dell'archivio sbagliato — una
+      // foto che esiste, si vede benissimo, ed è di un altro prodotto.
+      if (f.voce.soloCopertina) return false;
       if (f.voce.serie && !serieDelCodice.startsWith(f.voce.serie)) return false;
       return f.zero === zero;
     });
