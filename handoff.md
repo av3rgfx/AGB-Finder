@@ -2410,6 +2410,31 @@ digita, quello su cui si aggancia la pronta consegna, quello che l'agente copia.
   → Quindi «vecchio xlsx + nuovo PDF = listino completo» NON si può costruire.
     Non per mancanza di un parser: per mancanza dei codici.
 
+  → 🔴 E NEMMENO «ricavare il codice dal CATALOGO». Misurato il 06/08 su
+    `ER MAN 2026` (261 pagine, 448.005 caratteri, letti sia in chiaro sia
+    decodificati +29): **ZERO codici d'ordine**, con una regexp verificata
+    riconoscere quelli veri. Il catalogo pubblica PAGINA + MODELLO + SERIE
+    (`184 Cut MS15`, `189 Robot CD45`, `97 Spider MR11`) e marca i nuovi con
+    `65 Laconica NEW`, `186 Halo NEW`, `186 Kubo NEW`. Niente codici.
+
+  → LA PROVA CHE CHIUDE LA QUESTIONE, ed è una riga del listino nuovo stesso.
+    Il 2026 elenca fra i complementi `12 FF19 BZG  Robot6` e
+    `12 BT19 BZG  Robot6 S`. Quei due prodotti sono GIÀ a DB, e i codici veri
+    sono `0FF19BZG6-CM` e `0BT19BZG6-CM`: c'è un **`6`** che nessuna fonte
+    pubblica come regola. Da `FF19 BZG` si comporrebbe `0FF19BZG-CM`, che non
+    esiste. Ed è il PRIMO complemento della lista, cioè l'unico dei prodotti
+    del 2026 su cui la verifica era possibile: tutti gli altri (AM15, AM25,
+    ID45, ID55, AM41, AM313, ID713) hanno **zero** codici a DB, essendo nuovi.
+    Sull'unico verificabile la composizione sbaglia; sugli altri sbaglierebbe
+    in silenzio. `articles.code` è il campo che Andrea digita, su cui si
+    aggancia la pronta consegna e che l'agente copia al cliente: un codice
+    inventato non dà errore, dà un ordine sbagliato.
+
+  → 💡 PISTA PER UN'ALTRA DOMANDA APERTA: il catalogo pubblica la SERIE accanto
+    al modello (`Spider MR11`, `Cut MS15`, `Robot CD45`). Non dice da solo
+    quale ARCHIVIO fotografico sia MR11 e quale MR15, ma dà un secondo
+    appiglio da confrontare con le foto — vedi le domande a COLOMBO in fondo.
+
 ✅【1 ter】 COSA IL PDF HA GIÀ CHIUSO, e vale la pena saperlo. L'indice elenca i
 prodotti nuovi: Laconica · Robot6 · Robot6 S · Halo AM15/AM25 · Kubo ID45/ID55
 (+ i maniglioni Laconico e Robot6 e i complementi). Sono UNO A UNO i cinque
