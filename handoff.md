@@ -2374,23 +2374,50 @@ Andrea ha portato il listino ufficiale COLOMBO 2026. Te lo allego nel prompt:
 «Vision2026_pricelist.pdf». Serve a sistemare le maniglie che MANCAVANO dal
 listino vecchio.
 
-🔴 DUE COSE DA SAPERE PRIMA DI TOCCARE QUALUNQUE COSA, ED È LA SECONDA QUELLA
-CHE FA PIÙ DANNO SE LA IGNORI.
+✅ IL PDF È GIÀ STATO MISURATO A FINE SESSIONE 06/08 — NON RIFARE QUESTE MISURE,
+LEGGI L'ESITO. Il file è nella cartella Drive registrata in CLAUDE.md (id
+`1BO66H81J3-JlOh8vl4htwX_rHl93B1mM`), 16 pagine, 519 KB.
 
-【1】 IL FILE È UN PDF, e il listino PDF di COLOMBO che abbiamo già esaminato
-(edizione 06/25, area download) ha l'INDICE DEI CODICI CONVERTITO IN CURVE —
-cioè `pdftotext` non restituisce i codici affatto. Misurato in una sessione
-precedente, non ipotizzato.
+【1】 IL PDF SI LEGGE, ECCOME. Il timore «indice dei codici in curve» era
+INFONDATO per questo file: `pdftotext -layout` restituisce tutto, cifrato con
+lo STESSO shift di +29 per byte già noto da `ER MAN 2026` (`9LVLRQ` → `Vision`).
+Il decodificatore giusto — e ci ho sbagliato due volte, quindi copialo:
 
-  pdftotext -layout Vision2026_pricelist.pdf - | head -100
+    raw = open('vision.txt','rb').read()
+    STRUTTURA = {10, 12, 13, 32}   # \n, \f, \r e la spaziatura di -layout:
+                                   # NON sono testo del PDF e non vanno shiftati
+    dec = ''.join(chr(b) if b in STRUTTURA else chr((b+29) % 256) for b in raw)
 
- (a) CODICI e PREZZI si estraggono come testo → si scrive un lettore PDF
-     accanto a `listino-parse.ts`. Quel modulo è PURO e riceve già delle RIGHE
-     (`Record<string, unknown>[]`): il pezzo nuovo è solo «dal PDF alle righe»,
-     e tutta la validazione (colonne, somma prezzo+surcharge, collisioni di
-     code_norm) si riusa senza toccarla.
- (b) sono curve → NON costruire un OCR. La risposta è UNA RIGA ad Andrea, e
-     vedi 【2】 per come formularla bene.
+  I due errori da non ripetere: (i) saltare i byte < 32 perde ESATTAMENTE le
+  cifre (lo '0' cifrato è `\x13`), e fa concludere che i prezzi non ci siano;
+  (ii) shiftare gli spazi li trasforma in `=` e riempie lo schermo di rumore.
+  Misurato dopo la decodifica corretta: 2.207 cifre, 778 righe, 259 prezzi nella
+  forma `NN,NN` (124 distinti), 38 riferimenti di modello.
+
+🔴【1 bis】 MA IL PDF NON CONTIENE NESSUN CODICE D'ORDINE. Misurato: **ZERO**
+occorrenze della forma `0AM41R-CM` in tutte e 16 le pagine. Pubblica MODELLO +
+FINITURA + PREZZO (`AM41 R` · `oroplus` · `105,30`), e il codice con cui si
+ORDINA non c'è. Ma `articles.code` È il codice d'ordine: è quello che Andrea
+digita, quello su cui si aggancia la pronta consegna, quello che l'agente copia.
+
+  → Comporre `0` + `AM41R` + `-` + (sigla di «oroplus») sarebbe INVENTARE
+    CODICI PER CONCATENAZIONE, l'unica cosa che questo progetto ha già pagato
+    due volte (`A50904.22` non esiste; §9 della spec sfoglio: non dedurre dal
+    codice). E qui sarebbe peggio: sono prodotti NUOVI, assenti da ogni file che
+    abbiamo, quindi la composizione sarebbe **inverificabile per costruzione**.
+    Non c'è niente contro cui controllarla. NON FARLO.
+
+  → Quindi «vecchio xlsx + nuovo PDF = listino completo» NON si può costruire.
+    Non per mancanza di un parser: per mancanza dei codici.
+
+✅【1 ter】 COSA IL PDF HA GIÀ CHIUSO, e vale la pena saperlo. L'indice elenca i
+prodotti nuovi: Laconica · Robot6 · Robot6 S · Halo AM15/AM25 · Kubo ID45/ID55
+(+ i maniglioni Laconico e Robot6 e i complementi). Sono UNO A UNO i cinque
+archivi fotografici che in `ARCHIVI` hanno `etichetta: null` col commento
+«prodotti nuovi: a catalogo 2026, non ancora a listino» (`00a_Laconica`,
+`00b_Robot6`, `00c_Robot6S`, `00d_Halo`, `00e_Kubo`). Quella previsione, scritta
+due sessioni fa, è confermata dal listino del fornitore: **le foto dei prodotti
+nuovi le abbiamo già**, si aggancieranno da sole appena i codici arrivano.
 
 【2】 ⚠️ IL LISTINO 2026 CONTIENE (per quanto ne sa l'utente) SOLO I PRODOTTI
 NUOVI. È un DELTA, non un listino che sostituisce quello vecchio, e cambia la
@@ -2415,17 +2442,17 @@ natura del lavoro:
    quella frase presupponeva un listino COMPLETO. Con un delta spariscono solo
    quelli che sono anche PRODOTTI NUOVI: verificalo prima di prometterlo.
 
- → LA DOMANDA GIUSTA PER ANDREA, che copre (b) e 【2】 insieme:
-   «Ci serve il listino COLOMBO 2026 COMPLETO in xlsx — tutti i codici con
-   prezzo, non solo i prodotti nuovi. Il PDF che ci hai dato ha i codici non
-   estraibili come testo, e da solo non aggiorna i prezzi di quelli che
-   trattiamo già.» Chiedi all'utente di inoltrargliela: è mezza sessione
-   risparmiata, ed è il formato che Andrea ci ha già dato l'altra volta.
-
- → LA SECONDA MISURA, se il PDF si legge: quanti dei suoi codici SONO GIÀ NEI
-   NOSTRI 3.456 e quanti sono davvero nuovi. Dice se è un delta per davvero e
-   quanto vale. Falla con `normalizeArticleCode` (`code-norm.ts`), non a occhio:
-   lo stesso codice COLOMBO lo scrive in tre modi.
+ → LA DOMANDA GIUSTA PER ANDREA, che copre 【1 bis】 e 【2】 insieme, ed è
+   l'UNICA cosa che sblocca la sessione:
+   «Ci serve il listino COLOMBO 2026 in xlsx, con i CODICI D'ORDINE. Il PDF che
+   ci hai dato si legge benissimo, ma pubblica modello, finitura e prezzo senza
+   il codice con cui si ordina — e noi il codice non possiamo inventarlo. Se
+   c'è la versione completa (tutti i codici, non solo i prodotti nuovi) è
+   ancora meglio, perché così si aggiornano anche i prezzi di quelli che
+   trattiamo già.»
+   SE LA RISPOSTA NON ARRIVA, non c'è lavoro da fare su questo fronte: scegli
+   un altro dei task aperti in fondo e dillo all'utente. Non ripiegare su una
+   composizione dei codici.
 
 ⚠️ LA PIPELINE OGGI È SOLO-XLSX, e lo verifica: `ops-neon.yml` scarica il file
 da un URL Drive e fa `head -c 2 | grep 'PK'` prima di importare. Un PDF fallisce
@@ -2462,12 +2489,11 @@ semantica d'import diversa da «questo file è il listino».
   un'asserzione: se l'archivio cambia, lo dice e prosegue.
 
 ═══ ORDINE SUGGERITO ═══
- 1. le due misure di 【1】 e 【2】: il PDF si legge? e quanti dei suoi codici
-    sono davvero nuovi? Costano dieci minuti e decidono tutto il resto.
- 2. se il PDF non si legge O se è davvero un delta: FERMATI e fai fare la
-    richiesta ad Andrea (testo pronto sopra). Non costruire un OCR e non
-    inventare una semantica d'import per un file che potrebbe arrivare intero
-    fra un'ora.
+ 1. NON rifare le misure sul PDF: sono in 【1】 e 【1 bis】, già fatte. Il file
+    si legge, e non contiene codici d'ordine.
+ 2. La prima cosa è la RICHIESTA AD ANDREA (testo pronto sopra). Senza i codici
+    non c'è import possibile, e non si inventano. Se l'utente l'ha già girata e
+    l'xlsx è arrivato, si parte da lì.
  3. col listino in mano, importalo IN LOCALE e MISURA prima di scrivere codice:
     quanti codici in più/in meno, quali prime parole nuove (la curatela è
     scritta sulle parole del fornitore), quanti dei 23 orfani spariscono, come

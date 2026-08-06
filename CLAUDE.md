@@ -1028,17 +1028,22 @@ check `test` verde; il rosso è **Vercel**, la stessa failure che aveva la #60 m
 preview). Spec/piano: `docs/superpowers/{specs,plans}/2026-08-06-copertine-gruppo*`.
 
 **▶ PROSSIMA SESSIONE — IL LISTINO COLOMBO 2026.** Andrea ha portato il listino ufficiale nuovo
-(`Vision2026_pricelist.pdf`, allegato nel prompt), per sistemare le maniglie che mancavano da quello
-vecchio. 🔴 **Due misure decidono tutto, e vanno fatte prima di qualunque disegno.** (1) Il listino PDF
-di COLOMBO già esaminato (ed. 06/25) ha l'**indice dei codici convertito in CURVE**, quindi `pdftotext`
-non restituisce i codici affatto; se è così anche questo, la risposta NON è un OCR. (2) Il file
-contiene — per quanto ne sa l'utente — **solo i prodotti NUOVI**: è un **delta**, e
+(`Vision2026_pricelist.pdf`, nella cartella Drive registrata sopra). **Misurato a fine sessione 06/08, non
+rifarlo**: il PDF **si legge benissimo** — stesso shift di **+29 per byte** di `ER MAN 2026` (`9LVLRQ` →
+`Vision`), 778 righe, 259 prezzi, 38 modelli — a patto di NON shiftare `\n`, `\f`, `\r` e gli spazi di
+`-layout`, e soprattutto di **non saltare i byte < 32, che sono ESATTAMENTE le cifre** (lo `0` cifrato è
+`\x13`): sbagliando così si conclude che i prezzi non ci siano. 🔴 **Ma il PDF non contiene NESSUN codice
+d'ordine**: zero occorrenze di `0AM41R-CM` in 16 pagine. Pubblica **modello + finitura + prezzo**, mentre
+`articles.code` **è** il codice d'ordine — quello che Andrea digita e su cui si aggancia la pronta
+consegna. Comporlo per concatenazione è ciò che il progetto ha già pagato due volte (`A50904.22` non
+esiste), e qui sarebbe **inverificabile per costruzione** perché sono prodotti nuovi assenti da ogni file
+che abbiamo. Quindi «vecchio xlsx + nuovo PDF = listino completo» **non si può costruire**, non per
+mancanza di un parser ma di codici. → **Serve il 2026 in xlsx CON i codici d'ordine**: testo della
+richiesta pronto nel prompt. ✅ **Il PDF ha però chiuso una previsione**: i suoi prodotti nuovi (Laconica ·
+Robot6 · Robot6 S · Halo AM15/AM25 · Kubo ID45/ID55) sono **uno a uno** i cinque archivi fotografici con
+`etichetta: null` annotati «non ancora a listino» — le foto ce le abbiamo già. ⚠️ E il file è un **delta**:
 `import:listino` significa «questo file È il listino» (riscrive `lastListingAt` e poi stampa «N articoli
-NON erano in questo listino»): su un delta direbbe **«3.456 articoli non sono più a listino»**, falso, ed
-è la riga che l'operatore legge per capire se l'import è andato bene. Un delta inoltre **non aggiorna i
-prezzi** degli altri 3.456, e l'aspettativa «col listino nuovo 18 dei 23 orfani spariscono» valeva per un
-listino COMPLETO: va misurata, non promessa. → **La richiesta giusta ad Andrea copre entrambe: il listino
-2026 COMPLETO in xlsx.** La pipeline oggi è **solo-xlsx** e lo verifica (`ops-neon.yml` fa
-`head -c 2 | grep PK`): un PDF fallisce lì, chiuso. Nessuna migrazione attesa — i gruppi si calcolano a
-lettura — ma due sentinelle **devono** diventare rosse se un'etichetta accessorio sparisce dal listino,
-ed è il loro mestiere: non si allentano. Il prompt completo è in fondo a `handoff.md`.
+NON erano in questo listino»), quindi su un delta direbbe «3.456 articoli non sono più a listino», falso.
+Nessuna migrazione attesa — i gruppi si calcolano a lettura — ma due sentinelle **devono** diventare rosse
+se un'etichetta accessorio sparisce dal listino: non si allentano. Il prompt completo è in fondo a
+`handoff.md`.
