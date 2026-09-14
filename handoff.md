@@ -18,6 +18,42 @@
 
 ---
 
+> **▶ 2026-09-14 — UNA CORREZIONE CHE CAMBIA LA PROSSIMA SESSIONE**
+>
+> A fine sessione 06/08 avevo concluso che il listino COLOMBO 2026
+> (`Vision2026_pricelist.pdf`) **non contenesse codici d'ordine**, e quindi che
+> il lavoro fosse bloccato in attesa di un xlsx. **Era sbagliato, e l'ha visto
+> l'utente.** Avevo cercato nel PDF la forma **assemblata** del codice
+> (`0CD41R-CM`) e, non trovandola, avevo risposto «i codici non ci sono» a una
+> domanda che non era quella.
+>
+> Il PDF pubblica le **due metà** del codice, in due punti diversi:
+>
+> | dove | cosa dà | esempio (LACONICA, p7) |
+> |---|---|---|
+> | pagina prodotto | **codice del modello** + prezzo **per ogni finitura, scritta per nome** | `AM41 RSB` · oroplus **94,70** · grafite mat **114,20** |
+> | legenda, **da p4 in giù** | la **sigla** di ogni finitura | `OL` Oroplus · `GM` Grafite Mat · `UB` Umber Bronze |
+>
+> Il codice d'ordine è modello + sigla. **E non è «inventare per
+> concatenazione»** — il divieto (§9; `A50904.22` non esiste) resta in piedi,
+> ma qui non si applica, perché esiste l'insieme di prova: **il listino vecchio
+> a DB sono 3.456 risposte già note**, ogni `code` accanto alla descrizione che
+> contiene modello e finitura per nome (`0CB71R-OL` ↔ «LARA **CB71R**
+> **OROPLUS**»). La regola si **misura**, e con un'accuratezza in mano si
+> decide. Le 12 sigle della legenda sono **già** in
+> `src/server/maniglie/finiture.ts`, con `finituraDiTesto()` che sa che «cromo
+> matte» è CROMAT e non CROMO.
+>
+> **La lezione**: la misura era corretta (zero occorrenze della forma
+> assemblata), la conclusione no. Quando una misura dice «manca», prima di
+> dichiarare un blocco vale la pena chiedersi se manca la cosa o manca solo
+> nella forma in cui la stavo cercando.
+>
+> Il piano completo è nel §PROMPT in fondo. **Il resto di questo handoff resta
+> valido**; l'unica affermazione ritirata è quella qui sopra.
+
+---
+
 > **▶ RIPRENDI DA QUI**
 >
 > ## COSA HA CHIESTO ANDREA, E COSA HA RIVELATO MISURARLO
@@ -2338,11 +2374,12 @@ Actions** (rete aperta → Neon:5432 ok).
 | 2026-07-25 | **BONIFICA KIT ARTECH LEGNO** (8 task TDD, un commit per task, dopo il merge #32): studio di tutti i moduli kit contro il **listino AGB 2026** → dei 4 template attivi, **3 producevano distinte non ordinabili**. **PVC spento** (i 4 codici material-specific esistono solo nelle pagine-certificato ift p0013 (11)/p0395 (393), senza prezzo; altri 7 dedotti per simmetria non esistono affatto) · **battente spento** (schema p0416 (414) = 21 voci, il modulo ne generava 5: mancava la **sospensione superiore**; schema composito → terna cerniere non decidibile) · **pilota corretto** (supporto cerniera `A50801.01.0N`→**`A50805.05.DX/.SX`**, banda cremonese GR02 610, descrizione incontro ribalta 9x18) · **guardia `assertPilotGeometry`** (aria/interasse/battuta/sede erano raccolti e ignorati) · **vasistas riscritto** dallo schema p0418 (416): forbici per **LBB**, via DSS+incontro DSS, dentro le **cerniere** (voci 10-11-12) e il 2° terminale, `sashWeightKg` opzionale per le NB sul peso → golden **13 righe/19 pezzi** · **parser catalogo allargato** ai segmenti alfanumerici (**+1.297 codici a prezzo, 6.191→7.488**) · schede `kit-assunzioni/` riscritte come esito + nuova `legno.md` con l'indice **globale** delle 10 domande per l'esperto. Attive: **anta-ribalta LEGNO + vasistas LEGNO**. Gate: typecheck·lint·**test 589/11 skip**. Verifica browser wizard desktop+375px (8 screenshot). **AZIONI OPS AL MERGE**: «Ops — Neon» completo (migrazione `kit_sash_weight` + **RE-IMPORT catalogo** + `db:seed:kit` + embed) e audit `kit_requests`. | `claude/kit-engine-study-wfo2hq` → PR #33 + #34 mergiate |
 | 2026-08-01 | **CAMBIARE LE VARIANTI DOPO LA CREAZIONE** (8 task TDD): «Modifica componenti» sulla scheda riapre il wizard precompilato su `?da=<id>`; al conferma nasce una nuova versione. Contratto `ricalcola({kitRequestId, variants?})` — assente eredita · `{}` **resetta** (scrive NULL) · oggetto **sostituisce**; il reset non è inventato (le 5 chiavi erano già `.optional()` in uno `.strict()`), dichiararlo impedisce che l'operazione sia a senso unico. Solo «Componenti» editabile — la firma **congela la geometria**, quindi la combinazione mai validata è **irrappresentabile**. Validazione = **motore in memoria prima di ogni scrittura**. Idratazione via **`kitInputFromRequest`**, la stessa del motore (solo `engine.ts` ha `server-only`): niente secondo percorso di lettura. «Ricalcola» → **«Nuova versione»**. `ComponentiRibalta` + `RadioOption` estratte (insieme: separarle chiudeva un ciclo). **Chiuso il buco trovato nella verifica funzionale della #47**: `110,13 €` non era asserito da nessun test, e i tre totali bilico stavano dietro `toBeGreaterThan(0)`. Difetto colto dai test: `??` faceva ricadere il reset sull'ereditarietà. **Quattro difetti trovati dalla review di branch coi gate tutti verdi**: un **refetch** cancellava le varianti appena scelte (structural sharing di react-query e `Date`), la validazione copriva solo il ramo con `variants` (due righe morte su PVC/battente), su **bozza** la UI prometteva una versione che non nasce, e la **vasistas** passava il filtro per serie pur non avendo varianti. Gate: typecheck·lint·**test 1.035**·build 18 route · catalogo reale 112 · **browser 22/22 desktop e 375px** (rifatto dopo i fix) col ciclo 90,20 → 110,13 → **ritorno a 90,20**. **NESSUNA AZIONE OPS.** Nuova domanda **31** (il numero identifica la richiesta o la versione?). | `claude/verifica-distinte-reali-8zz9mw` → **PR #48** |
 | 2026-07-31 | **ANTIEFFRAZIONE + VARIANTI COMPONENTE** (10 task TDD, un commit per task): le due domande senza risposta nel listino (il «fungo» è per sede 30? viti inclinate o dritte?) diventano **scelte dell'agente** nel nuovo passo **«Componenti»** del wizard, per indicazione esplicita dell'utente → **domande 2 e 30 CHIUSE** senza essere risposte. Registro `artech-varianti.ts` (**74 codici** scritti per esteso, verificati sul catalogo reale) · colonna `kit_requests.variants JSONB` (migrazione `20260731143758_kit_variants`, nessun backfill, NULL = standard) · **garanzia in due strati** contro la variante inerte (`RuleModule.varianti` obbligatorio + `no-silent-fields` derivato dal modulo) · ciclo di import sciolto col file foglia `varianti-schema.ts` + regola ESLint. Il **fungo resta fuori**: il listino lo lega alla sede 30 nei due versi, che il motore rifiuta a monte. Golden invariato **16 righe/21 pezzi/90,20 €** (ora asseriti anche ordine righe e 16 descrizioni); antieffrazione completa **17/22/110,13 €**. Gate: typecheck·lint·**test 992**·build 18 route · **integration 111 eseguiti** · browser 33+10 check (desktop e 375px). **AZIONE OPS: «Ops — Neon» sul ref del branch PRIMA del merge** — senza la colonna si rompono le **letture** di `kit.get`/`generate`/`ricalcola` **e `dashboard.overview`** (`dashboard.ts:40`, `findMany` senza `select`), cioè la pagina d'ingresso di tutti gli agenti; nessun re-import. **Le varianti non si cambiano dopo la creazione** (si rifà il wizard): da dire agli agenti. | `claude/antieffrazione-feature-dv8d37` → **PR #47 MERGIATA**, ops run `30659737114` |
+| 2026-09-14 | **CORREZIONE — il listino COLOMBO 2026 HA i codici, in due metà.** Sessione di sola documentazione, aperta da una segnalazione dell'utente. La conclusione del 06/08 («il PDF non contiene nessun codice d'ordine» → lavoro bloccato in attesa di un xlsx) veniva da una misura corretta — zero occorrenze della forma **assemblata** `0CD41R-CM` — letta come risposta a una domanda che non era quella. Il PDF pubblica **codice del modello + prezzo per finitura scritta per nome** sulle pagine prodotto (p7: `AM41 RSB` · oroplus · **94,70**) e **la sigla di ogni finitura da p4 in giù** (`OL`, `GM`, `UB`, `CM`… tutte e 12 già in `finiture.ts`). Il codice è modello + sigla, e **non è «inventare per concatenazione»**: il listino vecchio a DB è un insieme di prova da **3.456 risposte note** (`0CB71R-OL` ↔ «LARA CB71R OROPLUS») contro cui la regola si **misura**. Riscritti §RIPRENDI DA QUI (correzione datata), il §PROMPT (task 0 = accuratezza della regola sui 3.456, prima di ogni riga di codice; task 1 = far confermare ad Andrea l'elenco generato; task 2 = delta, due metà del prezzo, EAN assente) e il blocco di chiusura di `CLAUDE.md`. Nessun codice, nessuna migrazione, nessun run ops. | `claude/ufptrade-andrea-feedback-f0s2re` |
 
 
 ---
 
-## PROMPT PER LA PROSSIMA SESSIONE — IL LISTINO COLOMBO 2026
+## PROMPT PER LA PROSSIMA SESSIONE — I CODICI DEL LISTINO COLOMBO 2026
 
 ```
 Nuova sessione. Riparti leggendo handoff.md (§«RIPRENDI DA QUI») e CLAUDE.md.
@@ -2360,183 +2397,166 @@ committano mai · un run ops con migrazione va lanciato sul ref del branch,
 prima del merge. E la regola che vale doppio: NON TOCCARE LA SEZIONE
 SERRAMENTI (catalogo AGB, assistente, kit, clienti).
 
-═══ STATO ═══
-Verifica tu le PR invece di fidarti dell'handoff.
-· #61 «le copertine dei gruppi» (ottava tornata di Andrea): MERGIATA e in
-  produzione. Il run ops «Foto COLOMBO» è GIÀ ESEGUITO (31105799102, verde):
-  NON serve rilanciarlo.
-· #62, stesso branch: SOLO DOCUMENTAZIONE (handoff.md + CLAUDE.md). Nasce
-  perché la #61 è stata mergiata prima che arrivassero i commit di chiusura.
-  Se è ancora aperta MERGIALA PER PRIMA COSA: senza, stai leggendo un handoff
-  che non contiene niente di ciò che c'è scritto qui sotto.
-Sul rosso di Vercel vedi la sezione dedicata in fondo: non è una regressione,
-ma la diagnosi è avanzata e c'è una cosa da chiedere all'utente.
+═══ IL LAVORO ═══
+Mettere a listino i prodotti NUOVI di COLOMBO 2026 — Laconica, Robot6,
+Robot6 S, Halo, Kubo e i complementi — che oggi mancano dall'archivio.
+Ti allego «Vision2026_pricelist.pdf» (16 pagine, 519 KB; è anche nella cartella
+Drive registrata in CLAUDE.md, id `1BO66H81J3-JlOh8vl4htwX_rHl93B1mM`).
 
-═══ IL LAVORO: IL LISTINO NUOVO ═══
-Andrea ha portato il listino ufficiale COLOMBO 2026. Te lo allego nel prompt:
-«Vision2026_pricelist.pdf». Serve a sistemare le maniglie che MANCAVANO dal
-listino vecchio.
+🔴 PRIMA DI TUTTO: LA SESSIONE PRECEDENTE AVEVA CONCLUSO CHE NON SI POTEVA FARE.
+   ERA SBAGLIATO, E L'HA VISTO L'UTENTE. Leggi come, perché è il cuore del
+   lavoro.
 
-✅ IL PDF È GIÀ STATO MISURATO A FINE SESSIONE 06/08 — NON RIFARE QUESTE MISURE,
-LEGGI L'ESITO. Il file è nella cartella Drive registrata in CLAUDE.md (id
-`1BO66H81J3-JlOh8vl4htwX_rHl93B1mM`), 16 pagine, 519 KB.
+   Avevo cercato nel PDF la forma ASSEMBLATA del codice (`0CD41R-CM`) e, non
+   trovandola, avevo scritto «il PDF non contiene nessun codice d'ordine».
+   La ricerca era giusta, la conclusione no: **il PDF pubblica le DUE METÀ del
+   codice, in due punti diversi**, e chi conosce il listino le rimette insieme.
 
-【1】 IL PDF SI LEGGE, ECCOME. Il timore «indice dei codici in curve» era
-INFONDATO per questo file: `pdftotext -layout` restituisce tutto, cifrato con
-lo STESSO shift di +29 per byte già noto da `ER MAN 2026` (`9LVLRQ` → `Vision`).
-Il decodificatore giusto — e ci ho sbagliato due volte, quindi copialo:
+   · Le pagine prodotto (LACONICA è a **p7**) danno il **codice del modello** e,
+     accanto, il prezzo PER OGNI FINITURA con la finitura scritta per nome:
+         AM41 R Ø50 / AM41 RY Ø50     AM41 RSB Ø50
+         oroplus         105,30           oroplus          94,70
+         zirconium HPS/1 115,40           zirconium HPS/1 103,70
+         grafite mat     126,90           grafite mat     114,20
+         umber bronze     83,00           umber bronze     74,80
+         dark green       83,00           dark green       74,80
+         cherry           83,00           cherry           74,80
+   · **Da p4 in giù** c'è la legenda delle finiture, che dà la SIGLA di ognuna:
+     OL Oroplus · OM Oromat · HPS/1 Stainless-Steel · GM Grafite Mat ·
+     CR Cromo · CM Cromat · SM Silvermat · CH Cherry · DG Dark Green ·
+     UB Umber Bronze · NM Neromat · BI Biancomat.
+   · Il codice d'ordine è modello + sigla. «Laconica maniglia su rosetta senza
+     bocchetta, oroplus» = 94,70 € e la sigla `OL`.
+
+   E NON È «INVENTARE PER CONCATENAZIONE», che resta vietato (§9; `A50904.22`
+   non esiste). La differenza è tutta qui, ed è la ragione per cui questa
+   sessione si può fare:
+       **abbiamo 3.456 RISPOSTE GIÀ NOTE contro cui provare la regola.**
+   Il listino vecchio a DB è un insieme di prova da 3.456 righe: ogni `code` sta
+   accanto alla sua descrizione, che contiene modello e finitura per nome
+   (`0CB71R-OL` ↔ «LARA **CB71R** **OROPLUS**»). Una regola che li riproduce
+   tutti non è una deduzione nostra: è la regola di COLOMBO, misurata.
+
+═══ TASK 0 — LA REGOLA, MISURATA SUI 3.456. NIENTE CODICE PRIMA DI QUESTO ═══
+Monta l'ambiente, importa il listino VECCHIO in locale (vedi §AMBIENTE) e
+misura. Non scrivere una riga di importatore prima di avere questi numeri.
+
+ (a) La forma. Dai 3.456 codici veri, quante forme distinte esistono?
+     Da verificare: prefisso (`0…` ma **`XKIT/PS-CM` esiste**, quindi non è
+     l'unico) · trattino prima della finitura (**237 codici NON ce l'hanno**,
+     già misurato, `finiture.ts:63`) · segmenti di variante prima della coda
+     (`0CD32DK/SM-OL`). Conta le famiglie di forma, non descriverle a parole.
+ (b) L'ACCURATEZZA. Per ognuno dei 3.456: estrai dalla descrizione il token di
+     modello e il nome della finitura, ricomponi il codice con la regola, e
+     confronta con `code`. **Il numero che conta è quanti su 3.456 escono
+     IDENTICI.** Poi guarda i falliti UNO PER UNO: sono famiglie o sono casi
+     isolati? Una regola all'85% con i fallimenti tutti in due famiglie
+     riconoscibili è utilizzabile; una all'85% sparsa non lo è.
+ (c) IL `6` DI ROBOT6 — ipotesi da provare, non da dare per buona. Il 2026
+     elenca `12 FF19 BZG  Robot6` e `12 BT19 BZG  Robot6 S`; i codici veri a DB
+     sono `0FF19BZG**6**-CM` e `0BT19BZG**6**-CM`. La sessione scorsa aveva
+     chiamato quel `6` «un carattere che nessuna fonte pubblica» — ma la riga
+     del listino dice **Robot6**, e il `6` potrebbe venire di lì. Cercalo nei
+     3.456: esistono altri codici in cui la cifra della serie entra nel codice?
+     Se sì è una regola; se no resta un'eccezione e va trattata come tale.
+ (d) Il riconoscitore delle finiture **c'è già e non va riscritto**:
+     `src/server/maniglie/finiture.ts` ha le 31 sigle ufficiali (le 12 della
+     legenda del 2026 ci sono tutte), `finituraDiTesto()` (match più lungo,
+     6 grafie, rifiuto dei bicolori — è quello che sa che «cromo matte» è
+     CROMAT e non CROMO), `finituraDiCodice()` e `codiceSenzaFinitura()`.
+     ⚠️ Il PDF scrive «zirconium HPS/1» dove `finiture.ts` ha nome
+     «Zirconium Stainless-Steel» e sigla `HPS/1`: verifica che il
+     riconoscitore agganci la forma del listino, e se non lo fa aggiungi la
+     grafia lì, dov'è già il vocabolario.
+
+ → PORTA I NUMERI ALL'UTENTE PRIMA DI PROSEGUIRE. Con l'accuratezza in mano si
+   decide se si importa tutto, solo le famiglie che la regola riproduce al
+   100%, o niente.
+
+═══ TASK 1 — L'ELENCO SI FA CONFERMARE, NON SI PUBBLICA E BASTA ═══
+I prodotti del 2026 sono **nuovi**: nessuno dei loro codici è a DB, quindi
+sulla loro correttezza il nostro insieme di prova non dice nulla — dice solo
+quanto la regola è affidabile in generale. L'elenco però è **piccolo e
+leggibile** (decine di righe, non migliaia): stampalo come tabella
+`codice · modello · finitura · prezzo` e falla confermare ad Andrea prima che
+diventi `articles.code`. Un giro di conferma trasforma una regola misurata in
+una trascrizione verificata, ed è ciò che chiude la questione «una volta per
+tutte» invece di rimandarla al primo ordine sbagliato.
+Nel frattempo resta valida la richiesta dell'xlsx (§in fondo): se arriva,
+batte tutto e il task 0 diventa la sua verifica.
+
+═══ TASK 2 — L'IMPORT, E LE TRE DECISIONI CHE PORTA CON SÉ ═══
+ · **È UN DELTA.** `import:listino` significa «QUESTO FILE È IL LISTINO»:
+   riscrive `lastListingAt` sulle righe importate e poi stampa «N articoli NON
+   erano in questo listino» (`scripts/import-listino.ts:117`). Su un file di
+   soli prodotti nuovi direbbe «3.456 articoli non sono più a listino»: FALSO,
+   ed è proprio la riga che l'operatore legge per capire se è andata bene.
+   Serve una semantica d'aggiunta esplicita, non un flag nascosto.
+ · **IL PREZZO HA DUE METÀ A SCHEMA** (`priceList` + `surcharge`, separate
+   perché il *temporary surcharge* del 3,5% è temporaneo per definizione). I
+   prezzi del 2026 sono lordi già comprensivi, o è di nuovo listino + 3,5%?
+   Non indovinarlo: si vede confrontando un prodotto presente in entrambi i
+   file, e se non ce n'è nemmeno uno **si chiede ad Andrea**. Scriverlo nella
+   metà sbagliata non dà errore, dà prezzi sbagliati del 3,5%.
+ · **L'EAN NON C'È NEL PDF** (`ean String?` è nullable, quindi passa). Ma è il
+   codice a barre del magazzino: dichiara che i nuovi nascono senza, e chiedi
+   se serve.
+
+═══ COSA SI MUOVE QUANDO IL LISTINO CAMBIA (e perché quasi tutto va bene) ═══
+- 🟢 NESSUNA MIGRAZIONE ATTESA. I gruppi dello sfoglio si calcolano A LETTURA
+  (`browseLabel` + GROUP BY): un listino nuovo si colloca da solo.
+- ✅ LE FOTO DEI NUOVI CI SONO GIÀ. I prodotti del 2026 sono UNO A UNO i cinque
+  archivi fotografici che in `ARCHIVI` hanno `etichetta: null` col commento
+  «prodotti nuovi: a catalogo 2026, non ancora a listino» (`00a_Laconica`,
+  `00b_Robot6`, `00c_Robot6S`, `00d_Halo`, `00e_Kubo`). Quella previsione,
+  scritta due sessioni fa, è confermata dal listino del fornitore: appena i
+  codici entrano, vanno tolti i `null` e le foto si agganciano.
+- ⚠️ LA CURATELA È SCRITTA SULLE PAROLE DEL FORNITORE. `curatela.ts` fonde,
+  esclude e classifica per PRIMA PAROLA della descrizione. I nuovi arriveranno
+  con descrizioni che il listino xlsx non ha mai scritto (dal PDF la
+  descrizione la componi tu: decidi come, e sappi che quella parola decide in
+  quale gruppo finiscono). MISURA quali prime parole nuove compaiono.
+- 🔴 DUE SENTINELLE FALLIRANNO SE UN'ETICHETTA SPARISCE, ed è il loro mestiere:
+  «ogni accessorio è un'etichetta che la curatela produce davvero»
+  (curatela.test.ts) e «ogni accessorio dichiarato esiste fra i gruppi del
+  listino» (search.integration.test.ts). Se diventano rosse NON allentarle.
+- ⚠️ LE FOTO SI RIABBINANO: il gate ha pavimenti espliciti (≥40% coperti, ≥30%
+  con finitura PROVATA) e non tollera una finitura provata diversa. Dopo
+  l'import serve un run di «Ops — Foto COLOMBO» per riallineare `image_url`.
+- ⚠️ I 23 ORFANI della pronta consegna: 18 esistono a catalogo e mancavano solo
+  dal listino PERCHÉ IL LISTINO ERA VECCHIO. Sparirebbero con un listino
+  COMPLETO; con un delta di soli prodotti nuovi spariscono solo quelli che sono
+  anche nuovi. Misura, non promettere.
+- ⚠️ LA PIPELINE OGGI È SOLO-XLSX e lo verifica: `ops-neon.yml` scarica da un
+  URL Drive e fa `head -c 2 | grep 'PK'` prima di importare. Un PDF fallisce
+  lì, subito e rumorosamente (fallisce chiuso, ed è giusto). Se la strada è il
+  PDF, il workflow va esteso.
+
+═══ IL DECODIFICATORE DEL PDF — copialo, ci ho sbagliato due volte ═══
+`pdftotext -layout` restituisce tutto, cifrato con uno shift di +29 per byte
+(lo stesso di `ER MAN 2026`: `9LVLRQ` → `Vision`).
 
     raw = open('vision.txt','rb').read()
     STRUTTURA = {10, 12, 13, 32}   # \n, \f, \r e la spaziatura di -layout:
                                    # NON sono testo del PDF e non vanno shiftati
     dec = ''.join(chr(b) if b in STRUTTURA else chr((b+29) % 256) for b in raw)
 
-  I due errori da non ripetere: (i) saltare i byte < 32 perde ESATTAMENTE le
-  cifre (lo '0' cifrato è `\x13`), e fa concludere che i prezzi non ci siano;
-  (ii) shiftare gli spazi li trasforma in `=` e riempie lo schermo di rumore.
-  Misurato dopo la decodifica corretta: 2.207 cifre, 778 righe, 259 prezzi nella
-  forma `NN,NN` (124 distinti), 38 riferimenti di modello.
-
-🔴【1 bis】 MA IL PDF NON CONTIENE NESSUN CODICE D'ORDINE. Misurato: **ZERO**
-occorrenze della forma `0AM41R-CM` in tutte e 16 le pagine. Pubblica MODELLO +
-FINITURA + PREZZO (`AM41 R` · `oroplus` · `105,30`), e il codice con cui si
-ORDINA non c'è. Ma `articles.code` È il codice d'ordine: è quello che Andrea
-digita, quello su cui si aggancia la pronta consegna, quello che l'agente copia.
-
-  → Comporre `0` + `AM41R` + `-` + (sigla di «oroplus») sarebbe INVENTARE
-    CODICI PER CONCATENAZIONE, l'unica cosa che questo progetto ha già pagato
-    due volte (`A50904.22` non esiste; §9 della spec sfoglio: non dedurre dal
-    codice). E qui sarebbe peggio: sono prodotti NUOVI, assenti da ogni file che
-    abbiamo, quindi la composizione sarebbe **inverificabile per costruzione**.
-    Non c'è niente contro cui controllarla. NON FARLO.
-
-  → Quindi «vecchio xlsx + nuovo PDF = listino completo» NON si può costruire.
-    Non per mancanza di un parser: per mancanza dei codici.
-
-  → 🔴 E NEMMENO «ricavare il codice dal CATALOGO». Misurato il 06/08 su
-    `ER MAN 2026` (261 pagine, 448.005 caratteri, letti sia in chiaro sia
-    decodificati +29): **ZERO codici d'ordine**, con una regexp verificata
-    riconoscere quelli veri. Il catalogo pubblica PAGINA + MODELLO + SERIE
-    (`184 Cut MS15`, `189 Robot CD45`, `97 Spider MR11`) e marca i nuovi con
-    `65 Laconica NEW`, `186 Halo NEW`, `186 Kubo NEW`. Niente codici.
-
-  → LA PROVA CHE CHIUDE LA QUESTIONE, ed è una riga del listino nuovo stesso.
-    Il 2026 elenca fra i complementi `12 FF19 BZG  Robot6` e
-    `12 BT19 BZG  Robot6 S`. Quei due prodotti sono GIÀ a DB, e i codici veri
-    sono `0FF19BZG6-CM` e `0BT19BZG6-CM`: c'è un **`6`** che nessuna fonte
-    pubblica come regola. Da `FF19 BZG` si comporrebbe `0FF19BZG-CM`, che non
-    esiste. Ed è il PRIMO complemento della lista, cioè l'unico dei prodotti
-    del 2026 su cui la verifica era possibile: tutti gli altri (AM15, AM25,
-    ID45, ID55, AM41, AM313, ID713) hanno **zero** codici a DB, essendo nuovi.
-    Sull'unico verificabile la composizione sbaglia; sugli altri sbaglierebbe
-    in silenzio. `articles.code` è il campo che Andrea digita, su cui si
-    aggancia la pronta consegna e che l'agente copia al cliente: un codice
-    inventato non dà errore, dà un ordine sbagliato.
-
-  → 💡 PISTA PER UN'ALTRA DOMANDA APERTA: il catalogo pubblica la SERIE accanto
-    al modello (`Spider MR11`, `Cut MS15`, `Robot CD45`). Non dice da solo
-    quale ARCHIVIO fotografico sia MR11 e quale MR15, ma dà un secondo
-    appiglio da confrontare con le foto — vedi le domande a COLOMBO in fondo.
-
-✅【1 ter】 COSA IL PDF HA GIÀ CHIUSO, e vale la pena saperlo. L'indice elenca i
-prodotti nuovi: Laconica · Robot6 · Robot6 S · Halo AM15/AM25 · Kubo ID45/ID55
-(+ i maniglioni Laconico e Robot6 e i complementi). Sono UNO A UNO i cinque
-archivi fotografici che in `ARCHIVI` hanno `etichetta: null` col commento
-«prodotti nuovi: a catalogo 2026, non ancora a listino» (`00a_Laconica`,
-`00b_Robot6`, `00c_Robot6S`, `00d_Halo`, `00e_Kubo`). Quella previsione, scritta
-due sessioni fa, è confermata dal listino del fornitore: **le foto dei prodotti
-nuovi le abbiamo già**, si aggancieranno da sole appena i codici arrivano.
-
-【2】 ⚠️ IL LISTINO 2026 CONTIENE (per quanto ne sa l'utente) SOLO I PRODOTTI
-NUOVI. È un DELTA, non un listino che sostituisce quello vecchio, e cambia la
-natura del lavoro:
-
- · `import:listino` significa «QUESTO FILE È IL LISTINO». Riscrive
-   `lastListingAt` sulle sole righe importate e poi CONTA quelle rimaste
-   indietro, stampando «N articoli NON erano in questo listino: restano a DB e
-   risultano non più a listino» (`scripts/import-listino.ts:117`). Dandogli un
-   file di soli prodotti nuovi direbbe «3.456 articoli non sono più a listino»:
-   FALSO, ed è proprio la riga che l'operatore legge per capire se l'import è
-   andato bene. NON lanciarlo a cuor leggero su un delta.
-   (Il campo non è ancora mostrato a schermo — sta nel router `article.ts:428`
-   e in una fixture — quindi il danno sarebbe nel log, non nella UI. Ma è la
-   forma del difetto che questo progetto chiude da nove sessioni: un'affermazione
-   falsa prodotta senza che nessun conteggio vada a zero.)
- · UN DELTA NON AGGIORNA I PREZZI degli altri 3.456 codici. Se il 2026 ha
-   ritoccato i prezzi esistenti — e di solito un listino nuovo lo fa — quelli
-   restano fermi al 02-26 col «temporary surcharge» del 3,5%. Va CHIESTO.
- · L'ASPETTATIVA SUI 23 ORFANI VA MISURATA, NON DATA PER BUONA. La sessione
-   che li ha classificati disse «18 spariscono col listino aggiornato», ma
-   quella frase presupponeva un listino COMPLETO. Con un delta spariscono solo
-   quelli che sono anche PRODOTTI NUOVI: verificalo prima di prometterlo.
-
- → LA DOMANDA GIUSTA PER ANDREA, che copre 【1 bis】 e 【2】 insieme, ed è
-   l'UNICA cosa che sblocca la sessione:
-   «Ci serve il listino COLOMBO 2026 in xlsx, con i CODICI D'ORDINE. Il PDF che
-   ci hai dato si legge benissimo, ma pubblica modello, finitura e prezzo senza
-   il codice con cui si ordina — e noi il codice non possiamo inventarlo. Se
-   c'è la versione completa (tutti i codici, non solo i prodotti nuovi) è
-   ancora meglio, perché così si aggiornano anche i prezzi di quelli che
-   trattiamo già.»
-   SE LA RISPOSTA NON ARRIVA, non c'è lavoro da fare su questo fronte: scegli
-   un altro dei task aperti in fondo e dillo all'utente. Non ripiegare su una
-   composizione dei codici.
-
-⚠️ LA PIPELINE OGGI È SOLO-XLSX, e lo verifica: `ops-neon.yml` scarica il file
-da un URL Drive e fa `head -c 2 | grep 'PK'` prima di importare. Un PDF fallisce
-lì, subito e rumorosamente (fallisce chiuso, ed è giusto così). Se la strada è
-(a), il workflow va esteso — e se il file è un delta serve comunque una
-semantica d'import diversa da «questo file è il listino».
-
-═══ COSA SI MUOVE QUANDO IL LISTINO CAMBIA (e perché quasi tutto va bene) ═══
-- 🟢 NESSUNA MIGRAZIONE ATTESA. I gruppi dello sfoglio si calcolano A LETTURA
-  (`browseLabel` + GROUP BY): un listino nuovo si colloca da solo.
-- 🟢 `lastListingAt` viene riscritto a ogni import: è ciò che rende visibile
-  «non più a listino» senza cancellare nulla. Gli zombie non spariscono da
-  soli, ma sono riconoscibili.
-- ⚠️ I 23 ORFANI della pronta consegna: 18 esistono a catalogo e mancavano solo
-  dal listino PERCHÉ IL LISTINO ERA VECCHIO. Con un listino COMPLETO sparirebbero
-  da soli, ed è la misura che dice se il lavoro è riuscito; con un DELTA di soli
-  prodotti nuovi spariscono solo quelli che sono anche nuovi. Misura, non
-  promettere. 2 sono refusi con due codici giusti ciascuno, 3 sono spazzatura.
-- ⚠️ LA CURATELA È SCRITTA SULLE PAROLE DEL FORNITORE. `curatela.ts` fonde,
-  esclude e classifica per PRIMA PAROLA della descrizione. Un listino nuovo può
-  portare parole mai viste → gruppi nuovi che nessuno ha classificato. Il
-  disegno regge (cadono nella banda che non afferma nulla), ma VA MISURATO:
-  quali prime parole nuove compaiono, e con quanti codici.
-- 🔴 DUE SENTINELLE FALLIRANNO SE UN'ETICHETTA SPARISCE, ed è il loro mestiere:
-  «ogni accessorio è un'etichetta che la curatela produce davvero»
-  (curatela.test.ts) e «ogni accessorio dichiarato esiste fra i gruppi del
-  listino» (search.integration.test.ts). Se diventano rosse NON allentarle:
-  significa che uno dei 19 accessori non è più a listino, ed è una notizia.
-- ⚠️ LE FOTO SI RIABBINANO: codici nuovi possono prendere o perdere una foto.
-  Il gate ha pavimenti espliciti (≥40% coperti, ≥30% con finitura PROVATA) e
-  una regola che non tollera una finitura provata diversa. Dopo l'import serve
-  un run di «Ops — Foto COLOMBO» per riallineare `image_url`.
-- ⚠️ `FOTO_ATTESE = 707` in scripts/foto-colombo.ts è informativo, non
-  un'asserzione: se l'archivio cambia, lo dice e prosegue.
-
-═══ ORDINE SUGGERITO ═══
- 1. NON rifare le misure sul PDF: sono in 【1】 e 【1 bis】, già fatte. Il file
-    si legge, e non contiene codici d'ordine.
- 2. La prima cosa è la RICHIESTA AD ANDREA (testo pronto sopra). Senza i codici
-    non c'è import possibile, e non si inventano. Se l'utente l'ha già girata e
-    l'xlsx è arrivato, si parte da lì.
- 3. col listino in mano, importalo IN LOCALE e MISURA prima di scrivere codice:
-    quanti codici in più/in meno, quali prime parole nuove (la curatela è
-    scritta sulle parole del fornitore), quanti dei 23 orfani spariscono, come
-    si muovono gli 88 gruppi e le 66 copertine.
- 4. solo dopo decidi se serve codice, e cosa.
- 5. ops: «Ops — Neon» con `listino_colombo_url` aggiornato, poi «Ops — Foto
-    COLOMBO». Il secret del database si chiama NEON_DIRECT_URL, non
-    DATABASE_URL (un run è già morto in zero secondi su quello).
+I due errori da non ripetere: (i) saltare i byte < 32 perde ESATTAMENTE le
+cifre (lo '0' cifrato è `\x13`), e fa concludere che i prezzi non ci siano;
+(ii) shiftare gli spazi li trasforma in `=` e riempie lo schermo di rumore.
+Misurato dopo la decodifica corretta: 2.207 cifre, 778 righe, 259 prezzi nella
+forma `NN,NN` (124 distinti), 38 riferimenti di modello.
+⚠️ Il layout a colonne del PDF è il punto delicato: sulla pagina prodotto il
+codice del modello sta in alto e i prezzi sotto in colonna, uno per finitura.
+Verifica su LACONICA (p7), dove i numeri li conosci: AM41 RSB · oroplus ·
+94,70. Se la tua estrazione non riproduce quella riga, non è pronta.
 
 ═══ NON ROMPERE ═══
 Reparto serramenti intatto: golden del kit 16 righe / 21 pezzi / 90,20 €,
 gemello a entrata 7,5 96,29 €, antieffrazione 17 / 22 / 110,13 €, bilico
 450,03 · 766,51 · 433,46 €.
-Reparto maniglie, stato a fine sessione: 88 gruppi · accessori 19 (969 codici)
-· banda principale 69, di cui 66 con copertina e 3 senza (MANIGLIONE,
+Reparto maniglie, stato a fine sessione 06/08: 88 gruppi · accessori 19 (969
+codici) · banda principale 69, di cui 66 con copertina e 3 senza (MANIGLIONE,
 MANIGLIA INCASSO, POMOLINO) · 1.609 articoli con foto su 3.456.
 La regola di Andrea sulle finiture NON si tocca: «se manca la foto della
 finitura giusta è meglio togliere la foto». È quella che ha portato le foto
@@ -2549,12 +2569,14 @@ provate sbagliate da 350 a 0.
 - Docker MUORE da solo più volte per sessione, e Postgres con lui:
   `(setsid nohup dockerd > /tmp/dockerd.log 2>&1 &)` poi
   `docker start ufptrade-db ufptrade-redis`. Controllalo PRIMA di sospettare
-  qualunque altra cosa (costato dieci minuti anche stavolta).
+  qualunque altra cosa (costato dieci minuti anche l'ultima volta).
 - Docker Hub dà 429 sui pull: riprova a intervalli, non è un guasto.
 - `bash scripts/dev-bootstrap.sh` monta tutto, migra e semina.
 - prima di prisma/tsx: `set -a; source .env; set +a`.
 - il listino COLOMBO xlsx VECCHIO e la pronta consegna stanno nella cartella
   Drive registrata in CLAUDE.md (riuso autorizzato, non serve richiederla).
+  `pnpm import:listino COLOMBO <file.xlsx>` — SERVE per il task 0: senza il
+  listino vero il gate gira su venti righe di seed e non misura niente.
 - Playwright non è nel progetto: installalo FUORI dal repo (scratchpad) con
   `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm i playwright`, Chromium in
   /opt/pw-browsers/chromium-1194/chrome-linux/chrome.
@@ -2572,6 +2594,14 @@ provate sbagliate da 350 a 0.
   va scritta in nessun file. Serve solo per `pnpm foto:colombo`.
 
 ═══ RESTANO APERTE (non bloccanti) ═══
+- Ad ANDREA, ancora meglio di tutto il resto: **il listino 2026 in xlsx CON i
+  codici d'ordine**, come il file 02-26. Se arriva, i task 0 e 1 diventano la
+  sua verifica invece che la sorgente. Testo pronto:
+  «Ci serve il listino COLOMBO 2026 in xlsx con la colonna dei codici, come
+  quello che ci avevi dato. Dal PDF i codici li ricaviamo, ma li dobbiamo
+  ricomporre a mano e preferiamo non rischiare. Se c'è la versione completa —
+  tutti i codici, non solo i prodotti nuovi — è ancora meglio, perché così si
+  aggiornano anche i prezzi di quelli che trattiamo già.»
 - A COLOMBO: quale archivio è MR11 e quale MR15 (idem LC31/LC41, LC71/LC81) →
   66 codici riprenderebbero la foto di riga · esistono foto PER FINITURA dei
   pomoli ROUND/SQUARE/CUT/PUSH? → altri 59.
@@ -2579,7 +2609,7 @@ provate sbagliate da 350 a 0.
   Sapendo che l'alternativa è mostrare UN modello su 56 spacciato per la
   categoria, va bene così?
 - Vercel Pro: Hobby VIETA l'uso commerciale, ed era previsto per l'08/08.
-- Le TRE DISTINTE REALI di MC, Peruzzi e Fosca: aperte da otto sessioni. È il
+- Le TRE DISTINTE REALI di MC, Peruzzi e Fosca: aperte da nove sessioni. È il
   collaudo mai fatto del generatore, e vale più di quasi tutto il resto.
 - La migrazione multi-marca (`agbCode @unique`, 128 occorrenze in 22 file),
   rimandata alla marca #3.
@@ -2609,6 +2639,14 @@ La preview Vercel è rotta da sempre. Diagnosi ristretta il 06/08, NON rifarla:
   `engines`). Non c'è alcun `vercel.json`.
 · Si distinguono nelle PRIME ~20 RIGHE del log di build. CHIEDILE ALL'UTENTE
   (`npx vercel inspect <dpl> --logs`, o la dashboard) invece di indovinare.
+
+═══ UNA LEZIONE DA PORTARSI DIETRO ═══
+La conclusione «non si può fare» della sessione scorsa è stata prodotta da una
+misura CORRETTA (zero occorrenze della forma assemblata) letta come risposta a
+una domanda che non era quella. La domanda giusta non era «il codice c'è?» ma
+«ci sono le parti, e sappiamo come si mettono insieme?». Quando una misura dice
+«manca», prima di dichiarare un blocco vale la pena chiedersi se manca la cosa
+o manca solo nella forma in cui la stavo cercando.
 ```
 
 ---

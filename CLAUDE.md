@@ -1027,23 +1027,32 @@ fossero *presenti sullo store*, e i file dei pomoli erano lì dal run dell'epoca
 check `test` verde; il rosso è **Vercel**, la stessa failure che aveva la #60 mergiata (debito noto delle
 preview). Spec/piano: `docs/superpowers/{specs,plans}/2026-08-06-copertine-gruppo*`.
 
-**▶ PROSSIMA SESSIONE — IL LISTINO COLOMBO 2026.** Andrea ha portato il listino ufficiale nuovo
-(`Vision2026_pricelist.pdf`, nella cartella Drive registrata sopra). **Misurato a fine sessione 06/08, non
-rifarlo**: il PDF **si legge benissimo** — stesso shift di **+29 per byte** di `ER MAN 2026` (`9LVLRQ` →
-`Vision`), 778 righe, 259 prezzi, 38 modelli — a patto di NON shiftare `\n`, `\f`, `\r` e gli spazi di
-`-layout`, e soprattutto di **non saltare i byte < 32, che sono ESATTAMENTE le cifre** (lo `0` cifrato è
-`\x13`): sbagliando così si conclude che i prezzi non ci siano. 🔴 **Ma il PDF non contiene NESSUN codice
-d'ordine**: zero occorrenze di `0AM41R-CM` in 16 pagine. Pubblica **modello + finitura + prezzo**, mentre
-`articles.code` **è** il codice d'ordine — quello che Andrea digita e su cui si aggancia la pronta
-consegna. Comporlo per concatenazione è ciò che il progetto ha già pagato due volte (`A50904.22` non
-esiste), e qui sarebbe **inverificabile per costruzione** perché sono prodotti nuovi assenti da ogni file
-che abbiamo. Quindi «vecchio xlsx + nuovo PDF = listino completo» **non si può costruire**, non per
-mancanza di un parser ma di codici. → **Serve il 2026 in xlsx CON i codici d'ordine**: testo della
-richiesta pronto nel prompt. ✅ **Il PDF ha però chiuso una previsione**: i suoi prodotti nuovi (Laconica ·
-Robot6 · Robot6 S · Halo AM15/AM25 · Kubo ID45/ID55) sono **uno a uno** i cinque archivi fotografici con
-`etichetta: null` annotati «non ancora a listino» — le foto ce le abbiamo già. ⚠️ E il file è un **delta**:
-`import:listino` significa «questo file È il listino» (riscrive `lastListingAt` e poi stampa «N articoli
-NON erano in questo listino»), quindi su un delta direbbe «3.456 articoli non sono più a listino», falso.
-Nessuna migrazione attesa — i gruppi si calcolano a lettura — ma due sentinelle **devono** diventare rosse
-se un'etichetta accessorio sparisce dal listino: non si allentano. Il prompt completo è in fondo a
-`handoff.md`.
+**▶ PROSSIMA SESSIONE — I CODICI DEL LISTINO COLOMBO 2026.** Andrea ha portato il listino ufficiale nuovo
+(`Vision2026_pricelist.pdf`, nella cartella Drive registrata sopra), coi prodotti che oggi MANCANO
+dall'archivio: Laconica · Robot6 · Robot6 S · Halo AM15/AM25 · Kubo ID45/ID55 e i complementi.
+**Misurato a fine sessione 06/08, non rifarlo**: il PDF **si legge benissimo** — stesso shift di **+29 per
+byte** di `ER MAN 2026` (`9LVLRQ` → `Vision`), 778 righe, 259 prezzi, 38 modelli — a patto di NON shiftare
+`\n`, `\f`, `\r` e gli spazi di `-layout`, e soprattutto di **non saltare i byte < 32, che sono ESATTAMENTE
+le cifre** (lo `0` cifrato è `\x13`): sbagliando così si conclude che i prezzi non ci siano.
+🔴 **LA CONCLUSIONE «il PDF non ha codici d'ordine» ERA SBAGLIATA, e l'ha vista l'utente (14/09).** Avevo
+cercato la forma **assemblata** (`0CD41R-CM`), non trovandola avevo dichiarato un blocco. Il PDF pubblica
+le **due metà** in due punti: le pagine prodotto danno il **codice del modello** e il prezzo **per ogni
+finitura scritta per nome** (p7, LACONICA: `AM41 RSB` · oroplus · **94,70**), e **da p4 in giù** la legenda
+dà la **sigla** di ogni finitura (`OL` Oroplus · `GM` Grafite Mat · `UB` Umber Bronze · `CM` Cromat…, tutte
+e 12 già in `src/server/maniglie/finiture.ts` con `finituraDiTesto()`). Il codice d'ordine è modello +
+sigla. **E non è «inventare per concatenazione»** (§9, `A50904.22` non esiste), perché stavolta esiste
+l'insieme di prova: **il listino vecchio a DB sono 3.456 risposte note**, ogni `code` accanto alla
+descrizione che contiene modello e finitura per nome (`0CB71R-OL` ↔ «LARA **CB71R** **OROPLUS**») → la
+regola si **misura**, non si postula. **TASK 0, prima di ogni riga di codice: la sua accuratezza sui
+3.456** (forme del prefisso — `XKIT/PS-CM` esiste; il trattino manca in **237** codici; il `6` di
+`0FF19BZG6-CM` forse viene da «Robot6» ed è da cercare nei 3.456, non da liquidare come eccezione). Poi
+l'elenco dei nuovi — decine di righe, leggibile — **si fa confermare ad Andrea** prima di diventare
+`articles.code`. ⚠️ Il file è un **delta**: `import:listino` significa «questo file È il listino» (riscrive
+`lastListingAt` e poi stampa «N articoli NON erano in questo listino»), quindi su un delta direbbe «3.456
+articoli non sono più a listino», falso. ⚠️ **Il prezzo ha due metà a schema** (`priceList` + `surcharge`
+3,5%): quale delle due contiene il prezzo 2026 non si indovina, e l'**EAN nel PDF non c'è**. ✅ **Le foto
+dei nuovi ci sono già**: quei prodotti sono **uno a uno** i cinque archivi con `etichetta: null` annotati
+«non ancora a listino». Nessuna migrazione attesa — i gruppi si calcolano a lettura — ma due sentinelle
+**devono** diventare rosse se un'etichetta accessorio sparisce dal listino: non si allentano. Resta
+comunque preferibile **il 2026 in xlsx CON i codici** (richiesta pronta nel prompt): se arriva, il task 0
+diventa la sua verifica. Il prompt completo è in fondo a `handoff.md`.
