@@ -29,7 +29,11 @@ describe("composizionePrezzo", () => {
   });
 
   it("un priceList a zero non produce NaN né Infinity a schermo", () => {
-    expect(composizionePrezzo(0, 0)).toEqual({ kind: "netto" });
-    expect(composizionePrezzo(0, 1)).toEqual({ kind: "netto" });
+    // …e NON diventa «netto»: una maggiorazione dichiarata resta dichiarata
+    // anche quando la sua percentuale non si può calcolare. Dire «il listino non
+    // dichiara maggiorazioni» di un totale che ne contiene una è esattamente ciò
+    // che questo modulo esiste per impedire.
+    expect(composizionePrezzo(0, 1)).toEqual({ kind: "conMaggiorazione", percento: null });
+    expect(composizionePrezzo(0, 0)).toEqual({ kind: "conMaggiorazione", percento: null });
   });
 });

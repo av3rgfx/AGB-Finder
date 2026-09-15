@@ -29,6 +29,32 @@ const NUCLEO_ECCEZIONE: Record<string, string> = {
   "BT19 BZG": "0BT19BZG6",
 };
 
+/**
+ * Le designazioni che NON si possono risolvere, e per cui quindi non si scrive
+ * nessun codice.
+ *
+ * Non è prudenza generica: sono i due casi in cui la regola generica è
+ * **contraddetta da ogni istanza misurabile della sua stessa classe**.
+ *
+ * - le designazioni `… Y`: `FF13 Y`→`0FF13` e `BT13 Y`→`0BT13`, la Y non entra
+ *   nel codice. 2 su 2. Ma a listino **6 bocchette su 110 la tengono**, quindi
+ *   nemmeno la forma senza Y è una certezza.
+ * - le designazioni `… BZG`: `FF19 BZG`→`0FF19BZG6` e `BT19 BZG`→`0BT19BZG6`,
+ *   compare un 6. 2 su 2. Ma **5 nottolini su 159 hanno il BZG nudo**.
+ *
+ * `FF13 Y`, `BT13 Y`, `FF19 BZG` e `BT19 BZG` il codice ce l'hanno a listino e si
+ * LEGGE (`NUCLEO_ECCEZIONE`). `ID13 Y` e `AM19 BZG` no: sono prodotti nuovi, e
+ * per loro entrambe le forme esistono nel catalogo. Applicare lì la regola
+ * generica significherebbe scrivere un codice che la classe smentisce 4 volte su
+ * 4 — plausibile, ordinabile, senza fonte, e senza nulla che possa accorgersene.
+ *
+ * Escono dall'import come le righe HPS/1, ed entrano quando COLOMBO risponde.
+ */
+const NON_RISOLVIBILI: Record<string, string> = {
+  "ID13 Y": "la «Y» entra nel codice o no? le due forme esistono entrambe",
+  "AM19 BZG": "«BZG» o «BZG6»? le due forme esistono entrambe",
+};
+
 /** La serie commerciale per pagina del documento. */
 const SERIE: Record<number, string> = {
   6: "LACONICA",
@@ -47,12 +73,29 @@ export interface VisionArticolo {
 
 export interface VisionEsito {
   articoli: VisionArticolo[];
-  /** Le righe «zirconium HPS/1»: la loro coda non è derivabile (vedi sotto). */
-  esclusi: { modello: string; finitura: string }[];
+  /**
+   * Ciò che il documento pubblica e che NON si sa ordinare: le righe «zirconium
+   * HPS/1» (la coda non è derivabile) e le due designazioni di `NON_RISOLVIBILI`.
+   * `motivo` dice quale delle due, così l'operatore legge perché e non solo
+   * quanti.
+   */
+  esclusi: { modello: string; finitura: string; motivo: string }[];
 }
 
+/**
+ * Il nucleo del codice: `0` + la designazione **senza gli spazi**.
+ *
+ * ⚠️ Lo SLASH resta. Toglieva anche quello, e produceva `0AM42DKSM` dove il
+ * listino scrive `0AM42DK/SM`: misurato sui 3.456, **224 codici `DK/SM` hanno lo
+ * slash contro 35 che non ce l'hanno** (e quei 35 sono `DKSMSX`, un'altra
+ * variante), **127 `/0` contro 5**. La pronta consegna non poteva smentirlo
+ * perché dà la forma NORMALIZZATA — `0AM42DKSMI1` è compatibile con entrambe —
+ * quindi la prova sta solo nel listino.
+ *
+ * Valeva 30 codici: i tre `DK/SM` e i due maniglioni ZERO.
+ */
 function nucleo(modello: string): string {
-  return NUCLEO_ECCEZIONE[modello] ?? `0${modello.toUpperCase().replace(/[^A-Z0-9]/g, "")}`;
+  return NUCLEO_ECCEZIONE[modello] ?? `0${modello.toUpperCase().replace(/\s+/g, "")}`;
 }
 
 /**
@@ -75,22 +118,43 @@ function nucleo(modello: string): string {
  */
 function descrizione(modello: string, pagina: number, sigla: string): string {
   const fin = FINITURE_PER_CODICE.get(sigla)!.nome.toUpperCase();
-  const cod = modello.replace(/\s/g, "");
+  // Il token viene dal NUCLEO risolto, non dalla designazione stampata: dove
+  // c'è un'eccezione i due differiscono, e COLOMBO scrive il nucleo. Con la
+  // designazione, i tre codici nuovi di `FF19 BZG` direbbero «NOTTOLINO
+  // FF19BZG» accanto ai fratelli già a listino che dicono «FF19BZG6».
+  // Nel CODICE lo slash resta; nella DESCRIZIONE COLOMBO lo scrive a parole —
+  // `0JP11RSB/0-GM` si chiama «ALATO JP11RSB ZERO GRAFITE». Si segue quella.
+  const [radice, variante] = nucleo(modello).slice(1).split("/");
+  const cod = radice!;
+  const zero = variante === "0" ? " ZERO" : "";
   const fam = modello.split(" ")[0]!;
   const suf = modello.includes(" ") ? modello.slice(fam.length + 1) : "";
 
   if (suf === "BB") return `BOCCHETTA F.NORM. ${fam} ${fin}`;
   if (suf === "Y") return `BOCCHETTA Y ${fam} ${fin}`;
   if (suf === "BZG") return `NOTTOLINO ${cod} ${fin}`;
-  if (pagina === 11 || pagina === 12) return `MANIGLIONE ${cod} ${fin}`;
-  if (suf === "FISSO") return `${SERIE[pagina]} FISSO ${fam} ${fin}`;
-  if (suf === "DK/SM") return `${SERIE[pagina]} ${fam}DK S/MOV. ${fin}`;
-  return `${SERIE[pagina]} ${cod} ${fin}`;
+  if (pagina === 11 || pagina === 12) return `MANIGLIONE ${cod}${zero} ${fin}`;
+
+  // Oltre questo punto serve il nome della serie, e `SERIE` copre solo le pagine
+  // prodotto. Senza la guardia una banda su una pagina non mappata produrrebbe
+  // una descrizione che comincia con la parola «undefined»: TypeScript accetta
+  // `${undefined}` in un template, e il gruppo di sfoglio si chiamerebbe così.
+  const serie = SERIE[pagina];
+  if (serie === undefined) {
+    throw new Error(
+      `Vision: nessuna serie dichiarata per la pagina ${pagina} (modello ` +
+        `${modello}). Nessuna riga importata.`,
+    );
+  }
+
+  if (suf === "FISSO") return `${serie} FISSO ${fam} ${fin}`;
+  if (suf === "DK/SM") return `${serie} ${fam}DK S/MOV. ${fin}`;
+  return `${serie} ${cod} ${fin}`;
 }
 
 export function articoliVision(blocchi: VisionBlocco[]): VisionEsito {
   const articoli: VisionArticolo[] = [];
-  const esclusi: { modello: string; finitura: string }[] = [];
+  const esclusi: { modello: string; finitura: string; motivo: string }[] = [];
   // Due insiemi e non uno: qui convivono due spazi di chiavi diversi — i codici
   // (`0AM41R-OL`) e le coppie modello+finitura degli esclusi. Tenerli in un Set
   // solo funziona finché nessuna delle due forme somiglia all'altra, che è una
@@ -119,18 +183,17 @@ export function articoliVision(blocchi: VisionBlocco[]): VisionEsito {
           );
         }
         for (const mod of b.modelli) {
-          // Deduplicati come gli articoli, e per la stessa ragione: tre prodotti
-          // sono stampati su due pagine, e questo numero lo legge l'operatore a
-          // fine import. Contare le occorrenze direbbe 22 dove i modelli sono 19.
-          const k = JSON.stringify([mod, r.finitura]);
-          if (esclusiVisti.has(k)) continue;
-          esclusiVisti.add(k);
-          esclusi.push({ modello: mod, finitura: r.finitura });
+          escludi(mod, r.finitura, "«zirconium HPS/1»: la coda non è derivabile");
         }
         continue;
       }
 
       for (const mod of b.modelli) {
+        const perche = NON_RISOLVIBILI[mod];
+        if (perche !== undefined) {
+          escludi(mod, r.finitura, perche);
+          continue;
+        }
         const code = `${nucleo(mod)}-${sigla}`;
         // Lo stesso prodotto è stampato su due pagine (i nottolini): la guardia 3
         // del parser ha già provato che i prezzi coincidono, qui si deduplica.
@@ -146,4 +209,16 @@ export function articoliVision(blocchi: VisionBlocco[]): VisionEsito {
     }
   }
   return { articoli, esclusi };
+
+  /**
+   * Deduplicati come gli articoli, e per la stessa ragione: tre prodotti sono
+   * stampati su due pagine, e questo numero lo legge l'operatore a fine import.
+   * Contare le occorrenze direbbe 22 dove i modelli sono 19.
+   */
+  function escludi(modello: string, finitura: string, motivo: string): void {
+    const k = JSON.stringify([modello, finitura]);
+    if (esclusiVisti.has(k)) return;
+    esclusiVisti.add(k);
+    esclusi.push({ modello, finitura, motivo });
+  }
 }

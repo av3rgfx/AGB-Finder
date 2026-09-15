@@ -29,17 +29,41 @@
  *
  * Modulo foglia: nessuna dipendenza, nessun `server-only` — la legge anche la UI.
  */
+/**
+ * `percento` è `null` quando la percentuale non si può calcolare (prezzo di
+ * listino a zero) ma una maggiorazione è comunque dichiarata: sono due cose
+ * diverse, e confonderle farebbe dire «il listino non dichiara maggiorazioni»
+ * di un totale che ne contiene una.
+ */
 export type ComposizionePrezzo =
-  | { kind: "conMaggiorazione"; percento: number }
+  | { kind: "conMaggiorazione"; percento: number | null }
   | { kind: "netto" };
+
+/**
+ * Il DISCRIMINANTE, da solo: il prezzo è quello netto del listino 05/26?
+ *
+ * Sta qui e non sparso nelle schermate perché è la cosa che il commento sopra
+ * avverte dovrà cambiare — il giorno di un listino con la maggiorazione su
+ * alcune righe e non su altre diventerà l'edizione. Con `surcharge === null`
+ * scritto qui e là, quel giorno la scheda cambierebbe e l'elenco no, senza un
+ * errore di compilazione.
+ *
+ * Prende il solo `surcharge` di proposito: il RAMO non dipende dal prezzo, che
+ * serve unicamente a calcolare la percentuale. Così un elenco può chiederlo
+ * senza portarsi dietro anche il netto per ogni riga.
+ */
+export function prezzoNetto(surcharge: number | null): surcharge is null {
+  return surcharge === null;
+}
 
 export function composizionePrezzo(
   priceList: number,
   surcharge: number | null,
 ): ComposizionePrezzo {
-  if (surcharge === null) return { kind: "netto" };
-  // Un listino a zero non esiste, ma dividerci produrrebbe NaN o Infinity in
-  // un'etichetta mostrata a schermo.
-  if (priceList === 0) return { kind: "netto" };
+  // L'unica cosa che decide il RAMO è se il documento dichiari o no una
+  // maggiorazione. Il calcolo della percentuale viene dopo, e se non riesce si
+  // tace la percentuale — non il ramo.
+  if (prezzoNetto(surcharge)) return { kind: "netto" };
+  if (priceList === 0) return { kind: "conMaggiorazione", percento: null };
   return { kind: "conMaggiorazione", percento: Math.round((surcharge / priceList) * 1000) / 10 };
 }

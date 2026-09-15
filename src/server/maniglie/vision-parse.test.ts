@@ -66,25 +66,32 @@ describe("parseVision", () => {
       BANDA({ pagina: 0, modelli: ["ZZ19 BZG"] }),
       BANDA({ pagina: 1, modelli: ["ZZ19 BZG"] }),
     ];
-    expect(() => parseVision(t, bande)).toThrow(/ZZ19 BZG.*oromat.*53,60.*53,70/s);
+    expect(() => parseVision(t, bande)).toThrow(/ZZ19 BZG.*oromat.*due prezzi diversi/s);
   });
 
-  it("il disaccordo DICHIARATO passa, e vince il valore scelto ovunque", () => {
-    // BT19 BZG in oromat è l'unico disaccordo del documento vero: 53,60 sulla
-    // pagina del prodotto, 53,70 sul riepilogo. Si tiene la prima, e la seconda
-    // occorrenza viene riscritta — così il prezzo non dipende dall'ordine in cui
-    // le bande sono dichiarate.
-    const t = pagine(
-      ["BT19 BZG", "oromat                  53,70"], // prima il valore SCARTATO
-      ["BT19 BZG", "oromat                  53,60"],
-    );
+  it("il disaccordo DICHIARATO passa, e vince la PAGINA PIÙ BASSA", () => {
+    // BT19 BZG in oromat è l'unico disaccordo del documento vero. La regola non
+    // è un valore scritto a mano — che resterebbe tale anche quando l'edizione
+    // successiva cambia il prezzo su entrambe le pagine — ma «vince la pagina
+    // del prodotto», che viene prima del riepilogo in coda al documento.
+    // Le bande sono dichiarate in ordine INVERSO apposta: il risultato non deve
+    // dipendere da quello.
+    const t = pagine(["ZZ", "oromat                  11,11"], ["ZZ", "oromat                  22,22"]);
+    const bande = [
+      BANDA({ pagina: 1, modelli: ["BT19 BZG"] }),
+      BANDA({ pagina: 0, modelli: ["BT19 BZG"] }),
+    ];
+    const out = parseVision(t, bande);
+    expect(out.map((b) => b.righe[0]!.prezzo)).toEqual(["11,11", "11,11"]);
+  });
+
+  it("una deroga che non serve più fa fallire: non resta lì a coprire il prossimo", () => {
+    const t = pagine(["ZZ", "oromat                  11,11"], ["ZZ", "oromat                  11,11"]);
     const bande = [
       BANDA({ pagina: 0, modelli: ["BT19 BZG"] }),
       BANDA({ pagina: 1, modelli: ["BT19 BZG"] }),
     ];
-    const out = parseVision(t, bande);
-    expect(out[0]!.righe[0]!.prezzo).toBe("53,60");
-    expect(out[1]!.righe[0]!.prezzo).toBe("53,60");
+    expect(() => parseVision(t, bande)).toThrow(/deroga è diventata morta/);
   });
 
   it("un disaccordo NON dichiarato continua a fermare tutto", () => {

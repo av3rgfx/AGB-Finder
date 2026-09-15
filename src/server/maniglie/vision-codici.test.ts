@@ -16,9 +16,9 @@ describe("articoliVision — la regola", () => {
     expect(articoli[0]!.priceList.toString()).toBe("105.3");
   });
 
-  it("toglie anche lo slash dal modello: AM42 DK/SM → 0AM42DKSM", () => {
+  it("toglie gli spazi ma TIENE lo slash: AM42 DK/SM → 0AM42DK/SM", () => {
     const { articoli } = articoliVision([blocco(["AM42 DK/SM"], [["cromat", "52,70"]])]);
-    expect(articoli[0]!.code).toBe("0AM42DKSM-CM");
+    expect(articoli[0]!.code).toBe("0AM42DK/SM-CM");
   });
 
   it("emette una riga per OGNI modello che condivide la colonna", () => {
@@ -28,8 +28,8 @@ describe("articoliVision — la regola", () => {
 
   it("non ripete un codice già emesso (i nottolini stanno su due pagine)", () => {
     const { articoli } = articoliVision([
-      blocco(["AM19 BZG"], [["oroplus", "43,10"]], 6),
-      blocco(["AM19 BZG"], [["oroplus", "43,10"]], 13),
+      blocco(["FF19 BZG"], [["oroplus", "43,10"]], 7),
+      blocco(["FF19 BZG"], [["oroplus", "43,10"]], 13),
     ]);
     expect(articoli).toHaveLength(1);
   });
@@ -63,7 +63,9 @@ describe("articoliVision — «zirconium HPS/1» resta fuori", () => {
       ]),
     ]);
     expect(articoli).toHaveLength(1);
-    expect(esclusi).toEqual([{ modello: "AM41 R", finitura: "zirconium HPS/1" }]);
+    expect(esclusi).toHaveLength(1);
+    expect(esclusi[0]).toMatchObject({ modello: "AM41 R", finitura: "zirconium HPS/1" });
+    expect(esclusi[0]!.motivo).toMatch(/HPS\/1/);
   });
 
   it("una finitura SCONOSCIUTA invece fa fallire, non si scarta in silenzio", () => {
@@ -71,13 +73,26 @@ describe("articoliVision — «zirconium HPS/1» resta fuori", () => {
   });
 
   it("non conta due volte un modello stampato su due pagine", () => {
-    // AM19 BZG sta a pagina 6 e a pagina 13: contare le occorrenze direbbe 2
+    // FF19 BZG sta a pagina 7 e a pagina 13: contare le occorrenze direbbe 2
     // dove il modello è uno, e quel numero lo legge l'operatore.
     const { esclusi } = articoliVision([
-      blocco(["AM19 BZG"], [["zirconium HPS/1", "47,30"]], 6),
-      blocco(["AM19 BZG"], [["zirconium HPS/1", "47,30"]], 13),
+      blocco(["FF19 BZG"], [["zirconium HPS/1", "47,30"]], 7),
+      blocco(["FF19 BZG"], [["zirconium HPS/1", "47,30"]], 13),
     ]);
     expect(esclusi).toHaveLength(1);
+  });
+
+  it("«ID13 Y» e «AM19 BZG» non producono codici: la loro classe smentisce la regola", () => {
+    // Le designazioni `… Y` perdono la Y (2 su 2) e le `… BZG` guadagnano un 6
+    // (2 su 2) — ma a listino esistono anche 6 bocchette che la Y la tengono e
+    // 5 nottolini col BZG nudo. Per FF13/BT13/FF19/BT19 il codice si LEGGE; per
+    // questi due, che sono nuovi, entrambe le forme sono possibili.
+    const { articoli, esclusi } = articoliVision([
+      blocco(["ID13 Y"], [["cromo", "10,30"]], 10),
+      blocco(["AM19 BZG"], [["oroplus", "43,10"]], 6),
+    ]);
+    expect(articoli).toHaveLength(0);
+    expect(esclusi.map((e) => e.modello)).toEqual(["ID13 Y", "AM19 BZG"]);
   });
 });
 
@@ -91,9 +106,10 @@ describe("articoliVision — le descrizioni", () => {
     [["ID45 R"], 10, "KUBO ID45R OROPLUS"],
     [["FF13 BB"], 6, "BOCCHETTA F.NORM. FF13 OROPLUS"],
     [["FF13 Y"], 6, "BOCCHETTA Y FF13 OROPLUS"],
-    [["AM19 BZG"], 6, "NOTTOLINO AM19BZG OROPLUS"],
+    [["FF19 BZG"], 7, "NOTTOLINO FF19BZG6 OROPLUS"],
     [["AM16"], 11, "MANIGLIONE AM16 OROPLUS"],
-    [["AM313/0"], 12, "MANIGLIONE AM313/0 OROPLUS"],
+    [["AM313/0"], 12, "MANIGLIONE AM313 ZERO OROPLUS"],
+    [["AM413 Y/0"], 12, "MANIGLIONE AM413Y ZERO OROPLUS"],
   ])("%s a pagina %i → «%s»", (modelli, pagina, atteso) => {
     const { articoli } = articoliVision([blocco(modelli, [["oroplus", "1,00"]], pagina)]);
     expect(articoli[0]!.name).toBe(atteso);

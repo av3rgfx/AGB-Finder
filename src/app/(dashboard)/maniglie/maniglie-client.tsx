@@ -19,6 +19,7 @@ import {
   SoloPronta,
 } from "@/components/maniglie/sfoglia";
 import { formatPrice } from "@/lib/format";
+import { prezzoNetto } from "@/server/maniglie/composizione-prezzo";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { loadScroll, saveScroll } from "@/lib/archivio-scroll";
 import { leggiSerieAperte, scriviSerieAperte } from "@/lib/serie-aperte";
@@ -472,11 +473,11 @@ function useScrollRestore(key: string, hasData: boolean) {
  * sé il giorno in cui il listino torna omogeneo: nessun codice da rimuovere.
  */
 function convenzioniMiste(articoli: ArticleSummary[]): boolean {
-  return articoli.some((a) => a.surcharge === null) && articoli.some((a) => a.surcharge !== null);
+  return articoli.some(netto) && articoli.some((a) => !netto(a));
 }
 
-/** L'id è una costante: la legenda è una sola per schermata. */
-const LEGENDA_PREZZI = "legenda-prezzi";
+/** Il discriminante ha un proprietario solo: `composizione-prezzo.ts`. */
+const netto = (a: ArticleSummary): boolean => prezzoNetto(a.surcharge);
 
 /**
  * Sopra le righe, mai in fondo: una legenda sotto si legge dopo la decisione.
@@ -487,7 +488,7 @@ const LEGENDA_PREZZI = "legenda-prezzi";
  */
 function LegendaPrezzi() {
   return (
-    <p id={LEGENDA_PREZZI} role="note" className="text-xs text-ink-subtle">
+    <p role="note" className="text-xs text-ink-subtle">
       <span aria-hidden="true">† </span>Il listino di questi articoli non dichiara maggiorazioni.
     </p>
   );
@@ -530,9 +531,9 @@ function ArticoloRow({ articolo, marcato }: { articolo: ArticleSummary; marcato:
               aria-hidden="true"
               className="ml-0.5 inline-block w-[6px] text-[10px] font-normal text-ink-subtle"
             >
-              {articolo.surcharge === null ? "†" : ""}
+              {netto(articolo) ? "†" : ""}
             </sup>
-            {articolo.surcharge === null ? (
+            {netto(articolo) ? (
               <span className="sr-only"> — senza maggiorazione dichiarata</span>
             ) : null}
           </>

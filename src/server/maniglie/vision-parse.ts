@@ -83,10 +83,31 @@ const perLettura = (a: Segno, b: Segno): number => a.riga - b.riga || a.col - b.
 
 export function parseVision(testo: string, bande: VisionBanda[]): VisionBlocco[] {
   const pagine = testo.split("\f").map((p) => p.split("\n"));
+
+  // GUARDIA 0 — il documento ha le pagine che le bande presuppongono.
+  //
+  // ⚠️ Non è pedanteria: `\f` non è solo il salto pagina vero. La cifratura è
+  // «testo + 29», quindi il carattere `)` del testo è memorizzato come 0x0C, che
+  // È il form feed — e `decodeVision` lo lascia stare, perché non può sapere se
+  // quel byte era una pagina o una parentesi. Una `)` nella prosa legale
+  // inserirebbe una pagina fantasma e sfaserebbe OGNI indice qui sotto.
+  //
+  // Senza questa guardia il sintomo sarebbe silenzioso: una banda che punta a
+  // una pagina che non esiste legge `[]`, il ciclo non parte, e la guardia 1
+  // passa come `0 === 0`. L'import scriverebbe meno articoli senza dire niente.
+  const attese = Math.max(...bande.map((b) => b.pagina)) + 1;
+  if (pagine.length < attese) {
+    throw new Error(
+      `Vision: il documento ha ${pagine.length} pagine, le bande ne presuppongono ` +
+        `almeno ${attese}. Non è il listino che questo parser sa leggere: ` +
+        `nessuna riga importata.`,
+    );
+  }
+
   const blocchi: VisionBlocco[] = [];
 
   for (const b of bande) {
-    const righe = pagine[b.pagina] ?? [];
+    const righe = pagine[b.pagina]!;
     const nomi: Segno[] = [];
     const prezzi: Segno[] = [];
 
@@ -122,6 +143,17 @@ export function parseVision(testo: string, bande: VisionBanda[]): VisionBlocco[]
       );
     }
 
+    // …e che ne abbia trovato almeno UNO. Una banda dichiarata è un blocco che
+    // sappiamo esserci: se non produce righe, la finestra non guarda più dove
+    // credeva, e `0 === 0` sopra passerebbe senza dire nulla.
+    if (nomi.length === 0) {
+      throw new Error(
+        `Vision: blocco «${b.modelli.join(" + ")}» (pagina ${b.pagina}, righe ` +
+          `${b.daRiga}-${b.aRiga}, colonne ${b.daColonna}-${b.aColonna}): nessuna ` +
+          `finitura nella finestra dichiarata. Nessuna riga importata.`,
+      );
+    }
+
     const nomiOrd = [...nomi].sort(perLettura);
     const prezziOrd = [...soloDestra].sort(perLettura);
 
@@ -143,13 +175,24 @@ export function parseVision(testo: string, bande: VisionBanda[]): VisionBlocco[]
  * scoprirebbe a valle — due prezzi plausibili, e a DB entra quello della banda
  * dichiarata per ultima, cioè per caso.
  *
- * ⚠️ `BT19 BZG` in oromat è l'unico del Vision 2026: 53,60 sulla pagina del
- * prodotto (8) e 53,70 sul riepilogo dei nottolini (13), con 21 prezzi ripetuti
- * su 22 concordi. Si tiene **la pagina del prodotto**, che è dove il listino
- * descrive l'articolo; la domanda è aperta per Andrea.
+ * ⚠️ Qui si dichiara **quale disaccordo è noto, non quale prezzo scegliere**. Il
+ * valore lo decide una REGOLA — vince la **pagina più bassa**, che è quella del
+ * prodotto, dove il listino lo descrive, contro il riepilogo in coda. Tre
+ * ragioni, tutte concrete:
+ *
+ * 1. il repo è **PUBBLICO** e i prezzi del fornitore non si committano mai;
+ * 2. un valore scritto a mano resta quello anche quando l'edizione successiva
+ *    cambia il prezzo su **entrambe** le pagine: il parser non vedrebbe più
+ *    alcun disaccordo e continuerebbe a scrivere il numero vecchio;
+ * 3. la regola vale per la coppia modello+finitura e non per la riga, che in una
+ *    banda a due modelli (`FF13 BB` + `FF13 Y`) è condivisa.
+ *
+ * L'unico del Vision 2026 è `BT19 BZG` in oromat: la pagina del prodotto e il
+ * riepilogo dei nottolini non concordano, con 21 prezzi ripetuti su 22 d'accordo.
+ * La domanda è aperta per Andrea.
  */
-const DISACCORDI_NOTI: { modello: string; finitura: string; scelto: string }[] = [
-  { modello: "BT19 BZG", finitura: "oromat", scelto: "53,60" },
+const DISACCORDI_NOTI: { modello: string; finitura: string }[] = [
+  { modello: "BT19 BZG", finitura: "oromat" },
 ];
 
 /**
@@ -161,48 +204,91 @@ function chiave(modello: string, finitura: string): string {
   return JSON.stringify([modello, finitura]);
 }
 
-const SCELTI = new Map(DISACCORDI_NOTI.map((d) => [chiave(d.modello, d.finitura), d.scelto]));
+const NOTI = new Set(DISACCORDI_NOTI.map((d) => chiave(d.modello, d.finitura)));
 
 /**
  * GUARDIA 3 — i prodotti che il listino stampa su DUE pagine devono costare lo
  * stesso, salvo i disaccordi dichiarati sopra.
  *
- * Oltre a verificare, **riconcilia**: dove il disaccordo è noto riscrive tutte
- * le occorrenze sul valore scelto, così a valle il prezzo è uno solo e non
- * dipende dall'ordine in cui i blocchi sono stati dichiarati.
+ * Oltre a verificare, **riconcilia**: dove il disaccordo è noto tiene il prezzo
+ * della PAGINA PIÙ BASSA — quella del prodotto — e lo riscrive su tutte le
+ * occorrenze, così a valle il prezzo è uno solo e non dipende dall'ordine in cui
+ * le bande sono state dichiarate.
+ *
+ * ⚠️ Un disaccordo dichiarato che **non si presenta più** fa fallire: se
+ * l'edizione successiva mette d'accordo le due pagine, la voce in
+ * `DISACCORDI_NOTI` è diventata una deroga a un problema che non esiste, e una
+ * deroga morta non si vede — resta lì a coprire il prossimo disaccordo vero
+ * sulla stessa coppia.
  */
 function riconcilia(blocchi: VisionBlocco[]): VisionBlocco[] {
   const visti = new Map<string, { prezzo: string; pagina: number }>();
+  /** Le coppie per cui il disaccordo dichiarato si è davvero manifestato. */
+  const confermati = new Set<string>();
+  /** Le coppie stampate su più di una pagina: solo lì un accordo è verificabile. */
+  const ripetuti = new Set<string>();
+  /** Coppia → prezzo della pagina più bassa in cui compare. */
+  const scelto = new Map<string, string>();
 
   for (const b of blocchi) {
     for (const mod of b.modelli) {
       for (const r of b.righe) {
         const k = chiave(mod, r.finitura);
-        if (SCELTI.has(k)) continue;
         const prima = visti.get(k);
+
         if (prima === undefined) {
           visti.set(k, { prezzo: r.prezzo, pagina: b.pagina });
+          scelto.set(k, r.prezzo);
           continue;
         }
-        if (prima.prezzo !== r.prezzo) {
+        ripetuti.add(k);
+        if (prima.prezzo === r.prezzo) continue;
+
+        if (!NOTI.has(k)) {
           throw new Error(
-            `Vision: «${mod}» in ${r.finitura} costa ${prima.prezzo} a pagina ` +
-              `${prima.pagina} e ${r.prezzo} a pagina ${b.pagina}. ` +
-              `Il listino si contraddice: nessuna riga importata.`,
+            `Vision: «${mod}» in ${r.finitura} ha due prezzi diversi, a pagina ` +
+              `${prima.pagina} e a pagina ${b.pagina}. Il listino si contraddice: ` +
+              `nessuna riga importata.`,
           );
+        }
+        confermati.add(k);
+        // Vince la pagina più bassa: è quella del prodotto, dove il listino lo
+        // descrive, contro il riepilogo che sta in coda al documento.
+        if (b.pagina < prima.pagina) {
+          visti.set(k, { prezzo: r.prezzo, pagina: b.pagina });
+          scelto.set(k, r.prezzo);
         }
       }
     }
   }
 
-  if (SCELTI.size === 0) return blocchi;
+  // Una deroga è MORTA quando la coppia è stampata su più pagine — cioè quando
+  // un disaccordo sarebbe visibile — e le pagine vanno d'accordo. Se la coppia
+  // in questo documento non c'è, o compare una volta sola, la deroga non è morta:
+  // è solo inapplicabile, e `parseVision` deve restare una funzione pura che
+  // legge qualunque coppia testo/bande le si dia.
+  for (const d of DISACCORDI_NOTI) {
+    const k = chiave(d.modello, d.finitura);
+    if (ripetuti.has(k) && !confermati.has(k)) {
+      throw new Error(
+        `Vision: il disaccordo dichiarato su «${d.modello}» in ${d.finitura} non ` +
+          `si presenta più: le pagine concordano. La deroga è diventata morta e ` +
+          `va tolta da DISACCORDI_NOTI, o coprirà il prossimo disaccordo vero.`,
+      );
+    }
+  }
+
+  if (confermati.size === 0) return blocchi;
   return blocchi.map((b) => ({
     ...b,
     righe: b.righe.map((r) => {
-      const scelto = b.modelli
-        .map((mod) => SCELTI.get(chiave(mod, r.finitura)))
-        .find((s) => s !== undefined);
-      return scelto === undefined ? r : { ...r, prezzo: scelto };
+      // La scelta vale per la coppia modello+finitura, non per la riga: in una
+      // banda a due modelli (`FF13 BB` + `FF13 Y`) la riga è condivisa, e una
+      // deroga dichiarata per uno solo non deve riscrivere il prezzo dell'altro.
+      const chiavi = b.modelli.map((mod) => chiave(mod, r.finitura));
+      if (!chiavi.every((k) => confermati.has(k))) return r;
+      const v = scelto.get(chiavi[0]!);
+      return v === undefined ? r : { ...r, prezzo: v };
     }),
   }));
 }

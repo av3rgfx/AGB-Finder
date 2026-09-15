@@ -47,13 +47,33 @@ async function main() {
   }
 
   const { articoli, esclusi } = articoliVision(parseVision(testo, BANDE_VISION_2026));
-  console.log(`  ${articoli.length} articoli letti · ${esclusi.length} modelli con righe escluse`);
-  if (esclusi.length > 0) {
-    console.log(
-      `  ⚠ «zirconium HPS/1» esclusa su ${esclusi.length} modelli: COLOMBO usa ` +
-        `due code (I1 e HPS1) nella stessa serie e non è derivabile. ` +
-        `Entrano quando risponde.`,
-    );
+  console.log(`  ${articoli.length} articoli letti · ${esclusi.length} righe escluse`);
+  for (const motivo of new Set(esclusi.map((e) => e.motivo))) {
+    const quanti = esclusi.filter((e) => e.motivo === motivo).length;
+    console.log(`  ⚠ ${quanti} escluse — ${motivo}. Entrano quando COLOMBO risponde.`);
+  }
+
+  // Le collisioni di chiave normalizzata bloccano PRIMA di scrivere, come fa
+  // `import-listino.ts`. L'upsert aggancia su `code` (la forma con i separatori)
+  // mentre il vincolo del dominio è `@@unique([brand, codeNorm])`: un codice già
+  // a DB scritto senza trattino — e il trattino manca in 237 codici — non
+  // verrebbe riconosciuto, l'upsert prenderebbe la strada del `create`, e
+  // l'indice lo rifiuterebbe con un errore di driver a metà import, dopo aver
+  // già scritto N righe.
+  const perNorm = new Map<string, string[]>();
+  for (const a of articoli) perNorm.set(a.codeNorm, [...(perNorm.get(a.codeNorm) ?? []), a.code]);
+  const giaADB = await prisma.article.findMany({
+    where: { brand, codeNorm: { in: [...perNorm.keys()] } },
+    select: { code: true, codeNorm: true },
+  });
+  const scontri = giaADB.filter((r) => !perNorm.get(r.codeNorm)!.includes(r.code));
+  if (scontri.length > 0) {
+    console.error(`✗ ${scontri.length} collisioni di codice normalizzato:`);
+    for (const s of scontri) {
+      console.error(`   ${s.codeNorm} ← a DB «${s.code}», in arrivo «${perNorm.get(s.codeNorm)!.join(", ")}»`);
+    }
+    console.error("  Nessuna riga scritta. La chiave di aggancio deve restare univoca.");
+    process.exit(1);
   }
 
   const now = new Date();
@@ -79,7 +99,14 @@ async function main() {
       // `catalogPage` e `imageUrl` non si toccano: sono lo strato facoltativo
       // scritto dallo script del catalogo, e un import non deve cancellare un
       // arricchimento già fatto.
-      update: { name: a.name, priceList: a.priceList, surcharge: null, lastListingAt: now },
+      // ⚠️ `name` NON si riscrive. Sui 17 codici già a listino la descrizione è
+      // quella di COLOMBO, e `curatela.ts` lo dice in testa: riscrivere
+      // `articles.name` cancellerebbe la parola del fornitore e farebbe sparire
+      // `BOCCEHTTA` dall'indice trigram — cioè la proprietà per cui chi cerca
+      // «bocchetta» trova anche l'articolo digitato storto. La descrizione che
+      // questo import compone serve ai codici NUOVI, che una descrizione non
+      // ce l'hanno.
+      update: { priceList: a.priceList, surcharge: null, lastListingAt: now },
       create: {
         brand,
         code: a.code,

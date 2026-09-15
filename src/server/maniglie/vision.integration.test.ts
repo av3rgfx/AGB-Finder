@@ -26,11 +26,27 @@ describe.skipIf(!pdf)("listino Vision 2026 — documento reale", () => {
     expect(blocchi()).toHaveLength(37);
   });
 
-  it("produce 251 articoli e 19 modelli con righe escluse", () => {
+  it("produce 240 articoli e 30 righe escluse, per tre ragioni dichiarate", () => {
     const { articoli, esclusi } = articoliVision(blocchi());
-    expect(articoli).toHaveLength(251);
-    expect(esclusi).toHaveLength(19);
-    expect(new Set(esclusi.map((e) => e.finitura))).toEqual(new Set(["zirconium HPS/1"]));
+    expect(articoli).toHaveLength(240);
+    expect(esclusi).toHaveLength(30);
+    // Si conta per MOTIVO, che è ciò che l'operatore legge a fine import — e le
+    // due chiavi non coincidono: `AM19 BZG` ha 6 righe escluse, ma una è la sua
+    // finitura HPS/1, che cade nel primo motivo.
+    const perMotivo = new Map<string, number>();
+    for (const e of esclusi) perMotivo.set(e.motivo, (perMotivo.get(e.motivo) ?? 0) + 1);
+    expect([...perMotivo.values()].sort((a, b) => b - a)).toEqual([19, 6, 5]);
+    expect(esclusi.filter((e) => e.finitura === "zirconium HPS/1")).toHaveLength(19);
+    expect(esclusi.filter((e) => e.modello === "AM19 BZG")).toHaveLength(6);
+  });
+
+  it("lo slash del listino resta nel codice, e diventa «ZERO» nella descrizione", () => {
+    // Misurato sui 3.456: 224 codici `DK/SM` hanno lo slash contro 35 che non
+    // ce l'hanno, e 127 `/0` contro 5. La pronta consegna non poteva dirlo,
+    // perché dà la forma normalizzata.
+    const a = articoliVision(blocchi()).articoli;
+    expect(a.find((x) => x.code === "0AM42DK/SM-OL")).toBeDefined();
+    expect(a.find((x) => x.code === "0AM313/0-OL")?.name).toBe("MANIGLIONE AM313 ZERO OROPLUS");
   });
 
   it("i codici che COLOMBO ha già scritto nella pronta consegna ci sono tutti", () => {
@@ -107,6 +123,6 @@ describe.skipIf(!dbUrl)("composizione del prezzo — database reale", () => {
 
   it("gli articoli senza maggiorazione sono quelli del listino 05/26", async () => {
     const netti = await db.article.count({ where: { brand: "COLOMBO", surcharge: null } });
-    expect(netti).toBe(251);
+    expect(netti).toBe(240);
   });
 });
