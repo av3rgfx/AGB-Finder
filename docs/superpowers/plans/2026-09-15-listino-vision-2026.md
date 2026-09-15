@@ -379,14 +379,14 @@ export function parseVision(testo: string, bande: VisionBanda[]): VisionBlocco[]
 /**
  * GUARDIA 3 — i prodotti che il listino stampa su DUE pagine devono costare lo
  * stesso. Non è teorica: ha trovato l'unica incoerenza del documento (`BT19 BZG`
- * oromat, 53,60 a p7 contro 53,70 a p12, con 21 prezzi ripetuti su 22 concordi).
+ * oromat, due valori diversi a p7 e p12, con 21 prezzi ripetuti su 22 concordi).
  */
 function verificaIncrociata(blocchi: VisionBlocco[]): void {
   const visti = new Map<string, { prezzo: string; pagina: number }>();
   for (const b of blocchi) {
     for (const mod of b.modelli) {
       for (const r of b.righe) {
-        const k = `${mod} ${r.finitura}`;
+        const k = JSON.stringify([mod, r.finitura]);
         const prima = visti.get(k);
         if (prima && prima.prezzo !== r.prezzo) {
           throw new Error(

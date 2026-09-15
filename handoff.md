@@ -60,8 +60,8 @@
 >
 > ## COSA È ENTRATO — 240 righe su 270
 >
-> **223 codici nuovi + 17 già a listino** (di cui **6 con prezzo diverso**: `0BT13-CM`
-> 16,30 → 12,40). Zero collisioni. **Le 19 righe «zirconium HPS/1» restano
+> **223 codici nuovi + 17 già a listino** (di cui **6 con prezzo diverso**, il
+> maggiore **−24 %**). Zero collisioni. **Le 19 righe «zirconium HPS/1» restano
 > fuori**: COLOMBO usa `I1` e `HPS1` **dentro la stessa serie Laconica**, e a
 > listino coesistono cinque grafie. Non è derivabile, e non si indovina.
 >
@@ -95,7 +95,7 @@
 > ## DIFETTI TROVATI ESEGUENDO, NON LEGGENDO
 >
 > 1. **I 17 aggiornati tenevano il surcharge del 02/26 accanto al prezzo del
->    05/26**: `0BT13-CM` usciva 12,40 con 0,57, cioè il **4,6 %**. Il prezzo e la
+>    05/26**: su `0BT13-CM` il rapporto usciva **4,6 %** invece di 3,5. Il prezzo e la
 >    sua composizione devono venire dallo **stesso documento** → `surcharge: null`
 >    anche in UPDATE. Trovato lanciando l'import, non leggendolo.
 > 2. **Un byte NUL letterale** era finito nel separatore delle chiavi dei due
@@ -220,6 +220,11 @@
 >
 > ## ❓ CINQUE DOMANDE, da porre con la conferma dell'elenco
 >
+> 📄 **Stanno in [`docs/superpowers/domande-colombo.md`](docs/superpowers/domande-colombo.md)**,
+> pronte da mandare e con la misura dietro ciascuna — il gemello del file delle
+> domande per AGB. Vivevano solo qui, e questo blocco lo riscrive ogni sessione:
+> una domanda a un fornitore può restare aperta per settimane.
+>
 > 1. **HPS/1**: `I1` o `HPS1`? COLOMBO usa entrambe nella stessa serie. Blocca 19 righe.
 > 2. **Surcharge 3,5 %**: vale ancora sull'edizione 05/26? (11/11 combaciano col
 >    netto, 0/16 con la somma, 0 occorrenze della parola nel PDF.)
@@ -227,8 +232,9 @@
 >    diversa. Ribasso vero o pezzo ridisegnato che riusa la sigla?
 > 4. **EAN**: i 251 nuovi nascono senza. Se in magazzino si legge il codice a
 >    barre, servono da COLOMBO.
-> 5. **`BT19 BZG` oromat**: 53,60 a pagina 8 e 53,70 a pagina 12 — il listino si
->    contraddice. Importato 53,60, il valore della pagina del prodotto.
+> 5. **`BT19 BZG` oromat**: due valori diversi a pagina 8 e a pagina 12 (scarto
+>    **0,2 %**) — il listino si contraddice. Importato quello della pagina del
+>    prodotto, per regola.
 >
 > ## TABELLA PER ANDREA
 >
@@ -268,7 +274,7 @@
 >
 > | dove                      | cosa dà                                                                 | esempio (LACONICA, p7)                                  |
 > | ------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------- |
-> | pagina prodotto           | **codice del modello** + prezzo **per ogni finitura, scritta per nome** | `AM41 RSB` · oroplus **94,70** · grafite mat **114,20** |
+> | pagina prodotto           | **codice del modello** + prezzo **per ogni finitura, scritta per nome** | `AM41 RSB` · oroplus · grafite mat · …                  |
 > | legenda, **da p4 in giù** | la **sigla** di ogni finitura                                           | `OL` Oroplus · `GM` Grafite Mat · `UB` Umber Bronze     |
 >
 > Il codice d'ordine è modello + sigla. **E non è «inventare per
@@ -2654,12 +2660,15 @@ Actions** (rete aperta → Neon:5432 ok).
 | 2026-07-25 | **BONIFICA KIT ARTECH LEGNO** (8 task TDD, un commit per task, dopo il merge #32): studio di tutti i moduli kit contro il **listino AGB 2026** → dei 4 template attivi, **3 producevano distinte non ordinabili**. **PVC spento** (i 4 codici material-specific esistono solo nelle pagine-certificato ift p0013 (11)/p0395 (393), senza prezzo; altri 7 dedotti per simmetria non esistono affatto) · **battente spento** (schema p0416 (414) = 21 voci, il modulo ne generava 5: mancava la **sospensione superiore**; schema composito → terna cerniere non decidibile) · **pilota corretto** (supporto cerniera `A50801.01.0N`→**`A50805.05.DX/.SX`**, banda cremonese GR02 610, descrizione incontro ribalta 9x18) · **guardia `assertPilotGeometry`** (aria/interasse/battuta/sede erano raccolti e ignorati) · **vasistas riscritto** dallo schema p0418 (416): forbici per **LBB**, via DSS+incontro DSS, dentro le **cerniere** (voci 10-11-12) e il 2° terminale, `sashWeightKg` opzionale per le NB sul peso → golden **13 righe/19 pezzi** · **parser catalogo allargato** ai segmenti alfanumerici (**+1.297 codici a prezzo, 6.191→7.488**) · schede `kit-assunzioni/` riscritte come esito + nuova `legno.md` con l'indice **globale** delle 10 domande per l'esperto. Attive: **anta-ribalta LEGNO + vasistas LEGNO**. Gate: typecheck·lint·**test 589/11 skip**. Verifica browser wizard desktop+375px (8 screenshot). **AZIONI OPS AL MERGE**: «Ops — Neon» completo (migrazione `kit_sash_weight` + **RE-IMPORT catalogo** + `db:seed:kit` + embed) e audit `kit_requests`.                                                                                                                                                                                                                                                              | `claude/kit-engine-study-wfo2hq` → PR #33 + #34 mergiate                            |
 | 2026-08-01 | **CAMBIARE LE VARIANTI DOPO LA CREAZIONE** (8 task TDD): «Modifica componenti» sulla scheda riapre il wizard precompilato su `?da=<id>`; al conferma nasce una nuova versione. Contratto `ricalcola({kitRequestId, variants?})` — assente eredita · `{}` **resetta** (scrive NULL) · oggetto **sostituisce**; il reset non è inventato (le 5 chiavi erano già `.optional()` in uno `.strict()`), dichiararlo impedisce che l'operazione sia a senso unico. Solo «Componenti» editabile — la firma **congela la geometria**, quindi la combinazione mai validata è **irrappresentabile**. Validazione = **motore in memoria prima di ogni scrittura**. Idratazione via **`kitInputFromRequest`**, la stessa del motore (solo `engine.ts` ha `server-only`): niente secondo percorso di lettura. «Ricalcola» → **«Nuova versione»**. `ComponentiRibalta` + `RadioOption` estratte (insieme: separarle chiudeva un ciclo). **Chiuso il buco trovato nella verifica funzionale della #47**: `110,13 €` non era asserito da nessun test, e i tre totali bilico stavano dietro `toBeGreaterThan(0)`. Difetto colto dai test: `??` faceva ricadere il reset sull'ereditarietà. **Quattro difetti trovati dalla review di branch coi gate tutti verdi**: un **refetch** cancellava le varianti appena scelte (structural sharing di react-query e `Date`), la validazione copriva solo il ramo con `variants` (due righe morte su PVC/battente), su **bozza** la UI prometteva una versione che non nasce, e la **vasistas** passava il filtro per serie pur non avendo varianti. Gate: typecheck·lint·**test 1.035**·build 18 route · catalogo reale 112 · **browser 22/22 desktop e 375px** (rifatto dopo i fix) col ciclo 90,20 → 110,13 → **ritorno a 90,20**. **NESSUNA AZIONE OPS.** Nuova domanda **31** (il numero identifica la richiesta o la versione?). | `claude/verifica-distinte-reali-8zz9mw` → **PR #48**                                |
 | 2026-07-31 | **ANTIEFFRAZIONE + VARIANTI COMPONENTE** (10 task TDD, un commit per task): le due domande senza risposta nel listino (il «fungo» è per sede 30? viti inclinate o dritte?) diventano **scelte dell'agente** nel nuovo passo **«Componenti»** del wizard, per indicazione esplicita dell'utente → **domande 2 e 30 CHIUSE** senza essere risposte. Registro `artech-varianti.ts` (**74 codici** scritti per esteso, verificati sul catalogo reale) · colonna `kit_requests.variants JSONB` (migrazione `20260731143758_kit_variants`, nessun backfill, NULL = standard) · **garanzia in due strati** contro la variante inerte (`RuleModule.varianti` obbligatorio + `no-silent-fields` derivato dal modulo) · ciclo di import sciolto col file foglia `varianti-schema.ts` + regola ESLint. Il **fungo resta fuori**: il listino lo lega alla sede 30 nei due versi, che il motore rifiuta a monte. Golden invariato **16 righe/21 pezzi/90,20 €** (ora asseriti anche ordine righe e 16 descrizioni); antieffrazione completa **17/22/110,13 €**. Gate: typecheck·lint·**test 992**·build 18 route · **integration 111 eseguiti** · browser 33+10 check (desktop e 375px). **AZIONE OPS: «Ops — Neon» sul ref del branch PRIMA del merge** — senza la colonna si rompono le **letture** di `kit.get`/`generate`/`ricalcola` **e `dashboard.overview`** (`dashboard.ts:40`, `findMany` senza `select`), cioè la pagina d'ingresso di tutti gli agenti; nessun re-import. **Le varianti non si cambiano dopo la creazione** (si rifà il wizard): da dire agli agenti.                                                                                                                                                                                                                                                                                        | `claude/antieffrazione-feature-dv8d37` → **PR #47 MERGIATA**, ops run `30659737114` |
-| 2026-09-14 | **CORREZIONE — il listino COLOMBO 2026 HA i codici, in due metà.** Sessione di sola documentazione, aperta da una segnalazione dell'utente. La conclusione del 06/08 («il PDF non contiene nessun codice d'ordine» → lavoro bloccato in attesa di un xlsx) veniva da una misura corretta — zero occorrenze della forma **assemblata** `0CD41R-CM` — letta come risposta a una domanda che non era quella. Il PDF pubblica **codice del modello + prezzo per finitura scritta per nome** sulle pagine prodotto (p7: `AM41 RSB` · oroplus · **94,70**) e **la sigla di ogni finitura da p4 in giù** (`OL`, `GM`, `UB`, `CM`… tutte e 12 già in `finiture.ts`). Il codice è modello + sigla, e **non è «inventare per concatenazione»**: il listino vecchio a DB è un insieme di prova da **3.456 risposte note** (`0CB71R-OL` ↔ «LARA CB71R OROPLUS») contro cui la regola si **misura**. Riscritti §RIPRENDI DA QUI (correzione datata), il §PROMPT (task 0 = accuratezza della regola sui 3.456, prima di ogni riga di codice; task 1 = far confermare ad Andrea l'elenco generato; task 2 = delta, due metà del prezzo, EAN assente) e il blocco di chiusura di `CLAUDE.md`. Nessun codice, nessuna migrazione, nessun run ops.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | `claude/ufptrade-andrea-feedback-f0s2re`                                            |
+| 2026-09-14 | **CORREZIONE — il listino COLOMBO 2026 HA i codici, in due metà.** Sessione di sola documentazione, aperta da una segnalazione dell'utente. La conclusione del 06/08 («il PDF non contiene nessun codice d'ordine» → lavoro bloccato in attesa di un xlsx) veniva da una misura corretta — zero occorrenze della forma **assemblata** `0CD41R-CM` — letta come risposta a una domanda che non era quella. Il PDF pubblica **codice del modello + prezzo per finitura scritta per nome** sulle pagine prodotto (p7: `AM41 RSB` · oroplus · grafite mat · …) e **la sigla di ogni finitura da p4 in giù** (`OL`, `GM`, `UB`, `CM`… tutte e 12 già in `finiture.ts`). Il codice è modello + sigla, e **non è «inventare per concatenazione»**: il listino vecchio a DB è un insieme di prova da **3.456 risposte note** (`0CB71R-OL` ↔ «LARA CB71R OROPLUS») contro cui la regola si **misura**. Riscritti §RIPRENDI DA QUI (correzione datata), il §PROMPT (task 0 = accuratezza della regola sui 3.456, prima di ogni riga di codice; task 1 = far confermare ad Andrea l'elenco generato; task 2 = delta, due metà del prezzo, EAN assente) e il blocco di chiusura di `CLAUDE.md`. Nessun codice, nessuna migrazione, nessun run ops.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | `claude/ufptrade-andrea-feedback-f0s2re`                                            |
 | 2026-09-15 | **IL LISTINO COLOMBO «VISION 2026» — i codici, letti e non inventati.** La regola «codice del modello + sigla della finitura» **misurata** e non postulata: l'insieme di prova non era nel PDF ma nella **pronta consegna di Andrea**, che conteneva già **12 codici d'ordine scritti da COLOMBO** per i prodotti 2026 — i «23 orfani» annotati da due sessioni **non erano refusi, era il listino nuovo arrivato in magazzino prima che a sistema**. Accuratezza **10/10 sui prodotti nuovi** e 2/13 sui componenti condivisi, cioè la regola sbaglia esattamente dove la risposta ce l'abbiamo già → le 6 voci stanno per esteso in `NUCLEO_ECCEZIONE`, e le 30 righe su cui non si legge (19 HPS/1 · 6 `ID13 Y` · 5 `AM19 BZG`) **restano fuori**. Entrati **240 articoli** (223 nuovi + 17 aggiornati), zero collisioni. `surcharge = NULL` (**`/llm-council` unanime**: mai `0`, mai il 3,5 % calcolato — la misura non discrimina fra le due ipotesi, e `NULL` è l'unico stato recuperabile con un solo UPDATE), e siccome il difetto lo crea **questo** import, la UI dichiara **entrambe** le convenzioni: didascalia a due rami sulla scheda, marcatore `†` **condizionale** negli elenchi misti. Ottava occorrenza della classe «un valore che il sistema decide da sé e non dichiara». Difetti trovati **eseguendo**: i 17 aggiornati tenevano il surcharge del 02/26 accanto al prezzo del 05/26 · un **byte NUL** rendeva due file BINARI per git, quindi invisibili in review · `ROBOT6 S` collassava in `ROBOT6`. Review di branch: **12 rilievi**, 3 sul codice che finisce a DB (lo **slash** si perdeva — 30 codici; `ID13 Y`/`AM19 BZG` uscivano con la regola nell'unica classe che la smentisce; `name` riscritto sui 17). Gate: typecheck · lint · **test 1.655** · build 22 route · **integrazione 50/50 su PDF e DB veri** · **browser 24/24**. 🔴 «Ops — Foto COLOMBO» **fallita**: COLOMBO ha rifatto l'area download e **l'indice dell'archivio non è più pubblicato** (password e file stanno benissimo) → foto dei 5 modelli 2026 **rimandate**, con la decisione di disegno in testa alla prossima sessione. PR [#65](https://github.com/av3rgfx/AGB-Finder/pull/65) + CI [#64](https://github.com/av3rgfx/AGB-Finder/pull/64). | `claude/ecstatic-clarke-g7629e` |
 
 ---
 
 ## PROMPT PER LA PROSSIMA SESSIONE — LE FOTO DEI CINQUE PRODOTTI 2026
+
+> Copia anche in [`docs/superpowers/PROMPT-prossima-sessione.md`](docs/superpowers/PROMPT-prossima-sessione.md),
+> che è il file dedicato e contiene in più le strade alternative se vuoi aprire su altro.
 
 ```
 Nuova sessione. Riparti leggendo handoff.md (§«RIPRENDI DA QUI») e CLAUDE.md.
@@ -2783,20 +2792,22 @@ Drive registrata in CLAUDE.md, id `1BO66H81J3-JlOh8vl4htwX_rHl93B1mM`).
    codice, in due punti diversi**, e chi conosce il listino le rimette insieme.
 
    · Le pagine prodotto (LACONICA è a **p7**) danno il **codice del modello** e,
-     accanto, il prezzo PER OGNI FINITURA con la finitura scritta per nome:
+     accanto, il prezzo PER OGNI FINITURA con la finitura scritta per nome.
+     La forma è due colonne affiancate, una per variante del modello:
          AM41 R Ø50 / AM41 RY Ø50     AM41 RSB Ø50
-         oroplus         105,30           oroplus          94,70
-         zirconium HPS/1 115,40           zirconium HPS/1 103,70
-         grafite mat     126,90           grafite mat     114,20
-         umber bronze     83,00           umber bronze     74,80
-         dark green       83,00           dark green       74,80
-         cherry           83,00           cherry           74,80
+         oroplus         <prezzo>         oroplus         <prezzo>
+         zirconium HPS/1 <prezzo>         zirconium HPS/1 <prezzo>
+         grafite mat     <prezzo>         grafite mat     <prezzo>
+         umber bronze    <prezzo>         umber bronze    <prezzo>
+         dark green      <prezzo>         dark green      <prezzo>
+         cherry          <prezzo>         cherry          <prezzo>
+     (i prezzi veri non si trascrivono qui: il repo è pubblico)
    · **Da p4 in giù** c'è la legenda delle finiture, che dà la SIGLA di ognuna:
      OL Oroplus · OM Oromat · HPS/1 Stainless-Steel · GM Grafite Mat ·
      CR Cromo · CM Cromat · SM Silvermat · CH Cherry · DG Dark Green ·
      UB Umber Bronze · NM Neromat · BI Biancomat.
-   · Il codice d'ordine è modello + sigla. «Laconica maniglia su rosetta senza
-     bocchetta, oroplus» = 94,70 € e la sigla `OL`.
+   · Il codice d'ordine è modello + sigla: «Laconica maniglia su rosetta senza
+     bocchetta, **oroplus**» prende la sigla `OL`.
 
    E NON È «INVENTARE PER CONCATENAZIONE», che resta vietato (§9; `A50904.22`
    non esiste). La differenza è tutta qui, ed è la ragione per cui questa
@@ -2918,8 +2929,9 @@ Misurato dopo la decodifica corretta: 2.207 cifre, 778 righe, 259 prezzi nella
 forma `NN,NN` (124 distinti), 38 riferimenti di modello.
 ⚠️ Il layout a colonne del PDF è il punto delicato: sulla pagina prodotto il
 codice del modello sta in alto e i prezzi sotto in colonna, uno per finitura.
-Verifica su LACONICA (p7), dove i numeri li conosci: AM41 RSB · oroplus ·
-94,70. Se la tua estrazione non riproduce quella riga, non è pronta.
+Verifica su LACONICA (p7): la riga `AM41 RSB` · oroplus deve uscire col suo
+prezzo, e le sei finiture nell'ordine stampato. Se l'estrazione non la
+riproduce, non è pronta.
 
 ═══ NON ROMPERE ═══
 Reparto serramenti intatto: golden del kit 16 righe / 21 pezzi / 90,20 €,

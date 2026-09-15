@@ -1064,13 +1064,13 @@ copertine di gruppo` · `Blob: 3 caricate · 304 già presenti` · `1609 articol
   marcatore `†` **condizionale** (reso solo dove l'elenco mescola le due convenzioni — misurato 94 righe su 251 in
   gruppi misti, 157 in gruppi omogenei), con lo **spazio riservato** perché il dagger disallineava la colonna di
   6px. **DIFETTI TROVATI ESEGUENDO**: i 17 aggiornati tenevano il surcharge del 02/26 accanto al prezzo del 05/26
-  (`0BT13-CM` usciva 12,40 con 0,57 = 4,6 %) → il prezzo e la sua composizione vengono dallo **stesso documento** ·
+  (su `0BT13-CM` il rapporto usciva 4,6 % invece di 3,5) → il prezzo e la sua composizione vengono dallo **stesso documento** ·
   un **byte NUL letterale** nei due moduli faceva trattare i file come **binari** da git, quindi in review il diff
   non si sarebbe visto · il gate d'integrazione **esplodeva invece di saltare** senza le env · **`ROBOT6 S`
   collassava in `ROBOT6`** (aggiunto a `divise`, la macchina esisteva già) · due liste scritte a mano allineate
   alla loro dichiarazione. **Il parser si RIFIUTA invece di indovinare** (nomi ≠ prezzi · finitura fuori legenda ·
   stesso prodotto con due prezzi su due pagine): la terza guardia ha fermato subito il documento vero — **`BT19
-BZG` oromat costa 53,60 a p8 e 53,70 a p13**, 21 prezzi ripetuti su 22 concordi — e il disaccordo si **dichiara**
+BZG` oromat ha due valori diversi a p8 e p13** (scarto 0,2 %), 21 prezzi ripetuti su 22 concordi — e il disaccordo si **dichiara**
   col valore scelto, non si tollera. Gate: typecheck · lint · **test 1.655** · build 22 route · **integrazione
   50/50 su PDF e DB veri** (provata rossa nei due versi) · **browser 24/24** (desktop e **375px**, screenshot
   guardati). 🟢 **NESSUNA MIGRAZIONE.** 🔴 **«Ops — Neon» AL MERGE** (step `Import listino Vision 2026` **nuovo**,
@@ -1089,7 +1089,7 @@ BZG` oromat costa 53,60 a p8 e 53,70 a p13**, 21 prezzi ripetuti su 22 concordi 
   riparazione: derivare la lista da `ARCHIVI` si può (i 118 nomi sono già nel repo), ma costa la riga «⚠️ archivio
   non in tabella», che oggi è **l'unico modo in cui sappiamo che COLOMBO ha pubblicato un prodotto nuovo** — cioè
   proprio il segnale da cui è nata questa sessione. Primo punto della prossima. **Cinque domande aperte** per
-  Andrea/COLOMBO (HPS/1 · surcharge 3,5 % · BT13 −24 % · EAN · `BT19 BZG` 53,60 o 53,70) e la **tabella delle 270
+  Andrea/COLOMBO (HPS/1 · surcharge 3,5 % · BT13 −24 % · EAN · `BT19 BZG` due prezzi) e la **tabella delle 270
   righe** da confermare. **CI: PR #64** aggiunge `pnpm build` a `ci.yml` dopo i test (il segno verde diceva solo
   «i test passano»; un errore di TypeScript arrivava al merge e lo scopriva Vercel, dove le preview sono rotte).
   **Questa sessione è la PR [#65](https://github.com/av3rgfx/AGB-Finder/pull/65).**
@@ -1106,7 +1106,7 @@ le cifre** (lo `0` cifrato è `\x13`): sbagliando così si conclude che i prezzi
 🔴 **LA CONCLUSIONE «il PDF non ha codici d'ordine» ERA SBAGLIATA, e l'ha vista l'utente (14/09).** Avevo
 cercato la forma **assemblata** (`0CD41R-CM`), non trovandola avevo dichiarato un blocco. Il PDF pubblica
 le **due metà** in due punti: le pagine prodotto danno il **codice del modello** e il prezzo **per ogni
-finitura scritta per nome** (p7, LACONICA: `AM41 RSB` · oroplus · **94,70**), e **da p4 in giù** la legenda
+finitura scritta per nome** (p7, LACONICA: `AM41 RSB` · oroplus · grafite mat · …), e **da p4 in giù** la legenda
 dà la **sigla** di ogni finitura (`OL` Oroplus · `GM` Grafite Mat · `UB` Umber Bronze · `CM` Cromat…, tutte
 e 12 già in `src/server/maniglie/finiture.ts` con `finituraDiTesto()`). Il codice d'ordine è modello +
 sigla. **E non è «inventare per concatenazione»** (§9, `A50904.22` non esiste), perché stavolta esiste
@@ -1141,4 +1141,5 @@ all'archivio, e «nessun elenco di nomi del fornitore nel repo» è smentito da 
 posta — la 1 (HPS/1: `I1` o `HPS1`?) sblocca 19 righe già misurate. Aperte da prima: **Vercel Pro**
 (deciso per l'08/08, non risulta fatto) · le **tre distinte reali** di MC, Peruzzi e Fosca ·
 `familyOf` che fonde `AM15 FISSO` e `AM25 FISSO` (49 articoli preesistenti, dichiarato non corretto)
-· `dedupeRows` last-wins · preview Vercel rotte. Il prompt completo è in fondo a `handoff.md`.
+· `dedupeRows` last-wins · preview Vercel rotte. Il prompt completo è in `docs/superpowers/PROMPT-prossima-sessione.md` (e in fondo a
+`handoff.md`); le domande per il fornitore in `docs/superpowers/domande-colombo.md`.

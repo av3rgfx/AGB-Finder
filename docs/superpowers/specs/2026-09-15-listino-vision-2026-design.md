@@ -103,7 +103,7 @@ aperta per Andrea**.
 
 Oggi `total` è omogeneo: 3.456 righe, tutte con il 3,5 % dentro, sotto l'etichetta costante «IVA
 esclusa». Dopo l'import `total` è a **base mista**, e nulla sullo schermo lo dice: un agente
-vedrebbe `105,30` accanto a `108,20` senza alcun segno che il primo è netto. `ArticoloRow`
+vedrebbe due prezzi vicini fra loro senza alcun segno che uno è netto e l'altro no. `ArticoloRow`
 **disegna il prezzo** (verificato, `maniglie-client.tsx:469`), quindi il confronto avviene
 davvero, fianco a fianco.
 
@@ -225,7 +225,7 @@ YAGNI. In cambio il parser **fallisce rumorosamente** se il documento non è que
 3. **verifica incrociata**: i prodotti che compaiono su due pagine devono avere lo stesso prezzo.
 
 La (3) non è teorica: ha già trovato l'unica incoerenza del documento — **`BT19 BZG` oromat costa
-53,60 a p7 e 53,70 a p12**, 21 prezzi ripetuti su 22 concordi. Si importa **53,60**, il valore
+due valori diversi a p7 e p12** (scarto 0,2 %), 21 prezzi ripetuti su 22 concordi. Si importa **quello della pagina prodotto**, il valore
 della pagina del prodotto, e si chiede ad Andrea.
 
 ## 6. Il riconoscitore delle finiture
@@ -317,7 +317,7 @@ Barattarlo per le foto di quei prodotti, senza prima cercare se viva altrove, sa
 3. **BT13 / BT19 BZG**: prezzo giù del 24 % e 7 %, con gamma di finiture diversa. Ribasso vero o
    pezzo ridisegnato che riusa la sigla?
 4. **EAN**: i nuovi possono nascere senza?
-5. **`BT19 BZG` oromat**: 53,60 o 53,70? Il listino stampa due valori.
+5. **`BT19 BZG` oromat**: il listino stampa **due valori diversi** su due pagine (scarto 0,2 %). Quale vale?
 
 ## 10. Fuori scope, dichiarato
 
