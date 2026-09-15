@@ -329,6 +329,20 @@ export function vociCuratela(brand: string): string[] {
 }
 
 /**
+ * Le parole DIVISE: quelle in cui una «S» al secondo token fa un prodotto a sé.
+ *
+ * Sono l'eccezione dentro `vociCuratela` — a differenza delle altre tre tabelle,
+ * la parola base RESTA a schermo come gruppo vero (`ROBOCINQUE` accanto a
+ * `ROBOCINQUE S`). Il gate che verifica «nessuna etichetta curata è rimasta
+ * visibile» le salta, e le saltava per nome: tre stringhe scritte a mano che
+ * nessuno teneva allineate: aggiungere `ROBOT6` a `divise` faceva fallire quel
+ * gate con un messaggio che parlava di fusioni, non di divisioni.
+ */
+export function vociDivise(brand: string): string[] {
+  return [...curatelaDi(brand).divise].sort();
+}
+
+/**
  * I gruppi che si elencano sotto «Accessori». Vuoto per una marca senza
  * curatela: il giorno di HOPPE la lista di Andrea non deve applicarsi in
  * silenzio a un listino che non ha guardato.
