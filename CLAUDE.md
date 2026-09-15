@@ -1072,13 +1072,28 @@ copertine di gruppo` · `Blob: 3 caricate · 304 già presenti` · `1609 articol
   stesso prodotto con due prezzi su due pagine): la terza guardia ha fermato subito il documento vero — **`BT19
 BZG` oromat costa 53,60 a p8 e 53,70 a p13**, 21 prezzi ripetuti su 22 concordi — e il disaccordo si **dichiara**
   col valore scelto, non si tollera. Gate: typecheck · lint · **test 1.655** · build 22 route · **integrazione
-  49/49 su PDF e DB veri** (provata rossa nei due versi) · **browser 24/24** (desktop e **375px**, screenshot
-  guardati). 🟢 **NESSUNA MIGRAZIONE.** 🔴 **DUE RUN OPS**: «Ops — Neon» (step `Import listino Vision 2026`
-  **nuovo**, guardia `%PDF` e non `PK`, **dopo** l'import COLOMBO perché è un delta) e «Ops — Foto COLOMBO» (i
-  cinque archivi `00a_Laconica`…`00e_Kubo` hanno ora un'etichetta — ⚠️ **copertura NON ri-misurata**: il gate vuole
-  `COLOMBO_FOTO_INDEX` e quindi la password dell'area download). **Cinque domande aperte** per Andrea/COLOMBO
-  (HPS/1 · surcharge 3,5 % · BT13 −24 % · EAN · `BT19 BZG` 53,60 o 53,70) e la **tabella delle 270 righe** da
-  confermare. Spec/piano: `docs/superpowers/{specs,plans}/2026-09-15-listino-vision-2026*`.
+  50/50 su PDF e DB veri** (provata rossa nei due versi) · **browser 24/24** (desktop e **375px**, screenshot
+  guardati). 🟢 **NESSUNA MIGRAZIONE.** 🔴 **«Ops — Neon» AL MERGE** (step `Import listino Vision 2026` **nuovo**,
+  guardia `%PDF` e non `PK`, **dopo** l'import COLOMBO perché è un delta) — e va lanciata **DOPO** il merge, cioè
+  al contrario della pratica adottata dalla PR #44: quella regola serve alle **migrazioni**, dove il DB deve
+  precedere il codice; qui non c'è migrazione e la dipendenza si rovescia, perché sono i **dati** a creare
+  l'ambiguità che il **codice** dichiara — importare prima mostrerebbe due convenzioni di prezzo e nessuna che lo
+  dica. 🔴 **«Ops — Foto COLOMBO» BLOCCATA dal fornitore**: run `34965121210` fallita in 29 s, **pulita** (muore al
+  primo passo, Blob e DB intatti, le 1.609 foto esistenti ferme). Diagnosi chiusa: **non** è il proxy (fallisce
+  identico sul runner GitHub), **non** è la password (con `mostra.php?lang=en&catalogo=NNN` la POST risponde),
+  **non** sono spariti i file (`206 application/zip` su tutti gli zip, **i cinque del 2026 compresi**) — COLOMBO ha
+  **rifatto l'area download**: da elenco piatto a 29 categorie che pubblicano **solo PDF**, e l'indice
+  dell'archivio fotografico **non esiste più in nessuna pagina**. `elencaArchivi()` raschiava quell'elenco. Quindi
+  le etichette dei cinque archivi `00a_Laconica`…`00e_Kubo` sono entrate e sono **inerti**: i prodotti 2026
+  nascono **senza foto**, che è lo stato onesto. **Non corretto qui perché è una decisione di disegno**, non una
+  riparazione: derivare la lista da `ARCHIVI` si può (i 118 nomi sono già nel repo), ma costa la riga «⚠️ archivio
+  non in tabella», che oggi è **l'unico modo in cui sappiamo che COLOMBO ha pubblicato un prodotto nuovo** — cioè
+  proprio il segnale da cui è nata questa sessione. Primo punto della prossima. **Cinque domande aperte** per
+  Andrea/COLOMBO (HPS/1 · surcharge 3,5 % · BT13 −24 % · EAN · `BT19 BZG` 53,60 o 53,70) e la **tabella delle 270
+  righe** da confermare. **CI: PR #64** aggiunge `pnpm build` a `ci.yml` dopo i test (il segno verde diceva solo
+  «i test passano»; un errore di TypeScript arrivava al merge e lo scopriva Vercel, dove le preview sono rotte).
+  **Questa sessione è la PR [#65](https://github.com/av3rgfx/AGB-Finder/pull/65).**
+  Spec/piano: `docs/superpowers/{specs,plans}/2026-09-15-listino-vision-2026*`.
 
 **▶ ~~PROSSIMA SESSIONE~~ — FATTA IL 2026-09-15, vedi la voce qui sopra. Il testo che segue resta come
 registro di ciò che era stato misurato prima, e la sua conclusione «il PDF non ha i codici» è RITIRATA.** Andrea ha portato il listino ufficiale nuovo
@@ -1110,3 +1125,20 @@ dei nuovi ci sono già**: quei prodotti sono **uno a uno** i cinque archivi con 
 **devono** diventare rosse se un'etichetta accessorio sparisce dal listino: non si allentano. Resta
 comunque preferibile **il 2026 in xlsx CON i codici** (richiesta pronta nel prompt): se arriva, il task 0
 diventa la sua verifica. Il prompt completo è in fondo a `handoff.md`.
+
+**▶ PROSSIMA SESSIONE — LE FOTO DEI CINQUE PRODOTTI 2026, E LA DECISIONE CHE LE SBLOCCA.** I 240
+articoli sono in catalogo, le etichette dei cinque archivi sono nel codice, e **non serve a niente
+finché «Ops — Foto COLOMBO» non gira**. Il blocco è del fornitore e la diagnosi è **chiusa, non
+rifarla**: password valida · zip tutti serviti (`206`, i cinque del 2026 compresi) · runner GitHub
+identico alla sandbox → è il **sito** che è cambiato, l'indice dell'archivio non è più pubblicato.
+Quel che resta è una **scelta**, da portare a `/llm-council`: derivare la lista da `ARCHIVI`
+verificando ogni voce con una Range è facile, ma **spegne l'unico rilevatore di prodotti nuovi che
+abbiamo** (la riga «⚠️ archivio non in tabella») — e cercare se il segnale viva altrove (le pagine
+`mostra.php` elencano i PDF: un listino nuovo lì si vede?) fa parte della domanda. Da riscrivere
+anche due commenti che oggi affermano il falso in `foto-colombo.ts`: la password non serve più
+all'archivio, e «nessun elenco di nomi del fornitore nel repo» è smentito da 118 chiavi di `ARCHIVI`
+(protegge i **byte** delle foto, non i nomi). Poi: le **cinque domande** per Andrea/COLOMBO, nessuna
+posta — la 1 (HPS/1: `I1` o `HPS1`?) sblocca 19 righe già misurate. Aperte da prima: **Vercel Pro**
+(deciso per l'08/08, non risulta fatto) · le **tre distinte reali** di MC, Peruzzi e Fosca ·
+`familyOf` che fonde `AM15 FISSO` e `AM25 FISSO` (49 articoli preesistenti, dichiarato non corretto)
+· `dedupeRows` last-wins · preview Vercel rotte. Il prompt completo è in fondo a `handoff.md`.

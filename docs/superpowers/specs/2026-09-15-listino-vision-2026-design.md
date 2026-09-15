@@ -254,6 +254,46 @@ discriminante del prezzo esiste già (`surcharge IS NULL`), e una colonna «ediz
 Nessuna finestra di disservizio: non c'è migrazione, quindi nessuna lettura fallisce fra deploy e
 run.
 
+### 7.1 Esito reale (aggiunto il 2026-09-15, a lavoro finito)
+
+**Il punto 1 va lanciato DOPO il merge, non prima** — e quindi al contrario della pratica adottata
+dalla PR #44. Quella regola esiste per le **migrazioni**: lì il DB deve precedere il codice,
+altrimenti il codice deployato legge colonne che non ci sono. Qui non c'è migrazione e **la
+dipendenza si rovescia**: sono i *dati* a creare l'ambiguità che il *codice* dichiara. Importare le
+240 righe prima del merge significherebbe mostrare in produzione due convenzioni di prezzo **e
+nessuna che lo dica** — cioè aprire di mano nostra, per la durata della review, il difetto che
+questa spec chiude.
+
+**Il punto 2 è BLOCCATO, e l'affermazione «le foto dei nuovi ci sono già» va letta con questa
+nota.** Le foto *esistono* — è l'**indice** che non esiste più. Run `34965121210` sul ref del
+branch: fallita in 29 secondi, al primo passo, senza toccare Blob né il DB.
+
+| ipotesi                             | verdetto                                                            |
+| ----------------------------------- | ------------------------------------------------------------------- |
+| il proxy della sandbox              | ❌ fallisce identico sul runner GitHub, che non ne ha               |
+| password errata o scaduta           | ❌ con `mostra.php?lang=en&catalogo=NNN` la POST risponde coi PDF   |
+| gli zip sono stati rimossi          | ❌ `206 application/zip` su tutti, **i cinque del 2026 compresi**   |
+| **il fornitore ha rifatto il sito** | ✅                                                                  |
+
+`download.colombodesign.com/` non è più un elenco piatto: è un indice di **29 categorie**
+(`mostra.php?lang=en&catalogo=NNN`). Interrogate tutte con la password: **29 link, tutti `.pdf`,
+zero `.zip`**. L'indice dell'archivio fotografico non è più pubblicato in alcuna pagina, mentre i
+file restano serviti e non protetti. `elencaArchivi()` (`scripts/foto-colombo.ts:57-72`) scopriva la
+lista raschiando quell'elenco.
+
+**Conseguenza dichiarata**: le etichette dei cinque archivi sono entrate nel codice e sono
+**inerti**; i prodotti 2026 nascono con `image_url` NULL. È lo stato onesto — nessuna riga mente,
+nessuna foto è sbagliata — ed è reversibile con un run, il giorno in cui la scoperta è sostituita.
+Le 1.609 foto già in produzione **non si sono mosse**: il run non è arrivato al punto in cui azzera
+`image_url`.
+
+**Perché la sostituzione non è entrata in questa PR**: è una decisione di disegno, non una
+riparazione. La lista si può derivare da `ARCHIVI` (i 118 nomi sono già nel repo pubblico, quindi
+non si rivela nulla di nuovo) verificando ogni voce con una Range — ma si perde la riga
+`⚠️ archivio non in tabella, ignorato`, che oggi è l'unico canale per cui veniamo a sapere che
+COLOMBO ha pubblicato un prodotto nuovo: **lo stesso segnale da cui è nata questa sessione**.
+Barattarlo per le foto di quei prodotti, senza prima cercare se viva altrove, sarebbe una beffa.
+
 ## 8. Sentinelle
 
 - **`no-silent-fields` del prezzo**: l'import scrive `NULL`, **non `0`**, e un test fallisce col

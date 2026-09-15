@@ -12,7 +12,7 @@
 | **Data**                   | 2026-09-15 — **IL LISTINO COLOMBO «VISION 2026»**                                                                                  |
 | **Fase in corso**          | Fase 1 — MVP Gestionale · reparto maniglie                                                                                         |
 | **Branch**                 | `claude/ecstatic-clarke-g7629e`                                                                                                    |
-| **Stato deploy**           | 🟢 **NESSUNA MIGRAZIONE.** 🔴 **DUE RUN OPS**: «Ops — Neon» (step nuovo) e «Ops — Foto COLOMBO»                                    |
+| **Stato deploy**           | 🟢 **NESSUNA MIGRAZIONE.** 🔴 **UN RUN OPS AL MERGE**: «Ops — Neon». «Ops — Foto COLOMBO» è **BLOCCATO da COLOMBO** (vedi sotto)  |
 | **Gate**                   | typecheck · lint · **test 1.655** · build 22 route · **integrazione 50/50 su PDF e DB veri** · **browser 24/24** (desktop e 375px) |
 | **In produzione al merge** | **+223 articoli** (3.456 → 3.679) · 240 righe dal listino 05/26                                                                    |
 
@@ -147,19 +147,76 @@
 > cadono già, dalle descrizioni di COLOMBO stessa (`ROBOT FISSO CD45`) — e
 > correggerla solo sulle righe nuove le renderebbe incoerenti col fornitore.
 >
-> ## 🔴 AZIONI OPS AL MERGE
+> ## 🔴 AZIONI OPS — UNA AL MERGE, UNA BLOCCATA DAL FORNITORE
 >
-> 1. **«Ops — Neon»** — lo step `Import listino Vision 2026` è **nuovo** nel
->    workflow, con la guardia `%PDF` (quella esistente cerca `PK` perché importa
->    xlsx). Sta **dopo** l'import COLOMBO: è un delta e presuppone la base.
-> 2. **«Ops — Foto COLOMBO»** — i cinque archivi (`00a_Laconica`, `00b_Robot6`,
->    `00c_Robot6S`, `00d_Halo`, `00e_Kubo`) hanno ora un'etichetta.
->    ⚠️ **La copertura NON è stata ri-misurata**: il gate vuole
->    `COLOMBO_FOTO_INDEX`, che si produce con `pnpm foto:colombo --dry-run --dump`
->    e richiede la **password dell'area download**, che non è stata chiesta.
->    **Girare il gate prima del run.**
+> ### 1. «Ops — Neon» — **DOPO** il merge, e l'ordine è invertito apposta
 >
-> 🟢 **NESSUNA MIGRAZIONE**, quindi nessuna finestra di disservizio.
+> Lo step `Import listino Vision 2026` è **nuovo** nel workflow, con la guardia
+> `%PDF` (quella esistente cerca `PK` perché importa xlsx). Sta **dopo** l'import
+> COLOMBO: è un delta e presuppone la base.
+>
+> ⚠️ **Va lanciato DOPO il merge, non prima** — ed è il contrario della pratica
+> che questo progetto si è dato dalla PR #44 in qua. La regola «ops sul ref del
+> branch, prima del merge» esiste per le **migrazioni**: lì il DB deve essere
+> pronto prima del codice, altrimenti il codice deployato legge colonne che non
+> ci sono (l'incidente da venti minuti della #40). **Qui non c'è migrazione, e la
+> dipendenza si rovescia**: sono i *dati* a creare l'ambiguità che il *codice*
+> dichiara. Importare le 240 righe prima del merge vorrebbe dire mostrare in
+> produzione un catalogo con **due convenzioni di prezzo e nessuna che lo dica**
+> — cioè esattamente il difetto che questa PR chiude, aperto di mano nostra per
+> la durata della review.
+>
+> **Input del workflow**: `vision_url` = il download diretto del PDF dalla
+> cartella Drive registrata in `CLAUDE.md`.
+>
+> ### 2. «Ops — Foto COLOMBO» — 🔴 **BLOCCATO: l'area download è cambiata**
+>
+> **Lanciato sul ref del branch (run `34965121210`) ed è FALLITO in 29 secondi**,
+> allo stesso punto in cui falliva in locale. Il fallimento è **pulito**: muore
+> al primo passo, prima di toccare Blob o il DB, quindi **la produzione non è
+> stata sfiorata**. Diagnosi fatta fino in fondo:
+>
+> | ipotesi                            | verdetto                                                                 |
+> | ---------------------------------- | ------------------------------------------------------------------------ |
+> | è il proxy della sandbox           | ❌ **no** — fallisce identico sul runner GitHub, che non ha proxy         |
+> | la password è sbagliata o scaduta  | ❌ **no** — con `mostra.php?catalogo=N` la POST restituisce i PDF         |
+> | gli zip sono stati tolti           | ❌ **no** — `206 application/zip` su tutti, **i cinque del 2026 compresi** |
+> | **il fornitore ha rifatto il sito** | ✅ **sì**                                                                |
+>
+> `download.colombodesign.com/` **non è più un elenco piatto di file**: è un
+> indice di 29 categorie (`mostra.php?lang=en&catalogo=NNN`, DOOR HANDLES ·
+> BATHROOM ACCESSORIES · …). Interrogate tutte e 29 con la password: **29 link,
+> tutti `.pdf`, zero `.zip`**. L'indice dell'**archivio fotografico non è più
+> pubblicato in nessuna pagina** — mentre i file restano serviti e non protetti.
+>
+> `elencaArchivi()` (`scripts/foto-colombo.ts:57-72`) scopriva la lista
+> **raschiando** quell'elenco. Non c'è più niente da raschiare.
+>
+> **Conseguenza, dichiarata**: le etichette dei cinque archivi 2026 sono entrate
+> nel codice e sono **inerti**. I prodotti nuovi nascono **senza foto**
+> (`image_url` NULL), che è lo stato onesto: nessuna riga mente, nessuna foto è
+> sbagliata, la copertina non compare. **Le 1.609 foto già in produzione non si
+> toccano** — il run non è arrivato al punto in cui azzera `image_url`.
+>
+> **Perché NON l'ho corretto qui**: sostituire la scoperta è una **decisione di
+> disegno**, non una riparazione. La lista si può derivare da `ARCHIVI` (i 118
+> nomi sono già nel repo, quindi non si rivela niente di nuovo) verificando ogni
+> voce con una Range, ma si perde la riga `⚠️ archivio non in tabella, ignorato`,
+> che oggi è **l'unico modo in cui veniamo a sapere che COLOMBO ha pubblicato un
+> prodotto nuovo** — ed è proprio il segnale che ha fatto nascere questa
+> sessione. E la password diventerebbe codice morto: l'area download serve
+> ancora per i PDF, non più per l'archivio. Va deciso, non sbrigato in coda a una
+> PR che parla d'altro. **È il primo punto della prossima sessione.**
+>
+> ### 3. CI — PR separata già aperta
+>
+> [#64](https://github.com/av3rgfx/AGB-Finder/pull/64) aggiunge `pnpm build` a
+> `ci.yml` dopo i test. Il segno verde diceva solo «i test passano»; un errore di
+> TypeScript arrivava fino al merge, e lo scopriva Vercel — dove le preview sono
+> rotte da tempo, quindi non lo scopriva nessuno.
+>
+> 🟢 **NESSUNA MIGRAZIONE**, quindi nessuna finestra di disservizio in nessuno dei
+> due casi.
 >
 > ## ❓ CINQUE DOMANDE, da porre con la conferma dell'elenco
 >
@@ -2453,6 +2510,23 @@ Actions** (rete aperta → Neon:5432 ok).
 
 ### Immediati
 
+- [ ] 🔴 **«Ops — Foto COLOMBO» non gira più: COLOMBO ha rifatto l'area download.**
+      Run `34965121210` fallita in 29 s, pulita (nessun tocco a Blob o DB). Password
+      e file stanno benissimo (`206 application/zip` su tutti i 79 zip, i cinque del
+      2026 compresi); è sparito **l'indice**: il sito è ora 29 pagine
+      `mostra.php?catalogo=NNN` che elencano **solo PDF**. `elencaArchivi()` raschiava
+      l'elenco piatto. **Decisione di disegno**, primo punto della prossima sessione —
+      dettagli e alternative in §RIPRENDI DA QUI e nel §PROMPT.
+- [ ] **«Ops — Neon» al merge della PR #65** (step `Import listino Vision 2026`,
+      nuovo). ⚠️ **DOPO il merge, non prima**: non c'è migrazione, e qui sono i dati a
+      creare l'ambiguità che il codice dichiara — importare prima mostrerebbe due
+      convenzioni di prezzo senza la UI che le distingue.
+- [ ] **Le cinque domande per Andrea/COLOMBO** (§RIPRENDI DA QUI), nessuna posta.
+      La 1 (HPS/1: `I1` o `HPS1`?) sblocca 19 righe già misurate; la 2 (il 3,5 % vale
+      sul 05/26?) è un solo `UPDATE` il giorno della risposta.
+- [ ] **Vercel Hobby vieta l'uso commerciale** → passaggio a Pro, deciso per
+      l'08/08 e non risulta fatto.
+
 - [x] GEMINI_API_KEY in `.env` (fornita 2026-07-04; anche nel transcript sessione)
 - [x] **Embedding catalogo (6.191/6.191 su Neon)** ✅ — generato dalla pipeline ops
       GitHub Actions (`embed:products`, run #1 `29132026156`, 2026-07-11:
@@ -2581,10 +2655,101 @@ Actions** (rete aperta → Neon:5432 ok).
 | 2026-08-01 | **CAMBIARE LE VARIANTI DOPO LA CREAZIONE** (8 task TDD): «Modifica componenti» sulla scheda riapre il wizard precompilato su `?da=<id>`; al conferma nasce una nuova versione. Contratto `ricalcola({kitRequestId, variants?})` — assente eredita · `{}` **resetta** (scrive NULL) · oggetto **sostituisce**; il reset non è inventato (le 5 chiavi erano già `.optional()` in uno `.strict()`), dichiararlo impedisce che l'operazione sia a senso unico. Solo «Componenti» editabile — la firma **congela la geometria**, quindi la combinazione mai validata è **irrappresentabile**. Validazione = **motore in memoria prima di ogni scrittura**. Idratazione via **`kitInputFromRequest`**, la stessa del motore (solo `engine.ts` ha `server-only`): niente secondo percorso di lettura. «Ricalcola» → **«Nuova versione»**. `ComponentiRibalta` + `RadioOption` estratte (insieme: separarle chiudeva un ciclo). **Chiuso il buco trovato nella verifica funzionale della #47**: `110,13 €` non era asserito da nessun test, e i tre totali bilico stavano dietro `toBeGreaterThan(0)`. Difetto colto dai test: `??` faceva ricadere il reset sull'ereditarietà. **Quattro difetti trovati dalla review di branch coi gate tutti verdi**: un **refetch** cancellava le varianti appena scelte (structural sharing di react-query e `Date`), la validazione copriva solo il ramo con `variants` (due righe morte su PVC/battente), su **bozza** la UI prometteva una versione che non nasce, e la **vasistas** passava il filtro per serie pur non avendo varianti. Gate: typecheck·lint·**test 1.035**·build 18 route · catalogo reale 112 · **browser 22/22 desktop e 375px** (rifatto dopo i fix) col ciclo 90,20 → 110,13 → **ritorno a 90,20**. **NESSUNA AZIONE OPS.** Nuova domanda **31** (il numero identifica la richiesta o la versione?). | `claude/verifica-distinte-reali-8zz9mw` → **PR #48**                                |
 | 2026-07-31 | **ANTIEFFRAZIONE + VARIANTI COMPONENTE** (10 task TDD, un commit per task): le due domande senza risposta nel listino (il «fungo» è per sede 30? viti inclinate o dritte?) diventano **scelte dell'agente** nel nuovo passo **«Componenti»** del wizard, per indicazione esplicita dell'utente → **domande 2 e 30 CHIUSE** senza essere risposte. Registro `artech-varianti.ts` (**74 codici** scritti per esteso, verificati sul catalogo reale) · colonna `kit_requests.variants JSONB` (migrazione `20260731143758_kit_variants`, nessun backfill, NULL = standard) · **garanzia in due strati** contro la variante inerte (`RuleModule.varianti` obbligatorio + `no-silent-fields` derivato dal modulo) · ciclo di import sciolto col file foglia `varianti-schema.ts` + regola ESLint. Il **fungo resta fuori**: il listino lo lega alla sede 30 nei due versi, che il motore rifiuta a monte. Golden invariato **16 righe/21 pezzi/90,20 €** (ora asseriti anche ordine righe e 16 descrizioni); antieffrazione completa **17/22/110,13 €**. Gate: typecheck·lint·**test 992**·build 18 route · **integration 111 eseguiti** · browser 33+10 check (desktop e 375px). **AZIONE OPS: «Ops — Neon» sul ref del branch PRIMA del merge** — senza la colonna si rompono le **letture** di `kit.get`/`generate`/`ricalcola` **e `dashboard.overview`** (`dashboard.ts:40`, `findMany` senza `select`), cioè la pagina d'ingresso di tutti gli agenti; nessun re-import. **Le varianti non si cambiano dopo la creazione** (si rifà il wizard): da dire agli agenti.                                                                                                                                                                                                                                                                                        | `claude/antieffrazione-feature-dv8d37` → **PR #47 MERGIATA**, ops run `30659737114` |
 | 2026-09-14 | **CORREZIONE — il listino COLOMBO 2026 HA i codici, in due metà.** Sessione di sola documentazione, aperta da una segnalazione dell'utente. La conclusione del 06/08 («il PDF non contiene nessun codice d'ordine» → lavoro bloccato in attesa di un xlsx) veniva da una misura corretta — zero occorrenze della forma **assemblata** `0CD41R-CM` — letta come risposta a una domanda che non era quella. Il PDF pubblica **codice del modello + prezzo per finitura scritta per nome** sulle pagine prodotto (p7: `AM41 RSB` · oroplus · **94,70**) e **la sigla di ogni finitura da p4 in giù** (`OL`, `GM`, `UB`, `CM`… tutte e 12 già in `finiture.ts`). Il codice è modello + sigla, e **non è «inventare per concatenazione»**: il listino vecchio a DB è un insieme di prova da **3.456 risposte note** (`0CB71R-OL` ↔ «LARA CB71R OROPLUS») contro cui la regola si **misura**. Riscritti §RIPRENDI DA QUI (correzione datata), il §PROMPT (task 0 = accuratezza della regola sui 3.456, prima di ogni riga di codice; task 1 = far confermare ad Andrea l'elenco generato; task 2 = delta, due metà del prezzo, EAN assente) e il blocco di chiusura di `CLAUDE.md`. Nessun codice, nessuna migrazione, nessun run ops.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | `claude/ufptrade-andrea-feedback-f0s2re`                                            |
+| 2026-09-15 | **IL LISTINO COLOMBO «VISION 2026» — i codici, letti e non inventati.** La regola «codice del modello + sigla della finitura» **misurata** e non postulata: l'insieme di prova non era nel PDF ma nella **pronta consegna di Andrea**, che conteneva già **12 codici d'ordine scritti da COLOMBO** per i prodotti 2026 — i «23 orfani» annotati da due sessioni **non erano refusi, era il listino nuovo arrivato in magazzino prima che a sistema**. Accuratezza **10/10 sui prodotti nuovi** e 2/13 sui componenti condivisi, cioè la regola sbaglia esattamente dove la risposta ce l'abbiamo già → le 6 voci stanno per esteso in `NUCLEO_ECCEZIONE`, e le 30 righe su cui non si legge (19 HPS/1 · 6 `ID13 Y` · 5 `AM19 BZG`) **restano fuori**. Entrati **240 articoli** (223 nuovi + 17 aggiornati), zero collisioni. `surcharge = NULL` (**`/llm-council` unanime**: mai `0`, mai il 3,5 % calcolato — la misura non discrimina fra le due ipotesi, e `NULL` è l'unico stato recuperabile con un solo UPDATE), e siccome il difetto lo crea **questo** import, la UI dichiara **entrambe** le convenzioni: didascalia a due rami sulla scheda, marcatore `†` **condizionale** negli elenchi misti. Ottava occorrenza della classe «un valore che il sistema decide da sé e non dichiara». Difetti trovati **eseguendo**: i 17 aggiornati tenevano il surcharge del 02/26 accanto al prezzo del 05/26 · un **byte NUL** rendeva due file BINARI per git, quindi invisibili in review · `ROBOT6 S` collassava in `ROBOT6`. Review di branch: **12 rilievi**, 3 sul codice che finisce a DB (lo **slash** si perdeva — 30 codici; `ID13 Y`/`AM19 BZG` uscivano con la regola nell'unica classe che la smentisce; `name` riscritto sui 17). Gate: typecheck · lint · **test 1.655** · build 22 route · **integrazione 50/50 su PDF e DB veri** · **browser 24/24**. 🔴 «Ops — Foto COLOMBO» **fallita**: COLOMBO ha rifatto l'area download e **l'indice dell'archivio non è più pubblicato** (password e file stanno benissimo) → foto dei 5 modelli 2026 **rimandate**, con la decisione di disegno in testa alla prossima sessione. PR [#65](https://github.com/av3rgfx/AGB-Finder/pull/65) + CI [#64](https://github.com/av3rgfx/AGB-Finder/pull/64). | `claude/ecstatic-clarke-g7629e` |
 
 ---
 
-## PROMPT PER LA PROSSIMA SESSIONE — I CODICI DEL LISTINO COLOMBO 2026
+## PROMPT PER LA PROSSIMA SESSIONE — LE FOTO DEI CINQUE PRODOTTI 2026
+
+```
+Nuova sessione. Riparti leggendo handoff.md (§«RIPRENDI DA QUI») e CLAUDE.md.
+
+WORKFLOW (regole permanenti CLAUDE.md): /using-superpowers → /brainstorming →
+/llm-council sui dubbi veri, VERIFICANDO nel repo le affermazioni degli advisor
+→ /impeccable per ogni schermata (SEMPRE mobile ≤375px + desktop, screenshot
+GUARDATI) → /ponytail ogni volta che scrivi codice → spec → piano → TDD, un
+commit per task → review indipendente del branch PRIMA della PR.
+
+VINCOLI: TypeScript strict · tutto via tRPC · query via Prisma, regole di
+dominio in TypeScript e MAI nel raw SQL · UI in italiano, codici in monospace ·
+il repo è PUBBLICO, quindi listino, giacenze e foto del fornitore non si
+committano mai · un run ops con migrazione va lanciato sul ref del branch,
+prima del merge. E la regola che vale doppio: NON TOCCARE LA SEZIONE
+SERRAMENTI (catalogo AGB, assistente, kit, clienti).
+
+La password dell'area download COLOMBO la fornisce l'utente a richiesta e NON
+va scritta in nessun file (il repo è pubblico). In CI sta nel secret
+COLOMBO_DOWNLOAD_PASSWORD; l'utente l'ha già fornita una volta il 2026-09-15.
+
+═══ IL PUNTO 1: L'ARCHIVIO FOTOGRAFICO NON HA PIÙ UN INDICE ═══
+
+I 240 articoli del listino Vision 2026 sono in catalogo (PR #65) e i cinque
+archivi fotografici hanno un'etichetta in `foto-archivio.ts`. Ma «Ops — Foto
+COLOMBO» NON gira più: run 34965121210, fallita in 29 secondi.
+
+GIÀ DIAGNOSTICATO IL 15/09, NON RIFARLO:
+ · NON è il proxy della sandbox — fallisce identico sul runner GitHub.
+ · NON è la password — con `mostra.php?lang=en&catalogo=NNN` la POST risponde
+   con i PDF delle 29 categorie.
+ · NON sono spariti i file — `curl -r 0-99` su
+   `/download/maniglie/archivio/<chiave>.zip` dà `206 application/zip` su
+   tutti, **i cinque del 2026 compresi** (00a_Laconica, 00b_Robot6,
+   00c_Robot6S, 00d_Halo, 00e_Kubo). Non sono nemmeno protetti.
+ · È IL SITO: `download.colombodesign.com/` non è più un elenco piatto ma un
+   indice di 29 categorie. Interrogate tutte con la password: 29 link, tutti
+   `.pdf`, ZERO `.zip`. L'indice dell'archivio non è più pubblicato da nessuna
+   parte. `elencaArchivi()` (scripts/foto-colombo.ts:57-72) raschiava
+   quell'elenco; non c'è più niente da raschiare.
+
+LA DECISIONE, che è il motivo per cui non l'ho sbrigata in coda alla PR:
+la lista si PUÒ derivare da `ARCHIVI` verificando ogni voce con una Range —
+i 118 nomi sono già nel repo, quindi non si rivela nulla di nuovo. Ma:
+ (a) si perde la riga «⚠️ archivio non in tabella, ignorato», che oggi è
+     l'UNICO modo in cui veniamo a sapere che COLOMBO ha pubblicato un
+     prodotto nuovo — ed è esattamente il segnale che ha fatto nascere la
+     sessione del listino 2026. Perderlo per guadagnare le foto di quei
+     prodotti sarebbe una beffa. Cercare se un segnale equivalente esista
+     altrove (le pagine `mostra.php` elencano i PDF: un listino nuovo lì si
+     vede?) è parte della domanda, non un extra.
+ (b) la password diventa codice morto per l'archivio (resta viva per i PDF):
+     il commento in testa a foto-colombo.ts va riscritto, non lasciato a
+     dire una cosa che non è più vera.
+ (c) il commento dice «nessun elenco di nomi del fornitore dentro un repo
+     pubblico» ed è GIÀ mezzo falso: le 118 chiavi di ARCHIVI sono nomi di
+     cartelle del fornitore, nel repo, da mesi. Da riscrivere per dire ciò
+     che davvero protegge (i BYTE delle foto, non i nomi).
+Portala a /llm-council verificando nel repo le affermazioni degli advisor.
+
+Poi: girare il gate della copertura (vuole COLOMBO_FOTO_INDEX, si produce con
+`pnpm foto:colombo --dry-run --dump`) e il run ops. Atteso: i cinque modelli
+2026 prendono copertina e foto di riga; le 1.609 esistenti non si muovono.
+
+═══ IL PUNTO 2: LE CINQUE DOMANDE PER ANDREA/COLOMBO ═══
+Sono in §RIPRENDI DA QUI e nessuna è stata posta. La 1 (HPS/1: `I1` o `HPS1`?)
+sblocca 19 righe già misurate; la 2 (il 3,5 % vale sul 05/26?) è un solo UPDATE
+il giorno della risposta; la 4 (EAN) serve se in magazzino si legge il codice a
+barre. Tabella per Andrea: https://claude.ai/artifact/TmLQACdckr7c3WDP7GmJjJ
+
+═══ COSE APERTE DA PRIMA, non toccate ═══
+ · Vercel Hobby vieta l'uso commerciale → passaggio a Pro (era deciso per
+   l'08/08 e non risulta fatto).
+ · Le tre distinte reali di MC, Peruzzi e Fosca: aperta da sessioni, è la cosa
+   che vale di più sul reparto serramenti.
+ · `familyOf` mette AM15 FISSO e AM25 FISSO nella stessa serie (49 articoli
+   preesistenti, dalle descrizioni di COLOMBO): dichiarato, non corretto.
+ · `dedupeRows` last-wins in map-product.ts.
+ · Preview Vercel rotte su ogni PR.
+
+═══ UNA LEZIONE DA PORTARSI DIETRO ═══
+Il run ops è fallito in 29 secondi, al primo passo, senza toccare Blob né il
+DB — e quel fallimento pulito È il motivo per cui la diagnosi si è potuta fare
+con calma. Una guardia che si rifiuta presto vale più di una che tollera e
+prosegue: la seconda avrebbe azzerato `image_url` e poi trovato zero archivi.
+```
+
+---
+
+## PROMPT (STORICO — i codici del listino Vision 2026, CONSUMATO il 2026-09-15)
 
 ```
 Nuova sessione. Riparti leggendo handoff.md (§«RIPRENDI DA QUI») e CLAUDE.md.
