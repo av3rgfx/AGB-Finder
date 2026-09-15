@@ -7,13 +7,159 @@
 
 ## Sessione attuale
 
-| Campo | Valore |
-|-------|--------|
-| **Data** | 2026-08-06 — **LE COPERTINE DEI GRUPPI (ottava tornata di Andrea)** |
-| **Fase in corso** | Fase 1 — MVP Gestionale · reparto maniglie |
-| **Branch** | `claude/ufptrade-andrea-feedback-f0s2re` |
-| **Stato deploy** | 🟢 **NESSUNA MIGRAZIONE, nessuna finestra di disservizio.** 🔴 **UN RUN OPS**: «Ops — Foto COLOMBO» |
-| **Gate** | typecheck · lint · **test 1.583** · **integrazione 15/15 su listino e archivio VERI** · **browser 30/30** (desktop e 375px) |
+| Campo                      | Valore                                                                                                                             |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| **Data**                   | 2026-09-15 — **IL LISTINO COLOMBO «VISION 2026»**                                                                                  |
+| **Fase in corso**          | Fase 1 — MVP Gestionale · reparto maniglie                                                                                         |
+| **Branch**                 | `claude/ecstatic-clarke-g7629e`                                                                                                    |
+| **Stato deploy**           | 🟢 **NESSUNA MIGRAZIONE.** 🔴 **DUE RUN OPS**: «Ops — Neon» (step nuovo) e «Ops — Foto COLOMBO»                                    |
+| **Gate**                   | typecheck · lint · **test 1.652** · build 22 route · **integrazione 49/49 su PDF e DB veri** · **browser 24/24** (desktop e 375px) |
+| **In produzione al merge** | 3.456 → **3.690 articoli** · 251 righe dal listino 05/26, di cui 234 codici nuovi                                                  |
+
+---
+
+> **▶ RIPRENDI DA QUI**
+>
+> ## LA CONCLUSIONE DELLA SESSIONE SCORSA ERA SBAGLIATA, E L'HA VISTA L'UTENTE
+>
+> «Il PDF non contiene nessun codice d'ordine.» La misura era **giusta** — zero
+> occorrenze della forma assemblata `0CD41R-CM` — ma rispondeva a una domanda che
+> non era quella. Il listino pubblica le **due metà** del codice in due punti: il
+> codice del modello sulla pagina prodotto (`AM41 RSB Ø50`) e la sigla della
+> finitura nella legenda (`OL` Oroplus). Chi il listino lo conosce le rimette
+> insieme.
+>
+> **La lezione, scritta perché non si ripeta**: quando una misura dice «manca»,
+> prima di dichiarare un blocco vale la pena chiedersi se manca **la cosa** o se
+> manca solo **nella forma in cui la stavo cercando**.
+>
+> ## LA SECONDA FONTE, CHE NESSUNO AVEVA CERCATO
+>
+> La regola non è postulata: è **misurata**, e la prova non era nel PDF. La
+> **pronta consegna di Andrea** contiene già **12 codici d'ordine scritti da
+> COLOMBO per i prodotti 2026** — `0AM41RHPS1`, `0ID81RCM`, `0ID45FISSOCM`,
+> `0AM15FISSOI1`… Erano i «**23 orfani**» annotati da due sessioni come codici in
+> magazzino e assenti dal listino. **Non erano refusi: era il listino nuovo
+> arrivato sullo scaffale prima che a sistema.**
+>
+> | insieme di prova                                 | la regola riproduce |
+> | ------------------------------------------------ | ------------------- |
+> | prodotti **NUOVI** 2026 (fonte: pronta consegna) | **10 / 10 — 100 %** |
+> | componenti condivisi già a listino 02/26         | 2 / 13 — 15 %       |
+>
+> **Il 52 % complessivo è fuorviante: la regola sbaglia esattamente dove la
+> risposta ce l'abbiamo già.** `FF13 Y` → `0FF13` (la Y sparisce) · `FF19 BZG` →
+> `0FF19BZG6` (compare un 6) · `DK 35 DF` → `XDK35DF` (prefisso X) ·
+> `DK 35 DF/8S` → `XDK35D/8SF` (lettere riordinate). Sono pezzi vecchi a cui il
+> 2026 dà una designazione nuova: per tutti si **legge** il codice vero, e le sei
+> voci stanno per esteso in `NUCLEO_ECCEZIONE`.
+>
+> ⚠️ **Il «6» di Robot6 non è la serie**: `BZG6` compare su **125 codici in 12
+> famiglie** (BT, CC, CD, DB, DL, FF, JP, MF, MM, MR, PT, SE). L'ipotesi del
+> prompt è refutata.
+>
+> ## COSA È ENTRATO — 251 righe su 270
+>
+> **234 codici nuovi + 17 già a listino** (di cui **6 con prezzo diverso**: `0BT13-CM`
+> 16,30 → 12,40). Zero collisioni. **Le 19 righe «zirconium HPS/1» restano
+> fuori**: COLOMBO usa `I1` e `HPS1` **dentro la stessa serie Laconica**, e a
+> listino coesistono cinque grafie. Non è derivabile, e non si indovina.
+>
+> ## IL PREZZO — `surcharge = NULL`, e la UI lo dichiara
+>
+> Misurato: i prezzi del PDF coincidono **esatto** con `priceList` (il netto) su
+> 11 articoli presenti in entrambi i file; con la somma **0 volte su 16**. E
+> `surcharge == 3,5 % di priceList` su **tutte e 3.456** le righe vecchie.
+>
+> **`/llm-council` unanime (4/4)** su `NULL`, mai `0`, mai il 3,5 % calcolato. La
+> misura **non discrimina** fra «il surcharge è stato tolto» e «il listino base si
+> pubblica sempre netto»: scriverlo sceglierebbe un'ipotesi senza un fatto che la
+> distingua dall'altra — è `A50904.22`, un numero che esiste, è plausibile e non
+> ha fonte. `NULL` è invece **recuperabile**: un solo `UPDATE` il giorno della
+> risposta. ⚠️ Verificata e **scartata** l'ipotesi del surcharge _assorbito_: i 6
+> revisionati danno rapporti 0,73-0,93, nessuno vicino a 1,000 o 1,035.
+>
+> **E il difetto lo crea questo import**, quindi si chiude qui: prima delle 251
+> righe `total` è omogeneo e «IVA esclusa» è vera per tutti. È l'**ottava**
+> occorrenza della classe già chiusa sette volte (`isAvailable`, `openingDir`,
+> l'entrata cablata, il default `A12_I13_B20`, `PILOT_GEOMETRY`).
+>
+> - **Scheda**: la didascalia dichiara **entrambi i rami** — «Include la
+>   maggiorazione temporanea del 3,5 %» / «Il listino non dichiara maggiorazioni».
+>   Una riga che comparisse solo sull'eccezione insegnerebbe che il silenzio
+>   significa «tutto regolare».
+> - **Elenco**: marcatore `†` **condizionale**, reso solo quando l'elenco contiene
+>   entrambe le convenzioni (misurato: 94 righe nuove su 251 cadono in gruppi
+>   misti, 157 in gruppi interamente 05/26). Tono neutro, mai rosso.
+>
+> ## DIFETTI TROVATI ESEGUENDO, NON LEGGENDO
+>
+> 1. **I 17 aggiornati tenevano il surcharge del 02/26 accanto al prezzo del
+>    05/26**: `0BT13-CM` usciva 12,40 con 0,57, cioè il **4,6 %**. Il prezzo e la
+>    sua composizione devono venire dallo **stesso documento** → `surcharge: null`
+>    anche in UPDATE. Trovato lanciando l'import, non leggendolo.
+> 2. **Un byte NUL letterale** era finito nel separatore delle chiavi dei due
+>    moduli: compilava, i test passavano, e **git trattava i file come BINARI** —
+>    in review il diff non si sarebbe visto. Trovato da `git diff --stat`.
+> 3. **Il gate d'integrazione esplodeva invece di saltare** senza le env: il
+>    `new PrismaClient` stava nel corpo del `describe`, che gira in fase di
+>    raccolta anche con `skipIf` attivo.
+> 4. **`ROBOT6 S` collassava in `ROBOT6`** (`firstWord` prende il primo token):
+>    aggiunto `"ROBOT6"` a `divise`, la macchina esisteva già.
+> 5. **Il dagger disallineava la colonna dei prezzi di ~6px** — visto sullo
+>    screenshot, non dal test. Lo spazio ora è riservato su tutte le righe
+>    dell'elenco misto.
+> 6. **Due liste scritte a mano** allineate alla loro dichiarazione: l'eccezione
+>    delle `divise` nella sentinella della curatela (il commento diceva già «si
+>    deriva», il codice elencava due stringhe), e il conteggio degli esclusi.
+>
+> ## 🔴 AZIONI OPS AL MERGE
+>
+> 1. **«Ops — Neon»** — lo step `Import listino Vision 2026` è **nuovo** nel
+>    workflow, con la guardia `%PDF` (quella esistente cerca `PK` perché importa
+>    xlsx). Sta **dopo** l'import COLOMBO: è un delta e presuppone la base.
+> 2. **«Ops — Foto COLOMBO»** — i cinque archivi (`00a_Laconica`, `00b_Robot6`,
+>    `00c_Robot6S`, `00d_Halo`, `00e_Kubo`) hanno ora un'etichetta.
+>    ⚠️ **La copertura NON è stata ri-misurata**: il gate vuole
+>    `COLOMBO_FOTO_INDEX`, che si produce con `pnpm foto:colombo --dry-run --dump`
+>    e richiede la **password dell'area download**, che non è stata chiesta.
+>    **Girare il gate prima del run.**
+>
+> 🟢 **NESSUNA MIGRAZIONE**, quindi nessuna finestra di disservizio.
+>
+> ## ❓ CINQUE DOMANDE, da porre con la conferma dell'elenco
+>
+> 1. **HPS/1**: `I1` o `HPS1`? COLOMBO usa entrambe nella stessa serie. Blocca 19 righe.
+> 2. **Surcharge 3,5 %**: vale ancora sull'edizione 05/26? (11/11 combaciano col
+>    netto, 0/16 con la somma, 0 occorrenze della parola nel PDF.)
+> 3. **BT13 / BT19 BZG**: prezzo giù del 24 % e del 7 %, con gamma di finiture
+>    diversa. Ribasso vero o pezzo ridisegnato che riusa la sigla?
+> 4. **EAN**: i 251 nuovi nascono senza. Se in magazzino si legge il codice a
+>    barre, servono da COLOMBO.
+> 5. **`BT19 BZG` oromat**: 53,60 a pagina 8 e 53,70 a pagina 12 — il listino si
+>    contraddice. Importato 53,60, il valore della pagina del prodotto.
+>
+> ## TABELLA PER ANDREA
+>
+> Le 270 righe con codice, descrizione, prezzo, gruppo di sfoglio e grado di
+> certezza: <https://claude.ai/artifact/TmLQACdckr7c3WDP7GmJjJ>
+>
+> ## 📄 SPEC E PIANO
+>
+> `docs/superpowers/specs/2026-09-15-listino-vision-2026-design.md` ·
+> `docs/superpowers/plans/2026-09-15-listino-vision-2026.md`
+>
+> ---
+
+### (Sessione precedente, 2026-08-06) — LE COPERTINE DEI GRUPPI
+
+| Campo                      | Valore                                                                                                                             |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| **Data**                   | 2026-08-06 — **LE COPERTINE DEI GRUPPI (ottava tornata di Andrea)**                                                                |
+| **Fase in corso**          | Fase 1 — MVP Gestionale · reparto maniglie                                                                                         |
+| **Branch**                 | `claude/ufptrade-andrea-feedback-f0s2re`                                                                                           |
+| **Stato deploy**           | 🟢 **NESSUNA MIGRAZIONE, nessuna finestra di disservizio.** 🔴 **UN RUN OPS**: «Ops — Foto COLOMBO»                                |
+| **Gate**                   | typecheck · lint · **test 1.583** · **integrazione 15/15 su listino e archivio VERI** · **browser 30/30** (desktop e 375px)        |
 | **In produzione al merge** | 90 → **88 gruppi** · Accessori 17 → **19** (648 → **969** codici) · banda principale **69**, di cui **66 con copertina e 3 senza** |
 
 ---
@@ -29,10 +175,10 @@
 >
 > Il PDF pubblica le **due metà** del codice, in due punti diversi:
 >
-> | dove | cosa dà | esempio (LACONICA, p7) |
-> |---|---|---|
-> | pagina prodotto | **codice del modello** + prezzo **per ogni finitura, scritta per nome** | `AM41 RSB` · oroplus **94,70** · grafite mat **114,20** |
-> | legenda, **da p4 in giù** | la **sigla** di ogni finitura | `OL` Oroplus · `GM` Grafite Mat · `UB` Umber Bronze |
+> | dove                      | cosa dà                                                                 | esempio (LACONICA, p7)                                  |
+> | ------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------- |
+> | pagina prodotto           | **codice del modello** + prezzo **per ogni finitura, scritta per nome** | `AM41 RSB` · oroplus **94,70** · grafite mat **114,20** |
+> | legenda, **da p4 in giù** | la **sigla** di ogni finitura                                           | `OL` Oroplus · `GM` Grafite Mat · `UB` Umber Bronze     |
 >
 > Il codice d'ordine è modello + sigla. **E non è «inventare per
 > concatenazione»** — il divieto (§9; `A50904.22` non esiste) resta in piedi,
@@ -62,7 +208,7 @@
 > **«mancano le foto» a dodici gruppi**. Rispondendo ha aggiunto la quarta:
 > **GRANO non è una maniglia**, va anche lui in Accessori.
 >
-> **I dodici non sono dodici segnalazioni.** Misurando sono, *esattamente*, i
+> **I dodici non sono dodici segnalazioni.** Misurando sono, _esattamente_, i
 > gruppi della banda principale che non mostrano una foto sulla tessera, meno
 > BOCCHETTA che nello stesso messaggio sta spostando altrove. Non ha elencato
 > difetti: ha descritto **lo stato della griglia di primo livello**, e i suoi
@@ -70,10 +216,10 @@
 >
 > ### 🔎 LA DISTINZIONE CHE ANDREA CHIEDEVA: sono DUE problemi
 >
-> | | gruppi | cosa vede | perché |
-> |---|---|---|---|
-> | **A** | GRANO · i due MANIG. · MANIGLIA INCASSO · MANIGLIONE · MILLA · POMOLINO · SPIDER · TRAMA | tessera di **solo testo** | sono TIPOLOGIE: per disegno (PR #58) non hanno area immagine |
-> | **B** | CUT · PUSH · ROUND · SQUARE | riquadro grigio **vuoto** | sono MODELLI, e le foto **le abbiamo tolte noi** nella PR #60 |
+> |       | gruppi                                                                                   | cosa vede                 | perché                                                        |
+> | ----- | ---------------------------------------------------------------------------------------- | ------------------------- | ------------------------------------------------------------- |
+> | **A** | GRANO · i due MANIG. · MANIGLIA INCASSO · MANIGLIONE · MILLA · POMOLINO · SPIDER · TRAMA | tessera di **solo testo** | sono TIPOLOGIE: per disegno (PR #58) non hanno area immagine  |
+> | **B** | CUT · PUSH · ROUND · SQUARE                                                              | riquadro grigio **vuoto** | sono MODELLI, e le foto **le abbiamo tolte noi** nella PR #60 |
 >
 > Dentro A ci sono a loro volta due casi: **MILLA, SPIDER e TRAMA sono modelli
 > veri** e COLOMBO li fotografa (due archivi ciascuno); portavano la tessera di
@@ -88,8 +234,8 @@
 > ### 💡 IL PRINCIPIO CHE SCIOGLIE IL NODO
 >
 > **La copertina di un gruppo e la foto di una riga sono due affermazioni
-> diverse.** La riga dice «*questo codice* è così» e la finitura conta — la
-> regola severa di Andrea resta intatta. La copertina dice «*questo gruppo* è
+> diverse.** La riga dice «_questo codice_ è così» e la finitura conta — la
+> regola severa di Andrea resta intatta. La copertina dice «_questo gruppo_ è
 > così»: la finitura è irrilevante, purché dichiarata. Quindi le copertine
 > tornano **senza rimettere una sola foto sbagliata sulle righe**.
 >
@@ -104,11 +250,11 @@
 >
 > **Tre affermazioni degli advisor verificate nel repo e CADUTE:**
 >
-> | affermazione | esito |
-> |---|---|
+> | affermazione                                            | esito                                                                             |
+> | ------------------------------------------------------- | --------------------------------------------------------------------------------- |
 > | «3 tipologie con foto e 24 senza → difetto strutturale» | **falso**: sono **11 e 11**. Cade l'argomento strutturale, regge quello semantico |
-> | «mosaico di 4 foto per tessera» | **falso sui dati**: 9 tipologie su 11 hanno ≤4 foto, **4 ne hanno UNA** |
-> | «lancia il run ops, chiude 7 dei 12» | **è un no-op**: quelle foto non sono su Blob perché nessun articolo le ha scelte |
+> | «mosaico di 4 foto per tessera»                         | **falso sui dati**: 9 tipologie su 11 hanno ≤4 foto, **4 ne hanno UNA**           |
+> | «lancia il run ops, chiude 7 dei 12»                    | **è un no-op**: quelle foto non sono su Blob perché nessun articolo le ha scelte  |
 >
 > E una **quarta, misurata dopo**: «riga di fatto: N modelli · N codici, il
 > contenuto che una tipologia ha e un modello no» → POMOLINO ha **2** serie e
@@ -137,7 +283,7 @@
 >    nessuna migrazione. Tre nomi di file nuovi, **guardati** e non scelti dal
 >    nome (maniglia-sola in cromo su bianco, come `Fedra_2CR`).
 > 5. **`previewDiGruppo`**: la forma della tessera segue **la foto**, non
->    `isModello`. Il riquadro vuoto è ora impossibile *per costruzione*, anche
+>    `isModello`. Il riquadro vuoto è ora impossibile _per costruzione_, anche
 >    su 404 di Blob.
 > 6. **`items-start` → `items-stretch`**: **una parola**. La tessera senza foto
 >    non si allungava e lasciava il buco sotto di sé — ed è per QUESTO che si
@@ -148,8 +294,8 @@
 >    scheda del singolo articolo il segnaposto lo tiene.
 > 8. **La dichiarazione, una volta sola**: «Le foto sono del modello, non della
 >    finitura del singolo codice». Paga il debito trovato all'unanimità dal
->    council — la copertina mostra la finitura del *primo codice in ordine
->    alfabetico* e non era dichiarato da nessuna parte. Dentro il gruppo NON si
+>    council — la copertina mostra la finitura del _primo codice in ordine
+>    alfabetico_ e non era dichiarato da nessuna parte. Dentro il gruppo NON si
 >    ripete, dove sarebbe falsa.
 >
 > ### 🔍 COSA HA TROVATO LA REVIEW DI BRANCH (coi gate tutti verdi)
@@ -166,7 +312,7 @@
 >
 > «Un gruppo senza foto e uno le cui foto abbiamo tolto si vedono identici.»
 > Dopo il punto 3 **non esiste più un gruppo la cui copertina abbiamo tolto**, e
-> le tre tipologie non ce l'hanno perché *una foto della categoria non esiste*.
+> le tre tipologie non ce l'hanno perché _una foto della categoria non esiste_.
 > Dentro il gruppo l'assenza torna ad avere **un solo significato**. Nessun
 > distintivo per riga: sarebbe rumore che non cambia nessuna decisione.
 >
@@ -213,8 +359,8 @@
 > ⚠️ **Una mia affermazione era troppo forte, e va corretta qui perché non si
 > ripeta**: avevo scritto «le sette copertine non sono su Blob». Per **quattro
 > delle sette era falso**. In fase di misura avevo controllato se quelle chiavi
-> fossero *scelte da un articolo* (`scelte.has(chiave)`), non se fossero
-> *presenti sullo store*: sono due domande diverse. I file di CUT, PUSH, ROUND e
+> fossero _scelte da un articolo_ (`scelte.has(chiave)`), non se fossero
+> _presenti sullo store_: sono due domande diverse. I file di CUT, PUSH, ROUND e
 > SQUARE erano già lì dal run dell'epoca della #56 — la #60 tolse `image_url` dal
 > database ma **non cancella i file dallo store**. Le caricate davvero sono
 > **tre**: MILLA, SPIDER, TRAMA. Il run serviva comunque, o quelle tre tessere
@@ -247,7 +393,7 @@
 >    LC71/LC81) → **66 codici** riprendono la foto di riga · esistono **foto per
 >    finitura** dei pomoli ROUND/SQUARE/CUT/PUSH? → **59 codici**.
 > 2. **Ad Andrea**: MANIGLIONE, MANIGLIA INCASSO e POMOLINO restano senza
->    copertina. Sapendo che l'unica alternativa è mostrare *un* modello su 56
+>    copertina. Sapendo che l'unica alternativa è mostrare _un_ modello su 56
 >    spacciato per la categoria, va bene così?
 > 3. **Vercel Pro** (Hobby vieta l'uso commerciale): era deciso per il 08/08.
 > 4. **Le tre distinte reali** di MC, Peruzzi e Fosca: pendono da otto sessioni.
@@ -262,15 +408,15 @@
 
 ### (Sessione precedente, 2026-08-05) — LE SETTE DRITTE DI ANDREA
 
-| Campo | Valore |
-|-------|--------|
-| **Data** | 2026-08-05 — **LE SETTE DRITTE DI ANDREA** |
-| **Fase in corso** | Fase 1 — MVP Gestionale · reparto maniglie |
-| **Sotto-fase** | Chiusa. Correzioni dal campo, misurate e applicate. |
-| **Branch** | `claude/uftrade-handles-catalog-fixes-q5mc0o` — PR da aprire |
-| **Stato deploy** | 🟢 **NESSUNA MIGRAZIONE.** 🔴 **UN RUN OPS**: «Ops — Foto COLOMBO» |
-| **Gate** | typecheck · lint · **test 1.546** · build 23 route · **integrazione 358 sul catalogo VERO** · **browser 38/38** (desktop e 375px) |
-| **In produzione al merge** | 94 → **90 gruppi** · foto 2.118 → **1.609** (61,3% → 46,6%), provate sbagliate **350 → 0** |
+| Campo                      | Valore                                                                                                                            |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| **Data**                   | 2026-08-05 — **LE SETTE DRITTE DI ANDREA**                                                                                        |
+| **Fase in corso**          | Fase 1 — MVP Gestionale · reparto maniglie                                                                                        |
+| **Sotto-fase**             | Chiusa. Correzioni dal campo, misurate e applicate.                                                                               |
+| **Branch**                 | `claude/uftrade-handles-catalog-fixes-q5mc0o` — PR da aprire                                                                      |
+| **Stato deploy**           | 🟢 **NESSUNA MIGRAZIONE.** 🔴 **UN RUN OPS**: «Ops — Foto COLOMBO»                                                                |
+| **Gate**                   | typecheck · lint · **test 1.546** · build 23 route · **integrazione 358 sul catalogo VERO** · **browser 38/38** (desktop e 375px) |
+| **In produzione al merge** | 94 → **90 gruppi** · foto 2.118 → **1.609** (61,3% → 46,6%), provate sbagliate **350 → 0**                                        |
 
 ---
 
@@ -304,9 +450,9 @@
 >
 > ### 🔴 LE FOTO: IL RICONOSCITORE NON SERVE A MISURARE, SERVE A SCEGLIERE
 >
-> Andrea: *«alcune categorie hanno la foto corretta per ogni prodotto, altre la
+> Andrea: _«alcune categorie hanno la foto corretta per ogni prodotto, altre la
 > stessa foto per finiture diverse … se mancano le foto delle giuste finiture è
-> meglio togliere direttamente le foto, perché confondono e sono fuorvianti».*
+> meglio togliere direttamente le foto, perché confondono e sono fuorvianti»._
 >
 > **Il match ingenuo sarebbe stato peggio del silenzio.** `Cromo` è sottostringa
 > di «cromo matte», che è **Cromat**: lo prova l'archivio `01_Ama`, dove COLOMBO
@@ -319,14 +465,14 @@
 > altro; «cromo-cromo matte» li ha in posizioni disgiunte. Col conteggio nudo i
 > quattro nomi-prefisso si perdevano tutti.
 >
-> | | foto | provate esatte | provate SBAGLIATE |
-> |---|---|---|---|
-> | prima | 2.118 (61,3%) | 1.033 | **350** |
-> | col solo riconoscitore | 2.118 | 1.298 | 149 |
-> | **con la regola (finale)** | **1.609 (46,6%)** | **1.402** | **0** |
+> |                            | foto              | provate esatte | provate SBAGLIATE |
+> | -------------------------- | ----------------- | -------------- | ----------------- |
+> | prima                      | 2.118 (61,3%)     | 1.033          | **350**           |
+> | col solo riconoscitore     | 2.118             | 1.298          | 149               |
+> | **con la regola (finale)** | **1.609 (46,6%)** | **1.402**      | **0**             |
 >
 > **Il caso segnalato si chiude da solo**: DUE e ONE (Mood) passano da 88
-> sbagliate su 96 a zero — l'archivio *ha* la foto di ogni colore, non sapevamo
+> sbagliate su 96 a zero — l'archivio _ha_ la foto di ogni colore, non sapevamo
 > leggerne il nome.
 >
 > **La regola scelta dall'utente (opzione b): una foto contesa resta solo a chi
@@ -354,7 +500,7 @@
 >
 > ### ⛔ MISURATO E SCARTATO: leggere la finitura dal NOME dell'articolo
 >
-> 62 conflitti col codice, e **ha torto il nome**: «VINTAGE SATINATO» *è* Vintage
+> 62 conflitti col codice, e **ha torto il nome**: «VINTAGE SATINATO» _è_ Vintage
 > Mat (satinato = matte), «CROMO» è la troncatura di `CR8` che è un **bicolore**,
 > «ANODIC SILVER» non è Silver. Le descrizioni del listino sono troncate a
 > colonna; i nomi delle foto no. Non si fa.
@@ -374,7 +520,7 @@
 > per la sezione; (A) quarto livello scartato all'unanimità.
 >
 > **Il dissenziente (Primi Principi) aveva l'argomento più elegante** — «le
-> proprietà del *compito* vanno nelle lenti, quelle dell'*oggetto* nella
+> proprietà del _compito_ vanno nelle lenti, quelle dell'_oggetto_ nella
 > struttura» — e **si è rovesciato sul codice**: sosteneva che il filtro
 > «sparisce entrando in un gruppo, quindi il gruppo pieno che sembra vuoto è
 > impossibile», ma `codaFiltri()` (`sfoglia.tsx:56`) incolla i filtri a **ogni
@@ -394,8 +540,8 @@
 >
 > ### 📐 L'ANTEPRIMA: la foto compare dove distingue, non dove ripete
 >
-> Andrea: *«la foto della tendina che si rimpicciolisce confonde e da piccola non
-> si vede».* Il rimedio non è ingrandirla: dentro FEDRA le serie sono la stessa
+> Andrea: _«la foto della tendina che si rimpicciolisce confonde e da piccola non
+> si vede»._ Il rimedio non è ingrandirla: dentro FEDRA le serie sono la stessa
 > maniglia in varianti, quindi **era ripetuta**. Dentro una TIPOLOGIA distingue, e
 > lì resta — **ferma** (rimpicciolirsi è anche un'animazione di layout).
 >
@@ -462,11 +608,11 @@
 
 ## Sessione precedente
 
-| Campo | Valore |
-|-------|--------|
-| **Data** | 2026-08-05 — **LE FOTO DEGLI ARTICOLI COLOMBO + FILTRO COLORI + POMOLI GENERICI** |
-| **PR** | #54 · #55 · #56 — tutte MERGIATE, ops eseguite |
-| **In produzione** | 2.118 codici su 3.456 (61,3%) con foto, 240 file su Vercel Blob privato |
+| Campo             | Valore                                                                            |
+| ----------------- | --------------------------------------------------------------------------------- |
+| **Data**          | 2026-08-05 — **LE FOTO DEGLI ARTICOLI COLOMBO + FILTRO COLORI + POMOLI GENERICI** |
+| **PR**            | #54 · #55 · #56 — tutte MERGIATE, ops eseguite                                    |
+| **In produzione** | 2.118 codici su 3.456 (61,3%) con foto, 240 file su Vercel Blob privato           |
 
 ---
 
@@ -482,16 +628,16 @@
 >
 > ### 📌 LE DECISIONI STRUTTURALI GIÀ PRESE (da conoscere prima di ridiscuterle)
 >
-> | Decisione | Dove | Perché |
-> |---|---|---|
-> | **Un solo repo, un solo DB, un solo Better Auth**, due reparti affiancati | council 2026-08-03 | il criterio non era «utenti in comune» ma «esiste una domanda che l'agente fa davanti al cliente e attraversa i due domini?» |
-> | Il **reparto si deduce dall'URL**, mai da un cookie | `src/lib/reparti.ts` | ricordarlo sarebbe l'ennesimo «valore deciso dal programma e mai dichiarato» |
-> | **Kit generation = engine deterministico, MAI LLM** | Fase 1d | una distinta sbagliata è un ordine sbagliato |
-> | **Gemini unico** (chat + embedding), nessun fallback | council 2026-07-24 | ⚠️ un outage degrada chat **e** ricerca semantica |
-> | **`Product` (AGB) e `Article` (maniglie) NON si condividono** | passo 0 del reparto | migrazione multi-marca rimandata alla **marca #3** |
-> | Le **regole di dominio stanno in TypeScript**, mai nel raw SQL | disponibilità, serie, finitura | al raw SQL arriva al massimo una lista di id già decisa |
-> | **La classificazione avviene sull'insieme INTERO, i filtri si applicano dopo** | 2026-08-05, `browse.ts` | misurato: classificando dopo il filtro, 27 articoli su 3.393 cambiavano serie con `?pronta=1` acceso, e un URL condiviso puntava a una tendina inesistente |
-> | **La curatela delle etichette è PER MARCA** | 2026-08-05, `curatela.ts` | senza, il giorno di HOPPE le correzioni di COLOMBO si sarebbero applicate in silenzio alle sue etichette, e nessun conteggio sarebbe andato a zero |
+> | Decisione                                                                      | Dove                           | Perché                                                                                                                                                     |
+> | ------------------------------------------------------------------------------ | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+> | **Un solo repo, un solo DB, un solo Better Auth**, due reparti affiancati      | council 2026-08-03             | il criterio non era «utenti in comune» ma «esiste una domanda che l'agente fa davanti al cliente e attraversa i due domini?»                               |
+> | Il **reparto si deduce dall'URL**, mai da un cookie                            | `src/lib/reparti.ts`           | ricordarlo sarebbe l'ennesimo «valore deciso dal programma e mai dichiarato»                                                                               |
+> | **Kit generation = engine deterministico, MAI LLM**                            | Fase 1d                        | una distinta sbagliata è un ordine sbagliato                                                                                                               |
+> | **Gemini unico** (chat + embedding), nessun fallback                           | council 2026-07-24             | ⚠️ un outage degrada chat **e** ricerca semantica                                                                                                          |
+> | **`Product` (AGB) e `Article` (maniglie) NON si condividono**                  | passo 0 del reparto            | migrazione multi-marca rimandata alla **marca #3**                                                                                                         |
+> | Le **regole di dominio stanno in TypeScript**, mai nel raw SQL                 | disponibilità, serie, finitura | al raw SQL arriva al massimo una lista di id già decisa                                                                                                    |
+> | **La classificazione avviene sull'insieme INTERO, i filtri si applicano dopo** | 2026-08-05, `browse.ts`        | misurato: classificando dopo il filtro, 27 articoli su 3.393 cambiavano serie con `?pronta=1` acceso, e un URL condiviso puntava a una tendina inesistente |
+> | **La curatela delle etichette è PER MARCA**                                    | 2026-08-05, `curatela.ts`      | senza, il giorno di HOPPE le correzioni di COLOMBO si sarebbero applicate in silenzio alle sue etichette, e nessun conteggio sarebbe andato a zero         |
 >
 > ### ✅ COS'È STATO FATTO
 >
@@ -635,21 +781,21 @@
 >
 > ### 3. 🔴 LE FOTO DELLA FINITURA SBAGLIATA — il punto che vale di più
 >
-> Andrea: *«alcune categorie hanno la foto corretta per ogni prodotto, altre la
+> Andrea: _«alcune categorie hanno la foto corretta per ogni prodotto, altre la
 > stessa foto per finiture diverse. Per esempio la DUE CC31R hanno tutte la foto
 > della maniglia blu. Se mancano le foto delle giuste finiture è meglio togliere
-> direttamente le foto per quel prodotto, perché confondono e sono fuorvianti»* —
+> direttamente le foto per quel prodotto, perché confondono e sono fuorvianti»_ —
 > e la ragione è esatta: l'agente **non sa** dedurre la finitura dal codice, quindi
 > l'immagine sbagliata lo inganna invece di aiutarlo.
 >
 > **Misurato sui 2.116 articoli con foto:**
 >
-> | esito | articoli |
-> |---|---|
-> | finitura **provata esatta** | **991** (46,8%) |
-> | finitura **provata sbagliata** | **52** (2,5%) — es. `0BD11R-NM` «ELLE NEROMAT» mostra il **CROMO** |
-> | foto **senza finitura nel nome** → non verificabile | **940** |
-> | codice senza coda di finitura | 133 |
+> | esito                                               | articoli                                                           |
+> | --------------------------------------------------- | ------------------------------------------------------------------ |
+> | finitura **provata esatta**                         | **991** (46,8%)                                                    |
+> | finitura **provata sbagliata**                      | **52** (2,5%) — es. `0BD11R-NM` «ELLE NEROMAT» mostra il **CROMO** |
+> | foto **senza finitura nel nome** → non verificabile | **940**                                                            |
+> | codice senza coda di finitura                       | 133                                                                |
 >
 > **Il caso di Andrea è dentro i 940, e spiega perché quel numero è il vero
 > problema**: tutti gli otto `0CC31R-C01…C08` prendono
@@ -660,8 +806,8 @@
 > 🎯 **Quindi il primo passo NON è togliere le foto: è riconoscere le finiture
 > scritte a parole.** `FINITURE` in `src/server/maniglie/finiture.ts` ha già il
 > campo `nome` per tutte e 31 («Capri Blue», «White», «Neromat»…). Riconoscendole
-> anche a parole, una parte dei 940 diventa *provata esatta* e il resto diventa
-> *provato sbagliato* — e solo allora si sa quanto costa davvero la regola di
+> anche a parole, una parte dei 940 diventa _provata esatta_ e il resto diventa
+> _provato sbagliato_ — e solo allora si sa quanto costa davvero la regola di
 > Andrea. ⚠️ L'handoff del 05/08 avvisa che i nomi nei file sono in **due lingue**:
 > misurare, non assumere.
 >
@@ -670,8 +816,8 @@
 > parole riconosciute il numero sale — di quanto è la misura da fare per prima.
 >
 > **Da decidere con l'utente**, con i numeri davanti: (a) togliere la foto solo
-> dove è *provata sbagliata* (52, costo nullo, guadagno piccolo); (b) tenerla solo
-> dove è *provata giusta* (onesto e costoso); (c) una via di mezzo per gruppi come
+> dove è _provata sbagliata_ (52, costo nullo, guadagno piccolo); (b) tenerla solo
+> dove è _provata giusta_ (onesto e costoso); (c) una via di mezzo per gruppi come
 > BOCCHETTA, dove la finitura conta meno della forma.
 > ⚠️ Ricordare che la foto ha **tre gradini** (`abbinaFoto`): il gradino 3 aggancia
 > per **codice nel nome del file** ed è già esatto per costruzione; il problema
@@ -713,8 +859,8 @@
 >
 > ### 5. La foto della tendina che si rimpicciolisce: rifarla
 >
-> Andrea: *«la foto della tendina che si rimpicciolisce quando si apre confonde e
-> non serve a nulla quando è piccola perché non si vede»*. Ha ragione, e la scelta
+> Andrea: _«la foto della tendina che si rimpicciolisce quando si apre confonde e
+> non serve a nulla quando è piccola perché non si vede»_. Ha ragione, e la scelta
 > era dell'utente fra tre opzioni — quindi **non è una regressione, è una prova sul
 > campo che ha battuto una preferenza**.
 >
@@ -735,7 +881,7 @@
 > **verifica in browser a 375px e desktop, screenshot GUARDATI**.
 >
 > **Dire il costo prima di pagarlo**: migrazione, finestra di disservizio o run ops
-> vanno dichiarati *quando si decide*.
+> vanno dichiarati _quando si decide_.
 >
 > ### Come rimontare l'ambiente (serve per misurare)
 >
@@ -744,6 +890,7 @@
 > bash scripts/dev-bootstrap.sh          # docker + postgres + migrate + seed
 > pnpm import:listino COLOMBO <listino.xlsx>
 > ```
+>
 > Il listino sta nella cartella Drive registrata in `CLAUDE.md` (riuso già
 > autorizzato). Per le foto serve la **password dell'area download COLOMBO**, che
 > la fornisce l'utente e **non va scritta in nessun file**; con quella,
@@ -774,7 +921,7 @@
 > `/llm-council` (5 advisor + 5 peer review + chairman). La **(b)** — due route group
 > affiancati — è caduta su un fatto **riprodotto eseguendo `next build`** con il Next
 > 15.5.20 installato: due gruppi fratelli che risolvono lo stesso path fanno fallire la
-> build (`E28`, *«two parallel pages that resolve to the same path»*). Il punto che la spec
+> build (`E28`, _«two parallel pages that resolve to the same path»_). Il punto che la spec
 > non sapeva: **i route group non entrano nell'URL, quindi separano il LAYOUT e non il
 > NAMESPACE**. E l'assistente, `/utenti` e `/impostazioni` sono già trasversali ai due
 > reparti: sotto la (b) andrebbero collocati in uno o duplicati. Non è né fatale né gratis:
@@ -793,10 +940,10 @@
 >
 > Il council proponeva i **marchi nudi** (AGB / COLOMBO) perché «MANIGLIE» è ambiguo — e
 > l'ambiguità è vera e verificata: `recent-searches.tsx:5` suggerisce «maniglia» fra le
-> ricerche **dell'archivio AGB**, la cremonese *è* la maniglia della finestra (69
+> ricerche **dell'archivio AGB**, la cremonese _è_ la maniglia della finestra (69
 > occorrenze in `src/`). Ma l'utente ha portato un dato nuovo: il reparto ospiterà
 > **almeno cinque marche** (COLOMBO, HOPPE, OLIVARI, DND, GHIDINI). Quindi COLOMBO non è
-> il *nome* del reparto, è un suo **contenuto**, e la tessera andrebbe rinominata alla
+> il _nome_ del reparto, è un suo **contenuto**, e la tessera andrebbe rinominata alla
 > seconda marca — cioè il difetto che si voleva evitare.
 >
 > Esito: tessere **SERRAMENTI / MANIGLIE**, **marchio nel sottotitolo** (cresce senza
@@ -921,7 +1068,7 @@
 > all'unanimità. Il criterio che decide **non** è «utenti in comune», né «riuso di codice»,
 > né «rischio di deploy» — sono costi, non discriminanti. È: **esiste una domanda che
 > l'agente farà davanti al cliente e che attraversa i due domini, con una risposta sola?**
-> Sì: *questo è ordinabile oggi?*
+> Sì: _questo è ordinabile oggi?_
 >
 > Si condividono repo, deploy, **un solo Better Auth**, layout e **lo stesso database**.
 > **NON** si condivide la tabella `Product`: le maniglie hanno tabelle proprie. La
@@ -955,7 +1102,7 @@
 > il distacco fra i due programmi. **La sezione finestre non si tocca.** Sul disegno delle
 > schermate maniglie: **carta bianca**, allo stile del software esistente.
 >
-> ⚠️ **La tensione da sciogliere per prima:** un selettore *è* una modifica al guscio di
+> ⚠️ **La tensione da sciogliere per prima:** un selettore _è_ una modifica al guscio di
 > navigazione — cambia dove atterra il login, aggiunge un livello di route, tocca la
 > sidebar. Nessuna funzionalità delle finestre cambia, **ma il loro contenitore sì**. Tre
 > strade in spec §8.0; da portare a `/llm-council` e `/impeccable` **prima** di scrivere
@@ -996,11 +1143,11 @@
 >
 > ### 🔴 Vincolo di piattaforma da non dimenticare
 >
-> **Vercel Hobby vieta l'uso commerciale** (Fair Use Guidelines: *«restricted to
-> non-commercial personal use only»*, e commerciale include *«a paid employee»*). Un
+> **Vercel Hobby vieta l'uso commerciale** (Fair Use Guidelines: _«restricted to
+> non-commercial personal use only»_, e commerciale include _«a paid employee»_). Un
 > gestionale usato da 15-20 dipendenti ci ricade: rischio **sospensione**, non
 > rallentamento. **L'utente passa a Pro entro sabato 2026-08-08.** Pro si paga per membro
-> del *team di sviluppo*, non per utente dell'app.
+> del _team di sviluppo_, non per utente dell'app.
 >
 > Capacità a 20 utenti: invocazioni 12% · CPU 25% · banda CDN 5% ✅; **Fast Origin Transfer
 > 40%** ⚠️ · **storage Neon 72-80%** 🔴 (stimato) · egress Neon 40% ⚠️. I tre punti caldi
@@ -1147,15 +1294,15 @@
 >
 > ### I numeri
 >
-> | | |
-> |---|---|
-> | Golden | **16 righe / 21 pezzi / 90,20 €** — invariato |
-> | Gemello entrata 7,5 | **96,29 €** — invariato |
-> | Antieffrazione | **17 / 22 / 110,13 €** — ora **asserito** sul catalogo reale |
-> | Bilico TOUR | **450,03 · 766,51 · 433,46 €** — erano `toBeGreaterThan(0)`, ora esatti |
-> | Test | 996 → **1.035** · build 18 route |
-> | Gate su catalogo reale | **112 test eseguiti**, non skippati |
-> | Browser | **22/22 desktop · 22/22 a 375px** (rifatto dopo i fix della review) |
+> |                        |                                                                         |
+> | ---------------------- | ----------------------------------------------------------------------- |
+> | Golden                 | **16 righe / 21 pezzi / 90,20 €** — invariato                           |
+> | Gemello entrata 7,5    | **96,29 €** — invariato                                                 |
+> | Antieffrazione         | **17 / 22 / 110,13 €** — ora **asserito** sul catalogo reale            |
+> | Bilico TOUR            | **450,03 · 766,51 · 433,46 €** — erano `toBeGreaterThan(0)`, ora esatti |
+> | Test                   | 996 → **1.035** · build 18 route                                        |
+> | Gate su catalogo reale | **112 test eseguiti**, non skippati                                     |
+> | Browser                | **22/22 desktop · 22/22 a 375px** (rifatto dopo i fix della review)     |
 >
 > La verifica browser ha percorso il **ciclo intero**: 90,20 € → «Modifica componenti» →
 > antieffrazione → **110,13 € su un numero nuovo**, la vecchia marcata come ricalcolata → di nuovo
@@ -1177,7 +1324,7 @@
 > - **`no-silent-fields.test.ts`: `CASI` non è legato a `RULE_MODULES`** (le varianti sì).
 > - **`dedupeRows` last-wins** in `map-product.ts`.
 > - **Le preview di Vercel falliscono su OGNI PR** — ipotesi mai smentita: env solo per
->   *Production* e non per *Preview*. Nessun codice da scrivere, ma una preview che non parte è un
+>   _Production_ e non per _Preview_. Nessun codice da scrivere, ma una preview che non parte è un
 >   collaudo che non hai.
 > - **«Visualizza nel listino» per singola opzione: ancora OMESSO** (un `<button>` dentro il
 >   `<label>` di `RadioOption` è HTML non valido). Ora che `RadioOption` è un file suo, spezzarla
@@ -1211,7 +1358,6 @@
 >
 > ### (Sessione precedente, 2026-07-31)
 
->
 > ### Cosa è stato fatto (2026-07-31) — passo «Componenti», PR DA APRIRE
 >
 > L'utente ha chiesto l'**antieffrazione** per l'anta-ribalta. Preparandola erano emerse due
@@ -1238,11 +1384,11 @@
 >
 > **Due domande CHIUSE**: la **2** (squadra angolare) e la **30** (antieffrazione). Non
 > rispondendole: mostrando le opzioni che il listino pubblica per quella geometria. Vedi
-> `kit-assunzioni/DOMANDE-APERTE.md`, che spiega *come* sono state chiuse e cosa resterebbe da
+> `kit-assunzioni/DOMANDE-APERTE.md`, che spiega _come_ sono state chiuse e cosa resterebbe da
 > sapere (la risposta di merito sposterebbe il **default**, non i codici disponibili).
 >
 > **Il «fungo» resta fuori, ed è una collocazione, non una rinuncia:** `A50320.02.01` sta nel
-> capitolo Movimenti Angolari (quindi *sostituisce* un movimento angolare) ed è legato alla
+> capitolo Movimenti Angolari (quindi _sostituisce_ un movimento angolare) ed è legato alla
 > **sede 30 nei due versi** — NB a `p0435 (433)` e nota `(**)` stampata solo sulle righe `13x30`
 > a `p0469 (467)`. La sede 30 il motore la rifiuta a monte: è una **famiglia di schemi diversa**.
 > Entrerà con la **domanda 4**.
@@ -1339,17 +1485,17 @@
 >    moduli con codici inesistenti — e al primo render è sempre falsa. Ora gli stati sono tre e
 >    distinti (caricamento / errore di rete / assente dal catalogo), con un test per ciascuno.
 >
-> *(Coda dell'ultimo task: «Senza piastrino» non ha codice, quindi vale **zero per costruzione** e
-> non deve dire «in caricamento»; e `isError` ora si **legge**, non si deduce da «non pending».)*
+> _(Coda dell'ultimo task: «Senza piastrino» non ha codice, quindi vale **zero per costruzione** e
+> non deve dire «in caricamento»; e `isError` ora si **legge**, non si deduce da «non pending».)_
 >
 > ### Gate (tutti eseguiti su questo branch)
 >
-> | Gate | Esito |
-> |---|---|
-> | `pnpm typecheck` | ✅ |
-> | `pnpm lint` | ✅ nessun warning |
-> | `pnpm test` | ✅ **992 passati**, 117 skippati (i gated), 1109 totali |
-> | `pnpm build` | ✅ 18 route |
+> | Gate                          | Esito                                                                             |
+> | ----------------------------- | --------------------------------------------------------------------------------- |
+> | `pnpm typecheck`              | ✅                                                                                |
+> | `pnpm lint`                   | ✅ nessun warning                                                                 |
+> | `pnpm test`                   | ✅ **992 passati**, 117 skippati (i gated), 1109 totali                           |
+> | `pnpm build`                  | ✅ 18 route                                                                       |
 > | integration su catalogo reale | ✅ **111 test eseguiti** (101 `codici-a-listino` + 10 `engine`), **non** skippati |
 >
 > Il gate su catalogo reale si lancia così — senza `INTEGRATION_DATABASE_URL` **passa a vuoto**:
@@ -1384,7 +1530,7 @@
 > - **`dedupeRows` last-wins** in `map-product.ts` (`T18001.02.93` ha `listinoPage` 561 invece di
 >   551 → «Visualizza nel listino» apre la pagina sbagliata; prezzo non affetto).
 > - **Le preview di Vercel falliscono su OGNI PR** — verificato su #39-#42. Ipotesi mai smentita:
->   le env sono configurate solo per *Production* e non per *Preview*, e `src/env.ts` valida con
+>   le env sono configurate solo per _Production_ e non per _Preview_, e `src/env.ts` valida con
 >   zod e muore al primo `parseEnv`. **Nessun codice da scrivere**, ma una preview che non parte è
 >   un collaudo che non hai.
 > - **`no-silent-fields.test.ts`: `CASI` non è legato a `RULE_MODULES`.** Le **varianti** ora sì
@@ -1462,7 +1608,6 @@
 > ```
 >
 > ---
->
 
 > **▶ STORICO — sessione 2026-07-30/31: PROFILO SERRAMENTO DEL CLIENTE + ANAGRAFICA ✅ — PR #44 + #45 MERGIATE, ops eseguite.**
 >
@@ -1473,7 +1618,7 @@
 >
 > **La UI l'ha decisa il `/llm-council`**, respingendo la proposta di precompilare: un valore che
 > arriva da un profilo resta un valore che l'agente **non ha scelto in quel momento**, con in più
-> un'etichetta che lo fa *sembrare* verificato. Sintesi adottata: **nessun prefill, un pulsante
+> un'etichetta che lo fa _sembrare_ verificato. Sintesi adottata: **nessun prefill, un pulsante
 > «Usa il profilo»**. Al passo 4 il riepilogo **constata** la divergenza dal profilo — il **primo
 > rilevatore d'errore** che il sistema possieda.
 >
@@ -1492,7 +1637,6 @@
 > finestra di disservizio **zero** — e `30618326143`).
 >
 > ---
->
 
 > **▶ STORICO — sessione 2026-07-30: SCONTISTICA CLIENTE ✅ — PR #42 MERGIATA, ops eseguite.**
 >
@@ -1513,8 +1657,8 @@
 >    (**domanda 28**), non svista: se lo sconto vero cambia per classe, il totale di un **bilico**
 >    (433-766 €) è sbagliato di 20-38 € a serramento.
 > 2. **`Customer` era un modello fantasma**: tabella a schema dal primo giorno, zero router, zero
->    CRUD, `customerId` **sempre NULL** in produzione. Le colonne a schema fanno risparmiare *una
->    migrazione*, non metà del lavoro — ricordarlo prima di stimare guardando lo schema.
+>    CRUD, `customerId` **sempre NULL** in produzione. Le colonne a schema fanno risparmiare _una
+>    migrazione_, non metà del lavoro — ricordarlo prima di stimare guardando lo schema.
 > 3. **A 375px la tabella della distinta scorre in orizzontale**, e ci finiva dentro il piè con i
 >    totali: sul telefono il numero per cui si apre la pagina era **fuori schermo**. Trovato da uno
 >    **screenshot**, non da un'asserzione — che leggeva `innerText`, il quale include anche ciò che
@@ -1531,7 +1675,7 @@
 >
 > **L'handoff descriveva l'asse sbagliato.** Diceva «entrata 0, 8 e 15». A `p0424 (422)` la
 > colonna ENTRATA è etichettata `1) 7,5` · `2) 15` · `3) Asta*`: `.08` è l'entrata **7,5**, e
-> `.00` **non è un'entrata** ma la versione ad asta, «*senza DSS né monoblocco martellina*».
+> `.00` **non è un'entrata** ma la versione ad asta, «_senza DSS né monoblocco martellina_».
 > Conferma trovata **nei dati** in revisione: il nome a catalogo di `A50122.08.07` è «per schema
 > A **1) 7,5**».
 >
@@ -1584,7 +1728,7 @@
 >
 > **▶ STORICO — sessione 2026-07-29: SETTE GEOMETRIE REALI ✅ — PR #38 + #39 MERGIATE.**
 >
-> *(Sessione che non aveva aggiornato l'handoff; ricostruita dal corpo della PR #39.)*
+> _(Sessione che non aveva aggiornato l'handoff; ricostruita dal corpo della PR #39.)_
 >
 > Un agente, intervistato, disse che il generatore **non era funzionale**: verificato eseguendo il
 > codice, i suoi **tre clienti principali venivano tutti rifiutati** — MC (aria 4 · interasse
@@ -1614,7 +1758,7 @@
 > il listino chiama la stessa quota «sede telaio» nei titoli degli schemi e **secondo numero del
 > token ASSE** (`9x18`, `13x24`, `13x30`) nelle tabelle degli incontri. Fix: etichetta «Sede
 > telaio» + hint col formato, e `seatMm` da max 22 a **max 30** (il 22 tagliava fuori la sede 30,
-> quella di *tutti* gli schemi base 2026).
+> quella di _tutti_ gli schemi base 2026).
 >
 > Il piano che seguì — «perfezionare l'anta-ribalta» — è stato **completato dalle due sessioni
 > successive**: la copertura di battuta 18 / sede 30 e delle altre geometrie dalla PR #39,
@@ -1648,7 +1792,7 @@
 > nella riga ogni campo dell'input parsato e `kit.generate` **ricostruisce l'input del motore
 > rileggendo quelle colonne** (`kit.ts:53-69`): **la riga a DB è l'input di ogni rigenerazione**.
 > Campi solo `.optional()` non sarebbero bastati — il `DEFAULT_FORM` è piatto e ha `airGapMm: 12`
-> cablato, quindi ogni riga bilico sarebbe nata con la geometria ARTECH addosso *come input vero*:
+> cablato, quindi ogni riga bilico sarebbe nata con la geometria ARTECH addosso _come input vero_:
 > la bonifica riaperta, spostata dal motore alla persistenza. Con l'unione zod **scarta** i campi
 > estranei al ramo (verificato su zod 3.25.76) e tRPC consegna l'output parsato → impossibilità
 > strutturale, non una guardia da ricordarsi.
@@ -1678,6 +1822,7 @@
 > passo delle quote**. La scheda dettaglio mostra le specifiche del ramo giusto.
 >
 > **✅ AZIONI OPS — ESEGUITE** (run `30207287069`, 2026-07-26 15:12Z, 12/12 step verdi)
+>
 > 1. **`migrate deploy`** → `20260726120000_kit_bilico_tour` (valore enum `BILICO`; le 6 colonne
 >    geometria/mano diventano nullable; nuova `kit_requests.tour_schema`). **Nessuna riga esistente
 >    viene toccata**: sono tutte ARTECH e restano valorizzate.
@@ -1692,17 +1837,17 @@
 > **16 righe / 21 pezzi / 90,20 €** (è il canarino del re-import).
 >
 > **RESTA APERTO, non fatto di proposito**
-> - **Audit `kit_requests`** e **domande ad AGB**: entrambi ancora da fare, ma ora sono *pronti da
->   usare* → `docs/superpowers/kit-assunzioni/DA-FARE-audit-e-domande-agb.md` (query SQL da
+>
+> - **Audit `kit_requests`** e **domande ad AGB**: entrambi ancora da fare, ma ora sono _pronti da
+>   usare_ → `docs/superpowers/kit-assunzioni/DA-FARE-audit-e-domande-agb.md` (query SQL da
 >   incollare + mail già scritta con tutte e 15 le domande).
 > - **Fix `dedupeRows`** last-wins in `map-product.ts` (opzione F). Confermato dal vivo su questa
->   sessione: `T18001.02.93` è a DB con `listinoPage` **561** (bilico *tondo*) invece di 551 →
+>   sessione: `T18001.02.93` è a DB con `listinoPage` **561** (bilico _tondo_) invece di 551 →
 >   «Visualizza nel listino» apre la pagina sbagliata. **Prezzo identico, totale non affetto.**
 > - **Domanda 16** (`openingDir` inutilizzato), gate CI «ogni codice emettibile è prezzato»,
 >   disegno dello schema nel wizard invece del solo numero, stamp dell'edizione di catalogo.
 >
 > ---
->
 >
 > **▶ STORICO — sessione 2026-07-25 (mattina): CHAT ASSISTENTE riscritta ✅ — PR #32 MERGIATA in `main`.**
 >
@@ -1713,6 +1858,7 @@
 > (nessuna `GEMINI_API_KEY` in questo ambiente); conversazioni CRUD verificate contro il **DB reale**.
 >
 > **COSA È STATO FATTO (12 task SDD: implementer + reviewer per ciascuno)**
+>
 > - **Streaming SSE end-to-end**: `GeminiChatProvider.chatStream` (`:streamGenerateContent?alt=sse`, parser
 >   frame-safe con `eventsource-parser`) → `AIGateway.chatStream` (rate-limit + breaker, **niente fallback né
 >   retry**: con un solo provider un retry a metà stream duplicherebbe i token) → `ChatService.generateStream`
@@ -1731,12 +1877,14 @@
 >   con countdown `Retry-After` e auto-retry max 2.
 >
 > **BUG REALI INTERCETTATI DALLE REVIEW** (sarebbero arrivati in produzione):
+>
 > 1. lo **STOP dell'utente veniva contato come guasto del provider** → 5 stop in 60s aprivano il circuit breaker e
 >    mettevano la chat offline **per tutti**; 2. errori `JSON.parse` **silenziati** nel parser SSE (un payload
 >    troncato spariva senza traccia); 3. lo stopgap sulla vecchia UI **rompeva l'invio in silenzio**;
-> 4. una **race** faceva riversare lo stream di una conversazione appena creata **dentro un'altra conversazione**.
+> 2. una **race** faceva riversare lo stream di una conversazione appena creata **dentro un'altra conversazione**.
 >
 > **DA FARE ALLA RIPRESA**
+>
 > 1. ~~Aprire la PR~~ → **fatta: PR #32 MERGIATA** in `main` @ `2216b3c` (è la base della sessione kit).
 > 2. **AZIONI OPS: nessuna migrazione, nessun seed.** Unica cosa (non bloccante): rimuovere da Vercel le env
 >    `KIMI_API_KEY` / `KIMI_MODEL` se presenti. La key Gemini resta.
@@ -1773,8 +1921,8 @@
 > (`is-editable-target.ts`), «copia link», «visti di recente» (`localStorage`, `recently-viewed.ts`), pulsante listino
 > su card/righe (stretched-link, `listinoPage` già in `product.search`). Gate verdi (**test 380**), verifica browser
 > desktop+mobile ≤375px (12/12). **NESSUNA azione ops.** Spec/piani: `docs/superpowers/{specs,plans}/2026-07-24-archivio-ux*`.
-> *(Nota processo: la #29 fu mergiata dall'utente mentre giravano i follow-up → i commit follow-up sono stati rebasati
-> su `main` e aperti/mergiati come PR nuova #30, mai impilati su storia già mergiata.)*
+> _(Nota processo: la #29 fu mergiata dall'utente mentre giravano i follow-up → i commit follow-up sono stati rebasati
+> su `main` e aperti/mergiati come PR nuova #30, mai impilati su storia già mergiata.)_
 >
 > ---
 >
@@ -1783,6 +1931,7 @@
 > **PROMPT DI APERTURA (l'utente lo incolla; qui per memoria):**
 >
 > > Miglioriamo la UX dell'**Archivio**. Tre cose:
+> >
 > > 1. **Persistenza delle scelte di visualizzazione + della ricerca**: la modalità vista (lista compressa /
 > >    griglia a riquadri), la query, i filtri e la pagina devono **sopravvivere al refresh** (ora si azzerano).
 > > 2. **(La più importante) Ritorno alla lista dopo il dettaglio**: se cerco un prodotto (es. «cerniera»),
@@ -1794,6 +1943,7 @@
 > > Poi fai uno **studio della situazione** e proponi altri miglioramenti UX sensati.
 >
 > **CONTESTO TECNICO GIÀ RICOGNITO (per non ripartire da zero):**
+>
 > - **File chiave**: `src/app/(dashboard)/archivio/archivio-client.tsx` — oggi lo stato è tutto in **`useState`**
 >   (`query`, `filters`, `view` `"list"|"grid"`, `offset`) → **si perde all'unmount** (back dalla scheda
 >   `/archivio/[id]`) **e al refresh**. È esattamente la causa dei problemi 1 e 2.
@@ -1849,8 +1999,9 @@
 > privato — **da mergiare**, poi **ri-lanciare lo split**.
 >
 > **Cosa fa il follow-up (gate verdi: typecheck · lint · test 330 · build):**
+>
 > - **env** (`src/env.ts`, `.env.example`): **`BLOB_READ_WRITE_TOKEN`** (al posto di `LISTINO_PAGE_URL_TEMPLATE`)
->   + `LISTINO_TOTAL_PAGES`. Entrambe assenti = feature off.
+>   - `LISTINO_TOTAL_PAGES`. Entrambe assenti = feature off.
 > - **route** `src/app/api/listino/route.ts` + `page-param.ts`: `GET /api/listino?page=N` — auth 401 · 503 se env
 >   off · **param anti-SSRF** `^[1-9]\d*$` in `[1,total]` → 400 · legge la paginetta **privata** lato server via
 >   `@vercel/blob` `get("listino/page-N.pdf", {access:"private", token})` · stream **200 application/pdf** · null/errore → 502.
@@ -1862,13 +2013,14 @@
 > - Il listino NON è **mai** raggiungibile pubblicamente (risolve del tutto il finding low di enumerabilità).
 >
 > **➡ AZIONI OPS (utente):**
-> 1. **Mergiare il follow-up** (nuova PR).  2. **Secret `BLOB_READ_WRITE_TOKEN`** già presente (aggiunto per il run #1).
-> 3. **Ri-lanciare** la GH Action **«Ops — Split listino»** → carica le ~959 paginette **private**. Dal log copiare
+>
+> 1. **Mergiare il follow-up** (nuova PR). 2. **Secret `BLOB_READ_WRITE_TOKEN`** già presente (aggiunto per il run #1).
+> 2. **Ri-lanciare** la GH Action **«Ops — Split listino»** → carica le ~959 paginette **private**. Dal log copiare
 >    **`LISTINO_TOTAL_PAGES`**.
-> 4. Su **Vercel (Production)**: impostare **`BLOB_READ_WRITE_TOKEN`** (stesso token dello store) + **`LISTINO_TOTAL_PAGES`**,
+> 3. Su **Vercel (Production)**: impostare **`BLOB_READ_WRITE_TOKEN`** (stesso token dello store) + **`LISTINO_TOTAL_PAGES`**,
 >    **rimuovere `LISTINO_PDF_URL`**, poi **redeploy**.
-> 5. (Opz.) eliminare dal Blob il vecchio `listino.pdf` monolitico.
-> 6. **Verifica browser** (≤375px + desktop): un codice → pagina giusta, **immagini complete**, codice evidenziato,
+> 4. (Opz.) eliminare dal Blob il vecchio `listino.pdf` monolitico.
+> 5. **Verifica browser** (≤375px + desktop): un codice → pagina giusta, **immagini complete**, codice evidenziato,
 >    nessun overflow orizzontale.
 >
 > **Nota edizione:** lo split DEVE girare sulla **stessa edizione** del listino che ha popolato `Product.listinoPage`
@@ -1886,6 +2038,7 @@
 > Tutto ciò che è stato costruito in quella sessione è **mergiato e in produzione**.
 >
 > **Cosa è entrato in produzione (gate verdi typecheck·lint·test·build su ogni PR):**
+>
 > - **#20 — Fase 1i «Vasistas» ARTECH LEGNO** (`claude/handoff-md-review-erkjm0`). Terza tipologia del kit
 >   engine, PROVVISORIA. Modulo `rules-artech-vasistas-legno.ts`: cremonese `A50111.15` per GR + catena DSS
 >   `A50190.00.00`/incontro `A51400.05.03` + forbici `A50545` (1/2 per GR) + supporto/perno + terminale +
@@ -1903,9 +2056,10 @@
 >   (con quello PDF.js non recuperava gli XObject immagine). **Parziale** — vedi problema aperto.
 >
 > **Ops eseguite (dall'utente):** run GitHub Actions **«Ops — Neon» 30024919979** = migrazione `add_listino_page`
-> + import (popola le pagine) + `db:seed:kit` (template vasistas) + embed(skip). **Viewer attivato**: listino
-> linearizzato caricato su Vercel Blob + `LISTINO_PDF_URL` impostata. Il viewer **funziona** (apre alla pagina
-> giusta, evidenzia il codice).
+>
+> - import (popola le pagine) + `db:seed:kit` (template vasistas) + embed(skip). **Viewer attivato**: listino
+>   linearizzato caricato su Vercel Blob + `LISTINO_PDF_URL` impostata. Il viewer **funziona** (apre alla pagina
+>   giusta, evidenzia il codice).
 >
 > **⚠️ PROBLEMA APERTO (unico) — immagini del viewer parziali.** Nel viewer le foto prodotto si vedono **solo in
 > parte** (poche). Causa: con le range-request PDF.js **disegna la pagina prima che tutti gli XObject immagine
@@ -1934,6 +2088,7 @@
 > 14 commit `33e3227→1623211`, **pushati**, gate verdi: typecheck·lint·**test 293/9 skip**·build 14 route.
 >
 > **Cosa c'è (Fase A backend+UI · Fase B username):**
+>
 > - Router `user` (`src/server/api/routers/user.ts`), **ogni mutation `adminProcedure`**:
 >   `create · list · setRole · setActive`(ban+status) `· resetPassword · update · delete`. **Anti-lockout**:
 >   mai su self né sull'ultimo admin attivo; `delete` bloccato se l'utente ha record collegati
@@ -1951,11 +2106,12 @@
 >   Ledger: `.superpowers/sdd/progress.md`.
 >
 > **✅ FATTO (tutto chiuso in questa sessione):**
+>
 > 1. **PR #17 MERGIATA** (gestione utenti + login username).
 > 2. **Migrazione `20260713094200_username` APPLICATA a Neon** via **ops run #4** (13/07): aggiunge
->    `users.username`/`display_username` + unique. Login (email *e* username) OK in produzione.
->    *(Nota storica: al primo merge #17 il login si era rotto perché la migrazione non era ancora su Neon —
->    lo schema Prisma interrogava colonne assenti; risolto lanciando ops-neon sul branch.)*
+>    `users.username`/`display_username` + unique. Login (email _e_ username) OK in produzione.
+>    _(Nota storica: al primo merge #17 il login si era rotto perché la migrazione non era ancora su Neon —
+>    lo schema Prisma interrogava colonne assenti; risolto lanciando ops-neon sul branch.)_
 > 3. **PR #18 MERGIATA** — **UI mobile responsive + regola mobile-first**: sidebar era `hidden md:block`
 >    senza alternativa (niente nav <768px) → **hamburger + drawer** (Sidebar riusata; overlay/slide-in;
 >    chiusura Esc/backdrop/cambio-rotta); TopBar mobile; **`/utenti` azioni in menu ⋯** (dropdown
@@ -1985,6 +2141,7 @@
 > nuovo materiale: l'**anta proiettante** richiesta NON è nel listino 2026 (0 riscontri, come
 > l'alluminio) → **scelta utente = «a battente»** (che ha schema ARTECH legno completo).
 > Architettura **Opzione C ESTESA** (no /llm-council, scelta utente):
+>
 > - **Task 1** `artech-legno-shared.ts`: estrae la meccanica legno condivisa (cerniere `PER_MANO`,
 >   `MOVIMENTO_ANGOLARE`, `incontriNottolino`) — **behavior-preserving**, il golden anta-ribalta
 >   (12 righe/17 pezzi) resta invariato.
@@ -1995,10 +2152,11 @@
 > - **Task 3** `seed-kit.ts` data-driven per-`windowType` + template battente (`isActive:true`, PROVVISORIO).
 > - **Task 4** wizard `nuova-client.tsx`: espone `ANTA_BATTENTE` **solo-LEGNO** (PVC/ALU gated per
 >   il battente), reset materiale/chiusure al cambio tipologia.
-> Spec/piano: `docs/superpowers/{specs,plans}/2026-07-12-fase1h-kit-anta-battente*`. Scheda
-> assunzioni + domande esperto: `docs/superpowers/kit-assunzioni/battente.md`. Ledger:
-> `.superpowers/sdd/progress.md`.
-> **➡ PROSSIMI PASSI**:
+>   Spec/piano: `docs/superpowers/{specs,plans}/2026-07-12-fase1h-kit-anta-battente*`. Scheda
+>   assunzioni + domande esperto: `docs/superpowers/kit-assunzioni/battente.md`. Ledger:
+>   `.superpowers/sdd/progress.md`.
+>   **➡ PROSSIMI PASSI**:
+>
 > 1. **PR Fase 1h** (branch pushato) — **decisione utente** (NON creata in automatico).
 > 2. **Al deploy**: `db:seed:kit` su Neon per inserire il template battente. **NESSUNA migrazione**
 >    (l'enum `WindowType` ha già `ANTA_BATTENTE`). Senza il seed, il wizard offre ANTA_BATTENTE ma
@@ -2006,12 +2164,12 @@
 > 3. **Integration gated**: girare `engine.integration.test.ts` con `INTEGRATION_DATABASE_URL` per
 >    verificare che i codici battente (`A50200.15.NN` ecc.) siano a catalogo Neon (warning attesi = 0).
 > 4. **Con l'esperto**: domande in `docs/superpowers/kit-assunzioni/` (indice in `legno.md`); poi bump `version`.
-> ⚠️ **SUPERATO dalla bonifica del 2026-07-25**: il battente è stato **DISATTIVATO** (la distinta era priva del
-> gruppo di sospensione superiore) — i punti 2 e 3 qui sopra non valgono più, il template va seedato
-> `isActive:false`. Vedi §RIPRENDI DA QUI.
-> ⚠️ Minor rimandati (follow-up, in `progress.md`): commento `ASSUNZIONE` orfano in `rules-artech-legno.ts`;
-> boilerplate display-string battente/legno; asserzioni del test integration battente (solo count).
-> ⚠️ Fase 1f: e2e fatto via **API backend** (non browser UI, limite sandbox↔Vercel); dati di test in staging.
+>    ⚠️ **SUPERATO dalla bonifica del 2026-07-25**: il battente è stato **DISATTIVATO** (la distinta era priva del
+>    gruppo di sospensione superiore) — i punti 2 e 3 qui sopra non valgono più, il template va seedato
+>    `isActive:false`. Vedi §RIPRENDI DA QUI.
+>    ⚠️ Minor rimandati (follow-up, in `progress.md`): commento `ASSUNZIONE` orfano in `rules-artech-legno.ts`;
+>    boilerplate display-string battente/legno; asserzioni del test integration battente (solo count).
+>    ⚠️ Fase 1f: e2e fatto via **API backend** (non browser UI, limite sandbox↔Vercel); dati di test in staging.
 
 ## Stato attuale in breve
 
@@ -2059,25 +2217,26 @@
 
 ## Fase 1c — cosa è stato costruito
 
-| Componente | File | Note |
-|---|---|---|
-| CircuitBreaker | `src/server/ai/breaker.ts` | 5 fail/60s → open 30s; stato SOLO su Redis; TTL scaduto = half-open |
-| RateLimiter | `src/server/ai/ratelimit.ts` | finestra fissa; 20 msg/min/utente + cap 60 RPM/provider |
-| RedisLike + client | `src/server/ai/redis.ts` | ioredis lazy; interfaccia minima iniettabile; `src/test/fake-redis.ts` per i test |
-| Errori tipizzati | `src/server/ai/errors.ts` | messaggi italiani; `ProviderHttpError.status` guida retry/fallback |
-| ChatProvider | `src/server/ai/providers/{types,gemini,sse}.ts` | solo fetch (NO SDK); Gemini `generateContent` v1beta + **`streamGenerateContent?alt=sse`** (parser frame-safe `sse.ts`). *(`kimi.ts` rimosso 2026-07-24)* |
-| **AIGateway** | `src/server/ai/gateway.ts` | UNICO punto uscita AI: rate limit → breaker → timeout 30s. `chat()` (non-stream) ha 1 retry jitter su 429/5xx; **`chatStream()` non ha né retry né fallback** (duplicherebbe token già emessi) e uno **STOP utente non conta come guasto** del provider. `embedQuery` (3s, null su errore); `getAIGateway()` singleton da env |
-| RAGEngine esteso | `src/server/ai/rag.ts` | + `listUnembedded`/`storeEmbeddings` (resta l'unico modulo raw SQL); degrado try/catch su embedding; **niente più `server-only`** (riuso da tsx) |
-| Embedding batch | `src/server/ai/embedding.ts` + `product-text.ts` + `scripts/embed-products.ts` | `generateBatch` ≤100, `HttpStatusError`, backoff exp; `pnpm embed:products` idempotente (pagina su `embedding IS NULL`) |
-| Tool chat | `src/server/chat/tools.ts` | `search_products` (limit ≤10, filtri) + `get_product_by_code`; errori come output al modello |
-| ChatService | `src/server/chat/service.ts` | USER persistito PRIMA della chiamata; loop tool cap 5 → round finale forzato senza tool; TOOL/ASSISTANT con metadati; errore → ASSISTANT `ERROR` (RateLimited → rilanciata) |
-| Router chat | `src/server/api/routers/chat.ts` | create/list/get/send/retry/archive (AGENT, ownership); ActivityLog; RateLimited → `TOO_MANY_REQUESTS` |
-| Ricerca ibrida attiva | `product.search` | `new RAGEngine(ctx.db, getAIGateway().queryEmbeddings())`; senza key → testuale, mai rotta |
-| UI Assistente | `src/app/(dashboard)/assistente/` + `src/components/chat/` | split 60/40 (DESIGN.md), bolle con codici mono, pannello prodotti con copia+link, dropdown conversazioni, «Sta scrivendo…», errore inline con Riprova |
-| maxDuration | `src/app/api/trpc/[trpc]/route.ts` | `export const maxDuration = 120` |
-| CLAUDE.md | regola emendata | **AIGateway al posto di BullMQ** (LLM Council 2026-07-02) |
+| Componente            | File                                                                           | Note                                                                                                                                                                                                                                                                                                                          |
+| --------------------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CircuitBreaker        | `src/server/ai/breaker.ts`                                                     | 5 fail/60s → open 30s; stato SOLO su Redis; TTL scaduto = half-open                                                                                                                                                                                                                                                           |
+| RateLimiter           | `src/server/ai/ratelimit.ts`                                                   | finestra fissa; 20 msg/min/utente + cap 60 RPM/provider                                                                                                                                                                                                                                                                       |
+| RedisLike + client    | `src/server/ai/redis.ts`                                                       | ioredis lazy; interfaccia minima iniettabile; `src/test/fake-redis.ts` per i test                                                                                                                                                                                                                                             |
+| Errori tipizzati      | `src/server/ai/errors.ts`                                                      | messaggi italiani; `ProviderHttpError.status` guida retry/fallback                                                                                                                                                                                                                                                            |
+| ChatProvider          | `src/server/ai/providers/{types,gemini,sse}.ts`                                | solo fetch (NO SDK); Gemini `generateContent` v1beta + **`streamGenerateContent?alt=sse`** (parser frame-safe `sse.ts`). _(`kimi.ts` rimosso 2026-07-24)_                                                                                                                                                                     |
+| **AIGateway**         | `src/server/ai/gateway.ts`                                                     | UNICO punto uscita AI: rate limit → breaker → timeout 30s. `chat()` (non-stream) ha 1 retry jitter su 429/5xx; **`chatStream()` non ha né retry né fallback** (duplicherebbe token già emessi) e uno **STOP utente non conta come guasto** del provider. `embedQuery` (3s, null su errore); `getAIGateway()` singleton da env |
+| RAGEngine esteso      | `src/server/ai/rag.ts`                                                         | + `listUnembedded`/`storeEmbeddings` (resta l'unico modulo raw SQL); degrado try/catch su embedding; **niente più `server-only`** (riuso da tsx)                                                                                                                                                                              |
+| Embedding batch       | `src/server/ai/embedding.ts` + `product-text.ts` + `scripts/embed-products.ts` | `generateBatch` ≤100, `HttpStatusError`, backoff exp; `pnpm embed:products` idempotente (pagina su `embedding IS NULL`)                                                                                                                                                                                                       |
+| Tool chat             | `src/server/chat/tools.ts`                                                     | `search_products` (limit ≤10, filtri) + `get_product_by_code`; errori come output al modello                                                                                                                                                                                                                                  |
+| ChatService           | `src/server/chat/service.ts`                                                   | USER persistito PRIMA della chiamata; loop tool cap 5 → round finale forzato senza tool; TOOL/ASSISTANT con metadati; errore → ASSISTANT `ERROR` (RateLimited → rilanciata)                                                                                                                                                   |
+| Router chat           | `src/server/api/routers/chat.ts`                                               | create/list/get/send/retry/archive (AGENT, ownership); ActivityLog; RateLimited → `TOO_MANY_REQUESTS`                                                                                                                                                                                                                         |
+| Ricerca ibrida attiva | `product.search`                                                               | `new RAGEngine(ctx.db, getAIGateway().queryEmbeddings())`; senza key → testuale, mai rotta                                                                                                                                                                                                                                    |
+| UI Assistente         | `src/app/(dashboard)/assistente/` + `src/components/chat/`                     | split 60/40 (DESIGN.md), bolle con codici mono, pannello prodotti con copia+link, dropdown conversazioni, «Sta scrivendo…», errore inline con Riprova                                                                                                                                                                         |
+| maxDuration           | `src/app/api/trpc/[trpc]/route.ts`                                             | `export const maxDuration = 120`                                                                                                                                                                                                                                                                                              |
+| CLAUDE.md             | regola emendata                                                                | **AIGateway al posto di BullMQ** (LLM Council 2026-07-02)                                                                                                                                                                                                                                                                     |
 
 ### Decisioni prese durante la 1c (delta vs spec/piano)
+
 - **Budget per-provider = 60 RPM** (cap di sicurezza globale, non 15): col budget
   sotto il limite utente il rate-limit utente non era mai raggiungibile.
   Saltare tutti i provider SOLO per budget → `RateLimitedError` (non
@@ -2103,18 +2262,19 @@ SX, TIRARE, aria 12, asse/interasse 13, battuta 20, sede 18, ARGENTO →
 integrazione sul catalogo reale (6.191 prodotti, listino 2026) sia nel
 browser end-to-end.
 
-| Componente | File | Note |
-|---|---|---|
-| Tipi/contratto | `src/server/kit/types.ts` | `kitInputSchema` (zod, generico — nessun campo ARTECH-specifico); `KitLine`/`RuleModule`/`KitGenerationError`; costanti `PILOT` (FINESTRA, verticali passo 600, coperture KIT) |
-| Regole ARTECH legno | `src/server/kit/rules-artech.ts` | Tabelle dati `as const` (cremonese per range altezza, corpo forbice per range larghezza, bracci per gruppo larghezza, coperture per finitura+mano) + funzioni pure per quantità; ogni scelta non derivabile con certezza è marcata `// ASSUNZIONE` (vedi Decisioni) |
-| Registry | `src/server/kit/registry.ts` | Puntatore `{engine, version}` → `RuleModule`; engine non registrato/puntatore malformato → errore esplicito |
-| Seed template | `prisma/seed-kit.ts` (`pnpm db:seed:kit`) | `KitTemplate` "ARTECH anta-ribalta legno" attivo, idempotente |
-| **KitEngine** | `src/server/kit/engine.ts` | Pipeline VALIDATE → SELECT TEMPLATE (DB, priority) → APPLY RULES (registry) → risoluzione prezzi da `Product` (Prisma, no raw SQL); codice non a listino → warning esplicito, kit comunque generato |
-| Router kit | `src/server/api/routers/kit.ts` | `create`/`generate`/`get`/`list` (AGENT, ownership, transazione su `generate`, ActivityLog `KIT_REQUEST_CREATED`/`KIT_GENERATED`) |
-| UI Richieste | `src/app/(dashboard)/richieste/` + `src/components/kit/` | Lista con stato vuoto+CTA, dettaglio con `DistintaTable` (codici mono+copia) e banner warning, wizard `/nuova` 4 step (tipologia → dimensioni → mano/finitura → riepilogo) con default LEGNO |
-| Test integrazione | `src/server/kit/engine.integration.test.ts` | Gated `INTEGRATION_DATABASE_URL`; risolve i 16 codici sul catalogo reale, zero warning, tutti prezzati, `totalPrice > 0` |
+| Componente          | File                                                     | Note                                                                                                                                                                                                                                                                |
+| ------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tipi/contratto      | `src/server/kit/types.ts`                                | `kitInputSchema` (zod, generico — nessun campo ARTECH-specifico); `KitLine`/`RuleModule`/`KitGenerationError`; costanti `PILOT` (FINESTRA, verticali passo 600, coperture KIT)                                                                                      |
+| Regole ARTECH legno | `src/server/kit/rules-artech.ts`                         | Tabelle dati `as const` (cremonese per range altezza, corpo forbice per range larghezza, bracci per gruppo larghezza, coperture per finitura+mano) + funzioni pure per quantità; ogni scelta non derivabile con certezza è marcata `// ASSUNZIONE` (vedi Decisioni) |
+| Registry            | `src/server/kit/registry.ts`                             | Puntatore `{engine, version}` → `RuleModule`; engine non registrato/puntatore malformato → errore esplicito                                                                                                                                                         |
+| Seed template       | `prisma/seed-kit.ts` (`pnpm db:seed:kit`)                | `KitTemplate` "ARTECH anta-ribalta legno" attivo, idempotente                                                                                                                                                                                                       |
+| **KitEngine**       | `src/server/kit/engine.ts`                               | Pipeline VALIDATE → SELECT TEMPLATE (DB, priority) → APPLY RULES (registry) → risoluzione prezzi da `Product` (Prisma, no raw SQL); codice non a listino → warning esplicito, kit comunque generato                                                                 |
+| Router kit          | `src/server/api/routers/kit.ts`                          | `create`/`generate`/`get`/`list` (AGENT, ownership, transazione su `generate`, ActivityLog `KIT_REQUEST_CREATED`/`KIT_GENERATED`)                                                                                                                                   |
+| UI Richieste        | `src/app/(dashboard)/richieste/` + `src/components/kit/` | Lista con stato vuoto+CTA, dettaglio con `DistintaTable` (codici mono+copia) e banner warning, wizard `/nuova` 4 step (tipologia → dimensioni → mano/finitura → riepilogo) con default LEGNO                                                                        |
+| Test integrazione   | `src/server/kit/engine.integration.test.ts`              | Gated `INTEGRATION_DATABASE_URL`; risolve i 16 codici sul catalogo reale, zero warning, tutti prezzati, `totalPrice > 0`                                                                                                                                            |
 
 ### Decisioni 1d (delta vs spec/piano)
+
 - **Pivot golden ALLUMINIO → LEGNO** (Task 0): la gamma «ad applicare» ALLUMINIO
   della distinta reale 2021 non esiste più nel listino 2026 (9/20 codici
   sopravvissuti a DB, gli 11 mancanti sono tutti profilo-specifici — nemmeno i
@@ -2126,7 +2286,7 @@ browser end-to-end.
   (`docs/superpowers/specs/2026-07-04-fase1d-kit-engine-design.md`): con n=1
   distinta reale, progettare oggi uno schema JSON generico è wrong abstraction
   garantita — le tabelle a range sono banali in qualsiasi rappresentazione, sono
-  le *formule* a discriminare. **Trigger di migrazione registrato**: alla 2ª
+  le _formule_ a discriminare. **Trigger di migrazione registrato**: alla 2ª
   serie si rivaluta, alla 3ª si estrae il vocabolario comune in
   `KitTemplate.rules`. `KitTemplate` resta comunque vivo come
   registro/dispatcher (puntatore versionato `{engine, version}` validato zod).
@@ -2141,7 +2301,7 @@ browser end-to-end.
   selezionati) sui dati reali → non regge (il fusto forbice ha `not."="-"`,
   somma pesata darebbe 4 ≠ 5 atteso). Si usa la formula ASSUNZIONE del piano
   originale (`2 + scatti passo 600 in altezza + scatti passo 600 in
-  larghezza`), che riproduce esattamente il golden.
+larghezza`), che riproduce esattamente il golden.
 - **Finiture coperte nel pilota: solo ARGENTO** (`COPERTURE_KIT` in
   `rules-artech.ts`); il wizard mostra solo ARGENTO come opzione selezionabile
   (`FINISH_OPTIONS`, duplicato manuale — annotato come minor in review Task 7).
@@ -2152,13 +2312,13 @@ Dashboard `/dashboard` da placeholder statico a **dati reali via tRPC**, TDD,
 nessuna modifica a `schema.prisma`. Spec `docs/superpowers/specs/2026-07-06-fase1e-dashboard-dati-reali-design.md`,
 piano `docs/superpowers/plans/2026-07-06-fase1e-dashboard-dati-reali.md`.
 
-| Componente | File | Note |
-|---|---|---|
-| Helper fuso | `src/lib/format.ts` (`startOfTodayRome`) | Mezzanotte odierna a **Europe/Rome** (DST inclusa) → confine "oggi" per i KPI; niente nuove dipendenze |
-| Router dashboard | `src/server/api/routers/dashboard.ts` (`overview`) | `protectedProcedure` (AGENT+); input `{ scope: mine\|team }`, **server autoritativo** (non-ADMIN forzato a `mine`); `Promise.all` di `count`/`findMany` Prisma (no raw SQL); output KPI (richieste, kit generati con `generatedAt != null`, conversazioni, prodotti cercati — total + oggi) + ultime 5 richieste con cliente/prezzo |
-| Client dashboard | `src/app/(dashboard)/dashboard/dashboard-client.tsx` | react-query; toggle **"I miei / Team"** solo se ADMIN; 4 StatCard con "+N oggi"; sezione ultime richieste (link a `/richieste/[id]`); card **Scorciatoie** (assistente/nuova richiesta/archivio) che rimpiazza il box AI finto; stati loading (skeleton) / **errore esclusivo** (banner + Riprova, niente empty-state falso) / empty |
-| Shell server | `src/app/(dashboard)/dashboard/page.tsx` | resta server component: passa `firstName`/`isAdmin` al client |
-| Test | `dashboard.test.ts` · `dashboard-client.test.tsx` · `format.test.ts` | scope mine/team, riduzione AGENT→mine, `kitGenerati` su `generatedAt`, confine oggi, mapping `recentKits`; KPI/toggle/empty/loading/errore; `startOfTodayRome` CET+CEST |
+| Componente       | File                                                                 | Note                                                                                                                                                                                                                                                                                                                                 |
+| ---------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Helper fuso      | `src/lib/format.ts` (`startOfTodayRome`)                             | Mezzanotte odierna a **Europe/Rome** (DST inclusa) → confine "oggi" per i KPI; niente nuove dipendenze                                                                                                                                                                                                                               |
+| Router dashboard | `src/server/api/routers/dashboard.ts` (`overview`)                   | `protectedProcedure` (AGENT+); input `{ scope: mine\|team }`, **server autoritativo** (non-ADMIN forzato a `mine`); `Promise.all` di `count`/`findMany` Prisma (no raw SQL); output KPI (richieste, kit generati con `generatedAt != null`, conversazioni, prodotti cercati — total + oggi) + ultime 5 richieste con cliente/prezzo  |
+| Client dashboard | `src/app/(dashboard)/dashboard/dashboard-client.tsx`                 | react-query; toggle **"I miei / Team"** solo se ADMIN; 4 StatCard con "+N oggi"; sezione ultime richieste (link a `/richieste/[id]`); card **Scorciatoie** (assistente/nuova richiesta/archivio) che rimpiazza il box AI finto; stati loading (skeleton) / **errore esclusivo** (banner + Riprova, niente empty-state falso) / empty |
+| Shell server     | `src/app/(dashboard)/dashboard/page.tsx`                             | resta server component: passa `firstName`/`isAdmin` al client                                                                                                                                                                                                                                                                        |
+| Test             | `dashboard.test.ts` · `dashboard-client.test.tsx` · `format.test.ts` | scope mine/team, riduzione AGENT→mine, `kitGenerati` su `generatedAt`, confine oggi, mapping `recentKits`; KPI/toggle/empty/loading/errore; `startOfTodayRome` CET+CEST                                                                                                                                                              |
 
 ## Gestione API key admin — cosa è stato costruito (merge PR #10, 2026-07-10)
 
@@ -2168,16 +2328,16 @@ non-tecnici** dall'app (senza accesso Vercel / redeploy). Verdetto LLM Council
 piano `docs/superpowers/plans/2026-07-10-gestione-api-key-admin.md`. Il modello
 `Settings` esisteva già a schema → **nessuna migrazione**.
 
-| Componente | File | Note |
-|---|---|---|
-| Cifratura | `src/server/settings/crypto.ts` (`server-only`) | **AES-256-GCM** (`node:crypto`); `base64(iv[12]\|tag[16]\|ct)`, IV random per chiamata; master key da `SETTINGS_ENCRYPTION_KEY` (32 byte, base64/hex); assente → `SettingsCryptoUnavailableError` (mai crash/cifratura debole) |
-| Env | `src/env.ts` | `SETTINGS_ENCRYPTION_KEY: z.string().optional()` (dev/CI girano senza) |
-| Service | `src/server/settings/service.ts` (`server-only`) | `resolveApiKey` (**DB prima → fallback env**); `setApiKey` (cifra, `upsert` su `@@unique([category,key])`, `ActivityLog SETTINGS_CHANGED` con solo `{provider, maskedSuffix}` — **mai** plaintext, poi `INCR` version-stamp Redis); `getStatus` mascherato (`configured/source/maskedSuffix/updatedAt/updatedBy`) |
-| Helper test key | `src/server/ai/gateway.ts` (`testProviderKey`) | verifica una key con chat minima, timeout corto, senza persistere |
-| Gateway async + invalidazione | `src/server/ai/gateway.ts` (`getAIGateway` **async**) | risolve le key via `resolveApiKey` per chat **e** embedding (stessa key Gemini); version-stamp Redis `settings:ai-keys:version` riletto ~30–60s → ricostruisce il singleton al cambio; **degrada al singleton esistente se Redis è irraggiungibile** (fix `b9a8559`). Tutti i call-site resi `await` |
-| Router settings | `src/server/api/routers/settings.ts` | tutte `adminProcedure`: `aiKeys.status` · `aiKeys.testConnection` (`{provider, apiKey?}`, provider temporaneo, no persist) · `aiKeys.set` (**ri-valida server-side** poi `setApiKey`) |
-| UI Impostazioni | `src/app/(dashboard)/impostazioni/{page,impostazioni-client}.tsx` | admin-only; card per provider (stato DB/env/mancante, `••••1234` mono, "ultima modifica"); campo key **write-only**; **Salva abilitato solo dopo un test riuscito** |
-| Test | `crypto.test.ts` · `service.test.ts` · `settings.test.ts` | roundtrip/tamper/master-key assente; DB-prima+fallback+audit-senza-plaintext+bump versione; `adminProcedure` nega non-ADMIN, `set` ri-valida |
+| Componente                    | File                                                              | Note                                                                                                                                                                                                                                                                                                              |
+| ----------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cifratura                     | `src/server/settings/crypto.ts` (`server-only`)                   | **AES-256-GCM** (`node:crypto`); `base64(iv[12]\|tag[16]\|ct)`, IV random per chiamata; master key da `SETTINGS_ENCRYPTION_KEY` (32 byte, base64/hex); assente → `SettingsCryptoUnavailableError` (mai crash/cifratura debole)                                                                                    |
+| Env                           | `src/env.ts`                                                      | `SETTINGS_ENCRYPTION_KEY: z.string().optional()` (dev/CI girano senza)                                                                                                                                                                                                                                            |
+| Service                       | `src/server/settings/service.ts` (`server-only`)                  | `resolveApiKey` (**DB prima → fallback env**); `setApiKey` (cifra, `upsert` su `@@unique([category,key])`, `ActivityLog SETTINGS_CHANGED` con solo `{provider, maskedSuffix}` — **mai** plaintext, poi `INCR` version-stamp Redis); `getStatus` mascherato (`configured/source/maskedSuffix/updatedAt/updatedBy`) |
+| Helper test key               | `src/server/ai/gateway.ts` (`testProviderKey`)                    | verifica una key con chat minima, timeout corto, senza persistere                                                                                                                                                                                                                                                 |
+| Gateway async + invalidazione | `src/server/ai/gateway.ts` (`getAIGateway` **async**)             | risolve le key via `resolveApiKey` per chat **e** embedding (stessa key Gemini); version-stamp Redis `settings:ai-keys:version` riletto ~30–60s → ricostruisce il singleton al cambio; **degrada al singleton esistente se Redis è irraggiungibile** (fix `b9a8559`). Tutti i call-site resi `await`              |
+| Router settings               | `src/server/api/routers/settings.ts`                              | tutte `adminProcedure`: `aiKeys.status` · `aiKeys.testConnection` (`{provider, apiKey?}`, provider temporaneo, no persist) · `aiKeys.set` (**ri-valida server-side** poi `setApiKey`)                                                                                                                             |
+| UI Impostazioni               | `src/app/(dashboard)/impostazioni/{page,impostazioni-client}.tsx` | admin-only; card per provider (stato DB/env/mancante, `••••1234` mono, "ultima modifica"); campo key **write-only**; **Salva abilitato solo dopo un test riuscito**                                                                                                                                               |
+| Test                          | `crypto.test.ts` · `service.test.ts` · `settings.test.ts`         | roundtrip/tamper/master-key assente; DB-prima+fallback+audit-senza-plaintext+bump versione; `adminProcedure` nega non-ADMIN, `set` ri-valida                                                                                                                                                                      |
 
 > **Impatto sul task embedding**: con la gestione API key in-app, aggiornare la
 > key Gemini **non richiede più redeploy** — un ADMIN la ruota da `/impostazioni`.
@@ -2193,20 +2353,22 @@ la dev-container web **filtra la 5432**, quindi le operazioni DB girano da **Git
 Actions** (rete aperta → Neon:5432 ok).
 
 ### Fatto ✅ (PR #11 e #12 mergiate)
-| Cosa | Dettaglio |
-|---|---|
-| Task 1 | `maxDuration` 120→60 in `src/app/api/trpc/[trpc]/route.ts` (cap Vercel Hobby) |
-| Task 2 | `.env.example` allineato (Better Auth, `SETTINGS_ENCRYPTION_KEY`, URL Neon pooled/direct) |
-| Task 3 | `.github/workflows/ci.yml` — Vitest su PR (verde sulla PR reale) |
-| Task 4 | `.github/workflows/ops-neon.yml` — pipeline ops `workflow_dispatch` (migrate→import→seed→embed; job punta `DATABASE_URL` al Neon **diretto**) |
-| Fix | `vitest.config.ts` forza `SETTINGS_ENCRYPTION_KEY=""` (ermeticità: senza, `resolveApiKey` interroga il DB e 2 test router falliscono) |
-| Fix | **Next 15.3.0 → 15.5.20** (PR #12): Vercel **blocca** i deploy su versioni Next vulnerabili («Vulnerable version of Next.js detected»); il build passava ma il deploy veniva rifiutato |
-| Deploy | App **LIVE** su Vercel (Hobby): **https://catalogo-finder-kappa.vercel.app** (nome `catalogo-finder` occupato → suffisso `-kappa`) |
-| Config | `NEXTAUTH_URL` corretto all'URL reale + redeploy. Env Production su Vercel: `DATABASE_URL` (Neon pooled+pgbouncer), `DIRECT_URL` (Neon diretto), `REDIS_URL` (Upstash `rediss://`), `NEXTAUTH_URL`, `NEXTAUTH_SECRET`, `IP_HASH_SECRET`, `SETTINGS_ENCRYPTION_KEY`, `GEMINI_API_KEY`, `GEMINI_MODEL` |
-| Infra utente | **Neon** (progetto "Catalogo Finder", `eu-west-2`) · **Upstash** (`catalogo-finder`, EU) · **GitHub Secrets**: `NEON_DIRECT_URL`, `GEMINI_API_KEY`, `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` · **billing Gemini attivo** |
+
+| Cosa             | Dettaglio                                                                                                                                                                                                                                                                                                                                                              |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Task 1           | `maxDuration` 120→60 in `src/app/api/trpc/[trpc]/route.ts` (cap Vercel Hobby)                                                                                                                                                                                                                                                                                          |
+| Task 2           | `.env.example` allineato (Better Auth, `SETTINGS_ENCRYPTION_KEY`, URL Neon pooled/direct)                                                                                                                                                                                                                                                                              |
+| Task 3           | `.github/workflows/ci.yml` — Vitest su PR (verde sulla PR reale)                                                                                                                                                                                                                                                                                                       |
+| Task 4           | `.github/workflows/ops-neon.yml` — pipeline ops `workflow_dispatch` (migrate→import→seed→embed; job punta `DATABASE_URL` al Neon **diretto**)                                                                                                                                                                                                                          |
+| Fix              | `vitest.config.ts` forza `SETTINGS_ENCRYPTION_KEY=""` (ermeticità: senza, `resolveApiKey` interroga il DB e 2 test router falliscono)                                                                                                                                                                                                                                  |
+| Fix              | **Next 15.3.0 → 15.5.20** (PR #12): Vercel **blocca** i deploy su versioni Next vulnerabili («Vulnerable version of Next.js detected»); il build passava ma il deploy veniva rifiutato                                                                                                                                                                                 |
+| Deploy           | App **LIVE** su Vercel (Hobby): **https://catalogo-finder-kappa.vercel.app** (nome `catalogo-finder` occupato → suffisso `-kappa`)                                                                                                                                                                                                                                     |
+| Config           | `NEXTAUTH_URL` corretto all'URL reale + redeploy. Env Production su Vercel: `DATABASE_URL` (Neon pooled+pgbouncer), `DIRECT_URL` (Neon diretto), `REDIS_URL` (Upstash `rediss://`), `NEXTAUTH_URL`, `NEXTAUTH_SECRET`, `IP_HASH_SECRET`, `SETTINGS_ENCRYPTION_KEY`, `GEMINI_API_KEY`, `GEMINI_MODEL`                                                                   |
+| Infra utente     | **Neon** (progetto "Catalogo Finder", `eu-west-2`) · **Upstash** (`catalogo-finder`, EU) · **GitHub Secrets**: `NEON_DIRECT_URL`, `GEMINI_API_KEY`, `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` · **billing Gemini attivo**                                                                                                                                              |
 | **Task 7 (ops)** | **Pipeline _Ops — Neon_ eseguita e VERDE** (run #1 `29132026156`, 2026-07-11, ~35 min): `migrate deploy` (schema + pgvector/pg_trgm) · `import:agb` **6.191** · `db:seed` admin + `db:seed:kit` · `embed:products` **6.191/6.191** (`Completato: 6191 embedding generati.`). Neon **popolato**. Smoke test non autenticato: root → `/login` (200), «Accedi — UFPtrade» |
 
 ### Fatto 2026-07-11 — Task 7 ✅ + Task 8 ✅
+
 1. ✅ **Task 7 — pipeline ops VERDE** (run #1 `29132026156`, ~35 min): migrate
    (schema + pgvector) → import **6.191** → seed admin + kit → embed **6.191/6.191**
    (`Completato: 6191 embedding generati.`). Neon popolato.
@@ -2230,6 +2392,7 @@ Actions** (rete aperta → Neon:5432 ok).
    **Pro** + dominio + hardening, oppure **Fase 2**).
 
 ### ⚠️ Caveat verifica e2e (2026-07-11)
+
 - **Verificato via API backend, non browser UI**: un browser reale (Chromium/
   Playwright) nella sandbox esce dal **proxy TLS-intercepting** dell'agente e Vercel
   edge gli serve una **challenge anti-bot** (title `catalogo-finder-kappa.vercel.app`)
@@ -2245,6 +2408,7 @@ Actions** (rete aperta → Neon:5432 ok).
   Action / pulizia mirata), da valutare se si vuole una demo pulita.
 
 ### Note / landmine 1f
+
 - **Vercel Hobby** = uso non commerciale + cap function 60s. Per la produzione vera
   serve **Pro** (termini + headroom 300s → rialzare `maxDuration`; + deployment protection).
 - **Preview deploy Vercel falliscono** finché le env stanno solo su Production
@@ -2254,79 +2418,86 @@ Actions** (rete aperta → Neon:5432 ok).
 ## Task pendenti
 
 ### Immediati
-- [X] GEMINI_API_KEY in `.env` (fornita 2026-07-04; anche nel transcript sessione)
-- [X] **Embedding catalogo (6.191/6.191 su Neon)** ✅ — generato dalla pipeline ops
-  GitHub Actions (`embed:products`, run #1 `29132026156`, 2026-07-11:
-  `Completato: 6191 embedding generati.`). Il blocco 5432 della dev-container web
-  resta valido (le operazioni DB girano da GitHub Actions, non dal container);
-  billing Gemini attivo. Vedi sezione «Fase 1f».
+
+- [x] GEMINI_API_KEY in `.env` (fornita 2026-07-04; anche nel transcript sessione)
+- [x] **Embedding catalogo (6.191/6.191 su Neon)** ✅ — generato dalla pipeline ops
+      GitHub Actions (`embed:products`, run #1 `29132026156`, 2026-07-11:
+      `Completato: 6191 embedding generati.`). Il blocco 5432 della dev-container web
+      resta valido (le operazioni DB girano da GitHub Actions, non dal container);
+      billing Gemini attivo. Vedi sezione «Fase 1f».
 - [x] ~~Key Moonshot API platform per il fallback Kimi~~ → **obsoleto: Kimi rimosso 2026-07-24** (Gemini unico)
-- [X] Merge 1c su `main` (2026-07-04, merge locale + push; suite verde sul risultato)
+- [x] Merge 1c su `main` (2026-07-04, merge locale + push; suite verde sul risultato)
 
 ### Da Fase 1d
-- [X] ~~**Verificare con AGB il supporto-cerniera** `A50801.01.xx` pinnato per
-  aria 12/interasse 13/battuta 20~~ → **RISOLTO dal listino il 2026-07-25**: la
-  variante dedicata **esiste**, è `A50805.05.DX/.SX` («Supporto cerniera Aria 12 -
-  Interasse 9/13 - Parte telaio», battuta 20, p0451 (449), 4,44 €) — non era stata
-  trovata perché il **parser scartava i codici con segmenti alfanumerici**. Corretto
-  in `PER_MANO`; il vecchio `A50801.01.xx` è «Aria 4 - Interasse 9» battuta 18.
-  ⚠️ Richiede il **re-import del catalogo** su Neon (vedi §RIPRENDI DA QUI).
+
+- [x] ~~**Verificare con AGB il supporto-cerniera** `A50801.01.xx` pinnato per
+      aria 12/interasse 13/battuta 20~~ → **RISOLTO dal listino il 2026-07-25**: la
+      variante dedicata **esiste**, è `A50805.05.DX/.SX` («Supporto cerniera Aria 12 -
+      Interasse 9/13 - Parte telaio», battuta 20, p0451 (449), 4,44 €) — non era stata
+      trovata perché il **parser scartava i codici con segmenti alfanumerici**. Corretto
+      in `PER_MANO`; il vecchio `A50801.01.xx` è «Aria 4 - Interasse 9» battuta 18.
+      ⚠️ Richiede il **re-import del catalogo** su Neon (vedi §RIPRENDI DA QUI).
 - [ ] **Altre finiture coperture** (`COPERTURE_KIT` in `rules-artech.ts` copre
-  solo ARGENTO): estendere tabella + `FINISH_OPTIONS` nel wizard quando si hanno
-  i codici delle altre finiture a listino.
+      solo ARGENTO): estendere tabella + `FINISH_OPTIONS` nel wizard quando si hanno
+      i codici delle altre finiture a listino.
 - [ ] **PVC/ALLUMINIO**: `kitInputSchema` accetta già i 3 materiali ma il
-  generatore ha solo le regole LEGNO (guardia esplicita → `KitGenerationError`
-  sugli altri); wizard li mostra disabilitati con hint «presto disponibile».
-  Da abilitare quando ci saranno le regole (nuovo `RuleModule` + registry).
-- [X] **Follow-up da review finale 1d** (non bloccanti, chiusi 2026-07-06 su
-  branch `claude/handoff-review-ztcteg`, TDD un commit per task):
-  - [X] test bordo CHIUSURE_VERTICALI (H valida per cremonese ma fuori banda
-    1520-2120 → errore esplicito `artech.verticali`)
-  - [X] `.strict()` su `templateRulesSchema` (puntatore con chiavi estranee → errore)
-  - [X] doppio push su RequestRow (`stopPropagation` sul `<Link>` interno)
-  - [X] test ramo warnings-only del dettaglio (kit fuori listino: warning visibili)
-  - [X] hint radio disabilitate fuori dal nome accessibile (`aria-label` +
-    `aria-describedby`)
+      generatore ha solo le regole LEGNO (guardia esplicita → `KitGenerationError`
+      sugli altri); wizard li mostra disabilitati con hint «presto disponibile».
+      Da abilitare quando ci saranno le regole (nuovo `RuleModule` + registry).
+- [x] **Follow-up da review finale 1d** (non bloccanti, chiusi 2026-07-06 su
+      branch `claude/handoff-review-ztcteg`, TDD un commit per task):
+  - [x] test bordo CHIUSURE_VERTICALI (H valida per cremonese ma fuori banda
+        1520-2120 → errore esplicito `artech.verticali`)
+  - [x] `.strict()` su `templateRulesSchema` (puntatore con chiavi estranee → errore)
+  - [x] doppio push su RequestRow (`stopPropagation` sul `<Link>` interno)
+  - [x] test ramo warnings-only del dettaglio (kit fuori listino: warning visibili)
+  - [x] hint radio disabilitate fuori dal nome accessibile (`aria-label` +
+        `aria-describedby`)
   - [ ] retry su unique per `requestNumber`: **NON fatto (YAGNI)** — "solo se
-    crescerà la concorrenza"; da riprendere solo se emergono collisioni reali.
+        crescerà la concorrenza"; da riprendere solo se emergono collisioni reali.
 
 ### Fatto dopo l'ultimo aggiornamento handoff (riportato ora)
-- [X] **Fase 1e — Dashboard dati reali** (merge PR #9, 2026-07-06) — vedi sezione dedicata
-- [X] **Gestione API key admin** (Settings cifrato + `/impostazioni`, merge PR #10, 2026-07-10) — vedi sezione dedicata
+
+- [x] **Fase 1e — Dashboard dati reali** (merge PR #9, 2026-07-06) — vedi sezione dedicata
+- [x] **Gestione API key admin** (Settings cifrato + `/impostazioni`, merge PR #10, 2026-07-10) — vedi sezione dedicata
 
 ### In corso
+
 - [🔄] **Fase 1f — deploy staging**: spec+piano fatti, Task 1–4 mergiati, app **live**
   su Vercel, Next bumpato, **Task 7 (pipeline ops) ✅ → Neon popolato** (6.191 prodotti
-  + 6.191 embedding + admin), **Task 8 (e2e) ✅ verificato via API** (auth/dashboard/
-  ricerca ibrida/chat tool-use/kit golden 16 righe·21 pezzi·90,20€). **Resta solo
-  Task 9**: chiusura docs (`CLAUDE.md` STATO → «Fase 1 MVP completa») + scelta fase
-  successiva. Dettagli e caveat: sezione «Fase 1f».
+  - 6.191 embedding + admin), **Task 8 (e2e) ✅ verificato via API** (auth/dashboard/
+    ricerca ibrida/chat tool-use/kit golden 16 righe·21 pezzi·90,20€). **Resta solo
+    Task 9**: chiusura docs (`CLAUDE.md` STATO → «Fase 1 MVP completa») + scelta fase
+    successiva. Dettagli e caveat: sezione «Fase 1f».
 
 ### Sessioni future
+
 - [ ] **Produzione vera** dopo lo staging: Vercel **Pro** (termini commerciali +
-  `maxDuration` 300 + deployment protection) + dominio custom.
+      `maxDuration` 300 + deployment protection) + dominio custom.
 - [ ] ~~Fallback Kimi~~ (**obsoleto: Kimi rimosso**) · finiture coperture · regole PVC/ALLUMINIO.
 
 ## Contesto tecnico
 
-| Componente | Stato |
-|------------|-------|
-| Database schema | [X] Migrato (nessuna migrazione nuova in 1c/1e/API-key: `Settings` era già a schema) |
-| Auth | [X] Better Auth (override better-call 1.3.7 in package.json) |
-| Chat AI | [X] Codice completo; SENZA key risponde «Assistente non configurato.» |
-| Embedding | [X] **6.191/6.191 su Neon** (pipeline ops run #1, 2026-07-11: `Completato: 6191 embedding generati.`). Ramo testato con fake + reale (900 su Docker in 1c) |
-| Dashboard (1e) | [X] `/dashboard` dati reali via `dashboard.overview` (KPI + ultime richieste + scorciatoie, toggle team per ADMIN) |
-| Gestione API key | [X] `/impostazioni` admin: override cifrato AES-256-GCM su `Settings` con fallback env; richiede `SETTINGS_ENCRYPTION_KEY` in env per attivarsi |
-| **Deploy (1f)** | [🔄→✅ funzionale] App **live** su Vercel Hobby (`catalogo-finder-kappa.vercel.app`), Neon + Upstash, workflow ops/CI su `main`, Next 15.5.20. **DB Neon POPOLATO** + **e2e VERIFICATO** (Task 8, 2026-07-11, via API: auth ADMIN, ricerca ibrida A50107\*, chat tool-use, kit golden 16/21/90,20€, Gemini da env). Resta solo Task 9 (docs + scelta fase successiva). Caveat: e2e via API non browser (challenge Vercel↔proxy sandbox); creati dati test (1 conv + KIT-2026-0001) |
-| Kit engine | [X] **2 tipologie attive** dopo la bonifica 2026-07-25: **anta-ribalta LEGNO** (pilota, golden 16 righe/21 pezzi/90,20 € con chiusure) e **vasistas LEGNO** (13 righe/19 pezzi, PROVVISORIO). **PVC e battente DISATTIVATI** (`isActive:false` + moduli che rifiutano): distinte non ordinabili — vedi §RIPRENDI DA QUI. **ALLUMINIO** gated dalla 1g. Geometria coperta: **solo** aria 12 / interasse 13 / battuta 20 / sede 18 (`assertPilotGeometry`) |
-| Git | [X] `origin/main` @ `051d3ee` (PR #13 merge); branch `claude/handoff-review-irs3gv` ripartito da main |
+| Componente       | Stato                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Database schema  | [X] Migrato (nessuna migrazione nuova in 1c/1e/API-key: `Settings` era già a schema)                                                                                                                                                                                                                                                                                                                                                                                               |
+| Auth             | [X] Better Auth (override better-call 1.3.7 in package.json)                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Chat AI          | [X] Codice completo; SENZA key risponde «Assistente non configurato.»                                                                                                                                                                                                                                                                                                                                                                                                              |
+| Embedding        | [X] **6.191/6.191 su Neon** (pipeline ops run #1, 2026-07-11: `Completato: 6191 embedding generati.`). Ramo testato con fake + reale (900 su Docker in 1c)                                                                                                                                                                                                                                                                                                                         |
+| Dashboard (1e)   | [X] `/dashboard` dati reali via `dashboard.overview` (KPI + ultime richieste + scorciatoie, toggle team per ADMIN)                                                                                                                                                                                                                                                                                                                                                                 |
+| Gestione API key | [X] `/impostazioni` admin: override cifrato AES-256-GCM su `Settings` con fallback env; richiede `SETTINGS_ENCRYPTION_KEY` in env per attivarsi                                                                                                                                                                                                                                                                                                                                    |
+| **Deploy (1f)**  | [🔄→✅ funzionale] App **live** su Vercel Hobby (`catalogo-finder-kappa.vercel.app`), Neon + Upstash, workflow ops/CI su `main`, Next 15.5.20. **DB Neon POPOLATO** + **e2e VERIFICATO** (Task 8, 2026-07-11, via API: auth ADMIN, ricerca ibrida A50107\*, chat tool-use, kit golden 16/21/90,20€, Gemini da env). Resta solo Task 9 (docs + scelta fase successiva). Caveat: e2e via API non browser (challenge Vercel↔proxy sandbox); creati dati test (1 conv + KIT-2026-0001) |
+| Kit engine       | [X] **2 tipologie attive** dopo la bonifica 2026-07-25: **anta-ribalta LEGNO** (pilota, golden 16 righe/21 pezzi/90,20 € con chiusure) e **vasistas LEGNO** (13 righe/19 pezzi, PROVVISORIO). **PVC e battente DISATTIVATI** (`isActive:false` + moduli che rifiutano): distinte non ordinabili — vedi §RIPRENDI DA QUI. **ALLUMINIO** gated dalla 1g. Geometria coperta: **solo** aria 12 / interasse 13 / battuta 20 / sede 18 (`assertPilotGeometry`)                           |
+| Git              | [X] `origin/main` @ `051d3ee` (PR #13 merge); branch `claude/handoff-review-irs3gv` ripartito da main                                                                                                                                                                                                                                                                                                                                                                              |
 
 ### Regola utente — file esterni (2026-07-01)
+
 - **Listino AGB PDF**: se manca nell'ambiente, **chiedere il link all'utente**
   (mai cercarlo sul web autonomamente). Link fornito:
   https://drive.google.com/file/d/1TugU94aM6OP557ELiLQpH0nUxhxrXMUz/view?usp=sharing
 
 ### Problemi riscontrati e workaround
+
 - **better-call/better-auth** (vedi sopra): override pnpm permanenti in `package.json`.
 - **pnpm 11 ignora `pnpm.overrides` in `package.json`** (2026-07-06): corepack
   di default nel container remoto lancia pnpm 11, che ha spostato `overrides`/
@@ -2334,18 +2505,19 @@ Actions** (rete aperta → Neon:5432 ok).
   gli override del repo → `better-call` regredisce a 1.1.8 (senza
   `kAPIErrorHeaderSymbol`) → `better-auth` va in crash a load (test/build auth
   rossi) e il lockfile fa drift. **Fix applicato**: `"packageManager":
-  "pnpm@10.17.0"` in `package.json` (pnpm 10 legge ancora `pnpm.overrides`).
+"pnpm@10.17.0"` in `package.json` (pnpm 10 legge ancora `pnpm.overrides`).
   Con il pin, `pnpm install --frozen-lockfile` è pulito. Se un giorno si vuole
   passare a pnpm 11: migrare gli override in `pnpm-workspace.yaml`.
 - **`pnpm build` mentre `next dev` gira** invalida `.next` del dev server →
   chunk 404: riavviare `pnpm dev`.
 - **Engine Prisma**: `bash scripts/setup-prisma-engines.sh` DOPO `pnpm install`.
 - **Container nuovo**: `.env` va completato a mano (DATABASE_URL/DIRECT_URL/REDIS_URL/
-  NEXTAUTH_*/IP_HASH_SECRET/SEED_ADMIN_*) — vedi `.env.example`; poi `dev-bootstrap.sh`.
+  NEXTAUTH__/IP_HASH_SECRET/SEED_ADMIN__) — vedi `.env.example`; poi `dev-bootstrap.sh`.
 - **Vitest**: `beforeEach` con body a graffe (il return viene invocato come cleanup).
 - **`pnpm lint | tail`** maschera l'exit code → mai in catena `&&` con pipe.
 
 ## Istruzioni permanenti (utente)
+
 1. **/using-superpowers** — sempre quando si sviluppa.
 2. **/llm-council** — sempre per dubbi, quesiti, problematiche.
 3. **/impeccable** — sempre per UI/UX.
@@ -2355,27 +2527,26 @@ Actions** (rete aperta → Neon:5432 ok).
 
 ## Cronologia sessioni
 
-| Data | Cosa fatto | Branch |
-|------|-----------|--------|
-| 2026-07-01 | Fase 1a completa + migrazione Better Auth + spec Fase 1b | `claude/ufptrade-mvp-setup-gcwxnt` |
-| 2026-07-02 | Piano 1b + esecuzione completa (parser, import 6.191 prodotti, RAGEngine tsvector+trigram, router, UI Archivio+dettaglio) | `claude/superpowers-handoff-next-z1wyh7` |
-| 2026-07-02 | Spec Fase 1c (LLM Council: AIGateway al posto di BullMQ) | `claude/handoff-review-3xcvvy` (PR #4) |
-| 2026-07-03 | Piano 1c + esecuzione completa (AIGateway, provider, ChatService, router chat, embedding batch, UI Assistente, CLAUDE.md); gates verdi + verifica browser senza key | `claude/handoff-review-48kkhi` |
-| 2026-07-04 | E2e reale 1c verificato (chat tool-use + ranking ibrido, 900 embedding) · riciclo container: ambiente ricostruito (re-import 6.191, suite verde), embedding da rifare, in attesa key + decisione quota | `claude/handoff-review-48kkhi` |
-| 2026-07-05 | Fase 1d completa: spec+piano (ADR council regole-in-TS) + pivot golden ALLUMINIO→LEGNO (Task 0) + 8 task TDD (tipi, regole ARTECH legno, registry+seed, engine, router kit, UI richieste+wizard, golden integrazione su catalogo reale) + verifica browser (positivo 16 righe/90,20€ + negativo errore fuori-campo) + gates verdi | `claude/handoff-review-48kkhi` |
-| 2026-07-06 | Follow-up review 1d non bloccanti (TDD, un commit per task): `templateRulesSchema.strict()` · test bordo CHIUSURE_VERTICALI · fix doppio push RequestRow · test ramo warnings-only dettaglio · fix a11y hint radio (`aria-label`/`aria-describedby`). Retry-su-unique lasciato per YAGNI. Scoperto+risolto il landmine pnpm 11 (override scartati) → pin `packageManager: pnpm@10.17.0`. 4 gate verdi (typecheck·lint·test 183 passed·build). | `claude/handoff-review-ztcteg` (PR #8) |
-| 2026-07-06 | **Fase 1e — Dashboard dati reali** (TDD): `startOfTodayRome` · router `dashboard.overview` (scope mine/team, server autoritativo) · `DashboardClient` (KPI+oggi, ultime richieste, scorciatoie, stati loading/errore/empty). Fix `db:seed:kit` in bootstrap. **Handoff non aggiornato in questa sessione** (drift). | `claude/handoff-next-steps-p6xyzp` (PR #9) |
-| 2026-07-10 | **Gestione API key admin** (TDD): crypto AES-256-GCM · env `SETTINGS_ENCRYPTION_KEY` · service `resolveApiKey`/`setApiKey`/`getStatus` (DB→env, audit senza plaintext, version-stamp) · `getAIGateway` async + invalidazione + degrado se Redis giù · router `settings.aiKeys` (status/testConnection/set) · UI `/impostazioni`. **Handoff non aggiornato in questa sessione** (drift). | `claude/handoff-next-steps-p6xyzp` (PR #10) |
-| 2026-07-10 | **Review/riallineamento handoff**: riportate 1e + gestione API key (erano merge ma non documentate qui); aggiornati stato, task pendenti, contesto tecnico, cronologia. Prossimo passo di roadmap: Fase 1f (deploy). | `claude/handoff-md-review-6vyafm` |
-| 2026-07-10 | **Fase 1f — deploy staging**: scoperto blocco 5432 dev-container → council → spec+piano (ops via GitHub Actions) · Task 1–4 [CLAUDE] (maxDuration 120→60, `.env.example`, `ci.yml`, `ops-neon.yml`) + fix ermeticità `vitest.config` (**PR #11**) · bump **Next 15.3.0→15.5.20** perché Vercel blocca le versioni vulnerabili (**PR #12**) · **deploy staging live** su `catalogo-finder-kappa.vercel.app` (Vercel Hobby) + Neon + Upstash + GitHub Secrets · `NEXTAUTH_URL` corretto. **Resta**: lanciare la pipeline ops (Task 7 → popola Neon → login), verifica e2e (Task 8), chiusura docs (Task 9). | `claude/handoff-md-review-6vyafm` (PR #11, #12) |
-| 2026-07-11 | **Fase 1f — Task 7 (pipeline ops) ESEGUITO**: lanciata la GH Action _Ops — Neon_ (run #1 `29132026156`) → **verde in ~35 min**: `migrate deploy` (schema + pgvector/pg_trgm) · `import:agb` **6.191** · `db:seed` admin + `db:seed:kit` · `embed:products` **6.191/6.191** (`Completato: 6191 embedding generati.`). **Neon ora popolato**; smoke test non autenticato OK (`/login` 200, «Accedi — UFPtrade»). **Resta**: Task 8 (verifica e2e autenticata — serve la password admin dall'utente) + Task 9 (chiusura docs). | `claude/handoff-review-irs3gv` |
-| 2026-07-11 | **Fase 1f — Task 8 (e2e) VERIFICATO**: login admin reale fornito dall'utente → verifica end-to-end via **API backend** (browser bloccato da challenge Vercel↔proxy sandbox: scoperto e diagnosticato). Passano TUTTI i flussi contro Neon popolato: auth Better Auth (role ADMIN, createdAt=seed) · `dashboard.overview` · `product.search` **testuale+ibrida** (semantica «maniglia con chiave…» → A50107\* per solo vettore vec≈0.72) · **chat tool-use** (Gemini cita 5 codici reali) · **kit ARTECH golden** `KIT-2026-0001` **16 righe/21 pezzi/90,20€** zero warning · `settings.aiKeys.status` (Gemini da env). Creati dati test in staging (1 conv + KIT-2026-0001). **Resta solo Task 9** (docs + scelta fase successiva). | `claude/handoff-review-irs3gv` |
-| 2026-07-12 | **Fase 1g — kit multi-materiale (SDD subagent-driven)**: spec+piano approvati + **LLM Council** (4/4 → Opzione C: `kit-shared` meccanica condivisa, moduli per-materiale isolati). 5 task TDD (7 commit `b51aa11→544d94c`, **PR #15**, gate verdi): (1) fix LEGNO chiusure supplementari opzionali (default off); (2) estrazione `kit-shared.ts` (refactor puro); (3) modulo **PVC provvisorio** (cert ift, `//ASSUNZIONE`) + scheda esperto; (4) **ALLUMINIO gated** — scoperto che il listino 2026 NON ha composizione alluminio («PLANA»=cerniera complanare legno/PVC, non alu, assunzione piano falsificata) → modulo rifiuta + `isActive:false` + domande esperto; (5) colonna `KitRequest.supplementary_closures` + migrazione + wiring `kit.generate` + wizard (PVC on/provvisorio, ALLUMINIO off, toggle). Task 1-3 review individuali *Approved*; Task 4-5 fatti inline (session limit) + review finale inline. **Resta**: merge PR #15 · `migrate deploy`+`db:seed:kit` su Neon al deploy · validazione esperto (`docs/superpowers/kit-assunzioni/`). | `claude/handoff-review-irs3gv` (PR #15) |
-| 2026-07-25 | **BONIFICA KIT ARTECH LEGNO** (8 task TDD, un commit per task, dopo il merge #32): studio di tutti i moduli kit contro il **listino AGB 2026** → dei 4 template attivi, **3 producevano distinte non ordinabili**. **PVC spento** (i 4 codici material-specific esistono solo nelle pagine-certificato ift p0013 (11)/p0395 (393), senza prezzo; altri 7 dedotti per simmetria non esistono affatto) · **battente spento** (schema p0416 (414) = 21 voci, il modulo ne generava 5: mancava la **sospensione superiore**; schema composito → terna cerniere non decidibile) · **pilota corretto** (supporto cerniera `A50801.01.0N`→**`A50805.05.DX/.SX`**, banda cremonese GR02 610, descrizione incontro ribalta 9x18) · **guardia `assertPilotGeometry`** (aria/interasse/battuta/sede erano raccolti e ignorati) · **vasistas riscritto** dallo schema p0418 (416): forbici per **LBB**, via DSS+incontro DSS, dentro le **cerniere** (voci 10-11-12) e il 2° terminale, `sashWeightKg` opzionale per le NB sul peso → golden **13 righe/19 pezzi** · **parser catalogo allargato** ai segmenti alfanumerici (**+1.297 codici a prezzo, 6.191→7.488**) · schede `kit-assunzioni/` riscritte come esito + nuova `legno.md` con l'indice **globale** delle 10 domande per l'esperto. Attive: **anta-ribalta LEGNO + vasistas LEGNO**. Gate: typecheck·lint·**test 589/11 skip**. Verifica browser wizard desktop+375px (8 screenshot). **AZIONI OPS AL MERGE**: «Ops — Neon» completo (migrazione `kit_sash_weight` + **RE-IMPORT catalogo** + `db:seed:kit` + embed) e audit `kit_requests`. | `claude/kit-engine-study-wfo2hq` → PR #33 + #34 mergiate |
-| 2026-08-01 | **CAMBIARE LE VARIANTI DOPO LA CREAZIONE** (8 task TDD): «Modifica componenti» sulla scheda riapre il wizard precompilato su `?da=<id>`; al conferma nasce una nuova versione. Contratto `ricalcola({kitRequestId, variants?})` — assente eredita · `{}` **resetta** (scrive NULL) · oggetto **sostituisce**; il reset non è inventato (le 5 chiavi erano già `.optional()` in uno `.strict()`), dichiararlo impedisce che l'operazione sia a senso unico. Solo «Componenti» editabile — la firma **congela la geometria**, quindi la combinazione mai validata è **irrappresentabile**. Validazione = **motore in memoria prima di ogni scrittura**. Idratazione via **`kitInputFromRequest`**, la stessa del motore (solo `engine.ts` ha `server-only`): niente secondo percorso di lettura. «Ricalcola» → **«Nuova versione»**. `ComponentiRibalta` + `RadioOption` estratte (insieme: separarle chiudeva un ciclo). **Chiuso il buco trovato nella verifica funzionale della #47**: `110,13 €` non era asserito da nessun test, e i tre totali bilico stavano dietro `toBeGreaterThan(0)`. Difetto colto dai test: `??` faceva ricadere il reset sull'ereditarietà. **Quattro difetti trovati dalla review di branch coi gate tutti verdi**: un **refetch** cancellava le varianti appena scelte (structural sharing di react-query e `Date`), la validazione copriva solo il ramo con `variants` (due righe morte su PVC/battente), su **bozza** la UI prometteva una versione che non nasce, e la **vasistas** passava il filtro per serie pur non avendo varianti. Gate: typecheck·lint·**test 1.035**·build 18 route · catalogo reale 112 · **browser 22/22 desktop e 375px** (rifatto dopo i fix) col ciclo 90,20 → 110,13 → **ritorno a 90,20**. **NESSUNA AZIONE OPS.** Nuova domanda **31** (il numero identifica la richiesta o la versione?). | `claude/verifica-distinte-reali-8zz9mw` → **PR #48** |
-| 2026-07-31 | **ANTIEFFRAZIONE + VARIANTI COMPONENTE** (10 task TDD, un commit per task): le due domande senza risposta nel listino (il «fungo» è per sede 30? viti inclinate o dritte?) diventano **scelte dell'agente** nel nuovo passo **«Componenti»** del wizard, per indicazione esplicita dell'utente → **domande 2 e 30 CHIUSE** senza essere risposte. Registro `artech-varianti.ts` (**74 codici** scritti per esteso, verificati sul catalogo reale) · colonna `kit_requests.variants JSONB` (migrazione `20260731143758_kit_variants`, nessun backfill, NULL = standard) · **garanzia in due strati** contro la variante inerte (`RuleModule.varianti` obbligatorio + `no-silent-fields` derivato dal modulo) · ciclo di import sciolto col file foglia `varianti-schema.ts` + regola ESLint. Il **fungo resta fuori**: il listino lo lega alla sede 30 nei due versi, che il motore rifiuta a monte. Golden invariato **16 righe/21 pezzi/90,20 €** (ora asseriti anche ordine righe e 16 descrizioni); antieffrazione completa **17/22/110,13 €**. Gate: typecheck·lint·**test 992**·build 18 route · **integration 111 eseguiti** · browser 33+10 check (desktop e 375px). **AZIONE OPS: «Ops — Neon» sul ref del branch PRIMA del merge** — senza la colonna si rompono le **letture** di `kit.get`/`generate`/`ricalcola` **e `dashboard.overview`** (`dashboard.ts:40`, `findMany` senza `select`), cioè la pagina d'ingresso di tutti gli agenti; nessun re-import. **Le varianti non si cambiano dopo la creazione** (si rifà il wizard): da dire agli agenti. | `claude/antieffrazione-feature-dv8d37` → **PR #47 MERGIATA**, ops run `30659737114` |
-| 2026-09-14 | **CORREZIONE — il listino COLOMBO 2026 HA i codici, in due metà.** Sessione di sola documentazione, aperta da una segnalazione dell'utente. La conclusione del 06/08 («il PDF non contiene nessun codice d'ordine» → lavoro bloccato in attesa di un xlsx) veniva da una misura corretta — zero occorrenze della forma **assemblata** `0CD41R-CM` — letta come risposta a una domanda che non era quella. Il PDF pubblica **codice del modello + prezzo per finitura scritta per nome** sulle pagine prodotto (p7: `AM41 RSB` · oroplus · **94,70**) e **la sigla di ogni finitura da p4 in giù** (`OL`, `GM`, `UB`, `CM`… tutte e 12 già in `finiture.ts`). Il codice è modello + sigla, e **non è «inventare per concatenazione»**: il listino vecchio a DB è un insieme di prova da **3.456 risposte note** (`0CB71R-OL` ↔ «LARA CB71R OROPLUS») contro cui la regola si **misura**. Riscritti §RIPRENDI DA QUI (correzione datata), il §PROMPT (task 0 = accuratezza della regola sui 3.456, prima di ogni riga di codice; task 1 = far confermare ad Andrea l'elenco generato; task 2 = delta, due metà del prezzo, EAN assente) e il blocco di chiusura di `CLAUDE.md`. Nessun codice, nessuna migrazione, nessun run ops. | `claude/ufptrade-andrea-feedback-f0s2re` |
-
+| Data       | Cosa fatto                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Branch                                                                              |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| 2026-07-01 | Fase 1a completa + migrazione Better Auth + spec Fase 1b                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | `claude/ufptrade-mvp-setup-gcwxnt`                                                  |
+| 2026-07-02 | Piano 1b + esecuzione completa (parser, import 6.191 prodotti, RAGEngine tsvector+trigram, router, UI Archivio+dettaglio)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | `claude/superpowers-handoff-next-z1wyh7`                                            |
+| 2026-07-02 | Spec Fase 1c (LLM Council: AIGateway al posto di BullMQ)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | `claude/handoff-review-3xcvvy` (PR #4)                                              |
+| 2026-07-03 | Piano 1c + esecuzione completa (AIGateway, provider, ChatService, router chat, embedding batch, UI Assistente, CLAUDE.md); gates verdi + verifica browser senza key                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | `claude/handoff-review-48kkhi`                                                      |
+| 2026-07-04 | E2e reale 1c verificato (chat tool-use + ranking ibrido, 900 embedding) · riciclo container: ambiente ricostruito (re-import 6.191, suite verde), embedding da rifare, in attesa key + decisione quota                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | `claude/handoff-review-48kkhi`                                                      |
+| 2026-07-05 | Fase 1d completa: spec+piano (ADR council regole-in-TS) + pivot golden ALLUMINIO→LEGNO (Task 0) + 8 task TDD (tipi, regole ARTECH legno, registry+seed, engine, router kit, UI richieste+wizard, golden integrazione su catalogo reale) + verifica browser (positivo 16 righe/90,20€ + negativo errore fuori-campo) + gates verdi                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | `claude/handoff-review-48kkhi`                                                      |
+| 2026-07-06 | Follow-up review 1d non bloccanti (TDD, un commit per task): `templateRulesSchema.strict()` · test bordo CHIUSURE_VERTICALI · fix doppio push RequestRow · test ramo warnings-only dettaglio · fix a11y hint radio (`aria-label`/`aria-describedby`). Retry-su-unique lasciato per YAGNI. Scoperto+risolto il landmine pnpm 11 (override scartati) → pin `packageManager: pnpm@10.17.0`. 4 gate verdi (typecheck·lint·test 183 passed·build).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | `claude/handoff-review-ztcteg` (PR #8)                                              |
+| 2026-07-06 | **Fase 1e — Dashboard dati reali** (TDD): `startOfTodayRome` · router `dashboard.overview` (scope mine/team, server autoritativo) · `DashboardClient` (KPI+oggi, ultime richieste, scorciatoie, stati loading/errore/empty). Fix `db:seed:kit` in bootstrap. **Handoff non aggiornato in questa sessione** (drift).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | `claude/handoff-next-steps-p6xyzp` (PR #9)                                          |
+| 2026-07-10 | **Gestione API key admin** (TDD): crypto AES-256-GCM · env `SETTINGS_ENCRYPTION_KEY` · service `resolveApiKey`/`setApiKey`/`getStatus` (DB→env, audit senza plaintext, version-stamp) · `getAIGateway` async + invalidazione + degrado se Redis giù · router `settings.aiKeys` (status/testConnection/set) · UI `/impostazioni`. **Handoff non aggiornato in questa sessione** (drift).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | `claude/handoff-next-steps-p6xyzp` (PR #10)                                         |
+| 2026-07-10 | **Review/riallineamento handoff**: riportate 1e + gestione API key (erano merge ma non documentate qui); aggiornati stato, task pendenti, contesto tecnico, cronologia. Prossimo passo di roadmap: Fase 1f (deploy).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | `claude/handoff-md-review-6vyafm`                                                   |
+| 2026-07-10 | **Fase 1f — deploy staging**: scoperto blocco 5432 dev-container → council → spec+piano (ops via GitHub Actions) · Task 1–4 [CLAUDE] (maxDuration 120→60, `.env.example`, `ci.yml`, `ops-neon.yml`) + fix ermeticità `vitest.config` (**PR #11**) · bump **Next 15.3.0→15.5.20** perché Vercel blocca le versioni vulnerabili (**PR #12**) · **deploy staging live** su `catalogo-finder-kappa.vercel.app` (Vercel Hobby) + Neon + Upstash + GitHub Secrets · `NEXTAUTH_URL` corretto. **Resta**: lanciare la pipeline ops (Task 7 → popola Neon → login), verifica e2e (Task 8), chiusura docs (Task 9).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | `claude/handoff-md-review-6vyafm` (PR #11, #12)                                     |
+| 2026-07-11 | **Fase 1f — Task 7 (pipeline ops) ESEGUITO**: lanciata la GH Action _Ops — Neon_ (run #1 `29132026156`) → **verde in ~35 min**: `migrate deploy` (schema + pgvector/pg_trgm) · `import:agb` **6.191** · `db:seed` admin + `db:seed:kit` · `embed:products` **6.191/6.191** (`Completato: 6191 embedding generati.`). **Neon ora popolato**; smoke test non autenticato OK (`/login` 200, «Accedi — UFPtrade»). **Resta**: Task 8 (verifica e2e autenticata — serve la password admin dall'utente) + Task 9 (chiusura docs).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | `claude/handoff-review-irs3gv`                                                      |
+| 2026-07-11 | **Fase 1f — Task 8 (e2e) VERIFICATO**: login admin reale fornito dall'utente → verifica end-to-end via **API backend** (browser bloccato da challenge Vercel↔proxy sandbox: scoperto e diagnosticato). Passano TUTTI i flussi contro Neon popolato: auth Better Auth (role ADMIN, createdAt=seed) · `dashboard.overview` · `product.search` **testuale+ibrida** (semantica «maniglia con chiave…» → A50107\* per solo vettore vec≈0.72) · **chat tool-use** (Gemini cita 5 codici reali) · **kit ARTECH golden** `KIT-2026-0001` **16 righe/21 pezzi/90,20€** zero warning · `settings.aiKeys.status` (Gemini da env). Creati dati test in staging (1 conv + KIT-2026-0001). **Resta solo Task 9** (docs + scelta fase successiva).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | `claude/handoff-review-irs3gv`                                                      |
+| 2026-07-12 | **Fase 1g — kit multi-materiale (SDD subagent-driven)**: spec+piano approvati + **LLM Council** (4/4 → Opzione C: `kit-shared` meccanica condivisa, moduli per-materiale isolati). 5 task TDD (7 commit `b51aa11→544d94c`, **PR #15**, gate verdi): (1) fix LEGNO chiusure supplementari opzionali (default off); (2) estrazione `kit-shared.ts` (refactor puro); (3) modulo **PVC provvisorio** (cert ift, `//ASSUNZIONE`) + scheda esperto; (4) **ALLUMINIO gated** — scoperto che il listino 2026 NON ha composizione alluminio («PLANA»=cerniera complanare legno/PVC, non alu, assunzione piano falsificata) → modulo rifiuta + `isActive:false` + domande esperto; (5) colonna `KitRequest.supplementary_closures` + migrazione + wiring `kit.generate` + wizard (PVC on/provvisorio, ALLUMINIO off, toggle). Task 1-3 review individuali _Approved_; Task 4-5 fatti inline (session limit) + review finale inline. **Resta**: merge PR #15 · `migrate deploy`+`db:seed:kit` su Neon al deploy · validazione esperto (`docs/superpowers/kit-assunzioni/`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | `claude/handoff-review-irs3gv` (PR #15)                                             |
+| 2026-07-25 | **BONIFICA KIT ARTECH LEGNO** (8 task TDD, un commit per task, dopo il merge #32): studio di tutti i moduli kit contro il **listino AGB 2026** → dei 4 template attivi, **3 producevano distinte non ordinabili**. **PVC spento** (i 4 codici material-specific esistono solo nelle pagine-certificato ift p0013 (11)/p0395 (393), senza prezzo; altri 7 dedotti per simmetria non esistono affatto) · **battente spento** (schema p0416 (414) = 21 voci, il modulo ne generava 5: mancava la **sospensione superiore**; schema composito → terna cerniere non decidibile) · **pilota corretto** (supporto cerniera `A50801.01.0N`→**`A50805.05.DX/.SX`**, banda cremonese GR02 610, descrizione incontro ribalta 9x18) · **guardia `assertPilotGeometry`** (aria/interasse/battuta/sede erano raccolti e ignorati) · **vasistas riscritto** dallo schema p0418 (416): forbici per **LBB**, via DSS+incontro DSS, dentro le **cerniere** (voci 10-11-12) e il 2° terminale, `sashWeightKg` opzionale per le NB sul peso → golden **13 righe/19 pezzi** · **parser catalogo allargato** ai segmenti alfanumerici (**+1.297 codici a prezzo, 6.191→7.488**) · schede `kit-assunzioni/` riscritte come esito + nuova `legno.md` con l'indice **globale** delle 10 domande per l'esperto. Attive: **anta-ribalta LEGNO + vasistas LEGNO**. Gate: typecheck·lint·**test 589/11 skip**. Verifica browser wizard desktop+375px (8 screenshot). **AZIONI OPS AL MERGE**: «Ops — Neon» completo (migrazione `kit_sash_weight` + **RE-IMPORT catalogo** + `db:seed:kit` + embed) e audit `kit_requests`.                                                                                                                                                                                                                                                              | `claude/kit-engine-study-wfo2hq` → PR #33 + #34 mergiate                            |
+| 2026-08-01 | **CAMBIARE LE VARIANTI DOPO LA CREAZIONE** (8 task TDD): «Modifica componenti» sulla scheda riapre il wizard precompilato su `?da=<id>`; al conferma nasce una nuova versione. Contratto `ricalcola({kitRequestId, variants?})` — assente eredita · `{}` **resetta** (scrive NULL) · oggetto **sostituisce**; il reset non è inventato (le 5 chiavi erano già `.optional()` in uno `.strict()`), dichiararlo impedisce che l'operazione sia a senso unico. Solo «Componenti» editabile — la firma **congela la geometria**, quindi la combinazione mai validata è **irrappresentabile**. Validazione = **motore in memoria prima di ogni scrittura**. Idratazione via **`kitInputFromRequest`**, la stessa del motore (solo `engine.ts` ha `server-only`): niente secondo percorso di lettura. «Ricalcola» → **«Nuova versione»**. `ComponentiRibalta` + `RadioOption` estratte (insieme: separarle chiudeva un ciclo). **Chiuso il buco trovato nella verifica funzionale della #47**: `110,13 €` non era asserito da nessun test, e i tre totali bilico stavano dietro `toBeGreaterThan(0)`. Difetto colto dai test: `??` faceva ricadere il reset sull'ereditarietà. **Quattro difetti trovati dalla review di branch coi gate tutti verdi**: un **refetch** cancellava le varianti appena scelte (structural sharing di react-query e `Date`), la validazione copriva solo il ramo con `variants` (due righe morte su PVC/battente), su **bozza** la UI prometteva una versione che non nasce, e la **vasistas** passava il filtro per serie pur non avendo varianti. Gate: typecheck·lint·**test 1.035**·build 18 route · catalogo reale 112 · **browser 22/22 desktop e 375px** (rifatto dopo i fix) col ciclo 90,20 → 110,13 → **ritorno a 90,20**. **NESSUNA AZIONE OPS.** Nuova domanda **31** (il numero identifica la richiesta o la versione?). | `claude/verifica-distinte-reali-8zz9mw` → **PR #48**                                |
+| 2026-07-31 | **ANTIEFFRAZIONE + VARIANTI COMPONENTE** (10 task TDD, un commit per task): le due domande senza risposta nel listino (il «fungo» è per sede 30? viti inclinate o dritte?) diventano **scelte dell'agente** nel nuovo passo **«Componenti»** del wizard, per indicazione esplicita dell'utente → **domande 2 e 30 CHIUSE** senza essere risposte. Registro `artech-varianti.ts` (**74 codici** scritti per esteso, verificati sul catalogo reale) · colonna `kit_requests.variants JSONB` (migrazione `20260731143758_kit_variants`, nessun backfill, NULL = standard) · **garanzia in due strati** contro la variante inerte (`RuleModule.varianti` obbligatorio + `no-silent-fields` derivato dal modulo) · ciclo di import sciolto col file foglia `varianti-schema.ts` + regola ESLint. Il **fungo resta fuori**: il listino lo lega alla sede 30 nei due versi, che il motore rifiuta a monte. Golden invariato **16 righe/21 pezzi/90,20 €** (ora asseriti anche ordine righe e 16 descrizioni); antieffrazione completa **17/22/110,13 €**. Gate: typecheck·lint·**test 992**·build 18 route · **integration 111 eseguiti** · browser 33+10 check (desktop e 375px). **AZIONE OPS: «Ops — Neon» sul ref del branch PRIMA del merge** — senza la colonna si rompono le **letture** di `kit.get`/`generate`/`ricalcola` **e `dashboard.overview`** (`dashboard.ts:40`, `findMany` senza `select`), cioè la pagina d'ingresso di tutti gli agenti; nessun re-import. **Le varianti non si cambiano dopo la creazione** (si rifà il wizard): da dire agli agenti.                                                                                                                                                                                                                                                                                        | `claude/antieffrazione-feature-dv8d37` → **PR #47 MERGIATA**, ops run `30659737114` |
+| 2026-09-14 | **CORREZIONE — il listino COLOMBO 2026 HA i codici, in due metà.** Sessione di sola documentazione, aperta da una segnalazione dell'utente. La conclusione del 06/08 («il PDF non contiene nessun codice d'ordine» → lavoro bloccato in attesa di un xlsx) veniva da una misura corretta — zero occorrenze della forma **assemblata** `0CD41R-CM` — letta come risposta a una domanda che non era quella. Il PDF pubblica **codice del modello + prezzo per finitura scritta per nome** sulle pagine prodotto (p7: `AM41 RSB` · oroplus · **94,70**) e **la sigla di ogni finitura da p4 in giù** (`OL`, `GM`, `UB`, `CM`… tutte e 12 già in `finiture.ts`). Il codice è modello + sigla, e **non è «inventare per concatenazione»**: il listino vecchio a DB è un insieme di prova da **3.456 risposte note** (`0CB71R-OL` ↔ «LARA CB71R OROPLUS») contro cui la regola si **misura**. Riscritti §RIPRENDI DA QUI (correzione datata), il §PROMPT (task 0 = accuratezza della regola sui 3.456, prima di ogni riga di codice; task 1 = far confermare ad Andrea l'elenco generato; task 2 = delta, due metà del prezzo, EAN assente) e il blocco di chiusura di `CLAUDE.md`. Nessun codice, nessuna migrazione, nessun run ops.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | `claude/ufptrade-andrea-feedback-f0s2re`                                            |
 
 ---
 
@@ -2653,7 +2824,6 @@ o manca solo nella forma in cui la stavo cercando.
 
 ## PROMPT (STORICO — avvio del reparto maniglie, superato)
 
-
 ```
 Nuova sessione. Riparti leggendo handoff.md (§«RIPRENDI DA QUI») e CLAUDE.md.
 
@@ -2738,7 +2908,6 @@ questa sessione ne ha trovati di reali con tutti i gate verdi.
 ---
 
 ## PROMPT (STORICO — sessione 2026-08-01, superato)
-
 
 ```
 Nuova sessione. Riparti leggendo handoff.md (§«RIPRENDI DA QUI») e CLAUDE.md.

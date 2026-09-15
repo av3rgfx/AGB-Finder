@@ -4,17 +4,19 @@ App gestionale B2B per **Utensilferramenta Pistoiese S.p.A.**: catalogo AGB,
 assistente AI e generazione kit deterministica per agenti di vendita.
 
 ## STACK
+
 Next.js 15 (App Router) · React 19 · TypeScript (strict) · tRPC v11 ·
 `@tanstack/react-query` v5 · Prisma 6 + PostgreSQL/pgvector · **Better Auth** ·
 Tailwind CSS 3 · Vitest · pnpm. Deploy target: Vercel + Neon + Upstash.
 
 ## DECISIONI ARCHITETTURALI (autoritative — sostituiscono i doc originali dove divergono)
+
 - **Auth = Better Auth** (NON NextAuth). Email/password, `disableSignUp` (admin
   crea gli account), **sessioni DB 8h** (revoca immediata), plugin `admin` con
   ruoli custom **AGENT/ADMIN** via access-control, tipi inferiti. Config in
   `src/server/auth/config.ts`; client `src/lib/auth-client.ts`.
-  → *Verdetto LLM Council: Auth.js v5 è in sola manutenzione; Better Auth è il
-  successore attivo.*
+  → _Verdetto LLM Council: Auth.js v5 è in sola manutenzione; Better Auth è il
+  successore attivo._
 - **Kit generation = engine deterministico TypeScript. MAI LLM.** (Fase 1d)
 - **Single-agent AI con tool-use** (NON multi-agent). **Provider LLM: Gemini UNICO**
   (chat streaming + embedding). **Kimi/Moonshot rimosso 2026-07-24** (verdetto
@@ -22,7 +24,7 @@ Tailwind CSS 3 · Vitest · pnpm. Deploy target: Vercel + Neon + Upstash.
   deterministico → il ruolo "kit gen" non esiste più; fallback dormiente in prod
   (nessuna key) → nessun consumatore residuo. Resilienza = circuit breaker
   per-Gemini + rate limit + backoff visibile + degrado graceful, **NON** un secondo
-  vendor. ⚠️ *Concentrazione vendor app-wide*: un outage/429-storm Gemini degrada
+  vendor. ⚠️ _Concentrazione vendor app-wide_: un outage/429-storm Gemini degrada
   **chat E ricerca semantica** (embedding query live); ricerca testuale e kit
   restano attivi. Fix strutturale dei 429 ricorrenti = piano Gemini a pagamento.
 - **Chat = streaming SSE** (`POST /api/chat/stream`, route handler autenticato
@@ -37,14 +39,15 @@ Tailwind CSS 3 · Vitest · pnpm. Deploy target: Vercel + Neon + Upstash.
   client tRPC sotto `src/trpc/`; `src/env.ts` (zod).
 - **Ogni chiamata AI passa dall'unico modulo `AIGateway`**
   (`src/server/ai/gateway.ts`): rate limit + circuit breaker con stato su Redis
-  + timeout. **Nessun fallback di provider** (Gemini unico dal 2026-07-24; in
-  streaming un retry a metà risposta duplicherebbe i token già emessi).
-  Nessuna chiamata provider fuori da `src/server/ai/`.
-  Batch = script tsx idempotenti (`pnpm embed:products`). NIENTE BullMQ (verdetto
-  LLM Council 2026-07-02: worker persistente impossibile su Vercel, anti-pattern
-  su Upstash); per job asincroni durevoli futuri: Upstash QStash.
+  - timeout. **Nessun fallback di provider** (Gemini unico dal 2026-07-24; in
+    streaming un retry a metà risposta duplicherebbe i token già emessi).
+    Nessuna chiamata provider fuori da `src/server/ai/`.
+    Batch = script tsx idempotenti (`pnpm embed:products`). NIENTE BullMQ (verdetto
+    LLM Council 2026-07-02: worker persistente impossibile su Vercel, anti-pattern
+    su Upstash); per job asincroni durevoli futuri: Upstash QStash.
 
 ## REGOLE INVIOLABILI
+
 - TypeScript strict sempre.
 - Tutte le API via **tRPC** (mai `fetch` diretto dal client).
 - Tutte le query via **Prisma**. **Raw SQL confinato in moduli di ricerca nominati**
@@ -54,7 +57,7 @@ Tailwind CSS 3 · Vitest · pnpm. Deploy target: Vercel + Neon + Upstash.
   pgvector, più il `GROUP BY` sulla prima parola dello sfoglio — non esprimibili in
   Prisma). Le REGOLE DI DOMINIO restano fuori: la disponibilità in `stock-status.ts`
   e la famiglia in `browse.ts`, entrambe TypeScript/Prisma; al raw SQL arriva al
-  massimo una lista di id già decisa. *Nessun raw SQL nei router.* ⚠️ La regola
+  massimo una lista di id già decisa. _Nessun raw SQL nei router._ ⚠️ La regola
   diceva «solo per pgvector, nel solo RAGEngine»: era già disattesa da
   `src/server/chat/tools.ts`, e la ricerca articoli l'ha resa insostenibile alla
   lettera. Riscritta per dire ciò che davvero protegge (il confinamento), non un
@@ -69,7 +72,7 @@ Tailwind CSS 3 · Vitest · pnpm. Deploy target: Vercel + Neon + Upstash.
   «programma». Il **marchio sta nel sottotitolo** (il reparto maniglie ospiterà
   COLOMBO, HOPPE, OLIVARI, DND, GHIDINI…): la tessera non si rinomina mai.
 - UI **in italiano**. Codici prodotto in **font monospace** (JetBrains Mono).
-- **Ogni design UI/UX si fa per MOBILE *e* desktop, mai solo desktop.** Ogni pagina o
+- **Ogni design UI/UX si fa per MOBILE _e_ desktop, mai solo desktop.** Ogni pagina o
   componente nuovo/modificato va progettato e implementato **responsive** (mobile-first),
   e **verificato a viewport mobile** (≤ 375px) prima di considerarlo concluso. Nessuna
   funzionalità va nascosta o resa inutilizzabile su mobile.
@@ -77,11 +80,12 @@ Tailwind CSS 3 · Vitest · pnpm. Deploy target: Vercel + Neon + Upstash.
 - RBAC: `PUBLIC` → `AGENT` → `ADMIN`.
 
 ## ISTRUZIONI PERMANENTI DI WORKFLOW (utente)
+
 1. **Usa sempre `/using-superpowers`** quando sviluppi (poi le skill che indica:
    brainstorming → writing-plans → esecuzione TDD).
 2. **Usa sempre `/llm-council`** per dubbi, quesiti, incongruenze, problematiche.
 3. **Usa sempre `/impeccable`** quando sviluppi/progetti UI/UX — **sempre in versione
-   mobile *e* desktop**, con verifica a viewport mobile (vedi REGOLE INVIOLABILI).
+   mobile _e_ desktop**, con verifica a viewport mobile (vedi REGOLE INVIOLABILI).
 4. **Usa sempre `/ponytail`** ogni volta che scrivi codice e programmi
    (scrittura, refactor, fix, review, scelta librerie/dipendenze): soluzione
    più semplice e minimale che funziona (YAGNI, riuso, stdlib prima delle
@@ -91,6 +95,7 @@ Tailwind CSS 3 · Vitest · pnpm. Deploy target: Vercel + Neon + Upstash.
    sessione** — la fine sessione la dichiara esplicitamente l'utente.
 
 ## FILE CHIAVE
+
 - `prisma/schema.prisma` — schema DB (fonte di verità)
 - `src/server/auth/config.ts` — Better Auth
 - `src/server/api/trpc.ts` — init tRPC + procedure RBAC
@@ -99,6 +104,7 @@ Tailwind CSS 3 · Vitest · pnpm. Deploy target: Vercel + Neon + Upstash.
 - `handoff.md` — stato sessione · `docs/superpowers/{specs,plans}/` — spec e piani
 
 ## FILE ESTERNI (regola utente)
+
 - **Listino AGB (PDF)**: se il file non è disponibile nell'ambiente (es. container
   nuovo, scratchpad svuotata), **NON cercarlo sul web da solo**: chiedere il link
   direttamente all'utente, che lo fornirà. Ultimo link fornito (2026-07-01):
@@ -107,7 +113,7 @@ Tailwind CSS 3 · Vitest · pnpm. Deploy target: Vercel + Neon + Upstash.
   2026-08-04**, non serve richiederla ogni volta:
   https://drive.google.com/drive/folders/1pyiyNW77oy96V5iLd_U4TBmaqFtZ6uvL
   Contiene i quattro file del reparto: `LISTINO 02 2026 con temporary
-  surcherge.xlsx` (foglio `LP 02-26`, 3.456 codici — **è quello in produzione**) ·
+surcherge.xlsx` (foglio `LP 02-26`, 3.456 codici — **è quello in produzione**) ·
   `pronta consegna colombo.xls` · `ER MAN 2026_100726.pdf` · `RR MAN 2026_100726.pdf`.
   Gli id si ricavano dall'HTML della cartella; il download diretto è
   `https://drive.usercontent.google.com/download?id=<id>&export=download&confirm=t`.
@@ -122,6 +128,7 @@ Tailwind CSS 3 · Vitest · pnpm. Deploy target: Vercel + Neon + Upstash.
   chiedere all'utente, mai recuperarlo autonomamente da fonti esterne.
 
 ## AMBIENTE (workaround sandbox)
+
 - **pnpm 10 obbligatorio** (`packageManager: pnpm@10.17.0`): pnpm 11 ignora
   `pnpm.overrides` in `package.json` e scarta l'override `better-call@1.3.7` →
   `better-auth` crasha a load. Corepack rispetta il pin; non forzare pnpm 11
@@ -153,10 +160,12 @@ Tailwind CSS 3 · Vitest · pnpm. Deploy target: Vercel + Neon + Upstash.
 - Comandi prisma/tsx: fare `set -a; source .env; set +a` prima (per gli engine).
 
 ## TESTING / GATE
+
 `pnpm typecheck` · `pnpm lint` · `pnpm test` (Vitest) · `pnpm build`. TDD:
 test prima, commit frequenti, un commit per task.
 
 ## STATO
+
 Fase 1a (Fondamenta) ✅ + migrazione Better Auth ✅ + Fase 1b (Catalogo + hybrid
 search, 6.191 prodotti) ✅ + Fase 1c (Chat AI: AIGateway, provider Gemini/Kimi,
 ChatService tool-use, router chat, embedding batch, UI Assistente) ✅ + Fase 1d
@@ -177,253 +186,254 @@ warning) · `settings.aiKeys.status` (Gemini da env). Dettagli e caveat: `handof
 condivisa) · modulo **PVC provvisorio** (cert ift, da validare con esperto) · **ALLUMINIO
 gated** (il listino 2026 non ha composizione alluminio: «PLANA» è cerniera complanare
 legno/PVC — modulo rifiuta + `isActive:false`) · colonna `KitRequest.supplementary_closures`
-+ migrazione + wizard (PVC on, ALLUMINIO off, toggle chiusure) — **PR #15 MERGIATA**
-(migrazione applicata a Neon via ops run #2). + **Fase 1h (nuova TIPOLOGIA «anta a battente»
-ARTECH LEGNO) ✅** su branch `claude/handoff-review-irs3gv` (Opzione C **estesa**, no /llm-council,
-7 commit, gate verdi typecheck·lint·test **252**·build 13 route): l'anta proiettante richiesta
-NON è a listino 2026 (0 riscontri, come l'alluminio) → **scelta utente = a battente**.
-`artech-legno-shared.ts` (behavior-preserving, golden anta-ribalta invariato) +
-`rules-artech-battente-legno.ts` **PROVVISORIO** (cremonese Mod. 502 `A50200.15.NN` + famiglie
-condivise − meccanismo di ribalta → distinta **5 righe**) + enum `windowType` widen + seed
-per-windowType + wizard **solo-LEGNO** (PVC/ALU gated per il battente). **Restano**: **al deploy**
-`db:seed:kit` su Neon (template battente; **NESSUNA migrazione** — l'enum Postgres ha già
-`ANTA_BATTENTE`) · integration gated (`INTEGRATION_DATABASE_URL`) per verificare i codici battente
-a catalogo · validazione esperto (domande in `docs/superpowers/kit-assunzioni/{alu,pvc,battente}.md`).
-Poi: scelta fase successiva — **decisione utente**. + **Gestione utenti admin + login username ✅**
-su branch `claude/handoff-review-irs3gv` (dopo il merge Fase 1h #16; SDD 3 subagent-round + review
-finale opus, gate verdi typecheck·lint·test **293**·build 14 route): sezione admin **/utenti**
-(crea · elenca · cambia ruolo · attiva/disattiva[**ban**+status] · reset password · **modifica** ·
-elimina), **ogni mutation `adminProcedure`** con **paletti anti-lockout** (mai su self né sull'ultimo
-admin attivo; `delete` bloccato se ci sono record collegati kit/conversazioni/**settings**) · **login
-con email O username** (plugin Better Auth `username`) + **account senza email** reale (email-segnaposto
-`<username>@no-email.ufptrade.local`, unica costante `src/lib/placeholder-email.ts`). Review finale →
-fix: `usernameSchema` allineato al validator del plugin (max 30, no trattino, altrimenti account
-non-autenticabile), rimossa route `setStatus` non guardata, pre-check email → `CONFLICT`. **RESTA al
-deploy**: applicare la **migrazione `username`** a Neon via ops (`20260713094200_username` — aggiunge
-`users.username`/`display_username` + unique; nessun'altra migrazione). **PR A+B unica → PR #17 MERGIATA**;
-**migrazione `username` APPLICATA a Neon via ops run #4** (login email/username OK in produzione).
-+ **UI mobile responsive + regola mobile-first ✅ (PR #18 MERGIATA, live)**: il layout mobile era
-inutilizzabile (sidebar `hidden md:block` senza alternativa) → **hamburger + drawer** (Sidebar riusata),
-TopBar mobile, **`/utenti` azioni in menu ⋯** (dropdown `position:fixed` per non farsi ritagliare
-dall'`overflow-x-auto`), fix griglia login (`grid-cols-1`). Verifica screenshot Chromium a 375px.
-**PR #11–#18 mergiate e LIVE** su `catalogo-finder-kappa.vercel.app`; Neon allineato.
-+ **Fase 1i (nuova TIPOLOGIA «vasistas» ARTECH LEGNO) ✅ su PR #20 (APERTA)**, branch
-`claude/handoff-md-review-erkjm0`: terza tipologia del kit engine, PROVVISORIA (schema di montaggio listino
-2026 pag. 416, anta singola, E.15, solo LEGNO). `rules-artech-vasistas-legno.ts` (cremonese `A50111.15` per
-GR + catena DSS `A50190`/`A51400.05.03` + forbici `A50545` + incontri via colonna NOT.(GR)), guardie
-(solo LEGNO, superficie ≤ 2 m², campo GR01–GR06), enum `windowType` += VASISTAS (**nessuna migrazione**),
-registry, seed `isActive:true`, wizard solo-LEGNO. Golden 10 righe/12 pezzi. **Al merge #20:** `db:seed:kit`
-su Neon. Assunzioni in `docs/superpowers/kit-assunzioni/vasistas.md`. + **«Visualizza nel listino» ✅ su
-PR #21 (APERTA)**, branch `claude/listino-viewer`: pulsante che apre un viewer `react-pdf` in-app alla pagina
-del listino di un codice, evidenziandolo (distinta kit + dettaglio prodotto). Parser page-aware
-(`Product.listinoPage`, **migrazione** `add_listino_page`) + backfill; PDF su **Vercel Blob** dietro auth
-(route `/api/listino` con Range). **Al merge #21 (ops per attivare):** (1) upload listino linearizzato su
-Vercel Blob + env `LISTINO_PDF_URL`; (2) migrazione `add_listino_page` su Neon; (3) `pnpm backfill:pages`.
-**PR #20 (vasistas) + #21 (viewer listino) + #22 (ottimizz. ops backfill) + #23 (fix immagini viewer)
-MERGIATE e LIVE.** Neon allineato via ops run 30024919979 (migrazione `add_listino_page` + import + seed
-vasistas). Viewer listino **attivato** (Vercel Blob + `LISTINO_PDF_URL`) e funzionante (apre alla pagina
-giusta + evidenzia il codice). **⚠️ Problema aperto: immagini viewer parziali** (range-request: PDF.js
-disegna prima che tutti gli XObject immagine arrivino) → **prossimo passo deciso = Opzione B (pre-split del
-PDF in pagine singole su Blob + route `/api/listino?page=N` + viewer a pagina singola)**. Altri task aperti
-(non bloccanti): validazione esperto kit provvisori (vasistas/battente/PVC/ALU); pulsante listino sulle card
-archivio (stretched-link). Dettagli e prompt Opzione B: `handoff.md` §RIPRENDI DA QUI.
-+ **Opzione B (viewer a PAGINE SINGOLE) ✅ su branch `claude/listino-page-split-n8ofuk` (PR da aprire)**:
-risolve le immagini parziali pre-splittando il listino in ~959 paginette su Vercel Blob (ognuna un file
-minuscolo con tutte le sue immagini → scaricata per intero, niente Range). `scripts/split-listino.ts`
-(`pdfseparate` + `@vercel/blob`, naming `listino/page-N.pdf` idempotente) + workflow `ops-split-listino.yml`
-(secret `BLOB_READ_WRITE_TOKEN`) · route `/api/listino?page=N` (auth, param validato anti-SSRF, no Range) ·
-env `LISTINO_PAGE_URL_TEMPLATE` + `LISTINO_TOTAL_PAGES` (al posto di `LISTINO_PDF_URL`) · viewer a pagina
-singola (`<Page pageNumber={1}>`, `totalPages` via prop dal layout server) **+ fix mobile-first** del
-`width` fisso 720px (ora responsive via `ResizeObserver`). Gate verdi (typecheck·lint·test **332**·build).
-**AZIONI OPS al merge:** secret `BLOB_READ_WRITE_TOKEN` → run `Ops — Split listino` → impostare le 2 env su
-Vercel (dai log) e rimuovere `LISTINO_PDF_URL` → redeploy → verifica browser ≤375px. Dettagli: `handoff.md`
-§RIPRENDI DA QUI e `docs/superpowers/{specs,plans}/2026-07-23-listino-page-split*`.
-**PR #25 MERGIATA** (versione Blob pubblico). Al primo run ops lo split è fallito (`Cannot use public access on a
+
+- migrazione + wizard (PVC on, ALLUMINIO off, toggle chiusure) — **PR #15 MERGIATA**
+  (migrazione applicata a Neon via ops run #2). + **Fase 1h (nuova TIPOLOGIA «anta a battente»
+  ARTECH LEGNO) ✅** su branch `claude/handoff-review-irs3gv` (Opzione C **estesa**, no /llm-council,
+  7 commit, gate verdi typecheck·lint·test **252**·build 13 route): l'anta proiettante richiesta
+  NON è a listino 2026 (0 riscontri, come l'alluminio) → **scelta utente = a battente**.
+  `artech-legno-shared.ts` (behavior-preserving, golden anta-ribalta invariato) +
+  `rules-artech-battente-legno.ts` **PROVVISORIO** (cremonese Mod. 502 `A50200.15.NN` + famiglie
+  condivise − meccanismo di ribalta → distinta **5 righe**) + enum `windowType` widen + seed
+  per-windowType + wizard **solo-LEGNO** (PVC/ALU gated per il battente). **Restano**: **al deploy**
+  `db:seed:kit` su Neon (template battente; **NESSUNA migrazione** — l'enum Postgres ha già
+  `ANTA_BATTENTE`) · integration gated (`INTEGRATION_DATABASE_URL`) per verificare i codici battente
+  a catalogo · validazione esperto (domande in `docs/superpowers/kit-assunzioni/{alu,pvc,battente}.md`).
+  Poi: scelta fase successiva — **decisione utente**. + **Gestione utenti admin + login username ✅**
+  su branch `claude/handoff-review-irs3gv` (dopo il merge Fase 1h #16; SDD 3 subagent-round + review
+  finale opus, gate verdi typecheck·lint·test **293**·build 14 route): sezione admin **/utenti**
+  (crea · elenca · cambia ruolo · attiva/disattiva[**ban**+status] · reset password · **modifica** ·
+  elimina), **ogni mutation `adminProcedure`** con **paletti anti-lockout** (mai su self né sull'ultimo
+  admin attivo; `delete` bloccato se ci sono record collegati kit/conversazioni/**settings**) · **login
+  con email O username** (plugin Better Auth `username`) + **account senza email** reale (email-segnaposto
+  `<username>@no-email.ufptrade.local`, unica costante `src/lib/placeholder-email.ts`). Review finale →
+  fix: `usernameSchema` allineato al validator del plugin (max 30, no trattino, altrimenti account
+  non-autenticabile), rimossa route `setStatus` non guardata, pre-check email → `CONFLICT`. **RESTA al
+  deploy**: applicare la **migrazione `username`** a Neon via ops (`20260713094200_username` — aggiunge
+  `users.username`/`display_username` + unique; nessun'altra migrazione). **PR A+B unica → PR #17 MERGIATA**;
+  **migrazione `username` APPLICATA a Neon via ops run #4** (login email/username OK in produzione).
+- **UI mobile responsive + regola mobile-first ✅ (PR #18 MERGIATA, live)**: il layout mobile era
+  inutilizzabile (sidebar `hidden md:block` senza alternativa) → **hamburger + drawer** (Sidebar riusata),
+  TopBar mobile, **`/utenti` azioni in menu ⋯** (dropdown `position:fixed` per non farsi ritagliare
+  dall'`overflow-x-auto`), fix griglia login (`grid-cols-1`). Verifica screenshot Chromium a 375px.
+  **PR #11–#18 mergiate e LIVE** su `catalogo-finder-kappa.vercel.app`; Neon allineato.
+- **Fase 1i (nuova TIPOLOGIA «vasistas» ARTECH LEGNO) ✅ su PR #20 (APERTA)**, branch
+  `claude/handoff-md-review-erkjm0`: terza tipologia del kit engine, PROVVISORIA (schema di montaggio listino
+  2026 pag. 416, anta singola, E.15, solo LEGNO). `rules-artech-vasistas-legno.ts` (cremonese `A50111.15` per
+  GR + catena DSS `A50190`/`A51400.05.03` + forbici `A50545` + incontri via colonna NOT.(GR)), guardie
+  (solo LEGNO, superficie ≤ 2 m², campo GR01–GR06), enum `windowType` += VASISTAS (**nessuna migrazione**),
+  registry, seed `isActive:true`, wizard solo-LEGNO. Golden 10 righe/12 pezzi. **Al merge #20:** `db:seed:kit`
+  su Neon. Assunzioni in `docs/superpowers/kit-assunzioni/vasistas.md`. + **«Visualizza nel listino» ✅ su
+  PR #21 (APERTA)**, branch `claude/listino-viewer`: pulsante che apre un viewer `react-pdf` in-app alla pagina
+  del listino di un codice, evidenziandolo (distinta kit + dettaglio prodotto). Parser page-aware
+  (`Product.listinoPage`, **migrazione** `add_listino_page`) + backfill; PDF su **Vercel Blob** dietro auth
+  (route `/api/listino` con Range). **Al merge #21 (ops per attivare):** (1) upload listino linearizzato su
+  Vercel Blob + env `LISTINO_PDF_URL`; (2) migrazione `add_listino_page` su Neon; (3) `pnpm backfill:pages`.
+  **PR #20 (vasistas) + #21 (viewer listino) + #22 (ottimizz. ops backfill) + #23 (fix immagini viewer)
+  MERGIATE e LIVE.** Neon allineato via ops run 30024919979 (migrazione `add_listino_page` + import + seed
+  vasistas). Viewer listino **attivato** (Vercel Blob + `LISTINO_PDF_URL`) e funzionante (apre alla pagina
+  giusta + evidenzia il codice). **⚠️ Problema aperto: immagini viewer parziali** (range-request: PDF.js
+  disegna prima che tutti gli XObject immagine arrivino) → **prossimo passo deciso = Opzione B (pre-split del
+  PDF in pagine singole su Blob + route `/api/listino?page=N` + viewer a pagina singola)**. Altri task aperti
+  (non bloccanti): validazione esperto kit provvisori (vasistas/battente/PVC/ALU); pulsante listino sulle card
+  archivio (stretched-link). Dettagli e prompt Opzione B: `handoff.md` §RIPRENDI DA QUI.
+- **Opzione B (viewer a PAGINE SINGOLE) ✅ su branch `claude/listino-page-split-n8ofuk` (PR da aprire)**:
+  risolve le immagini parziali pre-splittando il listino in ~959 paginette su Vercel Blob (ognuna un file
+  minuscolo con tutte le sue immagini → scaricata per intero, niente Range). `scripts/split-listino.ts`
+  (`pdfseparate` + `@vercel/blob`, naming `listino/page-N.pdf` idempotente) + workflow `ops-split-listino.yml`
+  (secret `BLOB_READ_WRITE_TOKEN`) · route `/api/listino?page=N` (auth, param validato anti-SSRF, no Range) ·
+  env `LISTINO_PAGE_URL_TEMPLATE` + `LISTINO_TOTAL_PAGES` (al posto di `LISTINO_PDF_URL`) · viewer a pagina
+  singola (`<Page pageNumber={1}>`, `totalPages` via prop dal layout server) **+ fix mobile-first** del
+  `width` fisso 720px (ora responsive via `ResizeObserver`). Gate verdi (typecheck·lint·test **332**·build).
+  **AZIONI OPS al merge:** secret `BLOB_READ_WRITE_TOKEN` → run `Ops — Split listino` → impostare le 2 env su
+  Vercel (dai log) e rimuovere `LISTINO_PDF_URL` → redeploy → verifica browser ≤375px. Dettagli: `handoff.md`
+  §RIPRENDI DA QUI e `docs/superpowers/{specs,plans}/2026-07-23-listino-page-split*`.
+  **PR #25 MERGIATA** (versione Blob pubblico). Al primo run ops lo split è fallito (`Cannot use public access on a
 private store`): lo store Blob è **PRIVATO** → **follow-up** (branch ripartito da main dopo #25, nuova PR): env
-**`BLOB_READ_WRITE_TOKEN`** al posto di `LISTINO_PAGE_URL_TEMPLATE`; la route legge le paginette **private** lato
-server via `@vercel/blob` `get(access:"private", token)`; `@vercel/blob` in **dependencies**; listino mai pubblico.
-Gate verdi (test **330**). **PR #25 + #26 MERGIATE**; split privato ri-lanciato (run #2, 959 paginette private).
-+ **IMMAGINI PRODOTTO ✅ (branch `claude/listino-page-split-n8ofuk`, PR da aprire)**: scoperta la **causa radice**
-del «immagini viewer» — le foto del listino sono **JPEG2000** e **PDF.js non le decodifica** (il range/split non
-c'entravano). **Scelta utente: estrarre le foto dal PDF e mostrarle sulla scheda prodotto** (poppler decodifica il
-jpx → PNG → `<img>` native). Tabella **`ProductImage`** (separata da Product) + migrazione `add_product_images` ·
-helper puro di mappatura **immagine→codice per banda verticale** (`listino-images.ts`) · script `extract:images` +
-workflow `ops-extract-images.yml` · route `/api/product-image?code=…` (auth, byte dal DB) · UI `ProductImage`
-(`<img onError hide>`) sulla scheda dettaglio. Gate verdi (test **341**). **PR #27 MERGIATA + ops run 30089631152
-(`✓ 7082 immagini salvate in product_images`)**; route verificata live (401 senza auth). Dettagli:
-`docs/superpowers/specs/2026-07-24-immagini-prodotto-design.md`.
-+ **UX Archivio ✅ (PR #29 MERGIATA e in `main`)**: workflow completo
-(brainstorming → /llm-council → critica adversariale 3-lenti → /impeccable → piano → TDD). **(1) Persistenza**:
-query/filtri/pagina negli **URL searchParams** (`useSearchParams` sotto `<Suspense>` in `archivio/page.tsx`,
-scrittura `router.replace(…,{scroll:false})`), **vista** in `localStorage` (idratata post-mount, no flash).
-**(2) Ritorno-alla-lista con scroll** (priorità #1): snapshot `scrollY` per-chiave in `sessionStorage`
-(`archivio-scroll.ts`), `history.scrollRestoration='manual'`, ripristino in `rAF` una volta dopo i dati in cache;
-salvataggio su **`pointerdown` (cattura)** + `pagehide` (NON su scroll/unmount: Next scrolla in cima aprendo il
-dettaglio → salverebbe 0). **(3) Cronologia 7gg**: `product.recentSearches` read-side su `ActivityLog`
-(`recent-searches.ts`: scarta 0-risultati, dedup, collassa prefissi) → «Ricerche recenti» nell'empty-state.
-**Extra**: thumbnail card/righe (riservate; `ProductImage` esteso con `fallback`, `ProductThumb`) · chip filtri
-attivi + azzera · empty-state con suggerimenti. Moduli puri `archivio-search-params.ts`/`archivio-scroll.ts`/
-`recent-searches.ts` + hook `use-archivio-search.ts`. Gate verdi (typecheck·lint·**test 369/+28**·build). **Verifica
-browser reale (Chromium desktop + mobile 375px)** ha confermato il ripristino scroll (1073→1073 · 900→900) e
-**scovato 2 bug** poi corretti (salvataggio a 0; rAF annullato dalla cleanup). **Nessuna migrazione, nessuna dep,
-NESSUNA AZIONE OPS.** Spec/piano: `docs/superpowers/{specs,plans}/2026-07-24-archivio-ux*`.
-+ **UX Archivio — follow-up ✅ (PR #30 MERGIATA e in `main`)**: 4 idee prima fuori scope, tutte a basso
-rischio. **(A) Scorciatoia `/`** focalizza la ricerca (helper puro `is-editable-target.ts` per non intercettare
-mentre si scrive; `Esc` sfoca; hint `<kbd>` desktop). **(B) «Copia link»** copia l'URL della ricerca (già
-condivisibile) con feedback. **(C) «Visti di recente»** via **`localStorage`** (`recently-viewed.ts`: dedup, cap 8;
-registrato nella scheda dettaglio; rail nell'empty-state). **(D) Pulsante listino su card/righe**: `listinoPage`
-(già restituito da `product.search`) esposto in `ProductSummary`; card/riga ristrutturate **stretched-link** (anchor
-overlay + `ListinoButton` fratello z-index → apre il viewer senza navigare); sulla riga solo desktop (a ≤375px
-resta la scheda). Gate verdi (typecheck·lint·**test 380/+11**·build). **Verifica browser (Chromium desktop +
-mobile 375px): 12/12 check verdi.** Nessuna migrazione, nessuna dep, **NESSUNA AZIONE OPS**. Spec/piano:
-`docs/superpowers/{specs,plans}/2026-07-24-archivio-ux-follow-up*`.
-+ **CHAT ASSISTENTE professionale ✅ (branch `claude/assistant-chat-streaming-mobile-1apei1`, PR da aprire)**:
-riscrittura completa della chat Fase 1c (bozza grezza, mobile inusabile). Workflow: brainstorming → **2×
-`/llm-council`** (streaming + rimozione Kimi) → `/impeccable` (2 scelte UI approvate dall'utente su anteprima
-interattiva) → `/writing-plans` → **12 task SDD** (implementer + reviewer per task). **(1) Streaming SSE**
-end-to-end: `GeminiChatProvider.chatStream` (`:streamGenerateContent?alt=sse` + `eventsource-parser`) →
-`AIGateway.chatStream` (guardie, **niente fallback/retry**) → `ChatService.generateStream` (tool-loop **cap 3
-round**, eventi `tool|delta|done|error`, persistenza **una sola volta**) → route `POST /api/chat/stream` (auth,
-ownership, header anti-buffering, `maxDuration=60`) → hook `useChatStream` (batch `rAF`, **STOP**, deroga fetch
-confinata). **(2) Gemini-only** (Kimi rimosso ovunque). **(3) Conversazioni**: `rename`/`delete` soft/`archive`/
-`list({search})` + **prodotti citati per-messaggio** in `get`. **(4) UI A1+B1** (scelte utente): risposte AI a
-**tutta larghezza** (niente bolla/bordo sinistro — DESIGN.md aggiornato) e **card prodotto inline** sotto la
-risposta (niente pannello/sheet); markdown `react-markdown`+`remark-gfm` (plugin `remark-agb-code` per i codici
-mono, code-block con copia, **href allowlist** anti-XSS); composer auto-grow **Invia↔STOP**; drawer conversazioni
-mobile; `?c=` in URL; scroll intelligente; banner errore con countdown `Retry-After` (auto-retry max 2).
-**Bug reali intercettati dalle review** (sarebbero finiti in produzione): lo **STOP apriva il circuit breaker**
-(5 stop = chat offline per tutti), errori JSON silenziati nel parser SSE, invio silenziosamente rotto nello
-stopgap, e una **race che riversava lo stream in un'altra conversazione**. Gate verdi (typecheck·lint·**test 518**)
-+ **verifica browser 13/13** (Chromium desktop + **375px** + viewport corto, 17 screenshot). **ZERO migrazioni,
-ZERO azioni ops DB** (solo: rimuovere da Vercel le env `KIMI_API_KEY`/`KIMI_MODEL` se presenti).
-Spec/piano: `docs/superpowers/{specs,plans}/2026-07-24-chat-streaming*`. — **PR #32 MERGIATA** in `main`.
-+ **BONIFICA KIT ARTECH LEGNO ✅ (branch `claude/kit-engine-study-wfo2hq`, PR da aprire)**: tutti i moduli kit
-riverificati riga per riga contro il **listino AGB 2026** (959 pagine, schemi di montaggio inclusi). Esito: dei
-**4 template attivi, 3 producevano distinte non ordinabili**. 8 task TDD, un commit per task.
-**(1) PVC → `isActive:false` + modulo che rifiuta**: i 4 codici material-specific (`A51921.36.04`,
-`A50712.00.00`, `A50922.07.00`, `A50812.07.00`) compaiono **solo** nelle pagine-certificato ift p0013 (11) e
-p0395 (393), **senza prezzo**; altri 7 (`A51921.36.01/.02/.03`, famiglia sx `A51922.36.0N`) non esistono nemmeno
-lì — dedotti per simmetria. Ogni distinta PVC usciva con **4 righe su 12 senza prezzo**. Il PVC vero è nel
-«listino PVC e ALLUMINIO» (p0849 (847)). **(2) BATTENTE → `isActive:false` + rifiuto**: lo schema p0416 (414) ha
-**21 voci**, il modulo ne generava **5** — mancava l'intero appoggio della cerniera superiore, **l'anta non era
-appesa**; schema **composito** (tre alternative di cerniera) → non decidibile dal listino. `BATTENTE_CREMONESI`
-conservata, verificata contro p0429 (427). **(3) Pilota anta-ribalta**: supporto cerniera `A50801.01.0N` →
-**`A50805.05.DX/.SX`** (il primo è «Aria 4 - Interasse 9» battuta 18 su un serramento aria 12/interasse
-13/battuta 20; p0451 (449) + certificato ift; stesso prezzo) · banda cremonese GR02 `650→610` (p0424 (422)) ·
-descrizione incontro ribalta 9x18. Squadra angolare e formula incontri **non** toccate (fonte autorevole a
-favore) → domande esperto. **(4) `PILOT_GEOMETRY` + `assertPilotGeometry`**: aria/interasse/battuta/sede erano
-raccolti, validati e **ignorati** (aria 4 riceveva in silenzio i codici dell'aria 12) → ora i moduli rifiutano.
-**(5-7) VASISTAS riscritto** come trascrizione dello schema p0418 (416): forbici dalla tabella per **LBB** (prima
-per altezza), via **DSS + incontro DSS** (non sono fra le 13 voci), dentro le **cerniere** voci 10-11-12 e il 2°
-terminale, supporto/perno legati alle cerniere portanti, **`sashWeightKg` opzionale** (3ª cerniera 70-80 kg,
-portata 40 kg/forbice) → golden **13 righe / 19 pezzi**. **(8) Docs**: schede `kit-assunzioni/` riscritte come
-**esito** + nuova `legno.md` con l'**indice globale delle 10 domande** per l'esperto (i commenti nel codice ci
-rimandano per numero). **Collaterale: parser catalogo allargato** ai codici con segmenti alfanumerici
-(`.DX/.SX/.CR/.FM`, cilindri `CG…`) → **+1.297 codici a prezzo, 6.191 → 7.488**.
-**TIPOLOGIE ATTIVE: anta-ribalta LEGNO** (golden 16 righe/21 pezzi/90,20 € con chiusure supplementari) **e
-vasistas LEGNO** (13/19, PROVVISORIO); **battente e PVC disattivati** in attesa di dati; **ALLUMINIO** resta
-gated. Gate verdi (typecheck·lint·**test 589/11 skip**) + verifica browser wizard desktop e **375px**
-(8 screenshot; corretta la griglia materiali `grid-cols-3` → `grid-cols-1 sm:grid-cols-3`).
-**🔴 AZIONI OPS AL MERGE (obbligatorie)**: un run completo di **«Ops — Neon»** = migrazione
-**`20260725213059_kit_sash_weight`** + **RE-IMPORT del catalogo** (senza, `A50805.05.DX/.SX` non è a DB → riga
-senza prezzo e golden **90,20 → 85,76 €**) + **`db:seed:kit`** (è ciò che disattiva davvero PVC e battente) +
-`embed:products`; poi **audit di `kit_requests`** (se sono uscite distinte PVC/battente a clienti reali, avvisare
-gli agenti). Difetto collaterale segnalato e **non** corretto: `dedupeRows` last-wins in `map-product.ts`.
-**✅ VERIFICA FINALE END-TO-END** (a chiusura sessione): ambiente montato in locale e **listino importato davvero**
-(`import:agb` → 7.488 prodotti, +1.297 confermato), **integration test gated eseguito 5/5**, e distinte reali
-generate coi prezzi veri — anta-ribalta **16 righe/21 pezzi/90,20 € zero warning** (il totale NON cambia con la
-correzione), vasistas **13/19/90,59 € zero warning**, 3 forbici a LBB 1000 con supporto/perno fermi a 2, rifiuti
-corretti per peso 75 kg / PVC / battente / aria 4; browser rifatto su DB vero a **375px e desktop**.
-**PR #33 + #34 MERGIATE**; **AZIONI OPS ESEGUITE** (run «Ops — Neon» `30198585201`, 2026-07-26 11:00Z:
-migrate + re-import 7.488 + seed kit + embed, 4 step verdi).
-Spec/piano: `docs/superpowers/{specs,plans}/2026-07-25-kit-bonifica-artech-legno*`.
-+ **KIT BILICO RETTANGOLARE TOUR ✅ (PR #35 MERGIATA, ops eseguite)**: terza
-tipologia attiva e **prima serie non-ARTECH**. Scoperta chiave: il bilico non è una distinta di componenti
-sciolti ma **4 kit + 2 aste** — le legende «Componenti» degli schemi generici `p0536 (534)`/`p0537 (535)`
-stanno **dentro il disegno** (invisibili a `pdftotext`) e raggruppano tutto in quattro codici ordinabili; la
-tabella di `p0538 (536)` è la loro **composizione**, non una lista d'ordine (provato con l'aritmetica: kit
-incontri 43,95 € contro 44,12 € di contenuto dichiarato). Nasce **attivo** perché **61 codici su 61 sono a
-listino con prezzo** (verificati con la firma di riga del parser reale; totale 7.488 = import su Neon).
-**`kitInputSchema` diventa un'unione discriminata su `series`**: `kit.create` persiste ogni campo e
-`kit.generate` **ricostruisce l'input rileggendo le colonne**, quindi la riga a DB *è* l'input di ogni
-rigenerazione e campi solo `.optional()` avrebbero fatto nascere ogni riga bilico con la geometria ARTECH
-addosso (la bonifica riaperta, spostata nella persistenza); l'unione **scarta** i campi estranei al ramo →
-impossibilità strutturale, non una guardia. Deciso con **`/llm-council`** (5 advisor + peer review + chairman,
-verificando le loro affermazioni nel repo: `z.discriminatedUnion` non ha davvero `.pick()`, ma è **falso** che
-`finish` free-text sia un bug latente — `requireKey` solleva). Nuovo `from-request.ts` (ricostruzione per ramo,
-ri-validata) · modulo `rules-tour-bilico-legno.ts` (schema 1-5 = unica chiave; mano e 3/4 lati **derivati**,
-non scelti; asse 17,5 mai persistito) · **test di mutazione** `no-silent-fields.test.ts` (muta ogni campo di
-ogni modulo attivo: output identico in silenzio = fallimento), che ha scovato **`openingDir` raccolto,
-validato, persistito e mai letto da nessun modulo** (domanda 16). UI ramificata per serie, con lo schema
-mostrato come geometria (listello · asse · battuta) e non come numero nudo, e superficie/lati echeggiati già
-al passo delle quote. Gate verdi (typecheck·lint·**test 659**·build 17 route) + **integration gated 9/9 sul
-catalogo reale** + **browser 50/50** (desktop e **375px**). Distinte reali: **450,03 €** (3 lati) ·
-**766,51 €** (4 lati) · **433,46 €** (schema 3). **AZIONI OPS ESEGUITE** (run `30207287069`, 15:12Z, 12/12
-step verdi: migrazione `20260726120000_kit_bilico_tour` applicata, import 7.488, template TOUR creato, embed
-«niente da fare»); **resta solo la verifica funzionale in produzione**. Spec:
-`docs/superpowers/specs/2026-07-26-kit-bilico-tour-design.md` · assunzioni e domande 11-16 in
-`kit-assunzioni/tour.md` · audit `kit_requests` e mail per AGB **pronti da usare** in
-`kit-assunzioni/DA-FARE-audit-e-domande-agb.md`.
+  **`BLOB_READ_WRITE_TOKEN`** al posto di `LISTINO_PAGE_URL_TEMPLATE`; la route legge le paginette **private** lato
+  server via `@vercel/blob` `get(access:"private", token)`; `@vercel/blob` in **dependencies**; listino mai pubblico.
+  Gate verdi (test **330**). **PR #25 + #26 MERGIATE**; split privato ri-lanciato (run #2, 959 paginette private).
+- **IMMAGINI PRODOTTO ✅ (branch `claude/listino-page-split-n8ofuk`, PR da aprire)**: scoperta la **causa radice**
+  del «immagini viewer» — le foto del listino sono **JPEG2000** e **PDF.js non le decodifica** (il range/split non
+  c'entravano). **Scelta utente: estrarre le foto dal PDF e mostrarle sulla scheda prodotto** (poppler decodifica il
+  jpx → PNG → `<img>` native). Tabella **`ProductImage`** (separata da Product) + migrazione `add_product_images` ·
+  helper puro di mappatura **immagine→codice per banda verticale** (`listino-images.ts`) · script `extract:images` +
+  workflow `ops-extract-images.yml` · route `/api/product-image?code=…` (auth, byte dal DB) · UI `ProductImage`
+  (`<img onError hide>`) sulla scheda dettaglio. Gate verdi (test **341**). **PR #27 MERGIATA + ops run 30089631152
+  (`✓ 7082 immagini salvate in product_images`)**; route verificata live (401 senza auth). Dettagli:
+  `docs/superpowers/specs/2026-07-24-immagini-prodotto-design.md`.
+- **UX Archivio ✅ (PR #29 MERGIATA e in `main`)**: workflow completo
+  (brainstorming → /llm-council → critica adversariale 3-lenti → /impeccable → piano → TDD). **(1) Persistenza**:
+  query/filtri/pagina negli **URL searchParams** (`useSearchParams` sotto `<Suspense>` in `archivio/page.tsx`,
+  scrittura `router.replace(…,{scroll:false})`), **vista** in `localStorage` (idratata post-mount, no flash).
+  **(2) Ritorno-alla-lista con scroll** (priorità #1): snapshot `scrollY` per-chiave in `sessionStorage`
+  (`archivio-scroll.ts`), `history.scrollRestoration='manual'`, ripristino in `rAF` una volta dopo i dati in cache;
+  salvataggio su **`pointerdown` (cattura)** + `pagehide` (NON su scroll/unmount: Next scrolla in cima aprendo il
+  dettaglio → salverebbe 0). **(3) Cronologia 7gg**: `product.recentSearches` read-side su `ActivityLog`
+  (`recent-searches.ts`: scarta 0-risultati, dedup, collassa prefissi) → «Ricerche recenti» nell'empty-state.
+  **Extra**: thumbnail card/righe (riservate; `ProductImage` esteso con `fallback`, `ProductThumb`) · chip filtri
+  attivi + azzera · empty-state con suggerimenti. Moduli puri `archivio-search-params.ts`/`archivio-scroll.ts`/
+  `recent-searches.ts` + hook `use-archivio-search.ts`. Gate verdi (typecheck·lint·**test 369/+28**·build). **Verifica
+  browser reale (Chromium desktop + mobile 375px)** ha confermato il ripristino scroll (1073→1073 · 900→900) e
+  **scovato 2 bug** poi corretti (salvataggio a 0; rAF annullato dalla cleanup). **Nessuna migrazione, nessuna dep,
+  NESSUNA AZIONE OPS.** Spec/piano: `docs/superpowers/{specs,plans}/2026-07-24-archivio-ux*`.
+- **UX Archivio — follow-up ✅ (PR #30 MERGIATA e in `main`)**: 4 idee prima fuori scope, tutte a basso
+  rischio. **(A) Scorciatoia `/`** focalizza la ricerca (helper puro `is-editable-target.ts` per non intercettare
+  mentre si scrive; `Esc` sfoca; hint `<kbd>` desktop). **(B) «Copia link»** copia l'URL della ricerca (già
+  condivisibile) con feedback. **(C) «Visti di recente»** via **`localStorage`** (`recently-viewed.ts`: dedup, cap 8;
+  registrato nella scheda dettaglio; rail nell'empty-state). **(D) Pulsante listino su card/righe**: `listinoPage`
+  (già restituito da `product.search`) esposto in `ProductSummary`; card/riga ristrutturate **stretched-link** (anchor
+  overlay + `ListinoButton` fratello z-index → apre il viewer senza navigare); sulla riga solo desktop (a ≤375px
+  resta la scheda). Gate verdi (typecheck·lint·**test 380/+11**·build). **Verifica browser (Chromium desktop +
+  mobile 375px): 12/12 check verdi.** Nessuna migrazione, nessuna dep, **NESSUNA AZIONE OPS**. Spec/piano:
+  `docs/superpowers/{specs,plans}/2026-07-24-archivio-ux-follow-up*`.
+- **CHAT ASSISTENTE professionale ✅ (branch `claude/assistant-chat-streaming-mobile-1apei1`, PR da aprire)**:
+  riscrittura completa della chat Fase 1c (bozza grezza, mobile inusabile). Workflow: brainstorming → **2×
+  `/llm-council`** (streaming + rimozione Kimi) → `/impeccable` (2 scelte UI approvate dall'utente su anteprima
+  interattiva) → `/writing-plans` → **12 task SDD** (implementer + reviewer per task). **(1) Streaming SSE**
+  end-to-end: `GeminiChatProvider.chatStream` (`:streamGenerateContent?alt=sse` + `eventsource-parser`) →
+  `AIGateway.chatStream` (guardie, **niente fallback/retry**) → `ChatService.generateStream` (tool-loop **cap 3
+  round**, eventi `tool|delta|done|error`, persistenza **una sola volta**) → route `POST /api/chat/stream` (auth,
+  ownership, header anti-buffering, `maxDuration=60`) → hook `useChatStream` (batch `rAF`, **STOP**, deroga fetch
+  confinata). **(2) Gemini-only** (Kimi rimosso ovunque). **(3) Conversazioni**: `rename`/`delete` soft/`archive`/
+  `list({search})` + **prodotti citati per-messaggio** in `get`. **(4) UI A1+B1** (scelte utente): risposte AI a
+  **tutta larghezza** (niente bolla/bordo sinistro — DESIGN.md aggiornato) e **card prodotto inline** sotto la
+  risposta (niente pannello/sheet); markdown `react-markdown`+`remark-gfm` (plugin `remark-agb-code` per i codici
+  mono, code-block con copia, **href allowlist** anti-XSS); composer auto-grow **Invia↔STOP**; drawer conversazioni
+  mobile; `?c=` in URL; scroll intelligente; banner errore con countdown `Retry-After` (auto-retry max 2).
+  **Bug reali intercettati dalle review** (sarebbero finiti in produzione): lo **STOP apriva il circuit breaker**
+  (5 stop = chat offline per tutti), errori JSON silenziati nel parser SSE, invio silenziosamente rotto nello
+  stopgap, e una **race che riversava lo stream in un'altra conversazione**. Gate verdi (typecheck·lint·**test 518**)
+- **verifica browser 13/13** (Chromium desktop + **375px** + viewport corto, 17 screenshot). **ZERO migrazioni,
+  ZERO azioni ops DB** (solo: rimuovere da Vercel le env `KIMI_API_KEY`/`KIMI_MODEL` se presenti).
+  Spec/piano: `docs/superpowers/{specs,plans}/2026-07-24-chat-streaming*`. — **PR #32 MERGIATA** in `main`.
+- **BONIFICA KIT ARTECH LEGNO ✅ (branch `claude/kit-engine-study-wfo2hq`, PR da aprire)**: tutti i moduli kit
+  riverificati riga per riga contro il **listino AGB 2026** (959 pagine, schemi di montaggio inclusi). Esito: dei
+  **4 template attivi, 3 producevano distinte non ordinabili**. 8 task TDD, un commit per task.
+  **(1) PVC → `isActive:false` + modulo che rifiuta**: i 4 codici material-specific (`A51921.36.04`,
+  `A50712.00.00`, `A50922.07.00`, `A50812.07.00`) compaiono **solo** nelle pagine-certificato ift p0013 (11) e
+  p0395 (393), **senza prezzo**; altri 7 (`A51921.36.01/.02/.03`, famiglia sx `A51922.36.0N`) non esistono nemmeno
+  lì — dedotti per simmetria. Ogni distinta PVC usciva con **4 righe su 12 senza prezzo**. Il PVC vero è nel
+  «listino PVC e ALLUMINIO» (p0849 (847)). **(2) BATTENTE → `isActive:false` + rifiuto**: lo schema p0416 (414) ha
+  **21 voci**, il modulo ne generava **5** — mancava l'intero appoggio della cerniera superiore, **l'anta non era
+  appesa**; schema **composito** (tre alternative di cerniera) → non decidibile dal listino. `BATTENTE_CREMONESI`
+  conservata, verificata contro p0429 (427). **(3) Pilota anta-ribalta**: supporto cerniera `A50801.01.0N` →
+  **`A50805.05.DX/.SX`** (il primo è «Aria 4 - Interasse 9» battuta 18 su un serramento aria 12/interasse
+  13/battuta 20; p0451 (449) + certificato ift; stesso prezzo) · banda cremonese GR02 `650→610` (p0424 (422)) ·
+  descrizione incontro ribalta 9x18. Squadra angolare e formula incontri **non** toccate (fonte autorevole a
+  favore) → domande esperto. **(4) `PILOT_GEOMETRY` + `assertPilotGeometry`**: aria/interasse/battuta/sede erano
+  raccolti, validati e **ignorati** (aria 4 riceveva in silenzio i codici dell'aria 12) → ora i moduli rifiutano.
+  **(5-7) VASISTAS riscritto** come trascrizione dello schema p0418 (416): forbici dalla tabella per **LBB** (prima
+  per altezza), via **DSS + incontro DSS** (non sono fra le 13 voci), dentro le **cerniere** voci 10-11-12 e il 2°
+  terminale, supporto/perno legati alle cerniere portanti, **`sashWeightKg` opzionale** (3ª cerniera 70-80 kg,
+  portata 40 kg/forbice) → golden **13 righe / 19 pezzi**. **(8) Docs**: schede `kit-assunzioni/` riscritte come
+  **esito** + nuova `legno.md` con l'**indice globale delle 10 domande** per l'esperto (i commenti nel codice ci
+  rimandano per numero). **Collaterale: parser catalogo allargato** ai codici con segmenti alfanumerici
+  (`.DX/.SX/.CR/.FM`, cilindri `CG…`) → **+1.297 codici a prezzo, 6.191 → 7.488**.
+  **TIPOLOGIE ATTIVE: anta-ribalta LEGNO** (golden 16 righe/21 pezzi/90,20 € con chiusure supplementari) **e
+  vasistas LEGNO** (13/19, PROVVISORIO); **battente e PVC disattivati** in attesa di dati; **ALLUMINIO** resta
+  gated. Gate verdi (typecheck·lint·**test 589/11 skip**) + verifica browser wizard desktop e **375px**
+  (8 screenshot; corretta la griglia materiali `grid-cols-3` → `grid-cols-1 sm:grid-cols-3`).
+  **🔴 AZIONI OPS AL MERGE (obbligatorie)**: un run completo di **«Ops — Neon»** = migrazione
+  **`20260725213059_kit_sash_weight`** + **RE-IMPORT del catalogo** (senza, `A50805.05.DX/.SX` non è a DB → riga
+  senza prezzo e golden **90,20 → 85,76 €**) + **`db:seed:kit`** (è ciò che disattiva davvero PVC e battente) +
+  `embed:products`; poi **audit di `kit_requests`** (se sono uscite distinte PVC/battente a clienti reali, avvisare
+  gli agenti). Difetto collaterale segnalato e **non** corretto: `dedupeRows` last-wins in `map-product.ts`.
+  **✅ VERIFICA FINALE END-TO-END** (a chiusura sessione): ambiente montato in locale e **listino importato davvero**
+  (`import:agb` → 7.488 prodotti, +1.297 confermato), **integration test gated eseguito 5/5**, e distinte reali
+  generate coi prezzi veri — anta-ribalta **16 righe/21 pezzi/90,20 € zero warning** (il totale NON cambia con la
+  correzione), vasistas **13/19/90,59 € zero warning**, 3 forbici a LBB 1000 con supporto/perno fermi a 2, rifiuti
+  corretti per peso 75 kg / PVC / battente / aria 4; browser rifatto su DB vero a **375px e desktop**.
+  **PR #33 + #34 MERGIATE**; **AZIONI OPS ESEGUITE** (run «Ops — Neon» `30198585201`, 2026-07-26 11:00Z:
+  migrate + re-import 7.488 + seed kit + embed, 4 step verdi).
+  Spec/piano: `docs/superpowers/{specs,plans}/2026-07-25-kit-bonifica-artech-legno*`.
+- **KIT BILICO RETTANGOLARE TOUR ✅ (PR #35 MERGIATA, ops eseguite)**: terza
+  tipologia attiva e **prima serie non-ARTECH**. Scoperta chiave: il bilico non è una distinta di componenti
+  sciolti ma **4 kit + 2 aste** — le legende «Componenti» degli schemi generici `p0536 (534)`/`p0537 (535)`
+  stanno **dentro il disegno** (invisibili a `pdftotext`) e raggruppano tutto in quattro codici ordinabili; la
+  tabella di `p0538 (536)` è la loro **composizione**, non una lista d'ordine (provato con l'aritmetica: kit
+  incontri 43,95 € contro 44,12 € di contenuto dichiarato). Nasce **attivo** perché **61 codici su 61 sono a
+  listino con prezzo** (verificati con la firma di riga del parser reale; totale 7.488 = import su Neon).
+  **`kitInputSchema` diventa un'unione discriminata su `series`**: `kit.create` persiste ogni campo e
+  `kit.generate` **ricostruisce l'input rileggendo le colonne**, quindi la riga a DB _è_ l'input di ogni
+  rigenerazione e campi solo `.optional()` avrebbero fatto nascere ogni riga bilico con la geometria ARTECH
+  addosso (la bonifica riaperta, spostata nella persistenza); l'unione **scarta** i campi estranei al ramo →
+  impossibilità strutturale, non una guardia. Deciso con **`/llm-council`** (5 advisor + peer review + chairman,
+  verificando le loro affermazioni nel repo: `z.discriminatedUnion` non ha davvero `.pick()`, ma è **falso** che
+  `finish` free-text sia un bug latente — `requireKey` solleva). Nuovo `from-request.ts` (ricostruzione per ramo,
+  ri-validata) · modulo `rules-tour-bilico-legno.ts` (schema 1-5 = unica chiave; mano e 3/4 lati **derivati**,
+  non scelti; asse 17,5 mai persistito) · **test di mutazione** `no-silent-fields.test.ts` (muta ogni campo di
+  ogni modulo attivo: output identico in silenzio = fallimento), che ha scovato **`openingDir` raccolto,
+  validato, persistito e mai letto da nessun modulo** (domanda 16). UI ramificata per serie, con lo schema
+  mostrato come geometria (listello · asse · battuta) e non come numero nudo, e superficie/lati echeggiati già
+  al passo delle quote. Gate verdi (typecheck·lint·**test 659**·build 17 route) + **integration gated 9/9 sul
+  catalogo reale** + **browser 50/50** (desktop e **375px**). Distinte reali: **450,03 €** (3 lati) ·
+  **766,51 €** (4 lati) · **433,46 €** (schema 3). **AZIONI OPS ESEGUITE** (run `30207287069`, 15:12Z, 12/12
+  step verdi: migrazione `20260726120000_kit_bilico_tour` applicata, import 7.488, template TOUR creato, embed
+  «niente da fare»); **resta solo la verifica funzionale in produzione**. Spec:
+  `docs/superpowers/specs/2026-07-26-kit-bilico-tour-design.md` · assunzioni e domande 11-16 in
+  `kit-assunzioni/tour.md` · audit `kit_requests` e mail per AGB **pronti da usare** in
+  `kit-assunzioni/DA-FARE-audit-e-domande-agb.md`.
 
-+ **FIX «SEDE» — segnalazione dal campo ✅ (PR #37)**: un agente esperto, chiamato a verificare
-un'anta-ribalta, **non ha saputo dire cosa fosse il campo «Sede»**. Non è ignoranza sua: il listino
-chiama la stessa quota in due modi. La sede è l'**alloggiamento dell'incontro sul telaio**; è scritta
-«sede telaio» nei titoli degli schemi, nella tabella microventilazione `p0474 (472)` e nel Galileo Pro
-alluminio `p0877 (875)`, ma in **tutte** le tabelle degli incontri — quelle che l'agente guarda per
-ordinare — non compare mai: è il **secondo numero** del token nella colonna ASSE (`9x18`, `13x24`,
-`13x30`). E **non è derivabile** da aria+asse: per aria 12 esistono quattro formati, quindi «asse 13»
-lascia due sedi possibili. Fix: etichetta → «**Sede telaio**» + hint col formato di listino (idem per
-«Asse», l'altra metà del token), legati con `aria-describedby`; **`seatMm` da max 22 a max 30**, perché
-il 22 tagliava fuori la **sede 30** — quella di *tutti* gli schemi base 2026 — e dava un errore di range
-invece del messaggio del motore (si allarga ciò che è *scrivibile*, non ciò che è *generabile*).
-Collaterale importante: estraendo tutti i formati dalle 959 pagine esistono solo `9x18`/`9x20`/`13x24`/
-`13x30` — **`13x18` non esiste**, ma il pilota dichiara interasse 13 + sede 18 e monta la famiglia `.05`
-(= 9x18): una delle due etichette è sbagliata dalla Fase 1d (non muove codici né i 90,20 €, ma è un dato
-falso sulla richiesta). Domande 3b e 4 per AGB riscritte come **dimostrate**. Gate: typecheck·lint·**test
-660**·browser **14/14** desktop e 375px. Nessuna migrazione, nessuna azione ops.
+- **FIX «SEDE» — segnalazione dal campo ✅ (PR #37)**: un agente esperto, chiamato a verificare
+  un'anta-ribalta, **non ha saputo dire cosa fosse il campo «Sede»**. Non è ignoranza sua: il listino
+  chiama la stessa quota in due modi. La sede è l'**alloggiamento dell'incontro sul telaio**; è scritta
+  «sede telaio» nei titoli degli schemi, nella tabella microventilazione `p0474 (472)` e nel Galileo Pro
+  alluminio `p0877 (875)`, ma in **tutte** le tabelle degli incontri — quelle che l'agente guarda per
+  ordinare — non compare mai: è il **secondo numero** del token nella colonna ASSE (`9x18`, `13x24`,
+  `13x30`). E **non è derivabile** da aria+asse: per aria 12 esistono quattro formati, quindi «asse 13»
+  lascia due sedi possibili. Fix: etichetta → «**Sede telaio**» + hint col formato di listino (idem per
+  «Asse», l'altra metà del token), legati con `aria-describedby`; **`seatMm` da max 22 a max 30**, perché
+  il 22 tagliava fuori la **sede 30** — quella di _tutti_ gli schemi base 2026 — e dava un errore di range
+  invece del messaggio del motore (si allarga ciò che è _scrivibile_, non ciò che è _generabile_).
+  Collaterale importante: estraendo tutti i formati dalle 959 pagine esistono solo `9x18`/`9x20`/`13x24`/
+  `13x30` — **`13x18` non esiste**, ma il pilota dichiara interasse 13 + sede 18 e monta la famiglia `.05`
+  (= 9x18): una delle due etichette è sbagliata dalla Fase 1d (non muove codici né i 90,20 €, ma è un dato
+  falso sulla richiesta). Domande 3b e 4 per AGB riscritte come **dimostrate**. Gate: typecheck·lint·**test
+  660**·browser **14/14** desktop e 375px. Nessuna migrazione, nessuna azione ops.
 
-+ **SETTE GEOMETRIE REALI ✅ (PR #38 + #39 MERGIATE)**: un agente intervistato disse che il
-generatore non era funzionale — verificato eseguendo il codice, i suoi **tre clienti principali
-erano tutti rifiutati** (MC aria 4/interasse **8,5**/battuta 15, respinto da zod perché 8,5 non è
-intero; Peruzzi aria 4/interasse 9/battuta 18; Fosca aria 12/interasse 13/battuta **18**), mentre
-il motore copriva una **quarta** combinazione che nessuno dei tre ordina. **Causa radice: due
-quote, un nome** — a `p0474 (472)` AGB pubblica due tabelle adiacenti, stessa pagina e stesse
-famiglie, intitolate «sede telaio 18/24/30» e «BATTUTA 18/20/24/30»: «battuta» indica quindi sia
-la battuta dell'anta (15/18/20 → `.22`/`.24`/`.26`/`.34`/`.36`) sia la sede telaio (18/20/24/30 →
-`.05`/`.12`/`.CR`/`.MN`), e l'agente nomina solo la prima. Entrarono: `geometry: ArtechGeometry`
-(7 valori) + `seatConfig` al posto di 4 campi numerici liberi · **sede derivata** e mostrata, non
-più chiesta · tabelle di **codici interi** (`A50904.22` **non esiste**) · **ricalcolo versionato**
-garantito nel router (una distinta emessa non si riscrive: se ne crea una nuova versione) · **gate
-su catalogo reale**. Test **709**.
-+ **ENTRATA MANIGLIA ✅ (PR #40 MERGIATA, ops eseguite)**, branch `claude/handoff-workflow-choice-u7hvc9`: chiude
-l'ultimo parametro che il motore decideva da sé. La cremonese era cablata in **entrata 15**
-(`A50122.15.NN`) dalla Fase 1d, senza guardia, perché il campo **non esisteva nell'input**: un
-serramento a entrata 7,5 riceveva **in silenzio** il codice della 15 — che esiste, ha un prezzo e
-non produce warning. Sul GR07 del golden vale **6,09 € su 90,20 €** (+38 % sulla riga).
-**L'handoff descriveva l'asse sbagliato** («0, 8 e 15»): a `p0424 (422)` la colonna ENTRATA è
-`1) 7,5` · `2) 15` · `3) Asta*` — `.08` è l'entrata **7,5** e `.00` **non è un'entrata** ma la
-versione ad asta, senza DSS né monoblocco martellina; conferma trovata **nei dati** (il nome a
-catalogo di `A50122.08.07` è «per schema A **1) 7,5**»). Cosa c'è: `entrata: "E75" | "E15"` sul
-ramo ARTECH, **ortogonale** a `geometry` (un test prova che cambia SOLO la riga della cremonese) ·
-**nessun valore preselezionato** — un default sarebbe lo stesso silenzio in un posto più visibile ·
-tabelle di **codici interi** per entrata · colonna `kit_requests.entrata` nullable + backfill
-`E15` sulle sole righe ARTECH · trasporto da **entrambe** le mutation (`create` **e** `ricalcola`) ·
-rilettura **senza fallback** · **vasistas rifiuta** l'entrata 7,5 (due NB di `p0426 (424)` tolgono
-le forbici su 4 GR su 6 senza indicare il sostituto) e il wizard **la disabilita** invece di farla
-scegliere e fallire dopo · battente: `p0429 (427)` pubblica una sola entrata, l'asse lì non esiste.
-**Chiuso anche il buco che aveva lasciato passare il bug**: le liste di `no-silent-fields.test.ts`
-erano scritte a mano e nulla verificava che coprissero lo schema — ora un campo non dichiarato fa
-fallire il test col proprio nome (e ha scovato subito che la vasistas ignora
-`supplementaryClosures`, legittimo e ora dichiarato). Gate: typecheck·lint·**test 748**·build ·
-**gate su catalogo reale 29 casi** · **browser 375px e desktop**. Distinte reali su catalogo
-importato (7.488 prodotti): entrata 15 → **16 righe / 21 pezzi / 90,20 €** (golden invariato) ·
-entrata 7,5 → **16 / 21 / 96,29 €**, cremonese `A50122.08.07`, zero warning. **AZIONI OPS ESEGUITE**
-(run `30572337032`, 2026-07-30 19:11Z, 12/12 verdi: migrate `20260730160444_kit_entrata` + import
-+ seed + embed). ⚠️ **Lezione pagata sul campo**: fra il merge (18:33Z) e la migrazione (18:53Z)
-la produzione è rimasta **rotta venti minuti** — `kit.get` fa `findFirst` senza `select`, quindi
-prima della migrazione fallivano le **letture**, non solo le creazioni. Alla prossima migrazione
-il run ops parte **nella stessa finestra del merge**: scriverlo nella PR non basta.
-Spec/piano: `docs/superpowers/{specs,plans}/2026-07-30-kit-entrata*`.
+- **SETTE GEOMETRIE REALI ✅ (PR #38 + #39 MERGIATE)**: un agente intervistato disse che il
+  generatore non era funzionale — verificato eseguendo il codice, i suoi **tre clienti principali
+  erano tutti rifiutati** (MC aria 4/interasse **8,5**/battuta 15, respinto da zod perché 8,5 non è
+  intero; Peruzzi aria 4/interasse 9/battuta 18; Fosca aria 12/interasse 13/battuta **18**), mentre
+  il motore copriva una **quarta** combinazione che nessuno dei tre ordina. **Causa radice: due
+  quote, un nome** — a `p0474 (472)` AGB pubblica due tabelle adiacenti, stessa pagina e stesse
+  famiglie, intitolate «sede telaio 18/24/30» e «BATTUTA 18/20/24/30»: «battuta» indica quindi sia
+  la battuta dell'anta (15/18/20 → `.22`/`.24`/`.26`/`.34`/`.36`) sia la sede telaio (18/20/24/30 →
+  `.05`/`.12`/`.CR`/`.MN`), e l'agente nomina solo la prima. Entrarono: `geometry: ArtechGeometry`
+  (7 valori) + `seatConfig` al posto di 4 campi numerici liberi · **sede derivata** e mostrata, non
+  più chiesta · tabelle di **codici interi** (`A50904.22` **non esiste**) · **ricalcolo versionato**
+  garantito nel router (una distinta emessa non si riscrive: se ne crea una nuova versione) · **gate
+  su catalogo reale**. Test **709**.
+- **ENTRATA MANIGLIA ✅ (PR #40 MERGIATA, ops eseguite)**, branch `claude/handoff-workflow-choice-u7hvc9`: chiude
+  l'ultimo parametro che il motore decideva da sé. La cremonese era cablata in **entrata 15**
+  (`A50122.15.NN`) dalla Fase 1d, senza guardia, perché il campo **non esisteva nell'input**: un
+  serramento a entrata 7,5 riceveva **in silenzio** il codice della 15 — che esiste, ha un prezzo e
+  non produce warning. Sul GR07 del golden vale **6,09 € su 90,20 €** (+38 % sulla riga).
+  **L'handoff descriveva l'asse sbagliato** («0, 8 e 15»): a `p0424 (422)` la colonna ENTRATA è
+  `1) 7,5` · `2) 15` · `3) Asta*` — `.08` è l'entrata **7,5** e `.00` **non è un'entrata** ma la
+  versione ad asta, senza DSS né monoblocco martellina; conferma trovata **nei dati** (il nome a
+  catalogo di `A50122.08.07` è «per schema A **1) 7,5**»). Cosa c'è: `entrata: "E75" | "E15"` sul
+  ramo ARTECH, **ortogonale** a `geometry` (un test prova che cambia SOLO la riga della cremonese) ·
+  **nessun valore preselezionato** — un default sarebbe lo stesso silenzio in un posto più visibile ·
+  tabelle di **codici interi** per entrata · colonna `kit_requests.entrata` nullable + backfill
+  `E15` sulle sole righe ARTECH · trasporto da **entrambe** le mutation (`create` **e** `ricalcola`) ·
+  rilettura **senza fallback** · **vasistas rifiuta** l'entrata 7,5 (due NB di `p0426 (424)` tolgono
+  le forbici su 4 GR su 6 senza indicare il sostituto) e il wizard **la disabilita** invece di farla
+  scegliere e fallire dopo · battente: `p0429 (427)` pubblica una sola entrata, l'asse lì non esiste.
+  **Chiuso anche il buco che aveva lasciato passare il bug**: le liste di `no-silent-fields.test.ts`
+  erano scritte a mano e nulla verificava che coprissero lo schema — ora un campo non dichiarato fa
+  fallire il test col proprio nome (e ha scovato subito che la vasistas ignora
+  `supplementaryClosures`, legittimo e ora dichiarato). Gate: typecheck·lint·**test 748**·build ·
+  **gate su catalogo reale 29 casi** · **browser 375px e desktop**. Distinte reali su catalogo
+  importato (7.488 prodotti): entrata 15 → **16 righe / 21 pezzi / 90,20 €** (golden invariato) ·
+  entrata 7,5 → **16 / 21 / 96,29 €**, cremonese `A50122.08.07`, zero warning. **AZIONI OPS ESEGUITE**
+  (run `30572337032`, 2026-07-30 19:11Z, 12/12 verdi: migrate `20260730160444_kit_entrata` + import
+- seed + embed). ⚠️ **Lezione pagata sul campo**: fra il merge (18:33Z) e la migrazione (18:53Z)
+  la produzione è rimasta **rotta venti minuti** — `kit.get` fa `findFirst` senza `select`, quindi
+  prima della migrazione fallivano le **letture**, non solo le creazioni. Alla prossima migrazione
+  il run ops parte **nella stessa finestra del merge**: scriverlo nella PR non basta.
+  Spec/piano: `docs/superpowers/{specs,plans}/2026-07-30-kit-entrata*`.
 
 **▶ PROSSIMA SESSIONE — SCELTA FRA TRE STRADE.** L'entrata era la quarta di quattro ed è fatta.
 Restano: **scontistica cliente** (la consigliata — oggi i totali sono il **lordo di listino AGB**,
@@ -439,260 +449,260 @@ righe, stessa forma del test appena scritto) · `no-silent-fields` non è legato
 `dedupeRows` last-wins. Dettagli, lezioni operative e prompt di apertura: `handoff.md`
 §RIPRENDI DA QUI.
 
-+ **SCONTISTICA CLIENTE ✅ (PR #42 MERGIATA, ops eseguite)**: i totali mostravano il
-**lordo di listino AGB**, cioè quello che paghiamo al fornitore, non quello che il cliente paga. Workflow completo
-(brainstorming → 4 domande all'utente → spec → `/writing-plans` → 10 task TDD → `/impeccable` → verifica browser).
-**Scelte utente**: sconto **unico per cliente** · **modificabile anche a distinta generata** · righe **al lordo**,
-sconto solo nel riepilogo · **avviso oltre soglia, mai blocco** · soglia **configurabile da ADMIN**.
-**(1) Dati — una sola colonna**: `KitRequest.discountPercent Decimal(5,2)?` (migrazione `20260730201437_kit_discount_percent`,
-nessun backfill: NULL = nessuno sconto = comportamento storico). Lo sconto vive **sulla richiesta** e non solo su
-`Customer`: se stesse solo lì, ritoccarlo cambierebbe in silenzio il totale di **ogni distinta già mandata** — la
-stessa ragione per cui il ricalcolo è versionato. `Customer.discount`, `KitRequest.customerId` e
-`SettingCategory.COMPANY_INFO` **esistevano già** → nessun'altra migrazione. **`totalPrice` resta il LORDO**, il netto
-è derivato e mai salvato (due totali a DB divergono al primo bug); il KPI «valore» in dashboard resta quindi al lordo.
-**(2) Confine col motore**: `kit.create` passa da `kitInputSchema` nudo a **`{ specs, customerId? }`** — il commerciale
-non entra nell'input che `kit.generate` ricostruisce dalle colonne; un test in `types.test.ts` prova che lo schema
-**scarti** `customerId`/`discountPercent`. **(3)** `customer` router (list/create/update/delete con paletto sulle
-richieste collegate, anagrafica **condivisa**) · `kit.setDiscount` ammessa in **qualunque stato** (rifiuta solo sulla
-riga superata) · soglia in `Settings{COMPANY_INFO}` in chiaro. **(4) UI**: selettore cliente nel wizard (con
-empty-state vero — in produzione l'anagrafica è **vuota**) · riepilogo `Totale listino AGB → Sconto → Totale cliente`
-· sezione soglia in `/impostazioni`. **Bug trovati dai test e dagli screenshot, non dal codice**: `Number.isInteger(v*100)`
-**rifiuta 40,55** (fa `4054.9999…`) → validazione in un posto solo; `42.5%` col punto in una UI italiana → `formatPercent`;
-e a **375px la tabella scorre in orizzontale**, quindi il suo piè con i totali era **fuori schermo** → i totali sono
-migrati nel riepilogo, che è l'unico posto in cui compaiono. Gate verdi (typecheck·lint·**test 843**·build 17 route) ·
-**browser 40/40** (desktop + 375px) · **integration gated 38/38 sul catalogo reale** · golden **16 righe / 21 pezzi /
-90,20 €** e gemello entrata 7,5 **96,29 €** invariati, verificati esplicitamente. **AZIONI OPS ESEGUITE** (run `30583325831`, 2026-07-30 21:41Z, 4/4 verdi: migrate
-`20260730201437_kit_discount_percent` + import 7.488 + seed + embed «niente da fare»). Serviva la sola
-migrazione; il workflow esegue comunque tutti e quattro i passi, idempotenti. Nuova **domanda 28** in `DOMANDE-APERTE.md`: il
-listino ha **34 classi di sconto**, i codici ARTECH sono tutti **F3** e i TOUR tutti **T1** → una percentuale unica li
-tratta uguali (scelta consapevole, da riverificare con l'ufficio commerciale).
-Spec/piano: `docs/superpowers/{specs,plans}/2026-07-30-scontistica-cliente*`.
+- **SCONTISTICA CLIENTE ✅ (PR #42 MERGIATA, ops eseguite)**: i totali mostravano il
+  **lordo di listino AGB**, cioè quello che paghiamo al fornitore, non quello che il cliente paga. Workflow completo
+  (brainstorming → 4 domande all'utente → spec → `/writing-plans` → 10 task TDD → `/impeccable` → verifica browser).
+  **Scelte utente**: sconto **unico per cliente** · **modificabile anche a distinta generata** · righe **al lordo**,
+  sconto solo nel riepilogo · **avviso oltre soglia, mai blocco** · soglia **configurabile da ADMIN**.
+  **(1) Dati — una sola colonna**: `KitRequest.discountPercent Decimal(5,2)?` (migrazione `20260730201437_kit_discount_percent`,
+  nessun backfill: NULL = nessuno sconto = comportamento storico). Lo sconto vive **sulla richiesta** e non solo su
+  `Customer`: se stesse solo lì, ritoccarlo cambierebbe in silenzio il totale di **ogni distinta già mandata** — la
+  stessa ragione per cui il ricalcolo è versionato. `Customer.discount`, `KitRequest.customerId` e
+  `SettingCategory.COMPANY_INFO` **esistevano già** → nessun'altra migrazione. **`totalPrice` resta il LORDO**, il netto
+  è derivato e mai salvato (due totali a DB divergono al primo bug); il KPI «valore» in dashboard resta quindi al lordo.
+  **(2) Confine col motore**: `kit.create` passa da `kitInputSchema` nudo a **`{ specs, customerId? }`** — il commerciale
+  non entra nell'input che `kit.generate` ricostruisce dalle colonne; un test in `types.test.ts` prova che lo schema
+  **scarti** `customerId`/`discountPercent`. **(3)** `customer` router (list/create/update/delete con paletto sulle
+  richieste collegate, anagrafica **condivisa**) · `kit.setDiscount` ammessa in **qualunque stato** (rifiuta solo sulla
+  riga superata) · soglia in `Settings{COMPANY_INFO}` in chiaro. **(4) UI**: selettore cliente nel wizard (con
+  empty-state vero — in produzione l'anagrafica è **vuota**) · riepilogo `Totale listino AGB → Sconto → Totale cliente`
+  · sezione soglia in `/impostazioni`. **Bug trovati dai test e dagli screenshot, non dal codice**: `Number.isInteger(v*100)`
+  **rifiuta 40,55** (fa `4054.9999…`) → validazione in un posto solo; `42.5%` col punto in una UI italiana → `formatPercent`;
+  e a **375px la tabella scorre in orizzontale**, quindi il suo piè con i totali era **fuori schermo** → i totali sono
+  migrati nel riepilogo, che è l'unico posto in cui compaiono. Gate verdi (typecheck·lint·**test 843**·build 17 route) ·
+  **browser 40/40** (desktop + 375px) · **integration gated 38/38 sul catalogo reale** · golden **16 righe / 21 pezzi /
+  90,20 €** e gemello entrata 7,5 **96,29 €** invariati, verificati esplicitamente. **AZIONI OPS ESEGUITE** (run `30583325831`, 2026-07-30 21:41Z, 4/4 verdi: migrate
+  `20260730201437_kit_discount_percent` + import 7.488 + seed + embed «niente da fare»). Serviva la sola
+  migrazione; il workflow esegue comunque tutti e quattro i passi, idempotenti. Nuova **domanda 28** in `DOMANDE-APERTE.md`: il
+  listino ha **34 classi di sconto**, i codici ARTECH sono tutti **F3** e i TOUR tutti **T1** → una percentuale unica li
+  tratta uguali (scelta consapevole, da riverificare con l'ufficio commerciale).
+  Spec/piano: `docs/superpowers/{specs,plans}/2026-07-30-scontistica-cliente*`.
 
-+ **PROFILO SERRAMENTO DEL CLIENTE ✅ (**PR #44 MERGIATA, ops eseguite**)**:
-il wizard chiedeva **geometria ed entrata a ogni richiesta**, fra 14 combinazioni, e sbagliarle non produce alcun
-errore — i codici dell'altra combinazione esistono a listino, hanno un prezzo, nessun warning. Ma quelle due quote
-**non cambiano** fra un ordine e l'altro dello stesso cliente (i tre principali ne hanno una fissa ciascuno).
-**(0) Un difetto già in produzione, trovato dal council mentre rispondeva ad altro**: `nuova-client.tsx:57` cablava
-`geometry: "A12_I13_B20"`, la geometria del cliente del golden → **ogni nuovo ordine partiva con la geometria di un
-altro cliente**. Tolto nel primo commit, isolato; **dieci test** navigavano al riepilogo senza scegliere la geometria
-(uno asseriva perfino `checked === true`): erano la codifica del difetto, non la sua sentinella.
-**(1) Dati**: due colonne nullable su `customers` (`kit_geometry`, `kit_entrata`, migrazione
-`20260730232026_customer_kit_profile`, **nessun backfill**, nessun `CREATE TYPE`). Nessun modello nuovo: la tabella
-separata della spec 2026-07-29 §3.5 aveva come unica giustificazione «più profili per cliente», e l'utente ha stabilito
-**una linea a testa**. Lo **snapshot è già gratis** — `kit.create` scrive di suo geometria ed entrata sulla riga.
-**(2) Confine col motore**: `kitInputSchema` **scarta** i due campi (due test), perché `kit.generate` rilegge le
-colonne di `kit_requests` e un campo senza colonna lì farebbe divergere ogni rigenerazione.
-**(3) La UI l'ha decisa il `/llm-council`** (5 advisor + 3 peer review), respingendo la mia proposta: precompilare
-reintroduce un valore che l'agente **non ha scelto in quel momento**, con in più un'etichetta che lo fa *sembrare*
-verificato — mentre il primo dato lo digita l'agente, dalla stessa memoria che è il punto di rottura. Sintesi adottata:
-**nessun prefill, un pulsante «Usa il profilo»** — atto esplicito, e la regola della #40 regge alla lettera su
-**entrambi** i campi. Etichetta onesta: *dichiarato in anagrafica, mai confrontato con un ordine*. **Guadagno non
-richiesto**: al passo 4 il riepilogo **constata** la divergenza dal profilo (non blocca: non sappiamo quale delle due
-dichiarazioni sia giusta) — è il **primo rilevatore d'errore** che il sistema possieda.
-**(4) Pagina `/clienti`**, che chiude anche il buco per cui `customer.update`/`delete` esistevano nel router **senza
-essere raggiungibili da alcuna schermata**: un cliente, una volta creato, non era più correggibile. Nessun gate ADMIN
-(anagrafica condivisa, `agentProcedure`). **(5) Debito chiuso**: il gate su catalogo reale fissava `widthMm: 550` e
-verificava **10 dei 40 codici braccio** → 5 larghezze × 7 geometrie × 2 mani + una **guardia** contro il calo silenzioso
-di copertura; da **29 a 100 casi**, tutti verdi. E il golden ora è **asserito davvero** (`16 righe / 21 pezzi /
+- **PROFILO SERRAMENTO DEL CLIENTE ✅ (**PR #44 MERGIATA, ops eseguite**)**:
+  il wizard chiedeva **geometria ed entrata a ogni richiesta**, fra 14 combinazioni, e sbagliarle non produce alcun
+  errore — i codici dell'altra combinazione esistono a listino, hanno un prezzo, nessun warning. Ma quelle due quote
+  **non cambiano** fra un ordine e l'altro dello stesso cliente (i tre principali ne hanno una fissa ciascuno).
+  **(0) Un difetto già in produzione, trovato dal council mentre rispondeva ad altro**: `nuova-client.tsx:57` cablava
+  `geometry: "A12_I13_B20"`, la geometria del cliente del golden → **ogni nuovo ordine partiva con la geometria di un
+  altro cliente**. Tolto nel primo commit, isolato; **dieci test** navigavano al riepilogo senza scegliere la geometria
+  (uno asseriva perfino `checked === true`): erano la codifica del difetto, non la sua sentinella.
+  **(1) Dati**: due colonne nullable su `customers` (`kit_geometry`, `kit_entrata`, migrazione
+  `20260730232026_customer_kit_profile`, **nessun backfill**, nessun `CREATE TYPE`). Nessun modello nuovo: la tabella
+  separata della spec 2026-07-29 §3.5 aveva come unica giustificazione «più profili per cliente», e l'utente ha stabilito
+  **una linea a testa**. Lo **snapshot è già gratis** — `kit.create` scrive di suo geometria ed entrata sulla riga.
+  **(2) Confine col motore**: `kitInputSchema` **scarta** i due campi (due test), perché `kit.generate` rilegge le
+  colonne di `kit_requests` e un campo senza colonna lì farebbe divergere ogni rigenerazione.
+  **(3) La UI l'ha decisa il `/llm-council`** (5 advisor + 3 peer review), respingendo la mia proposta: precompilare
+  reintroduce un valore che l'agente **non ha scelto in quel momento**, con in più un'etichetta che lo fa _sembrare_
+  verificato — mentre il primo dato lo digita l'agente, dalla stessa memoria che è il punto di rottura. Sintesi adottata:
+  **nessun prefill, un pulsante «Usa il profilo»** — atto esplicito, e la regola della #40 regge alla lettera su
+  **entrambi** i campi. Etichetta onesta: _dichiarato in anagrafica, mai confrontato con un ordine_. **Guadagno non
+  richiesto**: al passo 4 il riepilogo **constata** la divergenza dal profilo (non blocca: non sappiamo quale delle due
+  dichiarazioni sia giusta) — è il **primo rilevatore d'errore** che il sistema possieda.
+  **(4) Pagina `/clienti`**, che chiude anche il buco per cui `customer.update`/`delete` esistevano nel router **senza
+  essere raggiungibili da alcuna schermata**: un cliente, una volta creato, non era più correggibile. Nessun gate ADMIN
+  (anagrafica condivisa, `agentProcedure`). **(5) Debito chiuso**: il gate su catalogo reale fissava `widthMm: 550` e
+  verificava **10 dei 40 codici braccio** → 5 larghezze × 7 geometrie × 2 mani + una **guardia** contro il calo silenzioso
+  di copertura; da **29 a 100 casi**, tutti verdi. E il golden ora è **asserito davvero** (`16 righe / 21 pezzi /
 90,20 €`, gemello `96,29 €`): prima il gate diceva `totalPrice > 0`.
-**(6) Fuori scope motivato — nuova domanda 29**: l'«**incontro nottolino incassato**» chiesto dall'utente **non è
-mappabile a un codice** (la parola compare 2 volte in 959 pagine, entrambe fuori contesto). Il listino pubblica però
-**tre assi che il motore cabla senza chiederli**: il **corpo** (`A51400.05.02` piastrina vs `A51400.05.13` corpo pieno,
-stesso formato 9x18, stesso prezzo, p0469 (467) voci 2 e 4 del **disegno**) · i **perni di posizionamento** (`A52200.*`,
-su nottolino/ribalta/DSS) · l'**antieffrazione** (p0470 (468), pagina **non citata** fra le fonti del modulo, 2-3 €
-contro 0,81). Due indizi si contraddicono (la mano DX/SX indica l'antieffrazione, non il corpo; «fresatura» è la
-geometria aria 4, non una variante) e il `.13` richiede la copertura della **domanda 20** → **non si indovina**.
-Circostanziata anche la 20: i codici che fanno scattare la copertura sono `A51400.CR.13` (Fosca) e i ribalta
-`A51400.05.70`/`.CR.70`, **entrambi** marcati `*` — il primo è quello del **golden**, che essendo un ordine reale a 16
-righe **non si tocca** su questa base. Gate verdi (typecheck·lint·**test 875**·build 18 route) · **integration gated
-100 casi** · **browser 30/30** (desktop e **375px**, 24 screenshot guardati — è così che è saltato fuori lo sconto
-precompilato «42.5» col punto in una UI italiana, con 30 check verdi).
-**AZIONI OPS ESEGUITE** (run `30614027728`, 2026-07-31 08:02Z, 12/12 verdi): migrazione
-`20260730232026_customer_kit_profile` applicata **quattordici minuti PRIMA del merge**, lanciando «Ops — Neon» sul
-**ref del branch** — prima volta con finestra di disservizio **zero** (#40 ne aveva venti minuti, #42 qualcuno).
-Spec/piano: `docs/superpowers/{specs,plans}/2026-07-30-profilo-serramento-cliente*`.
+  **(6) Fuori scope motivato — nuova domanda 29**: l'«**incontro nottolino incassato**» chiesto dall'utente **non è
+  mappabile a un codice** (la parola compare 2 volte in 959 pagine, entrambe fuori contesto). Il listino pubblica però
+  **tre assi che il motore cabla senza chiederli**: il **corpo** (`A51400.05.02` piastrina vs `A51400.05.13` corpo pieno,
+  stesso formato 9x18, stesso prezzo, p0469 (467) voci 2 e 4 del **disegno**) · i **perni di posizionamento** (`A52200.*`,
+  su nottolino/ribalta/DSS) · l'**antieffrazione** (p0470 (468), pagina **non citata** fra le fonti del modulo, 2-3 €
+  contro 0,81). Due indizi si contraddicono (la mano DX/SX indica l'antieffrazione, non il corpo; «fresatura» è la
+  geometria aria 4, non una variante) e il `.13` richiede la copertura della **domanda 20** → **non si indovina**.
+  Circostanziata anche la 20: i codici che fanno scattare la copertura sono `A51400.CR.13` (Fosca) e i ribalta
+  `A51400.05.70`/`.CR.70`, **entrambi** marcati `*` — il primo è quello del **golden**, che essendo un ordine reale a 16
+  righe **non si tocca** su questa base. Gate verdi (typecheck·lint·**test 875**·build 18 route) · **integration gated
+  100 casi** · **browser 30/30** (desktop e **375px**, 24 screenshot guardati — è così che è saltato fuori lo sconto
+  precompilato «42.5» col punto in una UI italiana, con 30 check verdi).
+  **AZIONI OPS ESEGUITE** (run `30614027728`, 2026-07-31 08:02Z, 12/12 verdi): migrazione
+  `20260730232026_customer_kit_profile` applicata **quattordici minuti PRIMA del merge**, lanciando «Ops — Neon» sul
+  **ref del branch** — prima volta con finestra di disservizio **zero** (#40 ne aveva venti minuti, #42 qualcuno).
+  Spec/piano: `docs/superpowers/{specs,plans}/2026-07-30-profilo-serramento-cliente*`.
 
-+ **ANAGRAFICA COMPLETA ✅ (PR #45 MERGIATA, ops eseguite)**: la `/clienti` della #44 aveva elenco, modifica ed
-eliminazione ma **non la creazione** — con l'anagrafica vuota, che è lo stato del primo giorno, l'unico modo di
-aggiungere un cliente era **iniziare una richiesta kit e poi abbandonarla**. Una pagina «Clienti» da cui non si creano
-clienti; l'ha visto l'utente, non i test, perché nessuna asserzione può accorgersi di un pulsante mai pensato.
-**(1) Pulsante «Nuovo cliente»**, presente anche nell'empty-state. Il form è **lo stesso** della modifica, non un
-secondo: l'unica differenza vera vive in tre righe di `salva()` — in **creazione** i campi vuoti si **omettono**
-(`customer.create` li vuole `.optional()`), in **modifica** si mandano a **`null`** (`update` distingue «azzera» da
-«non toccare»); un test per ciascun verso. **(2) I tre clienti principali in anagrafica**: MC (`A4_I85_B15`), Peruzzi
-(`A4_I9_B18`), Fosca (`A12_I13_B18`) — le stesse geometrie già usate come fixture nei test del motore. Stanno nel
-**seed** e non in uno script a parte (app mono-azienda, `pnpm db:seed` gira già a ogni run ops → zero step nuovi),
-con `upsert`/`update: {}` su `customerCode`: **crea se manca, non tocca se c'è**, verificato sul DB vero ritoccando
-a mano sconto ed entrata e rilanciando — il ritocco sopravvive, il conteggio resta 3. Serve perché il workflow rigira
-a ogni deploy. **(3) Entrata e sconto restano NULL, con un test che lo protegge**: l'entrata è la **domanda 17**,
-ancora aperta, e inventarne una nel profilo di un cliente vero sarebbe lo stesso difetto chiuso dalla #44 in un posto
-più difficile da vedere. Gate: typecheck·lint·**test 883**·build · **browser 22/22** (desktop e 375px).
-**Nessuna migrazione**; **AZIONI OPS ESEGUITE** (run `30618326143`, 09:15Z, 12/12 verdi: `db:seed` → i tre clienti
-creati su Neon).
+- **ANAGRAFICA COMPLETA ✅ (PR #45 MERGIATA, ops eseguite)**: la `/clienti` della #44 aveva elenco, modifica ed
+  eliminazione ma **non la creazione** — con l'anagrafica vuota, che è lo stato del primo giorno, l'unico modo di
+  aggiungere un cliente era **iniziare una richiesta kit e poi abbandonarla**. Una pagina «Clienti» da cui non si creano
+  clienti; l'ha visto l'utente, non i test, perché nessuna asserzione può accorgersi di un pulsante mai pensato.
+  **(1) Pulsante «Nuovo cliente»**, presente anche nell'empty-state. Il form è **lo stesso** della modifica, non un
+  secondo: l'unica differenza vera vive in tre righe di `salva()` — in **creazione** i campi vuoti si **omettono**
+  (`customer.create` li vuole `.optional()`), in **modifica** si mandano a **`null`** (`update` distingue «azzera» da
+  «non toccare»); un test per ciascun verso. **(2) I tre clienti principali in anagrafica**: MC (`A4_I85_B15`), Peruzzi
+  (`A4_I9_B18`), Fosca (`A12_I13_B18`) — le stesse geometrie già usate come fixture nei test del motore. Stanno nel
+  **seed** e non in uno script a parte (app mono-azienda, `pnpm db:seed` gira già a ogni run ops → zero step nuovi),
+  con `upsert`/`update: {}` su `customerCode`: **crea se manca, non tocca se c'è**, verificato sul DB vero ritoccando
+  a mano sconto ed entrata e rilanciando — il ritocco sopravvive, il conteggio resta 3. Serve perché il workflow rigira
+  a ogni deploy. **(3) Entrata e sconto restano NULL, con un test che lo protegge**: l'entrata è la **domanda 17**,
+  ancora aperta, e inventarne una nel profilo di un cliente vero sarebbe lo stesso difetto chiuso dalla #44 in un posto
+  più difficile da vedere. Gate: typecheck·lint·**test 883**·build · **browser 22/22** (desktop e 375px).
+  **Nessuna migrazione**; **AZIONI OPS ESEGUITE** (run `30618326143`, 09:15Z, 12/12 verdi: `db:seed` → i tre clienti
+  creati su Neon).
 
-+ **ANTIEFFRAZIONE + VARIANTI COMPONENTE ✅ (branch `claude/antieffrazione-feature-dv8d37`, PR DA APRIRE)**:
-l'utente ha chiesto l'antieffrazione per l'anta-ribalta. Preparandola erano emerse **due domande a cui il listino non
-risponde** (il «nottolino a fungo» va su serramenti sede 30? gli incontri si ordinano a viti inclinate o dritte?), e
-la risposta dell'utente ha riorientato il lavoro: «*non saprei risponderti … ha senso aggiungere una sezione finale
-nel wizard, per far scegliere in modo semplice e visivo, quando ci sono più scelte per uno o più componenti che non
-dipendono dallo schema dello sviluppo del kit ma da una scelta personale*». Le due domande sono quindi state
-**risolte non rispondendole**: sono diventate **scelte nella UI** — nuovo passo **«Componenti»**, con codice, nome a
-catalogo, prezzo e differenza davanti. È la **settima** volta che il progetto incontra «una decisione che il motore
-prende da sé e non dichiara» (`openingDir`, entrata, geometria, `PILOT_GEOMETRY`, il default `A12_I13_B20`): le
-prime sei sono state chiuse una alla volta, **questa chiude la classe**. **Domande 2 (squadra angolare) e 30
-(antieffrazione) CHIUSE** — la risposta di merito ora sposterebbe il *default*, non i codici disponibili.
-**(1) Registro `artech-varianti.ts`**: cinque varianti (squadra angolare · incontro ribalta · movimento angolare ·
-incontri nottolino · piastrino), **74 codici scritti per esteso** e verificati sul catalogo reale dal gate — mai
-concatenati, perché `A50904.22` **non esiste** ed è la prima cosa che una formula produrrebbe (è il difetto che ha
-fatto disattivare PVC e battente). La **disponibilità è la tabella**: l'interasse 8,5 di MC vede **due** squadre, le
-altre sei geometrie quattro; e per l'**aria 4** il listino pubblica **solo le viti inclinate**, quindi per MC e
-Peruzzi le dritte **non compaiono affatto**. **(2) Una sola colonna**: `kit_requests.variants JSONB` (migrazione
-`20260731143758_kit_variants`, **solo** `ALTER TABLE … ADD COLUMN`, nessun backfill, nessun `@default` a DB:
-**`NULL` = «lo standard del programma»**). Sta nel **ramo ARTECH** dell'unione discriminata, così una riga TOUR non
-può portarsi addosso varianti ARTECH. **(3) Il «fungo» resta FUORI, ed è collocazione non rinuncia**:
-`A50320.02.01` sta nel capitolo Movimenti Angolari (quindi *sostituisce* un movimento angolare) e il listino lo lega
-alla **sede 30 nei due versi** (NB a p0435 (433); nota `(**)` stampata solo sulle righe `13x30` a p0469 (467)) — la
-sede 30 il motore la rifiuta a monte: è una **famiglia di schemi diversa**, entrerà con la **domanda 4**. Il
-**movimento angolare a due nottolini** invece è entrato e non era nella richiesta dell'utente: **l'ha aggiunto il
-listino** (NB stampata). **(4) Garanzia in due strati contro la variante inerte**: `RuleModule.varianti`
-**obbligatorio** (un modulo nuovo non compila senza averci pensato) e il motore **rifiuta a runtime**, col nome della
-variante, una richiesta che ne porti una non dichiarata; `no-silent-fields` deriva i casi **dalla dichiarazione del
-modulo** con una mutazione **per chiave**, quindi una variante che smettesse di essere letta fa fallire il test **col
-proprio nome** (provato mutilando il modulo). **(5) Ciclo di import reale** fra `types.ts` e `artech-varianti.ts`,
-che si manifestava **solo con certi ordini di caricamento** della suite: sciolto col file foglia
-`src/server/kit/varianti-schema.ts` (solo zod), **protetto da una regola ESLint provata nei due versi**.
-**(6) Due difetti trovati dalla review e corretti**: la potatura al cambio geometria **materializzava a DB uno
-standard** che una richiesta identica scriverebbe `NULL`; e «prezzo non a catalogo» — un'affermazione **sul listino
-AGB** — veniva detta mentre la query stava ancora caricando. **Il golden non si è mosso**: **16 righe / 21 pezzi /
-90,20 €**, gemello entrata 7,5 **96,29 €**; novità, ora sono asseriti anche l'**ordine assoluto delle righe** e le
-**16 descrizioni carattere per carattere**. Con l'**antieffrazione completa**: **17 righe / 22 pezzi / 110,13 €**,
-zero warning. Gate verdi (typecheck·lint·**test 992**·build 18 route) · **integration su catalogo reale 111 test
-eseguiti** · **browser 33 + 10 check** (Chromium desktop e **375px**, screenshot guardati).
-**🔴 AZIONE OPS**: un run di «Ops — Neon» **sul ref del branch, PRIMA del merge** — `kit.get`/`generate`/`ricalcola`
-leggono con `findFirst` **senza `select`**, quindi fra deploy e migrazione fallirebbero le **letture** delle
-richieste, non solo le creazioni (è alla lettera l'incidente da venti minuti della PR #40). **Il raggio è più largo
-di «le richieste»**: anche `src/server/api/routers/dashboard.ts:40` fa `kitRequest.findMany` **senza `select`**,
-quindi si rompe pure **`dashboard.overview`**, cioè la **pagina d'ingresso di tutti e dieci gli agenti** — nessuno
-scarto fra merge e migrazione è tollerabile. **Nessun re-import necessario**: i 74 codici sono già tutti a catalogo
-con prezzo. **Le varianti NON si possono cambiare dopo la creazione** (`kit.ricalcola` le eredita verbatim,
-`kit.ts:249-252`; nessuna mutation le modifica): per cambiarle si rifà il wizard da capo — **va detto agli agenti
-insieme alla feature**; il seguito è un `variants` opzionale in input a `ricalcola`. Debito noto: `nuova-client.tsx` è a **1.979 righe**
-(i ~330 del passo «Componenti» sarebbero estraibili in `src/components/kit/`); «Visualizza nel listino» **per
-singola opzione omesso** (un `<button>` dentro il `<label>` di `RadioOption` è HTML non valido e ruberebbe il clic
-alla radio: servirebbe spezzare `RadioOption`); `dedupeRows` last-wins in `map-product.ts`; preview Vercel rotte su
-ogni PR. Spec/piano: `docs/superpowers/{specs,plans}/2026-07-31-varianti-componenti*`.
+- **ANTIEFFRAZIONE + VARIANTI COMPONENTE ✅ (branch `claude/antieffrazione-feature-dv8d37`, PR DA APRIRE)**:
+  l'utente ha chiesto l'antieffrazione per l'anta-ribalta. Preparandola erano emerse **due domande a cui il listino non
+  risponde** (il «nottolino a fungo» va su serramenti sede 30? gli incontri si ordinano a viti inclinate o dritte?), e
+  la risposta dell'utente ha riorientato il lavoro: «_non saprei risponderti … ha senso aggiungere una sezione finale
+  nel wizard, per far scegliere in modo semplice e visivo, quando ci sono più scelte per uno o più componenti che non
+  dipendono dallo schema dello sviluppo del kit ma da una scelta personale_». Le due domande sono quindi state
+  **risolte non rispondendole**: sono diventate **scelte nella UI** — nuovo passo **«Componenti»**, con codice, nome a
+  catalogo, prezzo e differenza davanti. È la **settima** volta che il progetto incontra «una decisione che il motore
+  prende da sé e non dichiara» (`openingDir`, entrata, geometria, `PILOT_GEOMETRY`, il default `A12_I13_B20`): le
+  prime sei sono state chiuse una alla volta, **questa chiude la classe**. **Domande 2 (squadra angolare) e 30
+  (antieffrazione) CHIUSE** — la risposta di merito ora sposterebbe il _default_, non i codici disponibili.
+  **(1) Registro `artech-varianti.ts`**: cinque varianti (squadra angolare · incontro ribalta · movimento angolare ·
+  incontri nottolino · piastrino), **74 codici scritti per esteso** e verificati sul catalogo reale dal gate — mai
+  concatenati, perché `A50904.22` **non esiste** ed è la prima cosa che una formula produrrebbe (è il difetto che ha
+  fatto disattivare PVC e battente). La **disponibilità è la tabella**: l'interasse 8,5 di MC vede **due** squadre, le
+  altre sei geometrie quattro; e per l'**aria 4** il listino pubblica **solo le viti inclinate**, quindi per MC e
+  Peruzzi le dritte **non compaiono affatto**. **(2) Una sola colonna**: `kit_requests.variants JSONB` (migrazione
+  `20260731143758_kit_variants`, **solo** `ALTER TABLE … ADD COLUMN`, nessun backfill, nessun `@default` a DB:
+  **`NULL` = «lo standard del programma»**). Sta nel **ramo ARTECH** dell'unione discriminata, così una riga TOUR non
+  può portarsi addosso varianti ARTECH. **(3) Il «fungo» resta FUORI, ed è collocazione non rinuncia**:
+  `A50320.02.01` sta nel capitolo Movimenti Angolari (quindi _sostituisce_ un movimento angolare) e il listino lo lega
+  alla **sede 30 nei due versi** (NB a p0435 (433); nota `(**)` stampata solo sulle righe `13x30` a p0469 (467)) — la
+  sede 30 il motore la rifiuta a monte: è una **famiglia di schemi diversa**, entrerà con la **domanda 4**. Il
+  **movimento angolare a due nottolini** invece è entrato e non era nella richiesta dell'utente: **l'ha aggiunto il
+  listino** (NB stampata). **(4) Garanzia in due strati contro la variante inerte**: `RuleModule.varianti`
+  **obbligatorio** (un modulo nuovo non compila senza averci pensato) e il motore **rifiuta a runtime**, col nome della
+  variante, una richiesta che ne porti una non dichiarata; `no-silent-fields` deriva i casi **dalla dichiarazione del
+  modulo** con una mutazione **per chiave**, quindi una variante che smettesse di essere letta fa fallire il test **col
+  proprio nome** (provato mutilando il modulo). **(5) Ciclo di import reale** fra `types.ts` e `artech-varianti.ts`,
+  che si manifestava **solo con certi ordini di caricamento** della suite: sciolto col file foglia
+  `src/server/kit/varianti-schema.ts` (solo zod), **protetto da una regola ESLint provata nei due versi**.
+  **(6) Due difetti trovati dalla review e corretti**: la potatura al cambio geometria **materializzava a DB uno
+  standard** che una richiesta identica scriverebbe `NULL`; e «prezzo non a catalogo» — un'affermazione **sul listino
+  AGB** — veniva detta mentre la query stava ancora caricando. **Il golden non si è mosso**: **16 righe / 21 pezzi /
+  90,20 €**, gemello entrata 7,5 **96,29 €**; novità, ora sono asseriti anche l'**ordine assoluto delle righe** e le
+  **16 descrizioni carattere per carattere**. Con l'**antieffrazione completa**: **17 righe / 22 pezzi / 110,13 €**,
+  zero warning. Gate verdi (typecheck·lint·**test 992**·build 18 route) · **integration su catalogo reale 111 test
+  eseguiti** · **browser 33 + 10 check** (Chromium desktop e **375px**, screenshot guardati).
+  **🔴 AZIONE OPS**: un run di «Ops — Neon» **sul ref del branch, PRIMA del merge** — `kit.get`/`generate`/`ricalcola`
+  leggono con `findFirst` **senza `select`**, quindi fra deploy e migrazione fallirebbero le **letture** delle
+  richieste, non solo le creazioni (è alla lettera l'incidente da venti minuti della PR #40). **Il raggio è più largo
+  di «le richieste»**: anche `src/server/api/routers/dashboard.ts:40` fa `kitRequest.findMany` **senza `select`**,
+  quindi si rompe pure **`dashboard.overview`**, cioè la **pagina d'ingresso di tutti e dieci gli agenti** — nessuno
+  scarto fra merge e migrazione è tollerabile. **Nessun re-import necessario**: i 74 codici sono già tutti a catalogo
+  con prezzo. **Le varianti NON si possono cambiare dopo la creazione** (`kit.ricalcola` le eredita verbatim,
+  `kit.ts:249-252`; nessuna mutation le modifica): per cambiarle si rifà il wizard da capo — **va detto agli agenti
+  insieme alla feature**; il seguito è un `variants` opzionale in input a `ricalcola`. Debito noto: `nuova-client.tsx` è a **1.979 righe**
+  (i ~330 del passo «Componenti» sarebbero estraibili in `src/components/kit/`); «Visualizza nel listino» **per
+  singola opzione omesso** (un `<button>` dentro il `<label>` di `RadioOption` è HTML non valido e ruberebbe il clic
+  alla radio: servirebbe spezzare `RadioOption`); `dedupeRows` last-wins in `map-product.ts`; preview Vercel rotte su
+  ogni PR. Spec/piano: `docs/superpowers/{specs,plans}/2026-07-31-varianti-componenti*`.
 
-+ **VARIANTI MODIFICABILI DOPO LA CREAZIONE ✅ (branch `claude/verifica-distinte-reali-8zz9mw`,
-**PR #48 APERTA**)**: la #47 lasciava un difetto dichiarato — le cinque varianti del passo «Componenti»
-**non si cambiavano più** dopo la creazione, si rifaceva il wizard da capo. Ora sulla scheda c'è
-**«Modifica componenti»**, che riapre il wizard precompilato; al conferma nasce una **nuova
-versione**. **(0) La verifica funzionale della #47, fatta per prima, ha scoperto un buco**:
-`110,13 €` **non era asserito da nessun test** — il test del modulo conta righe e pezzi ma **non
-vede i prezzi affatto** (i moduli restituiscono `KitLine` senza prezzo, che il motore risolve dopo
-contro il catalogo), quindi il numero viveva solo nei `.md`. Chiuso nel primo commit, insieme ai
-**tre totali bilico** che stavano ancora dietro un `toBeGreaterThan(0)` (450,03 · 766,51 · 433,46,
-ri-misurati e identici alla #35). **(1) Contratto** deciso col **`/llm-council`** (5 advisor
-unanimi + 3 peer review): `ricalcola({kitRequestId, variants?})` — assente = **eredita** · `{}` =
-**reset** allo standard (scrive `NULL`) · oggetto = **sostituzione integrale**, mai un merge. Il
-reset non è inventato: le 5 chiavi erano già `.optional()` in uno `.strict()`, quindi `{}` era già
-valido; **dichiararlo** è ciò che impedisce all'operazione di essere a senso unico. **(2) Solo
-«Componenti» è editabile**, e non per prudenza ma per il tipo: la firma **congela la geometria**,
-quindi la combinazione geometria/varianti mai validata è **irrappresentabile**, non «sconsigliata»
-— le due alternative (un diff che sceglie fra versione e richiesta nuova; `ricalcola` che accetta
-l'intera `specs`) aprivano un **secondo percorso di scrittura** su `specs`. **(3) Validazione prima
-di ogni scrittura**, ed è il **motore eseguito in memoria**: le varianti disponibili dipendono dalla
-geometria e quel controllo vive nei moduli, quindi un secondo validatore avrebbe potuto
-disallinearsi dalle tabelle dei codici. **(4) L'idratazione passa da `kitInputFromRequest`**, la
-stessa funzione del motore (possibile perché **solo `engine.ts` ha `server-only`**): un prefill che
-rileggesse le colonne per conto suo sarebbe una seconda ricostruzione, e se divergesse l'agente
-confermerebbe a schermo una configurazione che la riga non codifica. **(5)** «Ricalcola» →
-**«Nuova versione»** (la parola prometteva «rifai lo stesso conto» mentre emette un documento con un
-numero nuovo), rinominata anche nelle due stringhe che la citavano altrove. **(6)** `ComponentiRibalta`
-e `RadioOption` estratte in `src/components/kit/` — insieme, perché estrarre solo la prima avrebbe
-chiuso un **ciclo** wizard→componenti→wizard; `nuova-client.tsx` da 1.983 a 1.383 righe. **Difetti
-colti dai test**: `variantiFinali ?? request.variants` faceva ricadere il **reset**
-sull'ereditarietà (`??` tratta `null` come nullish) — spegnere l'antieffrazione non avrebbe fatto
-nulla in silenzio. **Quattro trovati dalla review di branch, coi gate tutti verdi**: (a) un
-**refetch** di `kit.get` cancellava le varianti appena scelte — lo structural sharing di
-react-query non regge sulle `Date` e il `QueryClient` è nudo (`staleTime: 0` +
-`refetchOnWindowFocus`), quindi bastava cambiare finestra → idratazione **una volta sola**;
-(b) la validazione copriva solo il ramo con `variants`, mentre «Nuova versione» chiama `ricalcola`
-**senza**: su una riga PVC/battente già emessa nascevano **due righe morte** → si valida ogni volta
-che si sta per scrivere; (c) su una **bozza** la UI prometteva una versione che non nasce (il
-router scrive in loco); (d) la **vasistas** passava il filtro per serie pur non avendo varianti →
-si filtra sulla **tipologia**, con un test in `registry.test.ts` che fallisce se un modulo cambia
-idea. Gate verdi (typecheck·lint·**test 1.035**·build 18 route) · **catalogo reale 112
-test** · **browser 22/22 desktop e 22/22 a 375px**, col ciclo intero 90,20 → 110,13 → **ritorno a
-90,20** (la prova che il reset funziona). **🟢 NESSUNA MIGRAZIONE, NESSUNA AZIONE OPS.** Nuova
-**domanda 31**: il numero di richiesta identifica la richiesta o la versione? (`count()+1` su
-colonna `@unique`; verificato che nessun `kitRequest.delete` esista, quindi la collisione
-deterministica non è raggiungibile). Spec/piano:
-`docs/superpowers/{specs,plans}/2026-08-01-varianti-dopo-creazione*`.
+- **VARIANTI MODIFICABILI DOPO LA CREAZIONE ✅ (branch `claude/verifica-distinte-reali-8zz9mw`,
+  **PR #48 APERTA**)**: la #47 lasciava un difetto dichiarato — le cinque varianti del passo «Componenti»
+  **non si cambiavano più** dopo la creazione, si rifaceva il wizard da capo. Ora sulla scheda c'è
+  **«Modifica componenti»**, che riapre il wizard precompilato; al conferma nasce una **nuova
+  versione**. **(0) La verifica funzionale della #47, fatta per prima, ha scoperto un buco**:
+  `110,13 €` **non era asserito da nessun test** — il test del modulo conta righe e pezzi ma **non
+  vede i prezzi affatto** (i moduli restituiscono `KitLine` senza prezzo, che il motore risolve dopo
+  contro il catalogo), quindi il numero viveva solo nei `.md`. Chiuso nel primo commit, insieme ai
+  **tre totali bilico** che stavano ancora dietro un `toBeGreaterThan(0)` (450,03 · 766,51 · 433,46,
+  ri-misurati e identici alla #35). **(1) Contratto** deciso col **`/llm-council`** (5 advisor
+  unanimi + 3 peer review): `ricalcola({kitRequestId, variants?})` — assente = **eredita** · `{}` =
+  **reset** allo standard (scrive `NULL`) · oggetto = **sostituzione integrale**, mai un merge. Il
+  reset non è inventato: le 5 chiavi erano già `.optional()` in uno `.strict()`, quindi `{}` era già
+  valido; **dichiararlo** è ciò che impedisce all'operazione di essere a senso unico. **(2) Solo
+  «Componenti» è editabile**, e non per prudenza ma per il tipo: la firma **congela la geometria**,
+  quindi la combinazione geometria/varianti mai validata è **irrappresentabile**, non «sconsigliata»
+  — le due alternative (un diff che sceglie fra versione e richiesta nuova; `ricalcola` che accetta
+  l'intera `specs`) aprivano un **secondo percorso di scrittura** su `specs`. **(3) Validazione prima
+  di ogni scrittura**, ed è il **motore eseguito in memoria**: le varianti disponibili dipendono dalla
+  geometria e quel controllo vive nei moduli, quindi un secondo validatore avrebbe potuto
+  disallinearsi dalle tabelle dei codici. **(4) L'idratazione passa da `kitInputFromRequest`**, la
+  stessa funzione del motore (possibile perché **solo `engine.ts` ha `server-only`**): un prefill che
+  rileggesse le colonne per conto suo sarebbe una seconda ricostruzione, e se divergesse l'agente
+  confermerebbe a schermo una configurazione che la riga non codifica. **(5)** «Ricalcola» →
+  **«Nuova versione»** (la parola prometteva «rifai lo stesso conto» mentre emette un documento con un
+  numero nuovo), rinominata anche nelle due stringhe che la citavano altrove. **(6)** `ComponentiRibalta`
+  e `RadioOption` estratte in `src/components/kit/` — insieme, perché estrarre solo la prima avrebbe
+  chiuso un **ciclo** wizard→componenti→wizard; `nuova-client.tsx` da 1.983 a 1.383 righe. **Difetti
+  colti dai test**: `variantiFinali ?? request.variants` faceva ricadere il **reset**
+  sull'ereditarietà (`??` tratta `null` come nullish) — spegnere l'antieffrazione non avrebbe fatto
+  nulla in silenzio. **Quattro trovati dalla review di branch, coi gate tutti verdi**: (a) un
+  **refetch** di `kit.get` cancellava le varianti appena scelte — lo structural sharing di
+  react-query non regge sulle `Date` e il `QueryClient` è nudo (`staleTime: 0` +
+  `refetchOnWindowFocus`), quindi bastava cambiare finestra → idratazione **una volta sola**;
+  (b) la validazione copriva solo il ramo con `variants`, mentre «Nuova versione» chiama `ricalcola`
+  **senza**: su una riga PVC/battente già emessa nascevano **due righe morte** → si valida ogni volta
+  che si sta per scrivere; (c) su una **bozza** la UI prometteva una versione che non nasce (il
+  router scrive in loco); (d) la **vasistas** passava il filtro per serie pur non avendo varianti →
+  si filtra sulla **tipologia**, con un test in `registry.test.ts` che fallisce se un modulo cambia
+  idea. Gate verdi (typecheck·lint·**test 1.035**·build 18 route) · **catalogo reale 112
+  test** · **browser 22/22 desktop e 22/22 a 375px**, col ciclo intero 90,20 → 110,13 → **ritorno a
+  90,20** (la prova che il reset funziona). **🟢 NESSUNA MIGRAZIONE, NESSUNA AZIONE OPS.** Nuova
+  **domanda 31**: il numero di richiesta identifica la richiesta o la versione? (`count()+1` su
+  colonna `@unique`; verificato che nessun `kitRequest.delete` esista, quindi la collisione
+  deterministica non è raggiungibile). Spec/piano:
+  `docs/superpowers/{specs,plans}/2026-08-01-varianti-dopo-creazione*`.
 
-+ **NUOVO DOMINIO «MANIGLIE» — quesito architetturale, spec e passo 0 ✅ (branch
-`claude/colombo-handles-catalog-3ado13`, PR aperta)**: non uno sviluppo, ma una **domanda**.
-Andrea, addetto al rifornimento magazzino, ha chiesto un archivio che dica se una maniglia è **in
-pronta consegna** o **da ordinare**, partendo da COLOMBO e con **almeno altre tre marche** in
-arrivo. Aggiungerlo a UFPtrade o farne un software separato? **`/llm-council`** (5 advisor + 5 peer
-review + chairman): tre per l'integrazione, uno per il repo separato, uno che demolisce entrambe le
-versioni ingenue; **monorepo scartato all'unanimità**. Verdetto **A′ — stesso repo, dominio
-affiancato, identità del prodotto intatta**. Il criterio che decide **non** è «utenti in comune» né
-«riuso» né «rischio di deploy» (sono costi): è **«esiste una domanda che l'agente farà davanti al
-cliente e che attraversa i due domini, con una risposta sola?»** — sì: *questo è ordinabile oggi?*
-L'argomento del dissenziente («ogni `ALTER TABLE` mette a rischio il generatore di distinte») è
-caduto su due fatti verificati nel repo: la premessa «entità condivise: zero» è falsa, e la finestra
-di disservizio è **già chiusa** dalla PR #44 (ops sul ref del branch prima del merge). Si condividono
-repo, deploy, **un solo Better Auth** e **lo stesso DB**; **non** si condivide `Product`. La
-migrazione multi-fornitore (`agbCode @unique`, `ProductImage.agbCode @id`, `LISTINO_TOTAL_PAGES`
-scalare — **128 occorrenze in 22 file**) si rimanda alla **marca #3**.
-**Il council ha trovato per caso un difetto già in produzione, che è diventato il passo 0**:
-`map-product.ts:11,75` scriveva `isAvailable: true` e `stockQuantity: 0` come **tipi letterali
-costanti** per tutti e 7.488 i prodotti, e usciva da **sei canali** — pallino nell'archivio, badge
-nella chat, **i campi passati a Gemini** (affermabili a voce a un cliente), le proiezioni SQL, un
-`select` nel kit, e — scoperto scrivendo il piano, il peggiore — **una casella «Solo disponibili»**
-con chip e param URL, che l'agente spuntava ricevendo comunque tutti e 7.488 i prodotti. Un pallino
-che mente lo si ignora; un filtro che hai scelto tu, no. **7 task TDD + 7 review + review finale di
-branch**: zero occorrenze nel codice di produzione, restano i **4 test sentinella**. Gate:
-typecheck · lint · **test 1.045** · build 18 route · **browser 10/10** (desktop e 375px, screenshot
-guardati). **🟢 NESSUNA MIGRAZIONE, NESSUNA AZIONE OPS**: le colonne restano a schema coi default,
-si sono rimossi i *lettori* — `import-catalog.ts` fa spread in Prisma, quindi il dato a DB non
-cambia. **Residui dichiarati**: `product.getById/getByCode` (`findUnique` senza `select`) spediscono
-ancora i due campi al browser → la scheda prodotto è l'unico punto dove il pallino tornerebbe con
-una riga sola e i gate verdi; `is_available` ha ancora `DEFAULT true` (spariti i lettori, non
-l'affermazione: droppare colonne e `@@index([isAvailable])`, oggi **un indice su una costante**, è
-materia della migrazione del passo 1); esistono **due `DESIGN.md`** e quello in
-`ufptrade/ufptrade-design/` è fermo alla Fase 1c.
-**I dati, misurati e non assunti**: tre fonti che **non si contengono** (listino 3.456 codici con
-prezzo ed EAN completi · pronta consegna 201 · catalogo PDF) e **lo stesso codice scritto in tre
-modi** (`0CD41R-CM` / `0CD41RCM` / `CD 41 R`) — normalizzando a `[A-Z0-9]` il listino **non ha
-collisioni**, 178 match su 201. I **23 orfani non sono refusi**: 18 esistono a catalogo e mancano
-solo dal listino **perché il listino è vecchio**, 2 sono refusi con **due** codici giusti ciascuno
-(non correggibili in automatico), 3 sono spazzatura. Il catalogo giusto è **`ER MAN 2026`** (261
-pagine, 725 JPEG, **85%** contro il 57% di `RR`, ed è un **sovrainsieme**); il testo di quei PDF si
-decodifica con uno **shift costante di +29 byte**. Il «prezzo già sommato» **non è mostrabile com'è**
-(96% delle righe con più di 2 decimali, 36% con 13-16 per errori float di Excel) → si arrotonda a 2
-in `Decimal`, e salvare le due metà dà lo stesso risultato su **tutte e 3.456** le righe.
-**🔴 Vincolo di piattaforma**: **Vercel Hobby vieta l'uso commerciale** (*«restricted to
-non-commercial personal use only»*, e la definizione include *«a paid employee»*) → rischio
-sospensione; **passaggio a Pro deciso per il 2026-08-08**. La capacità a 20 utenti regge, ma
-**storage Neon 72-80%** e **Fast Origin Transfer 40%** hanno **una sola causa**: le 7.082 foto AGB
-stanno **dentro Postgres**. Da qui la decisione: **le foto COLOMBO nascono su Vercel Blob**.
-+ **REPARTO MANIGLIE (passi 1-3) + SELETTORE DI REPARTO ✅** (branch `claude/program-selector-yxw8zd`):
-tre tabelle nuove (`articles`, `stock_imports`, `stock_lines`, **mai** `Product`), parser del listino,
-script ops `import:listino`, ricerca (tsvector + trigram: «bocchetta» trova il refuso `BOCCEHTTA` del
-fornitore), scheda articolo, upload della pronta consegna con riepilogo/annullamento, e la schermata `/`
-di scelta reparto. Disponibilità **derivata** dall'ultimo import non annullato, mai un flag. Verdetto
-`/llm-council`: route group scartati su un fatto riprodotto (`E28`: separano il layout, non il
-namespace) → segmento URL vero `/maniglie/*`, **zero cookie**. Rimossi dalla TopBar **due controlli
-finti** (ricerca senza handler + campanella senza sistema di notifiche). Gate: typecheck · lint · **1213
-test** · build 22 route · browser 77/81 + 12/12. **AZIONE OPS ESEGUITA** (run `30848665038`, 2026-08-03
-20:05→20:17Z, 15/15 verdi, lanciata **sul ref del branch prima del merge**: finestra di disservizio zero).
+- **NUOVO DOMINIO «MANIGLIE» — quesito architetturale, spec e passo 0 ✅ (branch
+  `claude/colombo-handles-catalog-3ado13`, PR aperta)**: non uno sviluppo, ma una **domanda**.
+  Andrea, addetto al rifornimento magazzino, ha chiesto un archivio che dica se una maniglia è **in
+  pronta consegna** o **da ordinare**, partendo da COLOMBO e con **almeno altre tre marche** in
+  arrivo. Aggiungerlo a UFPtrade o farne un software separato? **`/llm-council`** (5 advisor + 5 peer
+  review + chairman): tre per l'integrazione, uno per il repo separato, uno che demolisce entrambe le
+  versioni ingenue; **monorepo scartato all'unanimità**. Verdetto **A′ — stesso repo, dominio
+  affiancato, identità del prodotto intatta**. Il criterio che decide **non** è «utenti in comune» né
+  «riuso» né «rischio di deploy» (sono costi): è **«esiste una domanda che l'agente farà davanti al
+  cliente e che attraversa i due domini, con una risposta sola?»** — sì: _questo è ordinabile oggi?_
+  L'argomento del dissenziente («ogni `ALTER TABLE` mette a rischio il generatore di distinte») è
+  caduto su due fatti verificati nel repo: la premessa «entità condivise: zero» è falsa, e la finestra
+  di disservizio è **già chiusa** dalla PR #44 (ops sul ref del branch prima del merge). Si condividono
+  repo, deploy, **un solo Better Auth** e **lo stesso DB**; **non** si condivide `Product`. La
+  migrazione multi-fornitore (`agbCode @unique`, `ProductImage.agbCode @id`, `LISTINO_TOTAL_PAGES`
+  scalare — **128 occorrenze in 22 file**) si rimanda alla **marca #3**.
+  **Il council ha trovato per caso un difetto già in produzione, che è diventato il passo 0**:
+  `map-product.ts:11,75` scriveva `isAvailable: true` e `stockQuantity: 0` come **tipi letterali
+  costanti** per tutti e 7.488 i prodotti, e usciva da **sei canali** — pallino nell'archivio, badge
+  nella chat, **i campi passati a Gemini** (affermabili a voce a un cliente), le proiezioni SQL, un
+  `select` nel kit, e — scoperto scrivendo il piano, il peggiore — **una casella «Solo disponibili»**
+  con chip e param URL, che l'agente spuntava ricevendo comunque tutti e 7.488 i prodotti. Un pallino
+  che mente lo si ignora; un filtro che hai scelto tu, no. **7 task TDD + 7 review + review finale di
+  branch**: zero occorrenze nel codice di produzione, restano i **4 test sentinella**. Gate:
+  typecheck · lint · **test 1.045** · build 18 route · **browser 10/10** (desktop e 375px, screenshot
+  guardati). **🟢 NESSUNA MIGRAZIONE, NESSUNA AZIONE OPS**: le colonne restano a schema coi default,
+  si sono rimossi i _lettori_ — `import-catalog.ts` fa spread in Prisma, quindi il dato a DB non
+  cambia. **Residui dichiarati**: `product.getById/getByCode` (`findUnique` senza `select`) spediscono
+  ancora i due campi al browser → la scheda prodotto è l'unico punto dove il pallino tornerebbe con
+  una riga sola e i gate verdi; `is_available` ha ancora `DEFAULT true` (spariti i lettori, non
+  l'affermazione: droppare colonne e `@@index([isAvailable])`, oggi **un indice su una costante**, è
+  materia della migrazione del passo 1); esistono **due `DESIGN.md`** e quello in
+  `ufptrade/ufptrade-design/` è fermo alla Fase 1c.
+  **I dati, misurati e non assunti**: tre fonti che **non si contengono** (listino 3.456 codici con
+  prezzo ed EAN completi · pronta consegna 201 · catalogo PDF) e **lo stesso codice scritto in tre
+  modi** (`0CD41R-CM` / `0CD41RCM` / `CD 41 R`) — normalizzando a `[A-Z0-9]` il listino **non ha
+  collisioni**, 178 match su 201. I **23 orfani non sono refusi**: 18 esistono a catalogo e mancano
+  solo dal listino **perché il listino è vecchio**, 2 sono refusi con **due** codici giusti ciascuno
+  (non correggibili in automatico), 3 sono spazzatura. Il catalogo giusto è **`ER MAN 2026`** (261
+  pagine, 725 JPEG, **85%** contro il 57% di `RR`, ed è un **sovrainsieme**); il testo di quei PDF si
+  decodifica con uno **shift costante di +29 byte**. Il «prezzo già sommato» **non è mostrabile com'è**
+  (96% delle righe con più di 2 decimali, 36% con 13-16 per errori float di Excel) → si arrotonda a 2
+  in `Decimal`, e salvare le due metà dà lo stesso risultato su **tutte e 3.456** le righe.
+  **🔴 Vincolo di piattaforma**: **Vercel Hobby vieta l'uso commerciale** (_«restricted to
+  non-commercial personal use only»_, e la definizione include _«a paid employee»_) → rischio
+  sospensione; **passaggio a Pro deciso per il 2026-08-08**. La capacità a 20 utenti regge, ma
+  **storage Neon 72-80%** e **Fast Origin Transfer 40%** hanno **una sola causa**: le 7.082 foto AGB
+  stanno **dentro Postgres**. Da qui la decisione: **le foto COLOMBO nascono su Vercel Blob**.
+- **REPARTO MANIGLIE (passi 1-3) + SELETTORE DI REPARTO ✅** (branch `claude/program-selector-yxw8zd`):
+  tre tabelle nuove (`articles`, `stock_imports`, `stock_lines`, **mai** `Product`), parser del listino,
+  script ops `import:listino`, ricerca (tsvector + trigram: «bocchetta» trova il refuso `BOCCEHTTA` del
+  fornitore), scheda articolo, upload della pronta consegna con riepilogo/annullamento, e la schermata `/`
+  di scelta reparto. Disponibilità **derivata** dall'ultimo import non annullato, mai un flag. Verdetto
+  `/llm-council`: route group scartati su un fatto riprodotto (`E28`: separano il layout, non il
+  namespace) → segmento URL vero `/maniglie/*`, **zero cookie**. Rimossi dalla TopBar **due controlli
+  finti** (ricerca senza handler + campanella senza sistema di notifiche). Gate: typecheck · lint · **1213
+  test** · build 22 route · browser 77/81 + 12/12. **AZIONE OPS ESEGUITA** (run `30848665038`, 2026-08-03
+  20:05→20:17Z, 15/15 verdi, lanciata **sul ref del branch prima del merge**: finestra di disservizio zero).
 
 **▶ PROSSIMA SESSIONE — «SFOGLIA», IL CATALOGO SENZA DIGITARE.** Analisi conclusa, **zero codice**:
 `docs/superpowers/specs/2026-08-04-catalogo-maniglie-sfoglia-design.md`. Il bisogno è reale (`article.search`
 impone `query.min(1)`: **non esiste alcun percorso che elenchi qualcosa senza scrivere**), ma l'albero
 marca→sottocategoria→prodotto **non è costruibile**: il sito COLOMBO non pubblica mai un codice ordinabile
-(`MD 11 R-RY` vs `0MD11R-CM` → normalizzati **non combaciano**), il codice ordinabile *è* la finitura
+(`MD 11 R-RY` vs `0MD11R-CM` → normalizzati **non combaciano**), il codice ordinabile _è_ la finitura
 (1 foto ogni 4 codici, tetto 21%; il maniglione Mood ha 12 finiture con la stessa foto), e l'albero è già
 falsificato dentro COLOMBO (faccette diverse per collezione). **Fonte unica: la PRIMA PAROLA della
 descrizione del listino** — copre 3.456 su 3.456, un `GROUP BY` in `search.ts`, zero migrazioni, e
@@ -702,332 +712,374 @@ altri 3.436. Prima dell'UI, le **cinque misure** di §7.
 
 **▶ SESSIONE PRECEDENTE — IL SELETTORE DI PROGRAMMA**: la prima schermata dopo il login diventa un
 selettore (**FINESTRE** / **MANIGLIE**, estendibile), per rendere visibile il distacco. **La sezione
-finestre non si tocca.** ⚠️ Ma un selettore *è* una modifica al **guscio di navigazione**: le
+finestre non si tocca.** ⚠️ Ma un selettore _è_ una modifica al **guscio di navigazione**: le
 finestre non cambiano funzionalità, cambiano contenitore — tre strade in spec §8.0, da portare a
 `/llm-council` e `/impeccable` **prima** di scrivere codice. Poi i passi 1-4 (modello dati + import
 listino — **unica migrazione** · ricerca e scheda · upload pronta consegna · foto da catalogo).
 Spec/piano: `docs/superpowers/{specs,plans}/2026-08-03-*`.
 
-+ **«SFOGLIA» — IL CATALOGO MANIGLIE SENZA DIGITARE ✅ (branch `claude/maniglie-catalogo-browse-cgxvjr`,
-PR aperta, **ops già eseguite sul ref del branch**)**: `article.search` imponeva `query.min(1)` e il
-client non chiamava nulla finché non si digitava — **non esisteva alcun percorso che elencasse qualcosa
-senza scrivere**. La sezione era letteralmente una casella bianca, e rispondeva solo a chi il codice lo
-sapeva già; chi ha in mano l'oggetto non ce l'ha. **Le cinque misure di §7 sul listino vero** (3.456
-codici, foglio `LP 02-26`): **114 prime parole distinte** (75 coprono il 95%, 11 singoletti, 45
-descrizioni con spaziatura irregolare) · il **secondo** token è la famiglia solo nel **53%** — era la
-domanda sbagliata, perché la famiglia c'è e **cambia posto** (`FEDRA CREM AC12` la mette terza,
-`PLACCA Y PER AM113` quarta) → nuova misura **(b bis)**: la famiglia **ovunque stia**, trovata per
-intersezione fra descrizione e codice (non una regexp che deduce dal codice, che §9 vieta) → **79,8%**,
-66% al 2° token e 26% al 3° · **533 famiglie**, mediana **3 codici** (non 36) · **133 code** di finitura,
-le prime 14 coprono il 72%. **LA PREMESSA DELLA SPEC ERA FALSA, E IN MEGLIO**: la prima parola non è una
-tipologia ma un **misto** di tipologie (MANIGLIONE 338, BOCCHETTA 288, NOTTOLINO 161, KIT 139) e **nomi
-commerciali** (ROBOT 129, ONE 124, DUE 120, PETER 41, LARA 28, FEDRA 35) → **il nome commerciale è già
-nel listino**, copre il 100% delle righe e costa zero, mentre la spec lo dava per vivente solo nel PDF
-(71 nomi su 96, «un passo di lavoro intero»). **`ER MAN 2026` serve ora SOLO per le foto.**
-**DUE DIFETTI TROVATI ESEGUENDO, NON LEGGENDO**: (1) **`pnpm import:listino` non era mai passato sul file
-vero** — moriva alla prima riga perché l'intestazione della colonna surcharge non è un nome ma
-l'**aliquota** (`0.035`), e sotto c'era di peggio: SheetJS dà `0.035` con `header:1` e `"3.5%"` come
-chiave di riga, quindi lo script cercava la colonna con la prima e leggeva le celle con la seconda —
-anche senza crash **ogni prezzo sarebbe uscito senza il 3,5%**. Fix **strutturale** (`parseListinoSheet`
-deriva da sé le intestazioni dalle chiavi delle righe: l'errore non è più commettibile dal chiamante) +
-`looksLikeRate` come ripiego, **dimostrato aritmeticamente**: 0 righe scartate · 0 collisioni · 0
-mismatch sulla SOMMA su **tutte e 3.456** le righe. (2) **Il gate della disponibilità non verificava
-nulla**: `seedManiglie` esce in silenzio senza un ADMIN a DB, quindi su database pulito i tre test della
-regola centrale del reparto fallivano invece di provare qualcosa (preesistente su `main`, verificato con
-`git stash`); da 10 a 21 test di integrazione verdi. **IL DISEGNO**: tre livelli, tutti su parole di
-COLOMBO — `taxonomy.ts` (modulo foglia: `firstWord`, `familyOf`, e `SQL_FIRST_WORD` come **costante**,
-col gemello SQL legato alla funzione TS da un test su tutta la tabella) · livello 1 = `GROUP BY` in
-`search.ts` · livello 2 = `splitGroup` in `browse.ts`, **TypeScript puro** perché «qual è la famiglia» è
-una regola di dominio, come la disponibilità. `splitGroup` restituisce famiglie **e codici sciolti
-insieme**, e la funzione è una sola apposta: misurando la copertura per gruppo, solo **23 gruppi su 114**
-ce l'hanno piena, **21** a zero e **70 parziali** (MANIGLIONE 333/338, BOCCHETTA 250/288) → una
-`groupByFamily` avrebbe reso **irraggiungibili** i codici restanti, invisibili anche a chi scrive il
-codice perché nessun conteggio andava a zero. Scartata la **famiglia degenere** (uguale alla parola del
-gruppo): scoperta su `KIT PORTE SCORREVOLI` / `XKIT/PS-CM`, avrebbe prodotto «KIT › KIT (23)» nascondendo
-116 codici. **CHIUSI I DUE DEBITI**: `offset` collegato (pagina nell'URL, come l'archivio) e **scroll
-restore riusando `archivio-scroll.ts`** (900→900 a 375px, 883→883 a desktop); **fascia data STICKY**.
-**LE TRE DECISIONI APERTE PASSATE DAL `/llm-council`** (5 advisor + 3 peer review + chairman), con le
-affermazioni numeriche **verificate sul DB prima della sintesi** — e una ha **demolito l'argomento
-centrale** di un advisor (i gruppi-modello conterrebbero maniglie, ~990 codici: misurato, «MANIGLION»
-compare in 360 descrizioni, **346 come prima parola e 14 altrove**, dispersione ~70 in tutto):
-**(1)** «Disponibilità» → **«Catalogo»**, perché nominava un **attributo falso 95 volte su 100**;
-**(2)** livello 1 **alfabetico**, a **chip in griglia**, con **filtro sulle etichette** — per numerosità
-il numero grosso significa «più finiture» (MANIGLIONE: 338 codici, **160 descrizioni distinte**) e
-seppelliva LARA/MILLA/VIOLA, i nomi che il cliente **pronuncia**; misurato in browser da ~14 schermate a
-**5,8** (375px) e **2,5** (desktop), e l'ordinamento sta in **TypeScript** e non in `ORDER BY` perché la
-collation è del database e può differire fra locale e Neon; **(3)** abbreviazioni: **nessuna riga di
-codice**, perché in alfabetico `ROS.`/`ROSETTA` sono **adiacenti**, il grappolo `MANIG.*` è contiguo,
-`BOCCEHTTA` cade prima di `BOCCHETTA` e `ROBOTE` atterra **esattamente fra** ROBOT e ROBOTRE — la
-fusione la fa l'occhio, e una tabella di alias sarebbe manutenzione perpetua su un listino in scadenza.
-**(+) FILTRO «SOLO PRONTA CONSEGNA»**: il dato che lo motiva è **178 articoli su 3.456 = 5,2%**, cioè 19
-righe su 20 non ordinabili oggi. La regola non entra nel raw SQL (`allAvailableArticleIds` è Prisma, al
-`GROUP BY` arriva solo una lista di id); `[]` e `undefined` sono **valori diversi** e il codice li
-distingue; il numero sul chip **dichiara** di aver cambiato insieme; sta nell'URL (`?pronta=1`); non
-compare cercando né senza giacenza caricata. Sui dati veri: 114 gruppi → **30**, somma dei conteggi
-filtrati **esattamente 178**. **Un test rosso ha scoperto un difetto di disegno mio**: la casella stava
-**dentro** l'elenco dei gruppi, quindi da dentro un gruppo il filtro restava acceso e **invisibile** e
-non si poteva accendere senza risalire — un gruppo pieno sarebbe sembrato vuoto. Spostata a livello di
-pagina. Gate: typecheck · lint · **1307 test** · build 22 route · **integrazione 21/21 su Postgres vero**
-· **browser** 38+5, 22 e 22 controlli su desktop e **375px**, screenshot guardati (è così che è saltato
-fuori il troncamento dei nomi a 375px, dove l'unica parola diversa è l'ultima).
-**🟢 NESSUNA MIGRAZIONE**: i gruppi si calcolano a lettura, quindi il listino aggiornato si colloca da
-solo. **AZIONE OPS ESEGUITA** (run `30903709865`, sul ref del branch): il workflow «Ops — Neon» ora
-importa **anche il listino COLOMBO** — serviva davvero, perché la tabella `articles` in produzione era
-**VUOTA** (la run del 03/08 importava il solo catalogo AGB, e `db:seed:maniglie` non è nel workflow):
-senza, «Sfoglia» sarebbe andato online mostrando zero gruppi.
-Piano: `docs/superpowers/plans/2026-08-04-catalogo-maniglie-sfoglia.md`.
+- **«SFOGLIA» — IL CATALOGO MANIGLIE SENZA DIGITARE ✅ (branch `claude/maniglie-catalogo-browse-cgxvjr`,
+  PR aperta, **ops già eseguite sul ref del branch**)**: `article.search` imponeva `query.min(1)` e il
+  client non chiamava nulla finché non si digitava — **non esisteva alcun percorso che elencasse qualcosa
+  senza scrivere**. La sezione era letteralmente una casella bianca, e rispondeva solo a chi il codice lo
+  sapeva già; chi ha in mano l'oggetto non ce l'ha. **Le cinque misure di §7 sul listino vero** (3.456
+  codici, foglio `LP 02-26`): **114 prime parole distinte** (75 coprono il 95%, 11 singoletti, 45
+  descrizioni con spaziatura irregolare) · il **secondo** token è la famiglia solo nel **53%** — era la
+  domanda sbagliata, perché la famiglia c'è e **cambia posto** (`FEDRA CREM AC12` la mette terza,
+  `PLACCA Y PER AM113` quarta) → nuova misura **(b bis)**: la famiglia **ovunque stia**, trovata per
+  intersezione fra descrizione e codice (non una regexp che deduce dal codice, che §9 vieta) → **79,8%**,
+  66% al 2° token e 26% al 3° · **533 famiglie**, mediana **3 codici** (non 36) · **133 code** di finitura,
+  le prime 14 coprono il 72%. **LA PREMESSA DELLA SPEC ERA FALSA, E IN MEGLIO**: la prima parola non è una
+  tipologia ma un **misto** di tipologie (MANIGLIONE 338, BOCCHETTA 288, NOTTOLINO 161, KIT 139) e **nomi
+  commerciali** (ROBOT 129, ONE 124, DUE 120, PETER 41, LARA 28, FEDRA 35) → **il nome commerciale è già
+  nel listino**, copre il 100% delle righe e costa zero, mentre la spec lo dava per vivente solo nel PDF
+  (71 nomi su 96, «un passo di lavoro intero»). **`ER MAN 2026` serve ora SOLO per le foto.**
+  **DUE DIFETTI TROVATI ESEGUENDO, NON LEGGENDO**: (1) **`pnpm import:listino` non era mai passato sul file
+  vero** — moriva alla prima riga perché l'intestazione della colonna surcharge non è un nome ma
+  l'**aliquota** (`0.035`), e sotto c'era di peggio: SheetJS dà `0.035` con `header:1` e `"3.5%"` come
+  chiave di riga, quindi lo script cercava la colonna con la prima e leggeva le celle con la seconda —
+  anche senza crash **ogni prezzo sarebbe uscito senza il 3,5%**. Fix **strutturale** (`parseListinoSheet`
+  deriva da sé le intestazioni dalle chiavi delle righe: l'errore non è più commettibile dal chiamante) +
+  `looksLikeRate` come ripiego, **dimostrato aritmeticamente**: 0 righe scartate · 0 collisioni · 0
+  mismatch sulla SOMMA su **tutte e 3.456** le righe. (2) **Il gate della disponibilità non verificava
+  nulla**: `seedManiglie` esce in silenzio senza un ADMIN a DB, quindi su database pulito i tre test della
+  regola centrale del reparto fallivano invece di provare qualcosa (preesistente su `main`, verificato con
+  `git stash`); da 10 a 21 test di integrazione verdi. **IL DISEGNO**: tre livelli, tutti su parole di
+  COLOMBO — `taxonomy.ts` (modulo foglia: `firstWord`, `familyOf`, e `SQL_FIRST_WORD` come **costante**,
+  col gemello SQL legato alla funzione TS da un test su tutta la tabella) · livello 1 = `GROUP BY` in
+  `search.ts` · livello 2 = `splitGroup` in `browse.ts`, **TypeScript puro** perché «qual è la famiglia» è
+  una regola di dominio, come la disponibilità. `splitGroup` restituisce famiglie **e codici sciolti
+  insieme**, e la funzione è una sola apposta: misurando la copertura per gruppo, solo **23 gruppi su 114**
+  ce l'hanno piena, **21** a zero e **70 parziali** (MANIGLIONE 333/338, BOCCHETTA 250/288) → una
+  `groupByFamily` avrebbe reso **irraggiungibili** i codici restanti, invisibili anche a chi scrive il
+  codice perché nessun conteggio andava a zero. Scartata la **famiglia degenere** (uguale alla parola del
+  gruppo): scoperta su `KIT PORTE SCORREVOLI` / `XKIT/PS-CM`, avrebbe prodotto «KIT › KIT (23)» nascondendo
+  116 codici. **CHIUSI I DUE DEBITI**: `offset` collegato (pagina nell'URL, come l'archivio) e **scroll
+  restore riusando `archivio-scroll.ts`** (900→900 a 375px, 883→883 a desktop); **fascia data STICKY**.
+  **LE TRE DECISIONI APERTE PASSATE DAL `/llm-council`** (5 advisor + 3 peer review + chairman), con le
+  affermazioni numeriche **verificate sul DB prima della sintesi** — e una ha **demolito l'argomento
+  centrale** di un advisor (i gruppi-modello conterrebbero maniglie, ~990 codici: misurato, «MANIGLION»
+  compare in 360 descrizioni, **346 come prima parola e 14 altrove**, dispersione ~70 in tutto):
+  **(1)** «Disponibilità» → **«Catalogo»**, perché nominava un **attributo falso 95 volte su 100**;
+  **(2)** livello 1 **alfabetico**, a **chip in griglia**, con **filtro sulle etichette** — per numerosità
+  il numero grosso significa «più finiture» (MANIGLIONE: 338 codici, **160 descrizioni distinte**) e
+  seppelliva LARA/MILLA/VIOLA, i nomi che il cliente **pronuncia**; misurato in browser da ~14 schermate a
+  **5,8** (375px) e **2,5** (desktop), e l'ordinamento sta in **TypeScript** e non in `ORDER BY` perché la
+  collation è del database e può differire fra locale e Neon; **(3)** abbreviazioni: **nessuna riga di
+  codice**, perché in alfabetico `ROS.`/`ROSETTA` sono **adiacenti**, il grappolo `MANIG.*` è contiguo,
+  `BOCCEHTTA` cade prima di `BOCCHETTA` e `ROBOTE` atterra **esattamente fra** ROBOT e ROBOTRE — la
+  fusione la fa l'occhio, e una tabella di alias sarebbe manutenzione perpetua su un listino in scadenza.
+  **(+) FILTRO «SOLO PRONTA CONSEGNA»**: il dato che lo motiva è **178 articoli su 3.456 = 5,2%**, cioè 19
+  righe su 20 non ordinabili oggi. La regola non entra nel raw SQL (`allAvailableArticleIds` è Prisma, al
+  `GROUP BY` arriva solo una lista di id); `[]` e `undefined` sono **valori diversi** e il codice li
+  distingue; il numero sul chip **dichiara** di aver cambiato insieme; sta nell'URL (`?pronta=1`); non
+  compare cercando né senza giacenza caricata. Sui dati veri: 114 gruppi → **30**, somma dei conteggi
+  filtrati **esattamente 178**. **Un test rosso ha scoperto un difetto di disegno mio**: la casella stava
+  **dentro** l'elenco dei gruppi, quindi da dentro un gruppo il filtro restava acceso e **invisibile** e
+  non si poteva accendere senza risalire — un gruppo pieno sarebbe sembrato vuoto. Spostata a livello di
+  pagina. Gate: typecheck · lint · **1307 test** · build 22 route · **integrazione 21/21 su Postgres vero**
+  · **browser** 38+5, 22 e 22 controlli su desktop e **375px**, screenshot guardati (è così che è saltato
+  fuori il troncamento dei nomi a 375px, dove l'unica parola diversa è l'ultima).
+  **🟢 NESSUNA MIGRAZIONE**: i gruppi si calcolano a lettura, quindi il listino aggiornato si colloca da
+  solo. **AZIONE OPS ESEGUITA** (run `30903709865`, sul ref del branch): il workflow «Ops — Neon» ora
+  importa **anche il listino COLOMBO** — serviva davvero, perché la tabella `articles` in produzione era
+  **VUOTA** (la run del 03/08 importava il solo catalogo AGB, e `db:seed:maniglie` non è nel workflow):
+  senza, «Sfoglia» sarebbe andato online mostrando zero gruppi.
+  Piano: `docs/superpowers/plans/2026-08-04-catalogo-maniglie-sfoglia.md`.
 
-+ **FOTO COLOMBO — misure fatte, zero codice (prossima sessione)**: a chiusura della sessione «Sfoglia»
-l'utente ha scelto le **foto** come passo successivo, e le misure sono state fatte **subito**, perché il
-catalogo era scaricabile allora e il container no: `docs/superpowers/specs/2026-08-04-foto-catalogo-colombo-misure.md`.
-**LA FOTO APPARTIENE AL GRUPPO, NON AL CODICE**: il catalogo intitola ogni pagina prodotto col **nome
-commerciale** («Roboquattro  Colombo Design»), la stessa parola con cui lo sfoglio raggruppa. Ribalta la
-stima pessimistica della spec (foto→codice: tetto **21%**) → foto→gruppo: **1.984 codici su 3.456 =
-57,4%**, ed è più onesto, perché una foto di catalogo ritrae il modello e non la finitura (sparisce il
-timore «dodici tessere con la stessa foto»). **`ER MAN 2026`: 260 pagine · 725 immagini · 615 JPEG + 110
-raw · ZERO JPEG2000** → 🟢 la trappola AGB **non si ripete** (lì erano `jpx`, PDF.js non le decodificava,
-ed è costata due tentativi sbagliati). Il testo si decodifica con **+29 su ogni byte** (verificato:
-`'$'+29='A'`, `"5RVHV"→"Roses"`), non è più «una frase in un `.md`». **167 pagine con foto**, su **94** il
-titolo è un gruppo del listino, **61 gruppi su 114** ricevono una foto. Il 57,4% è un **pavimento**: le 73
-pagine non agganciate sono copertine (da escludere), **pagine di continuazione** col primo testo numerico
-— recuperabili con un riporto del titolo, 🔴 **da misurare** — e **artefatti di decodifica** sugli
-accentati (`ALATSSÑ` per `ALATO`). **Già misurato e da non rifare**: i codici ordinabili nel catalogo sono
-lo **0,2%** (conferma che il catalogo non pubblica codici d'ordine); le famiglie ci sono al 52% ma coprono
-solo il **43,4%**, cioè **meno** del nome commerciale; la mappatura per pagina **sulle famiglie**
-fallisce (4 pagine su 167 non ambigue, 115 con foto e zero famiglie) — ed è l'errore commesso e corretto
-misurando: si cercava la famiglia dove il catalogo scrive il nome. ⚠️ Blob **privato** → i byte passano da
-una route Node e pesano su **Fast Origin Transfer** (40%): conta la DIMENSIONE, non la collocazione.
-`catalogPage` esiste a schema e **non è mai stato scritto**; va riempito con le foto, e vuole accanto una
-**colonna di edizione** o `ER MAN 2027` rinumera le pagine.
-+ **MISURE FOTO (definitive) + CURATELA DELLO SFOGLIO ✅ (branch `claude/foto-catalogo-maniglie-8sua1k`, PR
-aperta)**. **(A) Le foto: sorgente decisa, misurata, zero codice.** Le due strade della scheda misure
-precedente valgono **zero e uno**: le «pagine di continuazione» sono le pagine TECNICHE del modello già
-contato (72 su 73 seguono una pagina con foto → riporto del titolo = **+0 modelli**), e i titoli non-ASCII
-sono **uno solo** su 92 (`Alatò`). Ma la premessa sotto era sbagliata: «167 pagine con foto» mescolava **92
-scatti d'ambiente** (≥1 MP), **441 scatti prodotto** (305×110, 3,4 KB, sulle pagine tecniche scartate) e le
-icone. **La sorgente vera è l'archivio fotografico ufficiale** dell'area download: **79 zip, 707 foto,
-5315×5315 CMYK**, prodotto pulito su bianco; indice preso con richieste **Range** sulla central directory
-(pochi MB invece di 3,3 GB). **Copertura 62,1% prudente → 69,3%** (1.853 codici dagli archivi di modello +
-297 dagli accessori col codice nel nome; fino a +528 agganciando i nomi di modello nelle descrizioni),
-contro il 57,4% del titolo di catalogo. **Aggancio a tre gradini, tutti scritti da COLOMBO**: cartella →
-modello (707/707) · + finitura dove sta nel nome (39%) · + codice dove COLOMBO l'ha scritto (**62% degli
-accessori**, cioè proprio maniglioni/pomoli/bocchette/complementi che per nome erano irraggiungibili). Chi
-non arriva a nessuno dei tre **resta senza foto**. **Peso: 13 MB** (2 miniature 320px + 11 schede 900px,
-WebP) da 4,15 GB → il vincolo Fast Origin Transfer è sciolto; la conversione **non è un'ottimizzazione**, un
-JPEG **CMYK** il browser non lo mostra. ⚠️ Le cartelle usano **sigle interne** (`Robot4`=Roboquattro): serve
-una tabellina di ~10 traduzioni, da verificare sul listino. 5 archivi non agganciano nulla (Laconica,
-Robot6, Robot6S, Halo, Kubo): sono **prodotti nuovi non ancora a listino**. **Filtro colori: 88,7%** dei
-codici ha come coda una delle **31 finiture ufficiali** (estratte dal catalogo con nome e colore, §5 della
-scheda); le code distinte sono **57**, non 133, e le non riconosciute sono quasi tutte **bicolori** (`CR8` =
-CROMO/CROMAT). Il listino PDF dell'area download (edizione **06/25**, testo in chiaro) ha a **p16 la matrice
-modello × finitura**, ma il suo indice dei codici è **testo convertito in curve** → non è una sorgente.
-**(B) La curatela di Andrea: 13 righe su 14 fatte.** Andrea ha usato il catalogo vero e ha mandato 14
-correzioni. **114 gruppi → 102** (BOCCHETTA 288→291, ROSETTA 47→105, `ROBOCINQUE S` e `ROBOQUATTRO S` come
-voci proprie, 63 codici fuori dallo sfoglio). Modulo foglia `src/server/maniglie/curatela.ts`
-(`browseLabel`/`sourceFirstWords`/`foldBrowseGroups`) applicato **a lettura** — **non** all'import, che
-cancellerebbe la parola di COLOMBO e farebbe sparire `BOCCEHTTA` dall'indice trigram. **Le rimozioni valgono
-SOLO per lo sfoglio** (decisione utente): chi scrive «vite» la trova, e c'è una sentinella d'integrazione.
-Le etichette vere **non sono quelle scritte a memoria** (`ROBOCINQUQ`, `NOTTOLIN`, `KITPORTE` attaccato, e
-«Mov.» sono **due** etichette); **due refusi li ha decisi il codice** (`ID61RSB` = serie del Robocinque base;
-`CD92DK` = serie di Robotre — l'handoff lo dava per indecidibile); il marcatore della S ha **tre forme**
-(`S`, `S'`, `S'ID51RSB`). **Il verdetto (3) del `/llm-council` è caduto**: «la fusione la fa l'occhio» era
-vero sui pixel e falso sul mestiere. **Tre cose imparate eseguendo**: il gate girava su venti righe finte
-(importare il listino vero in locale ha scoperto un test che pretendeva un codice del **seed** e falliva
-anche su `main`, provato con `git stash`); un difetto l'hanno trovato **gli screenshot** (il sottotitolo
-prometteva «per la prima parola della descrizione», falso dopo le fusioni, con un test che passava perché
-verificava che la frase *ci fosse*); e il primo giro del browser ritrae lo **skeleton** se si aspetta un
-timer invece del contenuto. Gate: typecheck · lint · **1336 test** · build 22 route · **integrazione 29/29
-su Postgres vero col listino VERO** · **browser 54/54** (desktop e 375px). 🟢 **NESSUNA MIGRAZIONE, NESSUNA
-AZIONE OPS.** Aperto: **le foto** · 2 domande per Andrea (la sua lista non è esaustiva: `MANIG.*`, `PL.*`,
-`RONDELLE`) · Vercel Pro entro 08/08 · le tre distinte reali.
-Scheda misure: `docs/superpowers/specs/2026-08-04-foto-e-finiture-colombo-misure-2.md`.
-✅ **La pronta consegna è stata caricata in produzione dall'utente**: chiusa.
+- **FOTO COLOMBO — misure fatte, zero codice (prossima sessione)**: a chiusura della sessione «Sfoglia»
+  l'utente ha scelto le **foto** come passo successivo, e le misure sono state fatte **subito**, perché il
+  catalogo era scaricabile allora e il container no: `docs/superpowers/specs/2026-08-04-foto-catalogo-colombo-misure.md`.
+  **LA FOTO APPARTIENE AL GRUPPO, NON AL CODICE**: il catalogo intitola ogni pagina prodotto col **nome
+  commerciale** («Roboquattro Colombo Design»), la stessa parola con cui lo sfoglio raggruppa. Ribalta la
+  stima pessimistica della spec (foto→codice: tetto **21%**) → foto→gruppo: **1.984 codici su 3.456 =
+  57,4%**, ed è più onesto, perché una foto di catalogo ritrae il modello e non la finitura (sparisce il
+  timore «dodici tessere con la stessa foto»). **`ER MAN 2026`: 260 pagine · 725 immagini · 615 JPEG + 110
+  raw · ZERO JPEG2000** → 🟢 la trappola AGB **non si ripete** (lì erano `jpx`, PDF.js non le decodificava,
+  ed è costata due tentativi sbagliati). Il testo si decodifica con **+29 su ogni byte** (verificato:
+  `'$'+29='A'`, `"5RVHV"→"Roses"`), non è più «una frase in un `.md`». **167 pagine con foto**, su **94** il
+  titolo è un gruppo del listino, **61 gruppi su 114** ricevono una foto. Il 57,4% è un **pavimento**: le 73
+  pagine non agganciate sono copertine (da escludere), **pagine di continuazione** col primo testo numerico
+  — recuperabili con un riporto del titolo, 🔴 **da misurare** — e **artefatti di decodifica** sugli
+  accentati (`ALATSSÑ` per `ALATO`). **Già misurato e da non rifare**: i codici ordinabili nel catalogo sono
+  lo **0,2%** (conferma che il catalogo non pubblica codici d'ordine); le famiglie ci sono al 52% ma coprono
+  solo il **43,4%**, cioè **meno** del nome commerciale; la mappatura per pagina **sulle famiglie**
+  fallisce (4 pagine su 167 non ambigue, 115 con foto e zero famiglie) — ed è l'errore commesso e corretto
+  misurando: si cercava la famiglia dove il catalogo scrive il nome. ⚠️ Blob **privato** → i byte passano da
+  una route Node e pesano su **Fast Origin Transfer** (40%): conta la DIMENSIONE, non la collocazione.
+  `catalogPage` esiste a schema e **non è mai stato scritto**; va riempito con le foto, e vuole accanto una
+  **colonna di edizione** o `ER MAN 2027` rinumera le pagine.
+- **MISURE FOTO (definitive) + CURATELA DELLO SFOGLIO ✅ (branch `claude/foto-catalogo-maniglie-8sua1k`, PR
+  aperta)**. **(A) Le foto: sorgente decisa, misurata, zero codice.** Le due strade della scheda misure
+  precedente valgono **zero e uno**: le «pagine di continuazione» sono le pagine TECNICHE del modello già
+  contato (72 su 73 seguono una pagina con foto → riporto del titolo = **+0 modelli**), e i titoli non-ASCII
+  sono **uno solo** su 92 (`Alatò`). Ma la premessa sotto era sbagliata: «167 pagine con foto» mescolava **92
+  scatti d'ambiente** (≥1 MP), **441 scatti prodotto** (305×110, 3,4 KB, sulle pagine tecniche scartate) e le
+  icone. **La sorgente vera è l'archivio fotografico ufficiale** dell'area download: **79 zip, 707 foto,
+  5315×5315 CMYK**, prodotto pulito su bianco; indice preso con richieste **Range** sulla central directory
+  (pochi MB invece di 3,3 GB). **Copertura 62,1% prudente → 69,3%** (1.853 codici dagli archivi di modello +
+  297 dagli accessori col codice nel nome; fino a +528 agganciando i nomi di modello nelle descrizioni),
+  contro il 57,4% del titolo di catalogo. **Aggancio a tre gradini, tutti scritti da COLOMBO**: cartella →
+  modello (707/707) · + finitura dove sta nel nome (39%) · + codice dove COLOMBO l'ha scritto (**62% degli
+  accessori**, cioè proprio maniglioni/pomoli/bocchette/complementi che per nome erano irraggiungibili). Chi
+  non arriva a nessuno dei tre **resta senza foto**. **Peso: 13 MB** (2 miniature 320px + 11 schede 900px,
+  WebP) da 4,15 GB → il vincolo Fast Origin Transfer è sciolto; la conversione **non è un'ottimizzazione**, un
+  JPEG **CMYK** il browser non lo mostra. ⚠️ Le cartelle usano **sigle interne** (`Robot4`=Roboquattro): serve
+  una tabellina di ~10 traduzioni, da verificare sul listino. 5 archivi non agganciano nulla (Laconica,
+  Robot6, Robot6S, Halo, Kubo): sono **prodotti nuovi non ancora a listino**. **Filtro colori: 88,7%** dei
+  codici ha come coda una delle **31 finiture ufficiali** (estratte dal catalogo con nome e colore, §5 della
+  scheda); le code distinte sono **57**, non 133, e le non riconosciute sono quasi tutte **bicolori** (`CR8` =
+  CROMO/CROMAT). Il listino PDF dell'area download (edizione **06/25**, testo in chiaro) ha a **p16 la matrice
+  modello × finitura**, ma il suo indice dei codici è **testo convertito in curve** → non è una sorgente.
+  **(B) La curatela di Andrea: 13 righe su 14 fatte.** Andrea ha usato il catalogo vero e ha mandato 14
+  correzioni. **114 gruppi → 102** (BOCCHETTA 288→291, ROSETTA 47→105, `ROBOCINQUE S` e `ROBOQUATTRO S` come
+  voci proprie, 63 codici fuori dallo sfoglio). Modulo foglia `src/server/maniglie/curatela.ts`
+  (`browseLabel`/`sourceFirstWords`/`foldBrowseGroups`) applicato **a lettura** — **non** all'import, che
+  cancellerebbe la parola di COLOMBO e farebbe sparire `BOCCEHTTA` dall'indice trigram. **Le rimozioni valgono
+  SOLO per lo sfoglio** (decisione utente): chi scrive «vite» la trova, e c'è una sentinella d'integrazione.
+  Le etichette vere **non sono quelle scritte a memoria** (`ROBOCINQUQ`, `NOTTOLIN`, `KITPORTE` attaccato, e
+  «Mov.» sono **due** etichette); **due refusi li ha decisi il codice** (`ID61RSB` = serie del Robocinque base;
+  `CD92DK` = serie di Robotre — l'handoff lo dava per indecidibile); il marcatore della S ha **tre forme**
+  (`S`, `S'`, `S'ID51RSB`). **Il verdetto (3) del `/llm-council` è caduto**: «la fusione la fa l'occhio» era
+  vero sui pixel e falso sul mestiere. **Tre cose imparate eseguendo**: il gate girava su venti righe finte
+  (importare il listino vero in locale ha scoperto un test che pretendeva un codice del **seed** e falliva
+  anche su `main`, provato con `git stash`); un difetto l'hanno trovato **gli screenshot** (il sottotitolo
+  prometteva «per la prima parola della descrizione», falso dopo le fusioni, con un test che passava perché
+  verificava che la frase _ci fosse_); e il primo giro del browser ritrae lo **skeleton** se si aspetta un
+  timer invece del contenuto. Gate: typecheck · lint · **1336 test** · build 22 route · **integrazione 29/29
+  su Postgres vero col listino VERO** · **browser 54/54** (desktop e 375px). 🟢 **NESSUNA MIGRAZIONE, NESSUNA
+  AZIONE OPS.** Aperto: **le foto** · 2 domande per Andrea (la sua lista non è esaustiva: `MANIG.*`, `PL.*`,
+  `RONDELLE`) · Vercel Pro entro 08/08 · le tre distinte reali.
+  Scheda misure: `docs/superpowers/specs/2026-08-04-foto-e-finiture-colombo-misure-2.md`.
+  ✅ **La pronta consegna è stata caricata in produzione dall'utente**: chiusa.
 
-+ **FOTO DEGLI ARTICOLI COLOMBO + FILTRO COLORI + POMOLI GENERICI ✅ (PR #54, #55, #56 MERGIATE, ops
-ESEGUITE)**: il reparto maniglie mostrava 3.456 articoli senza una sola immagine, e `ArticoloRow` aveva **già**
-il posto della miniatura (44px, disegnato la sessione prima, sempre vuoto perché `image_url` era NULL ovunque).
-Ora **2.118 codici su 3.456 = 61,3%** hanno una foto, con **240 file** su Vercel Blob **privato** dietro
-`/api/article-image`. **Tre gradini, tutti cose scritte da COLOMBO**: il **codice** nel nome del file (322 —
-raggiunge maniglioni, pomoli e bocchette, per nome di modello irraggiungibili) · la **finitura** (994 — si
-vede il colore che il cliente comprerà) · la foto del **modello** (679) · più i **pomoli generici** (+123).
-**Eseguire ha falsificato quattro affermazioni della scheda misure**: le 707 foto non sono tutte «5315×5315
-pulite su bianco» — **69 sono scatti d'ambiente** su fondo colorato (`Robo4_def.jpg`: 8268×7087, **34 MB**) ·
-il «39% con la finitura nel nome» contava le parole per esteso in **due lingue**, il codice ufficiale sta in
-**143 file** · il codice intero nel nome sta in **29 file** · e **la cartella da sola non basta**, perché sette
-gruppi di listino hanno **due archivi** ciascuno. 🔴 **La scoperta che ha cambiato il disegno: «ZERO» è un
-prodotto a listino** (156 codici) e l'archivio lo nomina in 71 file — la foto liscia su un articolo ZERO è
-un'altra rosetta, non un'approssimazione. **Dove non si indovina**: SPIDER, MILLA e TRAMA hanno due archivi
-ciascuno e nessuna fonte di COLOMBO li accoppia → **66 codici senza foto**, dichiarati con la ragione (la serie
-sbagliata darebbe una foto che esiste, si vede benissimo, ed è di un altro prodotto). **`pnpm foto:colombo` non
-scarica i 3,5 GB**: legge l'indice dei 79 zip con richieste **Range** sulle central directory e scarica solo le
-foto scelte, una voce alla volta (`zip-range.ts`, zero dipendenze); converte col **`sharp`** (devDependency), e
-la conversione **non è un'ottimizzazione** — un JPEG **CMYK** il browser non lo disegna. **L'idempotenza è
-provata**: il secondo run vero ha stampato `12 caricate · 228 già presenti` e ha chiuso in 7 minuti invece di
+- **FOTO DEGLI ARTICOLI COLOMBO + FILTRO COLORI + POMOLI GENERICI ✅ (PR #54, #55, #56 MERGIATE, ops
+  ESEGUITE)**: il reparto maniglie mostrava 3.456 articoli senza una sola immagine, e `ArticoloRow` aveva **già**
+  il posto della miniatura (44px, disegnato la sessione prima, sempre vuoto perché `image_url` era NULL ovunque).
+  Ora **2.118 codici su 3.456 = 61,3%** hanno una foto, con **240 file** su Vercel Blob **privato** dietro
+  `/api/article-image`. **Tre gradini, tutti cose scritte da COLOMBO**: il **codice** nel nome del file (322 —
+  raggiunge maniglioni, pomoli e bocchette, per nome di modello irraggiungibili) · la **finitura** (994 — si
+  vede il colore che il cliente comprerà) · la foto del **modello** (679) · più i **pomoli generici** (+123).
+  **Eseguire ha falsificato quattro affermazioni della scheda misure**: le 707 foto non sono tutte «5315×5315
+  pulite su bianco» — **69 sono scatti d'ambiente** su fondo colorato (`Robo4_def.jpg`: 8268×7087, **34 MB**) ·
+  il «39% con la finitura nel nome» contava le parole per esteso in **due lingue**, il codice ufficiale sta in
+  **143 file** · il codice intero nel nome sta in **29 file** · e **la cartella da sola non basta**, perché sette
+  gruppi di listino hanno **due archivi** ciascuno. 🔴 **La scoperta che ha cambiato il disegno: «ZERO» è un
+  prodotto a listino** (156 codici) e l'archivio lo nomina in 71 file — la foto liscia su un articolo ZERO è
+  un'altra rosetta, non un'approssimazione. **Dove non si indovina**: SPIDER, MILLA e TRAMA hanno due archivi
+  ciascuno e nessuna fonte di COLOMBO li accoppia → **66 codici senza foto**, dichiarati con la ragione (la serie
+  sbagliata darebbe una foto che esiste, si vede benissimo, ed è di un altro prodotto). **`pnpm foto:colombo` non
+  scarica i 3,5 GB**: legge l'indice dei 79 zip con richieste **Range** sulle central directory e scarica solo le
+  foto scelte, una voce alla volta (`zip-range.ts`, zero dipendenze); converte col **`sharp`** (devDependency), e
+  la conversione **non è un'ottimizzazione** — un JPEG **CMYK** il browser non lo disegna. **L'idempotenza è
+  provata**: il secondo run vero ha stampato `12 caricate · 228 già presenti` e ha chiuso in 7 minuti invece di
+
 18. **`articles.image_url` conserva la CHIAVE** dello store privato: **nessuna colonna nuova, nessuna
-migrazione in tutta la sessione** (decisione utente — `catalog_edition` sarebbe nata accanto a `catalog_page`,
-NULL su tutte e 3.456 le righe, cioè la forma della «disponibilità falsa»); corretto il commento a schema che
-diceva «Blob PUBBLICO», falso in due affermazioni su tre. **+ FILTRO COLORI** (la 14ª riga di Andrea): offre le
-finiture **presenti nel contesto** (28 nel catalogo, **cinque dentro FEDRA**), non le 31 sempre, e **non si
-restringe con quella già scelta** — un filtro che cancella le proprie alternative è un vicolo cieco;
-`<details>` nativo (46px chiuso), regola in TypeScript come la disponibilità, filtri intersecati prima del raw
-SQL. **+ POMOLI GENERICI** (PR #56): `FILE_MODELLO`, dodici righe con chiave `archivio/nome-file` che vince su
-`ARCHIVI[archivio]`, perché l'indice del listino COLOMBO stampa la serie accanto a ogni pomolo («130 round
-ID25», «128 robot CD45»…) → ROBOT 65→111/129, ROUND 20/20, SQUARE 23/23, CUT 11/11, PUSH 5/5, POMOLO 18/18.
-Restano fuori i pomoli dei modelli che hanno già l'archivio di maniglia: quale serie sia il pomolo non è
-scritto. **Difetto trovato dagli screenshot e non dai test**: col filtro acceso il numero sui gruppi contava un
-altro insieme senza dirlo → ora lo dichiara, e le quattro copie sparse di «&pronta=1» nei link sono una regola
-sola. **Lezione ops**: il secret del database si chiama **`NEON_DIRECT_URL`**, non `DATABASE_URL` — il primo
-run è morto in **zero secondi** alla guardia dicendo quale variabile fosse vuota, che è esattamente il motivo
-per cui le guardie ci sono. Gate: typecheck · lint · **1.423 test** · build 23 route · **integrazione 9/9 sul
-catalogo vero** (provata rossa sabotando la tabella) · **browser 28/28 + 20/20** (desktop e 375px, screenshot
-guardati). 🟢 **NESSUNA MIGRAZIONE, nessuna finestra di disservizio.** ✅ **OPS ESEGUITE** (run `30948429475` e
-`30958928985`). **Domanda aperta per COLOMBO**: quale archivio è MR11 e quale MR15 (idem LC31/LC41, LC71/LC81).
-Spec/piano: `docs/superpowers/{specs,plans}/2026-08-05-foto-articoli-colombo*`.
+    migrazione in tutta la sessione** (decisione utente — `catalog_edition` sarebbe nata accanto a `catalog_page`,
+    NULL su tutte e 3.456 le righe, cioè la forma della «disponibilità falsa»); corretto il commento a schema che
+    diceva «Blob PUBBLICO», falso in due affermazioni su tre. **+ FILTRO COLORI** (la 14ª riga di Andrea): offre le
+    finiture **presenti nel contesto** (28 nel catalogo, **cinque dentro FEDRA**), non le 31 sempre, e **non si
+    restringe con quella già scelta** — un filtro che cancella le proprie alternative è un vicolo cieco;
+    `<details>` nativo (46px chiuso), regola in TypeScript come la disponibilità, filtri intersecati prima del raw
+    SQL. **+ POMOLI GENERICI** (PR #56): `FILE_MODELLO`, dodici righe con chiave `archivio/nome-file` che vince su
+    `ARCHIVI[archivio]`, perché l'indice del listino COLOMBO stampa la serie accanto a ogni pomolo («130 round
+    ID25», «128 robot CD45»…) → ROBOT 65→111/129, ROUND 20/20, SQUARE 23/23, CUT 11/11, PUSH 5/5, POMOLO 18/18.
+    Restano fuori i pomoli dei modelli che hanno già l'archivio di maniglia: quale serie sia il pomolo non è
+    scritto. **Difetto trovato dagli screenshot e non dai test**: col filtro acceso il numero sui gruppi contava un
+    altro insieme senza dirlo → ora lo dichiara, e le quattro copie sparse di «&pronta=1» nei link sono una regola
+    sola. **Lezione ops**: il secret del database si chiama **`NEON_DIRECT_URL`**, non `DATABASE_URL` — il primo
+    run è morto in **zero secondi** alla guardia dicendo quale variabile fosse vuota, che è esattamente il motivo
+    per cui le guardie ci sono. Gate: typecheck · lint · **1.423 test** · build 23 route · **integrazione 9/9 sul
+    catalogo vero** (provata rossa sabotando la tabella) · **browser 28/28 + 20/20** (desktop e 375px, screenshot
+    guardati). 🟢 **NESSUNA MIGRAZIONE, nessuna finestra di disservizio.** ✅ **OPS ESEGUITE** (run `30948429475` e
+    `30958928985`). **Domanda aperta per COLOMBO**: quale archivio è MR11 e quale MR15 (idem LC31/LC41, LC71/LC81).
+    Spec/piano: `docs/superpowers/{specs,plans}/2026-08-05-foto-articoli-colombo*`.
 
-+ **SFOGLIO A SERIE: FOTO, TENDINE, FUSIONI ✅ (branch `claude/ufptrade-catalog-redesign-sy81sv`, PR aperta)**:
-sessione di **decisioni** portata fino in fondo (brainstorming → misure sul listino vero → `/llm-council`
-5 advisor + 5 peer review → `/impeccable` → spec → piano → TDD → browser). **(1) FOTO**: tessere di livello 1
-in due forme — il **gruppo-modello** (63 su 94) ha la foto grande, la **tipologia** (31: BOCCHETTA, MANIGLIONE,
-KIT…) **non ha area immagine affatto**, perché una foto sola sarebbe un modello a caso spacciato per la
-categoria e un riquadro vuoto in una griglia si legge come immagine rotta. Quali gruppi siano un modello non è
-un nostro giudizio: è `ARCHIVI`, la struttura dell'archivio fotografico di COLOMBO. **(2) TENDINE**: il livello 2
-smette di essere una navigazione — `<details>` **nativo** controllato dall'URL (`?fam=A,B`), più d'una aperta
-insieme, tutte chiuse all'arrivo, anteprima 56px chiusa → 32px aperta (resta anche aperta: con tre tendine
-aperte le intestazioni sono i soli punti di riferimento). Tutte le righe del gruppo arrivano con la risposta
-(88 KB nel peggiore dei casi) e **una tendina chiusa non fa scaricare le sue foto**, perché è `display:none`.
-**(3) LA REGOLA DELLE SERIE, 77,8% → 98,2%**: token della descrizione presente nel codice · assorbimento in una
-serie **già esistente** per **identità** (+17) o **prefisso unico** (+276) della radice · **radici condivise da
-almeno due codici** (+400 in 58 voci). Restano 60 codici su 3.393; 591 serie, di cui il 7,3% da un codice solo
-(la regola vecchia ne aveva l'8,6%). La soglia dei due non è un numero travestito: una tendina che contiene una
-riga sola è un involucro attorno a una riga. **Deroga circoscritta al divieto §9** («non dedurre dal codice»),
-verificata sul suo stesso controesempio: `0CD63FP-CM` e `0CD63GB-CM` restano separati. **(4) SETTE FUSIONI**,
-cercate confrontando **tutte** le etichette a coppie: `MANIG.`+`MANIG.INCASSO`+`MANIGLIA`+`MANIGLIE` →
-**MANIGLIA INCASSO** (56 righe su 57 dicono «INCASSO»: «MANIGLIA» prometteva tutte le maniglie e ne conteneva
-90) · `MANIGLIONI`→`MANIGLIONE` · `PL.OTT.`+`PL.OTT.YALE`→`PL.` · `RG`→`DUMMY` · `RONDELLE` esclusa (la pagina
-dichiarava già il falso). **102 → 94 gruppi.** Restano fuori `PLACCA` (altro prodotto) e **`LUNDCREM`**, che
-entrando in LUND farebbe ereditare a una **cremonese** la foto di una maniglia. **(5) LA CURATELA È PER MARCA**:
-`browseLabel(brand, name)` — senza, il giorno di HOPPE le correzioni di COLOMBO si applicherebbero in silenzio
-alle sue etichette. **(6) «famiglia» → «serie»** (parola di COLOMBO), URL invariato `?fam=`, e un `?tipo=MANIG.`
-condiviso prima della fusione **si risolve** invece di aprire un gruppo vuoto. **La decisione che regge le
-altre**: si classifica sull'**insieme intero** e si filtra dopo — misurato che, classificando dopo il filtro,
-27 articoli su 3.393 cambiavano serie con «solo pronta consegna» acceso. **Difetti trovati eseguendo**: la
-diagnosi dell'utente sullo zero iniziale era sbagliata (COLOMBO scrive nella descrizione un codice diverso da
-quello dell'articolo) e nello stesso gruppo c'era un **terzo** codice fuori posto che nessuno aveva visto ·
-`router.replace` fa un giro sul server e perdeva la seconda tendina aperta (ora `history.replaceState`) ·
-React richiudeva la tendina appena aperta e quel reset la toglieva dall'elenco (ora stato di render locale) ·
-una foto mancante disegnava l'icona di immagine rotta · e il **mio script di verifica mentiva**, perché
-`details summary` prendeva anche il filtro colori. Gate: typecheck · lint · **1.463 test** · build 23 route ·
-**integrazione 35/35 sul listino vero** · **browser 28/28** (desktop e 375px, screenshot guardati).
-🟢 **NESSUNA MIGRAZIONE, NESSUN RUN OPS, nessuna dipendenza nuova**: tutto si calcola a lettura, quindi il
-listino aggiornato si colloca da solo. Spec/piano: `docs/superpowers/{specs,plans}/2026-08-05-sfoglio-serie-e-foto*`.
+- **SFOGLIO A SERIE: FOTO, TENDINE, FUSIONI ✅ (branch `claude/ufptrade-catalog-redesign-sy81sv`, PR aperta)**:
+  sessione di **decisioni** portata fino in fondo (brainstorming → misure sul listino vero → `/llm-council`
+  5 advisor + 5 peer review → `/impeccable` → spec → piano → TDD → browser). **(1) FOTO**: tessere di livello 1
+  in due forme — il **gruppo-modello** (63 su 94) ha la foto grande, la **tipologia** (31: BOCCHETTA, MANIGLIONE,
+  KIT…) **non ha area immagine affatto**, perché una foto sola sarebbe un modello a caso spacciato per la
+  categoria e un riquadro vuoto in una griglia si legge come immagine rotta. Quali gruppi siano un modello non è
+  un nostro giudizio: è `ARCHIVI`, la struttura dell'archivio fotografico di COLOMBO. **(2) TENDINE**: il livello 2
+  smette di essere una navigazione — `<details>` **nativo** controllato dall'URL (`?fam=A,B`), più d'una aperta
+  insieme, tutte chiuse all'arrivo, anteprima 56px chiusa → 32px aperta (resta anche aperta: con tre tendine
+  aperte le intestazioni sono i soli punti di riferimento). Tutte le righe del gruppo arrivano con la risposta
+  (88 KB nel peggiore dei casi) e **una tendina chiusa non fa scaricare le sue foto**, perché è `display:none`.
+  **(3) LA REGOLA DELLE SERIE, 77,8% → 98,2%**: token della descrizione presente nel codice · assorbimento in una
+  serie **già esistente** per **identità** (+17) o **prefisso unico** (+276) della radice · **radici condivise da
+  almeno due codici** (+400 in 58 voci). Restano 60 codici su 3.393; 591 serie, di cui il 7,3% da un codice solo
+  (la regola vecchia ne aveva l'8,6%). La soglia dei due non è un numero travestito: una tendina che contiene una
+  riga sola è un involucro attorno a una riga. **Deroga circoscritta al divieto §9** («non dedurre dal codice»),
+  verificata sul suo stesso controesempio: `0CD63FP-CM` e `0CD63GB-CM` restano separati. **(4) SETTE FUSIONI**,
+  cercate confrontando **tutte** le etichette a coppie: `MANIG.`+`MANIG.INCASSO`+`MANIGLIA`+`MANIGLIE` →
+  **MANIGLIA INCASSO** (56 righe su 57 dicono «INCASSO»: «MANIGLIA» prometteva tutte le maniglie e ne conteneva
 
-+ **LE SETTE DRITTE DI ANDREA ✅ (branch `claude/uftrade-handles-catalog-fixes-q5mc0o`, PR da aprire)**:
-Andrea ha verificato lo sfoglio della PR #58 e ha mandato **cinque** correzioni; rispondendo alle
-domande ne ha aggiunte **due**. Workflow completo (brainstorming → misure sul listino e sull'archivio
-veri → `/llm-council` con le affermazioni **verificate nel repo** → `/impeccable` → spec → piano → 11
-task TDD → browser). **(1) Copia senza separatori**: `CopyCodeButton` guadagna `copyAs`, che di default
-è **ciò che mostra** — il reparto serramenti (`A50122.08.07`, punti compresi) non cambia di una riga; il
-valore è `articles.code_norm`, non un calcolo in UI. **(2) `PL.`→`PLACCA`** e **(6) `HEIDI/PETER`→HEIDI,
-`LUNDCREM`→LUND**: due capovolgono una decisione della sessione precedente, presa su una misura giusta
-che rispondeva alla domanda sbagliata («sono lo stesso oggetto» invece di «come li chiama chi li
-ordina»); i due test che asserivano il contrario **erano la codifica di quella scelta, non la sua
-sentinella**. Le cremonesi non ereditano la foto della maniglia: `serie` dichiarata sugli archivi
-(`01_Heidi`→CD31, `01_Lund`→SE11) — e la regola sulle finiture NON le avrebbe salvate, perché `0CD32-UB`
-prendeva `Heidi_R_UB`, finitura **provata giusta** e prodotto **sbagliato**. **(7) `COPPIA` si scioglie**:
-non è un prodotto, è una confezione — prima parola **trasparente**, l'etichetta viene dal secondo token
-che ripassa dalle stesse fusioni. Misurando è saltato fuori che serviva `BOCCHETTE`→`BOCCHETTA`, senza
-il quale **nasceva un gruppo nuovo da 28 codici** e nessun conteggio andava a zero. **94 → 90 gruppi.**
-**(3) LE FOTO DELLA FINITURA SBAGLIATA — il punto che vale di più.** Il match ingenuo sui nomi sarebbe
-stato **peggio del silenzio**: `Cromo` è sottostringa di «cromo matte», che è **Cromat** (lo prova
-`01_Ama`, dove COLOMBO scrive `cromat` sulla variante zero e `cromo matte` su quella liscia). Estratto
-il **vocabolario chiuso** — 638 scatti → **195 code**, guardate una per una — il riconoscitore è match
-più lungo + 6 grafie + rifiuto dei bicolori, e i bicolori si riconoscono dalla **SOVRAPPOSIZIONE**, non
-dal conteggio («Umber bronze» aggancia due aghi ma è una finitura sola col nome che ne contiene un
-altro). **Riconoscere le finiture non serve a misurare, serve a SCEGLIERE**: da **350 provate sbagliate
-a 149 senza togliere una foto**, e il caso segnalato (DUE/ONE, Mood) va a **zero** perché l'archivio *ha*
-la foto di ogni colore. Poi la regola scelta dall'utente: **una foto contesa resta solo a chi può
-dimostrare che è sua** — fondata su un fatto dimostrabile senza leggere la finitura della foto (**667
-articoli si contendevano 72 file**, quindi almeno 595 mostravano il colore di un altro codice). Esito
-finale: **2.118 → 1.609 foto (61,3% → 46,6%), provate esatte 1.033 → 1.402, provate SBAGLIATE 350 → 0.**
-**DUE IMPRECISIONI TROVATE ESEGUENDO IL GATE, non leggendo** (14 gruppi a zero erano troppi per essere
-tutti ambiguità vera), entrambe dalla stessa parte — sapevo leggere le foto meglio degli articoli: la
-coda del **nome file** pretendeva una cifra (`Heidi_R_UB` dice «Umber Bronze», **48 file su 638**, ed
-erano proprio quelli dei gruppi azzerati) e la coda del **codice articolo** pretendeva il trattino (237
-codici non ce l'hanno, **126 finiscono con una delle 31**: `0CC15FISSOC01` è «POMOLO ONE **WHITE**» e
-teneva la foto del pomolo **rosso** — la segnalazione di Andrea sopravvissuta nel punto meno visibile).
-Gruppi azzerati **14 → 7**. **MISURATO E SCARTATO**: leggere la finitura dal **nome dell'articolo** — 62
-conflitti col codice e ha torto il nome, «VINTAGE SATINATO» *è* Vintage Mat, «CROMO» è la troncatura di
-`CR8` che è un bicolore, «ANODIC SILVER» non è Silver: le descrizioni del listino sono troncate a
-colonna. ⚠️ **Prezzo dichiarato**: ROUND, SQUARE, CUT e PUSH — la copertura dei pomoli generici della PR
-#56 — perdono **tutte** le foto (i loro file non dicono alcuna finitura e dieci codici se li contendono);
-il test è stato **girato con la decisione**, non allentato in silenzio. **(4) SEZIONE «ACCESSORI»**, 17
-gruppi decisi da Andrea (**non deducibili**: i cinque gruppi di pomoli hanno l'archivio e maniglie non
-sono, MILLA/SPIDER/TRAMA sono maniglie senza archivio). Verdetto `/llm-council` (5 advisor + 3 peer
-review): **sezione, non livello e non filtro**; l'argomento del dissenziente si è **rovesciato sul
-codice** (`codaFiltri` incolla i filtri a ogni link proprio perché non si spengano scendendo). **La banda
-di sopra NON ha intestazione**: misurato che dei 27 gruppi di solo testo **17 sono accessori e 10 no**,
-quindi qualunque nome sarebbe falso o una seconda parola nostra — e un gruppo nuovo mai classificato
-cade in una banda che **non afferma nulla**. Il campo filtro impara «accessori», che non è il nome di
-nessun gruppo. **(5) ANTEPRIMA DELLA TENDINA**: la foto compare **dove distingue, non dove ripete** —
-dentro FEDRA era *ripetuta*, non piccola; dentro una tipologia resta, **ferma**. Sembra il contrario del
-livello 1 (`isModello` lì accende, qui spegne) ed è scritto nel codice perché qualcuno lo «correggerà».
-**Lo screenshot ha scovato ciò che l'asserzione non vedeva**: l'ancora scrollava (`scrollY > 100` era
-vero) ma il titolo finiva **sotto la fascia sticky**, cioè si arrivava a una banda senza la riga che
-dichiara «Accessori» come parola nostra. Gate: typecheck · lint · **test 1.546** · build 23 route ·
-**integrazione 358 sul catalogo VERO** · **browser 38/38** (desktop e 375px, screenshot guardati).
-🟢 **NESSUNA MIGRAZIONE.** 🔴 **UN RUN OPS**: «Ops — Foto COLOMBO» (~7 min, idempotente; lo script azzera
-`image_url` prima di riscrivere, quindi le foto tolte spariscono da sole). Secret `NEON_DIRECT_URL`, non
-`DATABASE_URL`. Spec/piano: `docs/superpowers/{specs,plans}/2026-08-05-sette-dritte-andrea*`.
+90. · `MANIGLIONI`→`MANIGLIONE` · `PL.OTT.`+`PL.OTT.YALE`→`PL.` · `RG`→`DUMMY` · `RONDELLE` esclusa (la pagina
+    dichiarava già il falso). **102 → 94 gruppi.** Restano fuori `PLACCA` (altro prodotto) e **`LUNDCREM`**, che
+    entrando in LUND farebbe ereditare a una **cremonese** la foto di una maniglia. **(5) LA CURATELA È PER MARCA**:
+    `browseLabel(brand, name)` — senza, il giorno di HOPPE le correzioni di COLOMBO si applicherebbero in silenzio
+    alle sue etichette. **(6) «famiglia» → «serie»** (parola di COLOMBO), URL invariato `?fam=`, e un `?tipo=MANIG.`
+    condiviso prima della fusione **si risolve** invece di aprire un gruppo vuoto. **La decisione che regge le
+    altre**: si classifica sull'**insieme intero** e si filtra dopo — misurato che, classificando dopo il filtro,
+    27 articoli su 3.393 cambiavano serie con «solo pronta consegna» acceso. **Difetti trovati eseguendo**: la
+    diagnosi dell'utente sullo zero iniziale era sbagliata (COLOMBO scrive nella descrizione un codice diverso da
+    quello dell'articolo) e nello stesso gruppo c'era un **terzo** codice fuori posto che nessuno aveva visto ·
+    `router.replace` fa un giro sul server e perdeva la seconda tendina aperta (ora `history.replaceState`) ·
+    React richiudeva la tendina appena aperta e quel reset la toglieva dall'elenco (ora stato di render locale) ·
+    una foto mancante disegnava l'icona di immagine rotta · e il **mio script di verifica mentiva**, perché
+    `details summary` prendeva anche il filtro colori. Gate: typecheck · lint · **1.463 test** · build 23 route ·
+    **integrazione 35/35 sul listino vero** · **browser 28/28** (desktop e 375px, screenshot guardati).
+    🟢 **NESSUNA MIGRAZIONE, NESSUN RUN OPS, nessuna dipendenza nuova**: tutto si calcola a lettura, quindi il
+    listino aggiornato si colloca da solo. Spec/piano: `docs/superpowers/{specs,plans}/2026-08-05-sfoglio-serie-e-foto*`.
 
-+ **LE COPERTINE DEI GRUPPI — ottava tornata di Andrea ✅ (branch
-`claude/ufptrade-andrea-feedback-f0s2re`)**: tre richieste (BOCCHETTA in Accessori · i due `MANIG.`
-uniti · «mancano le foto» a 12 gruppi) più una quarta arrivata rispondendo (GRANO non è una maniglia).
-**I dodici non erano dodici segnalazioni**: misurando sono *esattamente* i gruppi della banda principale
-che non mostrano una foto sulla tessera, meno BOCCHETTA che nello stesso messaggio spostava altrove —
-non ha elencato difetti, ha descritto **lo stato della griglia**. E sono **due problemi**: nove TIPOLOGIE
-che un'area immagine non ce l'hanno per disegno (PR #58) e quattro MODELLI che il riquadro ce l'hanno e
-lo mostrano **vuoto** perché le foto le abbiamo tolte noi nella #60 (provato: gli 11 codici CUT hanno
-tutti una coda di finitura, i due file non ne dichiarano nessuna, otto codici in due finiture si
-contendono il primo → 59 codici in tutto). **IL PRINCIPIO**: *la copertina di un gruppo e la foto di una
-riga sono due affermazioni diverse* — la riga dice «questo codice è così» e la finitura conta (regola di
-Andrea, intatta), la copertina dice «questo gruppo è così» e la finitura è irrilevante purché
-dichiarata. Quindi le copertine tornano **senza rimettere una foto sbagliata sulle righe**.
-**`/llm-council`** (5 advisor + 3 peer review): **no all'esemplare sulle tipologie, con la MINORANZA** —
-Andrea ha fatto togliere **509 foto** perché sbagliavano il *colore* dello stesso oggetto, e un esemplare
-sbaglia l'*oggetto*. Cadute **quattro** affermazioni degli advisor verificate nel repo: «3 con e 24
-senza» (sono **11 e 11**) · il «mosaico di 4 foto» (9 tipologie su 11 ne hanno ≤4, **4 ne hanno una**) ·
-«lancia il run ops, chiude 7 su 12» (**è un no-op**: quelle foto non sono su Blob) · «N modelli · N
-codici, il contenuto che una tipologia ha e un modello no» (POMOLINO ha **2** serie, FEDRA **8**).
-**Il punto cieco che nessuno aveva visto**: il predicato sbagliato era `isModello`. Cosa c'è:
-`soloCopertina` (un archivio **nomina** il gruppo senza **prestare** foto ai codici → MILLA/SPIDER/TRAMA
-riprendono la copertina, i 66 codici restano senza foto di riga) · `copertineDichiarate()` derivata da
-`FILE_MODELLO` (**nessuna colonna, nessuna migrazione**; 3 nomi di file nuovi, **guardati**) ·
-`previewDiGruppo` (la forma della tessera segue **la foto**, e il riquadro vuoto diventa impossibile per
-costruzione, anche su 404) · **`items-start` → `items-stretch`**, una parola: la tessera senza foto non
-si allungava e lasciava il buco sotto di sé, ed è per QUESTO che si leggeva come «immagine mancante» ·
-righe con **spazio vuoto** invece del segnaposto (336 su 353 in MANIGLIONE, sotto un'intestazione di
-serie che la foto ce l'ha; eccezione dichiarata per la scheda articolo) · la **dichiarazione una volta
-sola** «le foto sono del modello, non della finitura», che paga il debito trovato all'unanimità dal
-council (la copertina mostrava la finitura del primo codice in ordine alfabetico, mai dichiarato).
-**La domanda «foto mai esistita vs foto tolta da noi» si dissolve**: non esiste più un gruppo la cui
-copertina abbiamo tolto, e dentro il gruppo l'assenza torna ad avere un solo significato — nessun
-distintivo per riga, sarebbe rumore che non cambia nessuna decisione. Numeri finali sul listino vero:
-**88 gruppi · accessori 19 (969 codici) · banda principale 69, di cui 66 con copertina e 3 senza**
-(MANIGLIONE 353, MANIGLIA INCASSO 93, POMOLINO 41) · articoli con foto **1.609/3.456 invariato**.
-Gate: typecheck · lint · **test 1.583** · **integrazione 15/15 su listino e archivio VERI** (provata
-rossa sabotando un nome di copertina) · **browser 30/30** desktop e 375px, screenshot guardati — ed è
-la **quarta** volta che uno script di verifica mente (`ul.grid` prendeva anche il filtro finitura).
-🟢 **NESSUNA MIGRAZIONE, nessuna finestra di disservizio.** ✅ **RUN OPS ESEGUITO** («Ops — Foto
-COLOMBO», run `31105799102`, sul ref del branch): `abbinamento 1609/3456 (46,6%) con 299 foto · 9
+- **LE SETTE DRITTE DI ANDREA ✅ (branch `claude/uftrade-handles-catalog-fixes-q5mc0o`, PR da aprire)**:
+  Andrea ha verificato lo sfoglio della PR #58 e ha mandato **cinque** correzioni; rispondendo alle
+  domande ne ha aggiunte **due**. Workflow completo (brainstorming → misure sul listino e sull'archivio
+  veri → `/llm-council` con le affermazioni **verificate nel repo** → `/impeccable` → spec → piano → 11
+  task TDD → browser). **(1) Copia senza separatori**: `CopyCodeButton` guadagna `copyAs`, che di default
+  è **ciò che mostra** — il reparto serramenti (`A50122.08.07`, punti compresi) non cambia di una riga; il
+  valore è `articles.code_norm`, non un calcolo in UI. **(2) `PL.`→`PLACCA`** e **(6) `HEIDI/PETER`→HEIDI,
+  `LUNDCREM`→LUND**: due capovolgono una decisione della sessione precedente, presa su una misura giusta
+  che rispondeva alla domanda sbagliata («sono lo stesso oggetto» invece di «come li chiama chi li
+  ordina»); i due test che asserivano il contrario **erano la codifica di quella scelta, non la sua
+  sentinella**. Le cremonesi non ereditano la foto della maniglia: `serie` dichiarata sugli archivi
+  (`01_Heidi`→CD31, `01_Lund`→SE11) — e la regola sulle finiture NON le avrebbe salvate, perché `0CD32-UB`
+  prendeva `Heidi_R_UB`, finitura **provata giusta** e prodotto **sbagliato**. **(7) `COPPIA` si scioglie**:
+  non è un prodotto, è una confezione — prima parola **trasparente**, l'etichetta viene dal secondo token
+  che ripassa dalle stesse fusioni. Misurando è saltato fuori che serviva `BOCCHETTE`→`BOCCHETTA`, senza
+  il quale **nasceva un gruppo nuovo da 28 codici** e nessun conteggio andava a zero. **94 → 90 gruppi.**
+  **(3) LE FOTO DELLA FINITURA SBAGLIATA — il punto che vale di più.** Il match ingenuo sui nomi sarebbe
+  stato **peggio del silenzio**: `Cromo` è sottostringa di «cromo matte», che è **Cromat** (lo prova
+  `01_Ama`, dove COLOMBO scrive `cromat` sulla variante zero e `cromo matte` su quella liscia). Estratto
+  il **vocabolario chiuso** — 638 scatti → **195 code**, guardate una per una — il riconoscitore è match
+  più lungo + 6 grafie + rifiuto dei bicolori, e i bicolori si riconoscono dalla **SOVRAPPOSIZIONE**, non
+  dal conteggio («Umber bronze» aggancia due aghi ma è una finitura sola col nome che ne contiene un
+  altro). **Riconoscere le finiture non serve a misurare, serve a SCEGLIERE**: da **350 provate sbagliate
+  a 149 senza togliere una foto**, e il caso segnalato (DUE/ONE, Mood) va a **zero** perché l'archivio _ha_
+  la foto di ogni colore. Poi la regola scelta dall'utente: **una foto contesa resta solo a chi può
+  dimostrare che è sua** — fondata su un fatto dimostrabile senza leggere la finitura della foto (**667
+  articoli si contendevano 72 file**, quindi almeno 595 mostravano il colore di un altro codice). Esito
+  finale: **2.118 → 1.609 foto (61,3% → 46,6%), provate esatte 1.033 → 1.402, provate SBAGLIATE 350 → 0.**
+  **DUE IMPRECISIONI TROVATE ESEGUENDO IL GATE, non leggendo** (14 gruppi a zero erano troppi per essere
+  tutti ambiguità vera), entrambe dalla stessa parte — sapevo leggere le foto meglio degli articoli: la
+  coda del **nome file** pretendeva una cifra (`Heidi_R_UB` dice «Umber Bronze», **48 file su 638**, ed
+  erano proprio quelli dei gruppi azzerati) e la coda del **codice articolo** pretendeva il trattino (237
+  codici non ce l'hanno, **126 finiscono con una delle 31**: `0CC15FISSOC01` è «POMOLO ONE **WHITE**» e
+  teneva la foto del pomolo **rosso** — la segnalazione di Andrea sopravvissuta nel punto meno visibile).
+  Gruppi azzerati **14 → 7**. **MISURATO E SCARTATO**: leggere la finitura dal **nome dell'articolo** — 62
+  conflitti col codice e ha torto il nome, «VINTAGE SATINATO» _è_ Vintage Mat, «CROMO» è la troncatura di
+  `CR8` che è un bicolore, «ANODIC SILVER» non è Silver: le descrizioni del listino sono troncate a
+  colonna. ⚠️ **Prezzo dichiarato**: ROUND, SQUARE, CUT e PUSH — la copertura dei pomoli generici della PR
+  #56 — perdono **tutte** le foto (i loro file non dicono alcuna finitura e dieci codici se li contendono);
+  il test è stato **girato con la decisione**, non allentato in silenzio. **(4) SEZIONE «ACCESSORI»**, 17
+  gruppi decisi da Andrea (**non deducibili**: i cinque gruppi di pomoli hanno l'archivio e maniglie non
+  sono, MILLA/SPIDER/TRAMA sono maniglie senza archivio). Verdetto `/llm-council` (5 advisor + 3 peer
+  review): **sezione, non livello e non filtro**; l'argomento del dissenziente si è **rovesciato sul
+  codice** (`codaFiltri` incolla i filtri a ogni link proprio perché non si spengano scendendo). **La banda
+  di sopra NON ha intestazione**: misurato che dei 27 gruppi di solo testo **17 sono accessori e 10 no**,
+  quindi qualunque nome sarebbe falso o una seconda parola nostra — e un gruppo nuovo mai classificato
+  cade in una banda che **non afferma nulla**. Il campo filtro impara «accessori», che non è il nome di
+  nessun gruppo. **(5) ANTEPRIMA DELLA TENDINA**: la foto compare **dove distingue, non dove ripete** —
+  dentro FEDRA era _ripetuta_, non piccola; dentro una tipologia resta, **ferma**. Sembra il contrario del
+  livello 1 (`isModello` lì accende, qui spegne) ed è scritto nel codice perché qualcuno lo «correggerà».
+  **Lo screenshot ha scovato ciò che l'asserzione non vedeva**: l'ancora scrollava (`scrollY > 100` era
+  vero) ma il titolo finiva **sotto la fascia sticky**, cioè si arrivava a una banda senza la riga che
+  dichiara «Accessori» come parola nostra. Gate: typecheck · lint · **test 1.546** · build 23 route ·
+  **integrazione 358 sul catalogo VERO** · **browser 38/38** (desktop e 375px, screenshot guardati).
+  🟢 **NESSUNA MIGRAZIONE.** 🔴 **UN RUN OPS**: «Ops — Foto COLOMBO» (~7 min, idempotente; lo script azzera
+  `image_url` prima di riscrivere, quindi le foto tolte spariscono da sole). Secret `NEON_DIRECT_URL`, non
+  `DATABASE_URL`. Spec/piano: `docs/superpowers/{specs,plans}/2026-08-05-sette-dritte-andrea*`.
+
+- **LE COPERTINE DEI GRUPPI — ottava tornata di Andrea ✅ (branch
+  `claude/ufptrade-andrea-feedback-f0s2re`)**: tre richieste (BOCCHETTA in Accessori · i due `MANIG.`
+  uniti · «mancano le foto» a 12 gruppi) più una quarta arrivata rispondendo (GRANO non è una maniglia).
+  **I dodici non erano dodici segnalazioni**: misurando sono _esattamente_ i gruppi della banda principale
+  che non mostrano una foto sulla tessera, meno BOCCHETTA che nello stesso messaggio spostava altrove —
+  non ha elencato difetti, ha descritto **lo stato della griglia**. E sono **due problemi**: nove TIPOLOGIE
+  che un'area immagine non ce l'hanno per disegno (PR #58) e quattro MODELLI che il riquadro ce l'hanno e
+  lo mostrano **vuoto** perché le foto le abbiamo tolte noi nella #60 (provato: gli 11 codici CUT hanno
+  tutti una coda di finitura, i due file non ne dichiarano nessuna, otto codici in due finiture si
+  contendono il primo → 59 codici in tutto). **IL PRINCIPIO**: _la copertina di un gruppo e la foto di una
+  riga sono due affermazioni diverse_ — la riga dice «questo codice è così» e la finitura conta (regola di
+  Andrea, intatta), la copertina dice «questo gruppo è così» e la finitura è irrilevante purché
+  dichiarata. Quindi le copertine tornano **senza rimettere una foto sbagliata sulle righe**.
+  **`/llm-council`** (5 advisor + 3 peer review): **no all'esemplare sulle tipologie, con la MINORANZA** —
+  Andrea ha fatto togliere **509 foto** perché sbagliavano il _colore_ dello stesso oggetto, e un esemplare
+  sbaglia l'_oggetto_. Cadute **quattro** affermazioni degli advisor verificate nel repo: «3 con e 24
+  senza» (sono **11 e 11**) · il «mosaico di 4 foto» (9 tipologie su 11 ne hanno ≤4, **4 ne hanno una**) ·
+  «lancia il run ops, chiude 7 su 12» (**è un no-op**: quelle foto non sono su Blob) · «N modelli · N
+  codici, il contenuto che una tipologia ha e un modello no» (POMOLINO ha **2** serie, FEDRA **8**).
+  **Il punto cieco che nessuno aveva visto**: il predicato sbagliato era `isModello`. Cosa c'è:
+  `soloCopertina` (un archivio **nomina** il gruppo senza **prestare** foto ai codici → MILLA/SPIDER/TRAMA
+  riprendono la copertina, i 66 codici restano senza foto di riga) · `copertineDichiarate()` derivata da
+  `FILE_MODELLO` (**nessuna colonna, nessuna migrazione**; 3 nomi di file nuovi, **guardati**) ·
+  `previewDiGruppo` (la forma della tessera segue **la foto**, e il riquadro vuoto diventa impossibile per
+  costruzione, anche su 404) · **`items-start` → `items-stretch`**, una parola: la tessera senza foto non
+  si allungava e lasciava il buco sotto di sé, ed è per QUESTO che si leggeva come «immagine mancante» ·
+  righe con **spazio vuoto** invece del segnaposto (336 su 353 in MANIGLIONE, sotto un'intestazione di
+  serie che la foto ce l'ha; eccezione dichiarata per la scheda articolo) · la **dichiarazione una volta
+  sola** «le foto sono del modello, non della finitura», che paga il debito trovato all'unanimità dal
+  council (la copertina mostrava la finitura del primo codice in ordine alfabetico, mai dichiarato).
+  **La domanda «foto mai esistita vs foto tolta da noi» si dissolve**: non esiste più un gruppo la cui
+  copertina abbiamo tolto, e dentro il gruppo l'assenza torna ad avere un solo significato — nessun
+  distintivo per riga, sarebbe rumore che non cambia nessuna decisione. Numeri finali sul listino vero:
+  **88 gruppi · accessori 19 (969 codici) · banda principale 69, di cui 66 con copertina e 3 senza**
+  (MANIGLIONE 353, MANIGLIA INCASSO 93, POMOLINO 41) · articoli con foto **1.609/3.456 invariato**.
+  Gate: typecheck · lint · **test 1.583** · **integrazione 15/15 su listino e archivio VERI** (provata
+  rossa sabotando un nome di copertina) · **browser 30/30** desktop e 375px, screenshot guardati — ed è
+  la **quarta** volta che uno script di verifica mente (`ul.grid` prendeva anche il filtro finitura).
+  🟢 **NESSUNA MIGRAZIONE, nessuna finestra di disservizio.** ✅ **RUN OPS ESEGUITO** («Ops — Foto
+  COLOMBO», run `31105799102`, sul ref del branch): `abbinamento 1609/3456 (46,6%) con 299 foto · 9
 copertine di gruppo` · `Blob: 3 caricate · 304 già presenti` · `1609 articoli con foto` — **fermo**,
-cioè le copertine sono tornate senza spostare una foto di riga. ⚠️ Avevo scritto «le 7 copertine non
-sono su Blob»: per **quattro era falso** — avevo misurato se fossero *scelte da un articolo*, non se
-fossero *presenti sullo store*, e i file dei pomoli erano lì dal run dell'epoca della #56 (la #60 toglie
-`image_url` ma non cancella i file). Caricate davvero: **tre** (MILLA, SPIDER, TRAMA). **PR #61 APERTA**,
-check `test` verde; il rosso è **Vercel**, la stessa failure che aveva la #60 mergiata (debito noto delle
-preview). Spec/piano: `docs/superpowers/{specs,plans}/2026-08-06-copertine-gruppo*`.
+  cioè le copertine sono tornate senza spostare una foto di riga. ⚠️ Avevo scritto «le 7 copertine non
+  sono su Blob»: per **quattro era falso** — avevo misurato se fossero _scelte da un articolo_, non se
+  fossero _presenti sullo store_, e i file dei pomoli erano lì dal run dell'epoca della #56 (la #60 toglie
+  `image_url` ma non cancella i file). Caricate davvero: **tre** (MILLA, SPIDER, TRAMA). **PR #61 APERTA**,
+  check `test` verde; il rosso è **Vercel**, la stessa failure che aveva la #60 mergiata (debito noto delle
+  preview). Spec/piano: `docs/superpowers/{specs,plans}/2026-08-06-copertine-gruppo*`.
 
-**▶ PROSSIMA SESSIONE — I CODICI DEL LISTINO COLOMBO 2026.** Andrea ha portato il listino ufficiale nuovo
+- **LISTINO COLOMBO «VISION 2026» ✅ (branch `claude/ecstatic-clarke-g7629e`, PR da aprire)**: la sessione
+  precedente aveva concluso che il PDF **non contiene codici d'ordine**. La misura era giusta (zero occorrenze
+  della forma assemblata `0CD41R-CM`) ma rispondeva a un'altra domanda: il listino pubblica le **due metà** del
+  codice — il modello sulla pagina prodotto (`AM41 RSB Ø50`), la sigla nella legenda (`OL`). **La prova non era
+  nel PDF**: la **pronta consegna di Andrea** contiene già **12 codici d'ordine scritti da COLOMBO per i prodotti
+  2026** (`0AM41RHPS1`, `0ID81RCM`, `0ID45FISSOCM`…) — erano i «**23 orfani**» annotati da due sessioni, e non
+  erano refusi: era **il listino nuovo arrivato in magazzino prima che a sistema**. La regola
+  `codice = "0" + modello senza separatori + "-" + sigla` li riproduce **10 designazioni su 10**; sui componenti
+  condivisi già a listino sbaglia **11 volte su 13** — cioè **esattamente dove la risposta ce l'abbiamo già**
+  (`FF13 Y`→`0FF13`, la Y sparisce · `FF19 BZG`→`0FF19BZG6`, compare un 6 · `DK 35 DF`→`XDK35DF`, prefisso X ·
+  `DK 35 DF/8S`→`XDK35D/8SF`, lettere riordinate): lì il codice si **legge**, e le sei voci stanno per esteso.
+  ⚠️ **Il «6» non è la serie di Robot6**: `BZG6` sta su **125 codici in 12 famiglie**. **ENTRATE 251 righe su
+  270** (234 codici nuovi + 17 aggiornati, 6 con prezzo diverso); **le 19 «zirconium HPS/1» restano FUORI** —
+  COLOMBO usa `I1` e `HPS1` **dentro la stessa serie**, e a listino coesistono cinque grafie.
+  **IL PREZZO**: misurato che i prezzi del PDF coincidono **esatto** con `priceList` su 11 articoli comuni e
+  **0 volte su 16** con la somma → `surcharge = **NULL**`, mai `0`, mai il 3,5 % calcolato (**`/llm-council`
+  unanime 4/4**): la misura **non discrimina** fra «il surcharge è stato tolto» e «il listino base si pubblica
+  sempre netto», e `NULL` è l'unico valore recuperabile con un `UPDATE`. Scartata per misura l'ipotesi del
+  surcharge _assorbito_ (i 6 revisionati danno 0,73-0,93, nessuno vicino a 1,035). **E il difetto lo crea
+  l'import**, quindi la UI lo dichiara nella stessa PR: la scheda dichiara **entrambi i rami**, l'elenco porta un
+  marcatore `†` **condizionale** (reso solo dove l'elenco mescola le due convenzioni — misurato 94 righe su 251 in
+  gruppi misti, 157 in gruppi omogenei), con lo **spazio riservato** perché il dagger disallineava la colonna di
+  6px. **DIFETTI TROVATI ESEGUENDO**: i 17 aggiornati tenevano il surcharge del 02/26 accanto al prezzo del 05/26
+  (`0BT13-CM` usciva 12,40 con 0,57 = 4,6 %) → il prezzo e la sua composizione vengono dallo **stesso documento** ·
+  un **byte NUL letterale** nei due moduli faceva trattare i file come **binari** da git, quindi in review il diff
+  non si sarebbe visto · il gate d'integrazione **esplodeva invece di saltare** senza le env · **`ROBOT6 S`
+  collassava in `ROBOT6`** (aggiunto a `divise`, la macchina esisteva già) · due liste scritte a mano allineate
+  alla loro dichiarazione. **Il parser si RIFIUTA invece di indovinare** (nomi ≠ prezzi · finitura fuori legenda ·
+  stesso prodotto con due prezzi su due pagine): la terza guardia ha fermato subito il documento vero — **`BT19
+BZG` oromat costa 53,60 a p8 e 53,70 a p13**, 21 prezzi ripetuti su 22 concordi — e il disaccordo si **dichiara**
+  col valore scelto, non si tollera. Gate: typecheck · lint · **test 1.652** · build 22 route · **integrazione
+  49/49 su PDF e DB veri** (provata rossa nei due versi) · **browser 24/24** (desktop e **375px**, screenshot
+  guardati). 🟢 **NESSUNA MIGRAZIONE.** 🔴 **DUE RUN OPS**: «Ops — Neon» (step `Import listino Vision 2026`
+  **nuovo**, guardia `%PDF` e non `PK`, **dopo** l'import COLOMBO perché è un delta) e «Ops — Foto COLOMBO» (i
+  cinque archivi `00a_Laconica`…`00e_Kubo` hanno ora un'etichetta — ⚠️ **copertura NON ri-misurata**: il gate vuole
+  `COLOMBO_FOTO_INDEX` e quindi la password dell'area download). **Cinque domande aperte** per Andrea/COLOMBO
+  (HPS/1 · surcharge 3,5 % · BT13 −24 % · EAN · `BT19 BZG` 53,60 o 53,70) e la **tabella delle 270 righe** da
+  confermare. Spec/piano: `docs/superpowers/{specs,plans}/2026-09-15-listino-vision-2026*`.
+
+**▶ ~~PROSSIMA SESSIONE~~ — FATTA IL 2026-09-15, vedi la voce qui sopra. Il testo che segue resta come
+registro di ciò che era stato misurato prima, e la sua conclusione «il PDF non ha i codici» è RITIRATA.** Andrea ha portato il listino ufficiale nuovo
 (`Vision2026_pricelist.pdf`, nella cartella Drive registrata sopra), coi prodotti che oggi MANCANO
 dall'archivio: Laconica · Robot6 · Robot6 S · Halo AM15/AM25 · Kubo ID45/ID55 e i complementi.
 **Misurato a fine sessione 06/08, non rifarlo**: il PDF **si legge benissimo** — stesso shift di **+29 per
