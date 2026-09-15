@@ -18,3 +18,22 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Test (Vitest)
         run: pnpm test
+      # Il segno verde su una PR diceva solo «i test passano»: un errore di
+      # TypeScript o una pagina che non compila arrivavano fino al merge, e li
+      # scopriva Vercel. Il build gira DOPO i test perché è il gate più lento e
+      # quello che si rompe più di rado: se un test è rosso non serve aspettarlo.
+      #
+      # ⚠️ Le sei variabili sono FINTE apposta. `src/env.ts` le valida con zod al
+      # boot, quindi senza il build non parte; ma nessuna viene contattata —
+      # `next build` non apre connessioni, e i valori veri sono in Vercel e nei
+      # secret. Verificato: il build passa con esattamente queste sei e stringhe
+      # di connessione inventate.
+      - name: Build (Next + Prisma)
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+          DIRECT_URL: postgresql://ci:ci@localhost:5432/ci
+          NEXTAUTH_URL: http://localhost:3000
+          NEXTAUTH_SECRET: ci-build-only-never-used-for-signing-anything
+          REDIS_URL: redis://localhost:6379
+          IP_HASH_SECRET: ci-build-only
+        run: pnpm build
