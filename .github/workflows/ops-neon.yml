@@ -10,6 +10,10 @@ on:
         description: "URL diretto del listino COLOMBO xlsx (reparto maniglie). Vuoto = salta l'import."
         required: false
         default: "https://drive.usercontent.google.com/download?id=1FV7AEKVe67tlIGOMrglVi3ip8TdZNueI&export=download&confirm=t"
+      vision_url:
+        description: "URL diretto del listino COLOMBO «Vision 2026» PDF (delta 05/26). Vuoto = salta l'import."
+        required: false
+        default: "https://drive.usercontent.google.com/download?id=1BO66H81J3-JlOh8vl4htwX_rHl93B1mM&export=download&confirm=t"
 jobs:
   ops:
     runs-on: ubuntu-latest
@@ -70,6 +74,27 @@ jobs:
           head -c 2 listino-colombo.xlsx | grep -q 'PK' || { echo "::error::Il download non è un xlsx valido"; exit 1; }
           echo "xlsx scaricato: $(wc -c < listino-colombo.xlsx) byte"
           pnpm import:listino COLOMBO listino-colombo.xlsx
+
+      # DELTA del listino 05/26: AGGIUNGE i prodotti nuovi (Laconica, Robot6,
+      # Robot6 S, Halo, Kubo e complementi) e aggiorna i 17 codici condivisi,
+      # senza dichiarare che il resto non è più a listino — cosa che un delta
+      # non è in condizione di sapere. Sta DOPO l'import COLOMBO perché
+      # presuppone la base: i 17 aggiornamenti cadrebbero a vuoto su un
+      # database in cui il listino 02/26 non è ancora entrato.
+      - name: Import listino Vision 2026 (reparto maniglie)
+        if: ${{ github.event.inputs.vision_url != '' }}
+        # L'input non fidato passa da una env var e non viene mai interpolato
+        # nello script: sul runner sono in scope i secret di DB e Gemini.
+        env:
+          VISION_URL: ${{ github.event.inputs.vision_url }}
+        run: |
+          curl -sSL "$VISION_URL" -o vision.pdf
+          # La guardia dello step sopra cerca 'PK' perché importa uno zip: qui
+          # il file è un PDF, e la sua firma è un'altra. Senza, un errore HTML
+          # di Drive arriverebbe al parser come testo cifrato illeggibile.
+          head -c 5 vision.pdf | grep -q '%PDF' || { echo "::error::Il download non è un PDF valido"; exit 1; }
+          echo "PDF scaricato: $(wc -c < vision.pdf) byte, $(pdfinfo vision.pdf | awk '/Pages/{print $2}') pagine"
+          pnpm import:vision COLOMBO vision.pdf
 
       - name: Embed catalogo (idempotente, batch 50)
         run: pnpm embed:products
