@@ -1110,9 +1110,10 @@ describe("ManiglieClient — le due convenzioni di prezzo", () => {
   it("NON marca nulla se tutte le righe hanno la stessa convenzione", () => {
     // 157 righe nuove su 251 stanno in gruppi interamente 05/26: lì il
     // marcatore non ha nulla da distinguere, e sarebbe tappezzeria.
-    cerca([netto, { ...netto, id: "m3", code: "0AM41RY-OL" }]);
+    const { container } = cerca([netto, { ...netto, id: "m3", code: "0AM41RY-OL" }]);
     expect(screen.queryByRole("note")).toBeNull();
-    expect(screen.queryByText("†")).toBeNull();
+    // Nessun marcatore E nessuno spazio riservato: la riga resta com'era.
+    expect(container.querySelectorAll("sup")).toHaveLength(0);
   });
 
   it("nemmeno se sono tutte con maggiorazione", () => {
@@ -1123,8 +1124,11 @@ describe("ManiglieClient — le due convenzioni di prezzo", () => {
   it("marca le righe nette SOLO quando l'elenco contiene entrambe", () => {
     const { container } = cerca([conMagg, netto]);
     expect(screen.getByRole("note").textContent).toMatch(/non dichiara maggiorazioni/i);
-    // Una sola riga marcata: quella senza maggiorazione.
-    expect(container.querySelectorAll("sup")).toHaveLength(1);
+    // Una sola riga porta il GLIFO — l'altra riserva lo spazio e resta vuota,
+    // così la colonna dei prezzi non si disallinea di 6px proprio dove la si
+    // confronta. Si conta il dagger, non l'elemento.
+    const daggers = [...container.querySelectorAll("sup")].filter((s) => s.textContent === "\u2020");
+    expect(daggers).toHaveLength(1);
   });
 
   it("chi usa uno screen reader sente la parola, non il glifo", () => {

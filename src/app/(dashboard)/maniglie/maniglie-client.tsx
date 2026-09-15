@@ -519,12 +519,22 @@ function ArticoloRow({ articolo, marcato }: { articolo: ArticleSummary; marcato:
             overlay `absolute inset-0` non compare nemmeno al passaggio del
             mouse. Il dagger è l'idioma dei listini cartacei, e occupa ~6px:
             la colonna prezzo ne ha 92. */}
-        {marcato && articolo.surcharge === null ? (
+        {marcato ? (
           <>
-            <sup aria-hidden="true" className="ml-0.5 text-[10px] font-normal text-ink-subtle">
-              †
+            {/* Lo spazio è RISERVATO su tutte le righe dell'elenco misto, non solo
+                su quelle marcate: il dagger sposterebbe il numero di ~6px e la
+                colonna dei prezzi smetterebbe di allinearsi proprio dove la si
+                confronta. Dove l'elenco è omogeneo (`marcato` falso) non si
+                riserva niente e la riga resta identica a prima. */}
+            <sup
+              aria-hidden="true"
+              className="ml-0.5 inline-block w-[6px] text-[10px] font-normal text-ink-subtle"
+            >
+              {articolo.surcharge === null ? "†" : ""}
             </sup>
-            <span className="sr-only"> — senza maggiorazione dichiarata</span>
+            {articolo.surcharge === null ? (
+              <span className="sr-only"> — senza maggiorazione dichiarata</span>
+            ) : null}
           </>
         ) : null}
       </span>
