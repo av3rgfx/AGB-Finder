@@ -19,6 +19,7 @@ import {
   SoloPronta,
 } from "@/components/maniglie/sfoglia";
 import { formatPrice } from "@/lib/format";
+import { prezzoNetto } from "@/server/maniglie/composizione-prezzo";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { loadScroll, saveScroll } from "@/lib/archivio-scroll";
 import { leggiSerieAperte, scriviSerieAperte } from "@/lib/serie-aperte";
@@ -119,6 +120,15 @@ export function ManiglieClient() {
 
   const hits = search.data?.hits ?? [];
   const total = search.data?.total ?? 0;
+
+  // Le due convenzioni di prezzo, per ciascuno dei due elenchi. Si calcola una
+  // volta e non per riga: la legenda e il marcatore devono rispondere allo
+  // STESSO insieme, o il simbolo comparirebbe senza la riga che lo spiega.
+  const misteRicerca = convenzioniMiste(hits);
+  const miste = convenzioniMiste([
+    ...(serie.data?.serie ?? []).flatMap((s) => s.rows),
+    ...(serie.data?.senzaSerie ?? []),
+  ]);
 
   const setPage = useCallback(
     (p: number) => {
@@ -315,13 +325,16 @@ export function ManiglieClient() {
               <p className="text-sm text-ink-subtle" aria-live="polite">
                 {serie.data?.total === 1 ? "1 articolo" : `${serie.data?.total ?? 0} articoli`}
               </p>
+              {miste ? <LegendaPrezzi /> : null}
               <SfogliaSerie
                 serie={serie.data?.serie ?? []}
                 aperte={aperteLocali}
                 onToggle={toggleSerie}
                 senzaSerie={serie.data?.senzaSerie ?? []}
                 isModello={serie.data?.isModello ?? false}
-                renderRiga={(articolo) => <ArticoloRow key={articolo.id} articolo={articolo} />}
+                renderRiga={(articolo) => (
+                  <ArticoloRow key={articolo.id} articolo={articolo} marcato={miste} />
+                )}
               />
             </>
           )
@@ -346,9 +359,10 @@ export function ManiglieClient() {
             <p className="text-sm text-ink-subtle" aria-live="polite">
               {total === 1 ? "1 articolo" : `${total} articoli`}
             </p>
+            {misteRicerca ? <LegendaPrezzi /> : null}
             <ul className="list-none overflow-hidden rounded-md border border-line">
               {hits.map((articolo) => (
-                <ArticoloRow key={articolo.id} articolo={articolo} />
+                <ArticoloRow key={articolo.id} articolo={articolo} marcato={misteRicerca} />
               ))}
             </ul>
             <Pagination page={page} total={total} onChange={setPage} />
@@ -449,7 +463,38 @@ function useScrollRestore(key: string, hasData: boolean) {
  * nome e stato entrano nelle colonne della griglia e le righe si allineano in
  * verticale senza un secondo markup.
  */
-function ArticoloRow({ articolo }: { articolo: ArticleSummary }) {
+/**
+ * L'elenco che si ha davanti mescola le due convenzioni di prezzo?
+ *
+ * Il marcatore è CONDIZIONALE apposta. Misurato: 94 righe nuove su 251 cadono in
+ * gruppi che contengono già articoli del 02/26 (BOCCHETTA, MANIGLIONE,
+ * NOTTOLINO); le altre 157 stanno in gruppi interamente 05/26, dove non c'è
+ * nulla con cui confondersi e un marcatore sarebbe tappezzeria. E si spegne da
+ * sé il giorno in cui il listino torna omogeneo: nessun codice da rimuovere.
+ */
+function convenzioniMiste(articoli: ArticleSummary[]): boolean {
+  return articoli.some(netto) && articoli.some((a) => !netto(a));
+}
+
+/** Il discriminante ha un proprietario solo: `composizione-prezzo.ts`. */
+const netto = (a: ArticleSummary): boolean => prezzoNetto(a.surcharge);
+
+/**
+ * Sopra le righe, mai in fondo: una legenda sotto si legge dopo la decisione.
+ *
+ * Tono neutro — nessun colore semantico, nessuna icona di avviso. Quel prezzo
+ * non è inaffidabile: è affidabile esattamente quanto il documento da cui viene,
+ * e un colore d'errore insegnerebbe agli agenti a diffidare di 251 prezzi giusti.
+ */
+function LegendaPrezzi() {
+  return (
+    <p role="note" className="text-xs text-ink-subtle">
+      <span aria-hidden="true">† </span>Il listino di questi articoli non dichiara maggiorazioni.
+    </p>
+  );
+}
+
+function ArticoloRow({ articolo, marcato }: { articolo: ArticleSummary; marcato: boolean }) {
   return (
     <li className="relative grid grid-cols-[44px_1fr_auto] items-center gap-3 border-b border-line bg-surface px-3 py-2.5 transition-colors duration-150 last:border-b-0 hover:bg-surface-sunken sm:grid-cols-[44px_150px_1fr_172px_92px] sm:gap-4 sm:px-4 sm:py-3">
       <Foto url={articolo.imageUrl} />
@@ -468,6 +513,31 @@ function ArticoloRow({ articolo }: { articolo: ArticleSummary }) {
       </div>
       <span className="text-sm font-semibold tabular-nums text-ink sm:justify-self-end">
         {formatPrice(articolo.total)}
+        {/* Il glifo è decorativo e lo spiega la legenda; la parola la sente chi
+            usa uno screen reader. Non `aria-describedby`: questa è una `<span>`
+            non focalizzabile dentro una riga con lo stretched-link sopra, e la
+            descrizione non verrebbe annunciata. Non `title`: un `title` sotto un
+            overlay `absolute inset-0` non compare nemmeno al passaggio del
+            mouse. Il dagger è l'idioma dei listini cartacei, e occupa ~6px:
+            la colonna prezzo ne ha 92. */}
+        {marcato ? (
+          <>
+            {/* Lo spazio è RISERVATO su tutte le righe dell'elenco misto, non solo
+                su quelle marcate: il dagger sposterebbe il numero di ~6px e la
+                colonna dei prezzi smetterebbe di allinearsi proprio dove la si
+                confronta. Dove l'elenco è omogeneo (`marcato` falso) non si
+                riserva niente e la riga resta identica a prima. */}
+            <sup
+              aria-hidden="true"
+              className="ml-0.5 inline-block w-[6px] text-[10px] font-normal text-ink-subtle"
+            >
+              {netto(articolo) ? "†" : ""}
+            </sup>
+            {netto(articolo) ? (
+              <span className="sr-only"> — senza maggiorazione dichiarata</span>
+            ) : null}
+          </>
+        ) : null}
       </span>
       {/* Stretched link: tutta la riga porta alla scheda. */}
       <Link

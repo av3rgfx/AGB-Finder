@@ -1,85 +1,121 @@
 # Prompt di apertura — prossima sessione
 
 > Copia il blocco fra le righe e incollalo come primo messaggio.
-> La prossima sessione è **di decisioni**, non di esecuzione: i dettagli li dai tu.
+> Aggiornato il **2026-09-15**, a chiusura della sessione «listino Vision 2026».
+>
+> La prossima sessione si apre su una **decisione** (come ritrovare gli archivi
+> fotografici, ora che COLOMBO ha rifatto il sito), non su un'esecuzione: la
+> diagnosi è già chiusa, quel che manca è scegliere.
 
 ---
 
-Ciao. Riprendiamo UFPtrade. Leggi prima `handoff.md` (§RIPRENDI DA QUI) e `CLAUDE.md`.
+```
+Nuova sessione. Riparti leggendo handoff.md (§«RIPRENDI DA QUI») e CLAUDE.md.
 
-**Questa sessione è diversa dalle precedenti: voglio discutere e prendere decisioni
-progettuali importanti, che porteranno grandi cambiamenti.** I dettagli te li do io
-qui sotto. Non aprire codice per primo: prima ascolta, poi ragiona, e usa
-`/brainstorming` e `/llm-council` **prima** di scrivere qualunque riga.
+WORKFLOW (regole permanenti CLAUDE.md): /using-superpowers → /brainstorming →
+/llm-council sui dubbi veri, VERIFICANDO nel repo le affermazioni degli advisor
+→ /impeccable per ogni schermata (SEMPRE mobile ≤375px + desktop, screenshot
+GUARDATI) → /ponytail ogni volta che scrivi codice → spec → piano → TDD, un
+commit per task → review indipendente del branch PRIMA della PR.
 
-**Cosa voglio cambiare / discutere:**
+VINCOLI: TypeScript strict · tutto via tRPC · query via Prisma, regole di
+dominio in TypeScript e MAI nel raw SQL · UI in italiano, codici in monospace ·
+il repo è PUBBLICO, quindi listino, giacenze e foto del fornitore non si
+committano mai, e nei .md vanno solo numeri aggregati · un run ops con
+migrazione va lanciato sul ref del branch, prima del merge. E la regola che
+vale doppio: NON TOCCARE LA SEZIONE SERRAMENTI (catalogo AGB, assistente, kit,
+clienti).
 
-> **[SCRIVI QUI]**
+La password dell'area download COLOMBO la fornisco io a richiesta: non va
+scritta in nessun file. In CI sta nel secret COLOMBO_DOWNLOAD_PASSWORD.
 
-**Come voglio che tu lavori, in ordine:**
+═══ PUNTO 1 — L'ARCHIVIO FOTOGRAFICO NON HA PIÙ UN INDICE ═══
 
-1. **Leggi `handoff.md` §RIPRENDI DA QUI**: c'è la tabella delle **decisioni
-   strutturali già prese** con la ragione di ciascuna, e l'elenco dei **debiti
-   strutturali**. Non ridiscutere una decisione senza sapere quale argomento la
-   sosteneva: quasi tutte sono state prese *contro* un'alternativa che sembrava
-   migliore.
-2. **Fammi le domande che servono.** Se una scelta cambia materialmente il lavoro,
-   chiedimela invece di assumere. Se per rispondere ti serve misurare qualcosa sul
-   catalogo vero, misura: l'ambiente si monta con `bash scripts/dev-bootstrap.sh`
-   e `pnpm import:listino COLOMBO <listino.xlsx>` (i file stanno nella cartella
-   Drive registrata in `CLAUDE.md`, il cui riuso è già autorizzato).
-3. **`/llm-council`** su ogni dubbio architetturale vero — e **verifica nel repo le
-   affermazioni degli advisor prima di sintetizzare**: nelle sessioni scorse più di
-   un argomento del council è caduto su un fatto controllato in dieci minuti.
-4. **Spec, poi piano, poi TDD.** Niente codice prima della spec.
-5. **Dimmi il costo prima di pagarlo**: se una decisione implica una migrazione,
-   una finestra di disservizio o un run ops, voglio saperlo *quando decidiamo*, non
-   quando è fatta.
+I 240 articoli del listino Vision 2026 sono in catalogo e i cinque archivi
+fotografici dei prodotti nuovi hanno un'etichetta in `foto-archivio.ts`. Ma
+«Ops — Foto COLOMBO» NON gira più: run 34965121210, fallita in 29 secondi.
 
-**Vincoli permanenti che restano validi**: TypeScript strict · tutto via tRPC ·
-regole di dominio in TypeScript e mai nel raw SQL · UI in italiano, codici in
-monospace · **mobile-first verificato a 375px in browser vero** · admin crea tutti
-gli account · il repo è **pubblico**, quindi listino, giacenze e foto del fornitore
-non si committano mai · un run ops con migrazione va lanciato **sul ref del branch,
-prima del merge**.
+GIÀ DIAGNOSTICATO IL 15/09 — NON RIFARLO:
+ · NON è il proxy della sandbox: fallisce identico sul runner GitHub.
+ · NON è la password: con `mostra.php?lang=en&catalogo=NNN` la POST risponde
+   con i PDF di tutte e 29 le categorie.
+ · NON sono spariti i file: `curl -r 0-99` su
+   `/download/maniglie/archivio/<chiave>.zip` dà `206 application/zip` su
+   tutti, i cinque del 2026 compresi (00a_Laconica, 00b_Robot6, 00c_Robot6S,
+   00d_Halo, 00e_Kubo). Non sono nemmeno protetti da password.
+ · È IL SITO: `download.colombodesign.com/` non è più un elenco piatto ma un
+   indice di 29 categorie. Interrogate tutte con la password: 29 link, tutti
+   `.pdf`, ZERO `.zip`. L'indice dell'archivio non è più pubblicato da nessuna
+   parte. `elencaArchivi()` (scripts/foto-colombo.ts:57-72) raschiava
+   quell'elenco; non c'è più niente da raschiare.
 
-**Dove siamo, in tre righe.** Reparto SERRAMENTI (AGB): catalogo 7.488 prodotti,
-chat, e generatore di distinte con tre tipologie attive. Reparto MANIGLIE (COLOMBO):
-3.456 articoli, sfoglio a tre livelli, pronta consegna, filtro colori, e **2.118
-articoli con foto (61,3%)** in produzione. Tutto su un solo repo, un solo database,
-un solo Better Auth.
+LA DECISIONE (è il motivo per cui non l'ho sbrigata in coda alla PR):
+la lista si PUÒ derivare da `ARCHIVI` verificando ogni voce con una Range —
+i 118 nomi sono già nel repo, quindi non si rivela nulla di nuovo. Ma:
+ (a) si perde la riga «⚠️ archivio non in tabella, ignorato», che oggi è
+     l'UNICO modo in cui veniamo a sapere che COLOMBO ha pubblicato un
+     prodotto nuovo — ed è esattamente il segnale che ha fatto nascere la
+     sessione del listino 2026. Perderlo per guadagnare le foto di quei
+     prodotti sarebbe una beffa. Cercare se un segnale equivalente esista
+     altrove (le pagine `mostra.php` elencano i PDF: un listino nuovo lì si
+     vede?) è parte della domanda, non un extra.
+ (b) la password diventa codice morto per l'archivio (resta viva per i PDF):
+     il commento in testa a foto-colombo.ts va riscritto, non lasciato a
+     dire una cosa che non è più vera.
+ (c) quel commento dice anche «nessun elenco di nomi del fornitore dentro un
+     repo pubblico», ed è GIÀ mezzo falso: le 118 chiavi di ARCHIVI sono nomi
+     di cartelle del fornitore, nel repo, da mesi. Da riscrivere per dire ciò
+     che davvero protegge (i BYTE delle foto, non i nomi).
+Portala a /llm-council verificando nel repo le affermazioni degli advisor.
 
-**Cose aperte che potrebbero intrecciarsi con quello che decideremo:**
+Poi: girare il gate della copertura (vuole COLOMBO_FOTO_INDEX, si produce con
+`pnpm foto:colombo --dry-run --dump`) e il run ops. Atteso: i cinque modelli
+2026 prendono copertina e foto di riga; le 1.609 esistenti non si muovono.
 
-- 🔴 **Vercel Pro** (Hobby vieta l'uso commerciale): era deciso per il 08/08 — fatto?
-- 🔴 **Le tre distinte reali di MC, Peruzzi e Fosca**: pendono da cinque sessioni, e
-  sono la cosa aperta che vale di più.
-- La **migrazione multi-marca**, rimandata alla marca #3: 128 occorrenze in 22 file.
-- Le **7.082 foto AGB dentro Postgres**, causa unica dei tre limiti di piattaforma.
-- Due domande in attesa: una per **COLOMBO** (quale archivio è MR11 e quale MR15,
-  idem LC31/LC41 e LC71/LC81: 66 codici senza foto) e una per **Andrea** (le
-  fusioni di etichette che non ha citato).
+═══ PUNTO 2 — LE DOMANDE PER COLOMBO ═══
+Sono in `docs/superpowers/domande-colombo.md`, pronte da mandare, con la
+misura dietro ciascuna. Dimmi quali ho ricevuto e le applichiamo:
+ · C1 (HPS/1: `I1` o `HPS1`?) → fa entrare 19 righe GIÀ misurate, subito.
+ · C2 (il 3,5 % vale sul 05/26?) → un solo UPDATE, e la UI smette di dover
+   dichiarare due convenzioni.
+ · C6 (quale archivio è MR11 e quale MR15) → 66 codici senza foto.
+
+═══ PUNTO 3 — UNA COSA CHE HO LASCIATO DECIDERE A TE ═══
+Nelle fixture dei test del listino Vision restano ~5 prezzi VERI di COLOMBO
+(`vision-parse.test.ts`, `vision-codici.test.ts`, e un `toBe("53.6")` nel test
+d'integrazione). I .md sono già puliti. Sostituirli con numeri di comodo è
+meccanico e la suite lo verifica da sé, ma tocca file di test: dimmi se lo
+faccio.
+
+═══ APERTE DA PRIMA, non toccate ═══
+ · Vercel Hobby vieta l'uso commerciale → passaggio a Pro (era deciso per
+   l'08/08 e non risulta fatto). È l'unica con un rischio esterno.
+ · Le tre distinte reali di MC, Peruzzi e Fosca: aperta da sessioni, è la
+   cosa che vale di più sul reparto serramenti.
+ · `familyOf` mette AM15 FISSO e AM25 FISSO nella stessa serie (49 articoli
+   preesistenti, dalle descrizioni di COLOMBO): dichiarato, non corretto.
+ · `dedupeRows` last-wins in map-product.ts.
+ · Preview Vercel rotte su ogni PR.
+
+═══ UNA LEZIONE DA PORTARSI DIETRO ═══
+Il run ops è fallito in 29 secondi, al primo passo, senza toccare Blob né il
+DB — e quel fallimento pulito È il motivo per cui la diagnosi si è potuta fare
+con calma. Una guardia che si rifiuta presto vale più di una che tollera e
+prosegue: la seconda avrebbe azzerato `image_url` e poi trovato zero archivi.
+```
 
 ---
 
-## Se invece la sessione fosse solo di esecuzione
+## Se invece vuoi aprire su altro
 
-Lavoro pronto da prendere, senza decisioni da prendere prima:
+Il prompt qui sopra è **la continuazione naturale**, non un obbligo. Le altre
+strade aperte, in ordine di valore:
 
-- **`updateMany` al posto di 1.995 `update` singoli** in `scripts/foto-colombo.ts`:
-  sono i 4 minuti più lenti di ogni run ops.
-- **Le preview Vercel sono rosse su ogni PR** da mesi, anche su PR di soli
-  documenti (verificato sulla #53): nessuno l'ha mai diagnosticato.
-- **Le tre distinte reali**, se nel frattempo sono arrivate.
-- I **pomoli dei modelli** (`bold_45`, `daytona_45`, `drop_45`, `mapo_45`,
-  `Moon_45`, `spider_45`): oggi fuori perché quale serie sia il pomolo non è
-  scritto. Se COLOMBO risponde, sono altre decine di codici con foto.
+| strada                                    | perché                                                          |
+| ----------------------------------------- | --------------------------------------------------------------- |
+| **Le tre distinte reali** (MC, Peruzzi, Fosca) | aperta da sessioni; senza, i tre clienti principali ricevono distinte mai confrontate con un ordine vero |
+| **Vercel Pro**                            | l'unica voce con un rischio esterno (sospensione per uso commerciale su Hobby) |
+| **Varianti componente su altre tipologie** | il passo «Componenti» oggi esiste solo per l'anta-ribalta ARTECH |
 
-## File del fornitore (dove si prendono)
-
-| File | A cosa serve | Dove |
-|---|---|---|
-| `LISTINO 02 2026 …xlsx` (foglio `LP 02-26`, 3.456 codici) | è quello in produzione | cartella Drive in `CLAUDE.md` |
-| `pronta consegna colombo.xls` | aggancio e orfani | idem |
-| `ER MAN 2026_100726.pdf` | le 31 finiture (p13) | idem |
-| Archivio fotografico (79 zip, 707 foto) | le foto | area download COLOMBO, password dall'utente |
+In quel caso, riusa l'intestazione del prompt (workflow + vincoli) e sostituisci
+i tre punti centrali.

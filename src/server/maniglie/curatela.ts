@@ -137,7 +137,11 @@ const CURATELE: Record<string, Curatela> = {
     // Non è un'opinione nostra: COLOMBO tiene `01_Robot4.zip` e
     // `01_Robot4S.zip` come archivi fotografici separati, e il suo listino
     // elenca «roboquattro» e «roboquattro S» come voci distinte.
-    divise: new Set(["ROBOCINQUE", "ROBOQUATTRO"]),
+    // ROBOT6 arriva col listino Vision 2026: Robot6 e Robot6 S sono due modelli
+    // con due archivi fotografici e due gamme di finiture, e la descrizione che
+    // l'import compone mette la «S» come secondo token, che è ciò che si legge
+    // qui sotto. Nessuna macchina nuova: `MARCATORE_S` riconosce già la S nuda.
+    divise: new Set(["ROBOCINQUE", "ROBOQUATTRO", "ROBOT6"]),
     // Misurato sul listino vero: 35 codici, e sono puliti — 7 «COPPIA
     // MANIGLIONI» e 28 «COPPIA BOCCHETTE», nient'altro. Nessuna delle due
     // destinazioni ha un archivio fotografico, quindi lo scioglimento non può
@@ -322,6 +326,20 @@ export function vociCuratela(brand: string): string[] {
   // due sentinelle che leggono questa funzione asseriscono l'esatto contrario
   // di ciò che vale per loro. La loro sentinella è in `search.integration`.
   return [...Object.keys(c.fusioni), ...c.escluse, ...c.divise, ...c.trasparenti].sort();
+}
+
+/**
+ * Le parole DIVISE: quelle in cui una «S» al secondo token fa un prodotto a sé.
+ *
+ * Sono l'eccezione dentro `vociCuratela` — a differenza delle altre tre tabelle,
+ * la parola base RESTA a schermo come gruppo vero (`ROBOCINQUE` accanto a
+ * `ROBOCINQUE S`). Il gate che verifica «nessuna etichetta curata è rimasta
+ * visibile» le salta, e le saltava per nome: tre stringhe scritte a mano che
+ * nessuno teneva allineate: aggiungere `ROBOT6` a `divise` faceva fallire quel
+ * gate con un messaggio che parlava di fusioni, non di divisioni.
+ */
+export function vociDivise(brand: string): string[] {
+  return [...curatelaDi(brand).divise].sort();
 }
 
 /**

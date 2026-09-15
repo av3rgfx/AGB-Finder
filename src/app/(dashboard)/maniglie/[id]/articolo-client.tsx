@@ -8,6 +8,23 @@ import { CopyCodeButton } from "@/components/product/copy-code-button";
 import { StockBadge } from "@/components/maniglie/stock-badge";
 import { formatStockDate } from "@/components/maniglie/stock-date";
 import { formatPrice } from "@/lib/format";
+import { composizionePrezzo } from "@/server/maniglie/composizione-prezzo";
+
+/**
+ * La frase che dice cosa contiene il totale. CONSTATA il documento — «il listino
+ * non dichiara» e non «non c'è maggiorazione» — perché la seconda affermerebbe
+ * qualcosa sul mondo che non sappiamo, la prima qualcosa sul listino, che
+ * abbiamo misurato.
+ *
+ * La percentuale arriva già derivata da `composizionePrezzo`, e si scrive con la
+ * VIRGOLA: il «42.5%» col punto in una UI italiana è già costato uno screenshot.
+ */
+function composizione(priceList: number, surcharge: number | null): string {
+  const c = composizionePrezzo(priceList, surcharge);
+  return c.kind === "conMaggiorazione"
+    ? `Include la maggiorazione temporanea del ${String(c.percento).replace(".", ",")} %`
+    : "Il listino non dichiara maggiorazioni";
+}
 
 export function ArticoloClient({ id }: { id: string }) {
   const articolo = api.article.getById.useQuery({ id });
@@ -48,6 +65,20 @@ export function ArticoloClient({ id }: { id: string }) {
             </span>
             <span className="text-xs text-ink-subtle">IVA esclusa</span>
           </p>
+
+          {/* COSA contiene quel numero. Dal listino 05/26 il catalogo ha due
+              convenzioni insieme, e sotto la sola «IVA esclusa» i due prezzi si
+              leggono come confrontabili. Si dichiarano ENTRAMBI i rami: una riga
+              che comparisse solo sull'eccezione insegnerebbe che il silenzio
+              significa «tutto regolare», e il giorno di una terza convenzione
+              mentirebbe di nuovo.
+
+              Riga propria e non accanto al numero: il totale resta l'unica
+              ancora tipografica, e a 375px non c'è niente che compete in
+              larghezza. È testo, non un `title`: i `title` non si vedono da
+              tastiera, non li legge uno screen reader e non compaiono negli
+              screenshot di verifica. */}
+          <p className="-mt-1 text-xs text-ink-subtle">{composizione(a.priceList, a.surcharge)}</p>
 
           {/* Qui la data sta SULLA RIGA: c'è un solo articolo, quindi non c'è
               ripetizione da evitare — e uno stato di magazzino senza la sua

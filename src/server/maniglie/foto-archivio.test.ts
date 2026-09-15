@@ -61,12 +61,6 @@ describe("tabella degli archivi", () => {
     }
   });
 
-  it("i cinque prodotti non ancora a listino non hanno etichetta", () => {
-    for (const a of ["00a_Laconica", "00b_Robot6", "00c_Robot6S", "00d_Halo", "00e_Kubo"]) {
-      expect(ARCHIVI[a]?.etichetta, a).toBeNull();
-    }
-  });
-
   it("i sei archivi di accessori non si agganciano per etichetta", () => {
     // Lì il codice è scritto nel nome del file: ci pensa il gradino 3.
     for (const a of [
@@ -738,5 +732,37 @@ describe("copertine di gruppo", () => {
     for (const etichetta of copertineDichiarate().keys()) {
       expect(etichetteModello().has(etichetta), etichetta).toBe(true);
     }
+  });
+});
+
+/**
+ * I cinque archivi del listino «Vision 2026». Erano `etichetta: null` con la
+ * nota «non ancora a listino»: l'edizione 05/26 li porta, e questo test è la
+ * sentinella che li tiene agganciati.
+ */
+describe("gli archivi dei prodotti 2026", () => {
+  it.each([
+    ["00a_Laconica", "LACONICA"],
+    ["00b_Robot6", "ROBOT6"],
+    ["00c_Robot6S", "ROBOT6 S"],
+    ["00d_Halo", "HALO"],
+    ["00e_Kubo", "KUBO"],
+  ])("%s nomina il gruppo %s", (archivio, etichetta) => {
+    expect(ARCHIVI[archivio]?.etichetta).toBe(etichetta);
+  });
+
+  it("prestano foto anche alle righe: l'archivio è uno per gruppo", () => {
+    // `soloCopertina` serve dove COLOMBO tiene DUE archivi per lo stesso gruppo
+    // e non dice quale serie sia quale (MR11/MR15). Qui non è il caso, e negare
+    // il prestito lascerebbe 157 codici senza foto per una cautela senza motivo.
+    for (const a of ["00a_Laconica", "00b_Robot6", "00c_Robot6S", "00d_Halo", "00e_Kubo"]) {
+      expect(ARCHIVI[a]?.soloCopertina, a).toBeUndefined();
+    }
+  });
+
+  it("ROBOT6 e ROBOT6 S sono due etichette, non una", () => {
+    // Due archivi, due gamme di finiture, due prodotti. Se collassassero, le
+    // foto del Robot6 S finirebbero sulle righe del Robot6.
+    expect(ARCHIVI["00b_Robot6"]?.etichetta).not.toBe(ARCHIVI["00c_Robot6S"]?.etichetta);
   });
 });

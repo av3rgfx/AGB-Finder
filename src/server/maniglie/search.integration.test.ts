@@ -3,7 +3,7 @@ import { Prisma, PrismaClient } from "@prisma/client";
 import { seedManiglie } from "../../../prisma/seed-maniglie";
 import { searchArticleIds, browseFirstWords, articleIdsByFirstWord } from "./search";
 import { firstWord, secondToken, SQL_FIRST_WORD, SQL_SECOND_WORD } from "./taxonomy";
-import { browseLabel, etichetteAccessorio, vociCuratela } from "./curatela";
+import { browseLabel, etichetteAccessorio, vociCuratela, vociDivise } from "./curatela";
 import { serieDelGruppo, splitGroup, type BrowseRow } from "./browse";
 import {
   currentStockImport,
@@ -315,9 +315,13 @@ describe.runIf(Boolean(url))("sfoglio — il GROUP BY SQL e la funzione TypeScri
     const words = (await browseFirstWords(db, "COLOMBO")).map((g) => g.word);
     // La lista era scritta a mano e non verificava di essere completa: ora si
     // deriva dalla curatela, quindi una fusione nuova è coperta senza toccare
-    // il test. Le DIVISE si saltano: la parola base resta un gruppo vero.
+    // il test. Le DIVISE si saltano — la parola base resta un gruppo vero — e
+    // anche QUELLE si derivano: erano due stringhe scritte a mano, e aggiungere
+    // ROBOT6 a `divise` faceva fallire questo gate con un messaggio che parlava
+    // di fusioni invece che di divisioni.
+    const divise = new Set(vociDivise("COLOMBO"));
     for (const storta of vociCuratela("COLOMBO")) {
-      if (storta === "ROBOCINQUE" || storta === "ROBOQUATTRO") continue;
+      if (divise.has(storta)) continue;
       expect(words, `etichetta curata ancora a schermo: «${storta}»`).not.toContain(storta);
     }
     expect(words).toContain("ROSETTA");

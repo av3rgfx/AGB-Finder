@@ -45,13 +45,21 @@ export interface VoceArchivio {
 }
 
 export const ARCHIVI: Record<string, VoceArchivio> = {
-  // ── prodotti nuovi: a catalogo 2026, non ancora a listino ───────────────────
-  // Non è un difetto: quando COLOMBO li metterà a listino si aggancieranno da soli.
-  "00a_Laconica": { etichetta: null },
-  "00b_Robot6": { etichetta: null },
-  "00c_Robot6S": { etichetta: null },
-  "00d_Halo": { etichetta: null },
-  "00e_Kubo": { etichetta: null },
+  // ── i cinque del listino «Vision 2026» ─────────────────────────────────────
+  // Erano `etichetta: null` con la nota «a catalogo 2026, non ancora a listino»,
+  // e l'annotazione diceva che si sarebbero agganciati da soli il giorno del
+  // listino. È quel giorno: l'edizione 05/26 li porta, uno a uno.
+  //
+  // Nessun `soloCopertina`: qui l'archivio è UNO per gruppo, quindi non esiste
+  // l'ambiguità di MR11/MR15 e le foto possono scendere anche sulle righe. Quale
+  // riga se le prende lo decide la regola della finitura contesa, non questa
+  // tabella: una foto che due codici si contendono resta a chi può dimostrare
+  // che è sua, e le altre restano senza.
+  "00a_Laconica": { etichetta: "LACONICA" },
+  "00b_Robot6": { etichetta: "ROBOT6" },
+  "00c_Robot6S": { etichetta: "ROBOT6 S" },
+  "00d_Halo": { etichetta: "HALO" },
+  "00e_Kubo": { etichetta: "KUBO" },
 
   // ── modelli: un archivio, un'etichetta ─────────────────────────────────────
   "01_963": { etichetta: "963" },
