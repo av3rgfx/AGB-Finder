@@ -137,7 +137,11 @@ const CURATELE: Record<string, Curatela> = {
     // Non è un'opinione nostra: COLOMBO tiene `01_Robot4.zip` e
     // `01_Robot4S.zip` come archivi fotografici separati, e il suo listino
     // elenca «roboquattro» e «roboquattro S» come voci distinte.
-    divise: new Set(["ROBOCINQUE", "ROBOQUATTRO"]),
+    // ROBOT6 arriva col listino Vision 2026: Robot6 e Robot6 S sono due modelli
+    // con due archivi fotografici e due gamme di finiture, e la descrizione che
+    // l'import compone mette la «S» come secondo token, che è ciò che si legge
+    // qui sotto. Nessuna macchina nuova: `MARCATORE_S` riconosce già la S nuda.
+    divise: new Set(["ROBOCINQUE", "ROBOQUATTRO", "ROBOT6"]),
     // Misurato sul listino vero: 35 codici, e sono puliti — 7 «COPPIA
     // MANIGLIONI» e 28 «COPPIA BOCCHETTE», nient'altro. Nessuna delle due
     // destinazioni ha un archivio fotografico, quindi lo scioglimento non può

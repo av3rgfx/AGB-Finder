@@ -74,6 +74,15 @@ describe("browseLabel — divisioni", () => {
     expect(browseLabel("COLOMBO", "ROBOCINQUE ID61R CROMAT")).toBe("ROBOCINQUE");
   });
 
+  // Listino Vision 2026: Robot6 e Robot6 S sono due modelli, con due archivi
+  // fotografici e due gamme di finiture. `firstWord` prende il primo token,
+  // quindi senza `divise` le 36 righe del Robot6 S finirebbero dentro ROBOT6 e
+  // il gruppo mostrerebbe due prodotti come uno.
+  test("la S di Robot6 S è un prodotto diverso, come per Robocinque", () => {
+    expect(browseLabel("COLOMBO", "ROBOT6 S ID91R OROMAT")).toBe("ROBOT6 S");
+    expect(browseLabel("COLOMBO", "ROBOT6 ID81R OROPLUS")).toBe("ROBOT6");
+  });
+
   // Sul listino vero Roboquattro S è scritto `S` 23 volte e `S'` 21: chi
   // guardasse solo la prima forma spaccherebbe il gruppo a metà in silenzio.
   test("l'apostrofo di ROBOQUATTRO S' è la stessa S", () => {
