@@ -13,8 +13,8 @@
 | **Fase in corso**          | Fase 1 — MVP Gestionale · reparto maniglie                                                                                         |
 | **Branch**                 | `claude/ecstatic-clarke-g7629e`                                                                                                    |
 | **Stato deploy**           | 🟢 **NESSUNA MIGRAZIONE.** 🔴 **DUE RUN OPS**: «Ops — Neon» (step nuovo) e «Ops — Foto COLOMBO»                                    |
-| **Gate**                   | typecheck · lint · **test 1.652** · build 22 route · **integrazione 49/49 su PDF e DB veri** · **browser 24/24** (desktop e 375px) |
-| **In produzione al merge** | 3.456 → **3.690 articoli** · 251 righe dal listino 05/26, di cui 234 codici nuovi                                                  |
+| **Gate**                   | typecheck · lint · **test 1.655** · build 22 route · **integrazione 50/50 su PDF e DB veri** · **browser 24/24** (desktop e 375px) |
+| **In produzione al merge** | **+223 articoli** (3.456 → 3.679) · 240 righe dal listino 05/26                                                                    |
 
 ---
 
@@ -58,9 +58,9 @@
 > famiglie** (BT, CC, CD, DB, DL, FF, JP, MF, MM, MR, PT, SE). L'ipotesi del
 > prompt è refutata.
 >
-> ## COSA È ENTRATO — 251 righe su 270
+> ## COSA È ENTRATO — 240 righe su 270
 >
-> **234 codici nuovi + 17 già a listino** (di cui **6 con prezzo diverso**: `0BT13-CM`
+> **223 codici nuovi + 17 già a listino** (di cui **6 con prezzo diverso**: `0BT13-CM`
 > 16,30 → 12,40). Zero collisioni. **Le 19 righe «zirconium HPS/1» restano
 > fuori**: COLOMBO usa `I1` e `HPS1` **dentro la stessa serie Laconica**, e a
 > listino coesistono cinque grafie. Non è derivabile, e non si indovina.
@@ -89,8 +89,8 @@
 >   Una riga che comparisse solo sull'eccezione insegnerebbe che il silenzio
 >   significa «tutto regolare».
 > - **Elenco**: marcatore `†` **condizionale**, reso solo quando l'elenco contiene
->   entrambe le convenzioni (misurato: 94 righe nuove su 251 cadono in gruppi
->   misti, 157 in gruppi interamente 05/26). Tono neutro, mai rosso.
+>   entrambe le convenzioni (misurato: le righe nuove che cadono in gruppi
+>   misti sono una minoranza, il resto sta in gruppi interamente 05/26). Tono neutro, mai rosso.
 >
 > ## DIFETTI TROVATI ESEGUENDO, NON LEGGENDO
 >
@@ -112,6 +112,40 @@
 > 6. **Due liste scritte a mano** allineate alla loro dichiarazione: l'eccezione
 >    delle `divise` nella sentinella della curatela (il commento diceva già «si
 >    deriva», il codice elencava due stringhe), e il conteggio degli esclusi.
+>
+> ## 🔎 COSA HA TROVATO LA REVIEW DI BRANCH (coi gate tutti verdi)
+>
+> Dodici cose, tre delle quali sul **codice che finisce a DB**:
+>
+> 1. **Lo SLASH del listino si perdeva.** `nucleo()` toglieva ogni separatore e
+>    produceva `0AM42DKSM` dove il listino scrive `0AM42DK/SM`. Misurato sui
+>    3.456: **224 codici `DK/SM` hanno lo slash contro 35**, e **127 `/0` contro
+>    5**. La pronta consegna non poteva smentirlo, perché dà la forma
+>    NORMALIZZATA — `0AM42DKSMI1` è compatibile con entrambe. **Valeva 30 codici.**
+> 2. **`ID13 Y` e `AM19 BZG` uscivano con la regola generica**, cioè con la regola
+>    applicata nella sola classe in cui **ogni istanza misurabile la smentisce**
+>    (le `… Y` perdono la Y 2 su 2, le `… BZG` guadagnano un 6 2 su 2). E nemmeno
+>    l'inverso è certo: a listino **6 bocchette su 110 la Y la tengono** e **5
+>    nottolini su 159 hanno il BZG nudo**. Escono, come le HPS/1.
+> 3. **`name` veniva riscritto sui 17 già a listino**, cancellando la parola di
+>    COLOMBO — che è quanto `curatela.ts` vieta in testa, perché fa sparire
+>    `BOCCEHTTA` dall'indice trigram.
+>
+> E poi: **i prezzi del fornitore erano finiti nel repo pubblico** (la
+> riconciliazione ora è una REGOLA — vince la pagina del prodotto — e non un
+> valore scritto a mano, che sarebbe rimasto tale anche a prezzi cambiati) · una
+> **banda fuori documento** leggeva `[]` e la guardia 1 passava come `0 === 0`
+> (⚠️ e non è teorico: `)` cifrato **È** un form feed, quindi una pagina fantasma
+> è possibile) · **pre-check delle collisioni `codeNorm`**, che ha subito
+> intercettato un codice della forma vecchia invece di esplodere a metà import ·
+> `SERIE[pagina]` mancante non produce più una descrizione che comincia con la
+> parola «undefined» · una maggiorazione dichiarata con prezzo zero non si legge
+> più come «netta» · il discriminante ha un proprietario solo.
+>
+> **Una NON corretta, e dichiarata**: `familyOf` mette `AM15 FISSO` e `AM25 FISSO`
+> nella stessa serie «FISSO». È **preesistente** — **49 articoli** a catalogo ci
+> cadono già, dalle descrizioni di COLOMBO stessa (`ROBOT FISSO CD45`) — e
+> correggerla solo sulle righe nuove le renderebbe incoerenti col fornitore.
 >
 > ## 🔴 AZIONI OPS AL MERGE
 >

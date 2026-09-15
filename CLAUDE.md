@@ -1050,9 +1050,11 @@ copertine di gruppo` · `Blob: 3 caricate · 304 già presenti` · `1609 articol
   condivisi già a listino sbaglia **11 volte su 13** — cioè **esattamente dove la risposta ce l'abbiamo già**
   (`FF13 Y`→`0FF13`, la Y sparisce · `FF19 BZG`→`0FF19BZG6`, compare un 6 · `DK 35 DF`→`XDK35DF`, prefisso X ·
   `DK 35 DF/8S`→`XDK35D/8SF`, lettere riordinate): lì il codice si **legge**, e le sei voci stanno per esteso.
-  ⚠️ **Il «6» non è la serie di Robot6**: `BZG6` sta su **125 codici in 12 famiglie**. **ENTRATE 251 righe su
-  270** (234 codici nuovi + 17 aggiornati, 6 con prezzo diverso); **le 19 «zirconium HPS/1» restano FUORI** —
-  COLOMBO usa `I1` e `HPS1` **dentro la stessa serie**, e a listino coesistono cinque grafie.
+  ⚠️ **Il «6» non è la serie di Robot6**: `BZG6` sta su **125 codici in 12 famiglie**. **ENTRATE 240 righe su
+  270** (223 codici nuovi + 17 aggiornati, 6 con prezzo diverso); **30 righe restano FUORI**: le 19 «zirconium
+  HPS/1» (COLOMBO usa `I1` e `HPS1` dentro la stessa serie, e a listino coesistono cinque grafie) più `ID13 Y` e
+  `AM19 BZG`, le due designazioni la cui classe smentisce la regola generica 4 volte su 4 e per cui, essendo
+  nuove, non si può leggere il codice vero.
   **IL PREZZO**: misurato che i prezzi del PDF coincidono **esatto** con `priceList` su 11 articoli comuni e
   **0 volte su 16** con la somma → `surcharge = **NULL**`, mai `0`, mai il 3,5 % calcolato (**`/llm-council`
   unanime 4/4**): la misura **non discrimina** fra «il surcharge è stato tolto» e «il listino base si pubblica
@@ -1069,7 +1071,7 @@ copertine di gruppo` · `Blob: 3 caricate · 304 già presenti` · `1609 articol
   alla loro dichiarazione. **Il parser si RIFIUTA invece di indovinare** (nomi ≠ prezzi · finitura fuori legenda ·
   stesso prodotto con due prezzi su due pagine): la terza guardia ha fermato subito il documento vero — **`BT19
 BZG` oromat costa 53,60 a p8 e 53,70 a p13**, 21 prezzi ripetuti su 22 concordi — e il disaccordo si **dichiara**
-  col valore scelto, non si tollera. Gate: typecheck · lint · **test 1.652** · build 22 route · **integrazione
+  col valore scelto, non si tollera. Gate: typecheck · lint · **test 1.655** · build 22 route · **integrazione
   49/49 su PDF e DB veri** (provata rossa nei due versi) · **browser 24/24** (desktop e **375px**, screenshot
   guardati). 🟢 **NESSUNA MIGRAZIONE.** 🔴 **DUE RUN OPS**: «Ops — Neon» (step `Import listino Vision 2026`
   **nuovo**, guardia `%PDF` e non `PK`, **dopo** l'import COLOMBO perché è un delta) e «Ops — Foto COLOMBO» (i
