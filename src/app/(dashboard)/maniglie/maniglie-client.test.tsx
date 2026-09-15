@@ -1090,3 +1090,64 @@ describe("ManiglieClient — l'anteprima della tendina", () => {
     expect(summary?.querySelector("svg")?.classList.contains("lucide-package")).not.toBe(true);
   });
 });
+
+/**
+ * Dal listino 05/26 il catalogo ha DUE convenzioni di prezzo insieme: i 3.456
+ * articoli del 02/26 comprendono la maggiorazione del 3,5 %, i 251 nuovi no,
+ * perché quel documento non la dichiara mai. In elenco i due totali compaiono
+ * fianco a fianco, e senza un segno si leggono come confrontabili.
+ */
+describe("ManiglieClient — le due convenzioni di prezzo", () => {
+  const conMagg = { ...articoli[0], id: "m1", code: "0CD41R-CM", surcharge: 1.63 };
+  const netto = { ...articoli[1], id: "m2", code: "0AM41R-OL", surcharge: null };
+
+  function cerca(hits: unknown[]) {
+    sp = new URLSearchParams("q=x");
+    searchQuery.mockReturnValue(risultati({ data: { hits, total: hits.length, stockUpdates: [] } }));
+    return render(<ManiglieClient />);
+  }
+
+  it("NON marca nulla se tutte le righe hanno la stessa convenzione", () => {
+    // 157 righe nuove su 251 stanno in gruppi interamente 05/26: lì il
+    // marcatore non ha nulla da distinguere, e sarebbe tappezzeria.
+    cerca([netto, { ...netto, id: "m3", code: "0AM41RY-OL" }]);
+    expect(screen.queryByRole("note")).toBeNull();
+    expect(screen.queryByText("†")).toBeNull();
+  });
+
+  it("nemmeno se sono tutte con maggiorazione", () => {
+    cerca([conMagg, { ...conMagg, id: "m4", code: "0CD41R-VM" }]);
+    expect(screen.queryByRole("note")).toBeNull();
+  });
+
+  it("marca le righe nette SOLO quando l'elenco contiene entrambe", () => {
+    const { container } = cerca([conMagg, netto]);
+    expect(screen.getByRole("note").textContent).toMatch(/non dichiara maggiorazioni/i);
+    // Una sola riga marcata: quella senza maggiorazione.
+    expect(container.querySelectorAll("sup")).toHaveLength(1);
+  });
+
+  it("chi usa uno screen reader sente la parola, non il glifo", () => {
+    // Il `title` non serve: sotto lo stretched-link (`absolute inset-0`) non
+    // compare nemmeno al passaggio del mouse, e da tastiera non esiste.
+    const { container } = cerca([conMagg, netto]);
+    expect(container.querySelector("sup")?.getAttribute("aria-hidden")).toBe("true");
+    expect(screen.getByText(/senza maggiorazione dichiarata/i)).toBeTruthy();
+  });
+
+  it("la legenda sta SOPRA le righe: sotto si leggerebbe dopo la decisione", () => {
+    const { container } = cerca([conMagg, netto]);
+    const legenda = screen.getByRole("note");
+    const lista = container.querySelector("ul.list-none");
+    expect(legenda.compareDocumentPosition(lista!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("il tono è neutro: nessun colore semantico sul marcatore", () => {
+    // Quel prezzo non è inaffidabile — è affidabile quanto il documento — e un
+    // colore d'errore insegnerebbe a diffidare di 251 prezzi giusti.
+    const { container } = cerca([conMagg, netto]);
+    const sup = container.querySelector("sup")!;
+    expect(sup.className).not.toMatch(/red|amber|warning|danger|error/i);
+    expect(sup.className).toContain("text-ink-subtle");
+  });
+});

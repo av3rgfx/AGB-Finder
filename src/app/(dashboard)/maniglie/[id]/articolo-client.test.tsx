@@ -137,4 +137,40 @@ describe("ArticoloClient", () => {
     expect(container.querySelector("svg")).toBeTruthy();
     expect(container.textContent).not.toMatch(/immagine|foto/i);
   });
+
+  // ── La composizione del prezzo ──────────────────────────────────────────
+  // Dal listino 05/26 il catalogo ha due convenzioni insieme: sotto la sola
+  // «IVA esclusa» i due totali si leggono come confrontabili e non lo sono.
+
+  it("dichiara la maggiorazione quando il prezzo la comprende", () => {
+    // fixture: priceList 46,68 + surcharge 1,63 = 3,5 %
+    render(<ArticoloClient id="a1" />);
+    expect(screen.getByText(/Include la maggiorazione temporanea del 3,5 %/)).toBeTruthy();
+  });
+
+  it("dichiara l'ASSENZA quando il listino non la porta — non tace", () => {
+    // Una riga che comparisse solo sull'eccezione insegnerebbe che il silenzio
+    // significa «tutto regolare», e il giorno di una terza convenzione
+    // mentirebbe di nuovo.
+    getById.mockReturnValue(
+      query({ data: { ...articolo, priceList: 105.3, surcharge: null, total: 105.3 } }),
+    );
+    render(<ArticoloClient id="a1" />);
+    expect(screen.getByText(/Il listino non dichiara maggiorazioni/)).toBeTruthy();
+    expect(screen.queryByText(/Include la maggiorazione/)).toBeNull();
+  });
+
+  it("la percentuale si DERIVA dal dato, non è la costante 3,5", () => {
+    getById.mockReturnValue(
+      query({ data: { ...articolo, priceList: 100, surcharge: 5, total: 105 } }),
+    );
+    render(<ArticoloClient id="a1" />);
+    expect(screen.getByText(/del 5 %/)).toBeTruthy();
+  });
+
+  it("la percentuale si scrive con la VIRGOLA, non col punto", () => {
+    // Il «42.5%» col punto in una UI italiana è già costato uno screenshot.
+    const { container } = render(<ArticoloClient id="a1" />);
+    expect(container.textContent).not.toMatch(/\d\.\d ?%/);
+  });
 });

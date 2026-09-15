@@ -1,0 +1,10 @@
+import { execFileSync } from "node:child_process";
+import { decodeVision } from "../src/server/maniglie/vision-decode";
+import { parseVision, BANDE_VISION_2026 } from "../src/server/maniglie/vision-parse";
+const pdf = "/tmp/claude-0/-home-user-AGB-Finder/e6bf1587-fae4-5464-8cb5-97e581c01c58/scratchpad/vision2026.pdf";
+const raw = execFileSync("pdftotext", ["-layout", pdf, "-"], { maxBuffer: 64e6, encoding: "buffer" });
+const b = parseVision(decodeVision(raw), BANDE_VISION_2026);
+console.log(`blocchi ${b.length} · righe ${b.reduce((n, x) => n + x.righe.length, 0)}`);
+for (const x of b.slice(0, 2)) console.log(` p${x.pagina} ${x.modelli.join(" + ")}:`, x.righe.map(r => `${r.finitura} ${r.prezzo}`).join(" · "));
+const bt = b.filter(x => x.modelli.includes("BT19 BZG"));
+console.log(" BT19 BZG:", bt.map(x => `p${x.pagina} ${x.righe.map(r=>r.finitura+" "+r.prezzo).join(", ")}`).join(" || "));

@@ -74,6 +74,11 @@ function toSummary(a: ArticleRow, inStock: boolean) {
     name: a.name,
     /** Totale DERIVATO (prezzo + surcharge), arrotondato a 2 decimali in Decimal. */
     total: articleTotal(a.priceList, a.surcharge).toNumber(),
+    /** Dice COSA contiene `total`, che dal listino 05/26 non è più la stessa cosa
+        per tutte le righe: `null` = prezzo netto, nessuna maggiorazione dichiarata
+        dal listino di quell'articolo. Serve in elenco, dove le due convenzioni
+        compaiono fianco a fianco. */
+    surcharge: a.surcharge === null ? null : a.surcharge.toNumber(),
     ean: a.ean,
     catalogPage: a.catalogPage,
     /** Miniatura: è la misura del posto che le righe hanno già (44px, retina). */
@@ -422,9 +427,11 @@ export const articleRouter = createTRPCRouter({
         /** La scheda disegna la foto grande: 320px su un riquadro da 192 CSS px
             sarebbe sgranata su ogni schermo retina. */
         imageUrlLarge: urlFoto(row.imageUrl, 900),
-        /** Le due metà, per la scheda: il surcharge è temporaneo e va poter essere letto. */
+        /** L'altra metà del prezzo. `surcharge` arriva già da `toSummary`, che lo
+            restituisce a tutti perché in elenco serve a distinguere le due
+            convenzioni; qui si aggiunge solo il netto, che completa la coppia da
+            cui la scheda deriva la sua didascalia. */
         priceList: row.priceList.toNumber(),
-        surcharge: row.surcharge === null ? null : row.surcharge.toNumber(),
         lastListingAt: row.lastListingAt,
         stockUpdatedAt: updates[0]?.importedAt ?? null,
       };
