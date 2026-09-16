@@ -117,11 +117,17 @@ surcherge.xlsx` (foglio `LP 02-26`, 3.456 codici — **è quello in produzione**
   `pronta consegna colombo.xls` · `ER MAN 2026_100726.pdf` · `RR MAN 2026_100726.pdf`.
   Gli id si ricavano dall'HTML della cartella; il download diretto è
   `https://drive.usercontent.google.com/download?id=<id>&export=download&confirm=t`.
-- **Area download COLOMBO** (`download.colombodesign.com`, form a sola password —
-  la password la fornisce l'utente, **non va scritta in nessun file**): cataloghi,
-  listini PDF, file 3D e l'**archivio fotografico ufficiale** (79 zip, 3,3 GB, 707
-  foto 5315×5315 CMYK). L'indice dei zip si prende con richieste **Range** sulla
-  central directory, senza scaricare i 3,3 GB.
+- **Area download COLOMBO** (`download.colombodesign.com`): dal **2026-09** non è
+  più un elenco piatto di file ma un indice di **29 categorie**
+  (`mostra.php?lang=en&catalogo=NNN`) che pubblicano **solo PDF** — e risponde
+  **senza password**, che nel repo non serve più da nessuna parte (il secret
+  `COLOMBO_DOWNLOAD_PASSWORD` resta, non referenziato, per l'uso a mano).
+  L'**archivio fotografico ufficiale** (79 zip, 3,3 GB, 707 foto 5315×5315 CMYK)
+  è ancora servito per nome, ma il suo **indice non è più pubblicato in nessuna
+  pagina**: la lista dei 79 archivi viene da `ARCHIVI` in `foto-archivio.ts`, e
+  il contenuto di ogni zip si rilegge con richieste **Range** sulla central
+  directory, senza scaricare i 3,3 GB. `pnpm vigila:colombo` sorveglia l'indice
+  dei documenti e **fallisce** su qualunque novità.
 - ⚠️ **Il repo è PUBBLICO**: listino, giacenze e foto del fornitore **non si
   committano mai**. Nei `.md` vanno solo i numeri aggregati.
 - Stessa regola per qualunque altro file/documento aziendale mancante: prima
@@ -1126,20 +1132,54 @@ dei nuovi ci sono già**: quei prodotti sono **uno a uno** i cinque archivi con 
 comunque preferibile **il 2026 in xlsx CON i codici** (richiesta pronta nel prompt): se arriva, il task 0
 diventa la sua verifica. Il prompt completo è in fondo a `handoff.md`.
 
-**▶ PROSSIMA SESSIONE — LE FOTO DEI CINQUE PRODOTTI 2026, E LA DECISIONE CHE LE SBLOCCA.** I 240
-articoli sono in catalogo, le etichette dei cinque archivi sono nel codice, e **non serve a niente
-finché «Ops — Foto COLOMBO» non gira**. Il blocco è del fornitore e la diagnosi è **chiusa, non
-rifarla**: password valida · zip tutti serviti (`206`, i cinque del 2026 compresi) · runner GitHub
-identico alla sandbox → è il **sito** che è cambiato, l'indice dell'archivio non è più pubblicato.
-Quel che resta è una **scelta**, da portare a `/llm-council`: derivare la lista da `ARCHIVI`
-verificando ogni voce con una Range è facile, ma **spegne l'unico rilevatore di prodotti nuovi che
-abbiamo** (la riga «⚠️ archivio non in tabella») — e cercare se il segnale viva altrove (le pagine
-`mostra.php` elencano i PDF: un listino nuovo lì si vede?) fa parte della domanda. Da riscrivere
-anche due commenti che oggi affermano il falso in `foto-colombo.ts`: la password non serve più
-all'archivio, e «nessun elenco di nomi del fornitore nel repo» è smentito da 118 chiavi di `ARCHIVI`
-(protegge i **byte** delle foto, non i nomi). Poi: le **cinque domande** per Andrea/COLOMBO, nessuna
-posta — la 1 (HPS/1: `I1` o `HPS1`?) sblocca 19 righe già misurate. Aperte da prima: **Vercel Pro**
-(deciso per l'08/08, non risulta fatto) · le **tre distinte reali** di MC, Peruzzi e Fosca ·
-`familyOf` che fonde `AM15 FISSO` e `AM25 FISSO` (49 articoli preesistenti, dichiarato non corretto)
-· `dedupeRows` last-wins · preview Vercel rotte. Il prompt completo è in `docs/superpowers/PROMPT-prossima-sessione.md` (e in fondo a
-`handoff.md`); le domande per il fornitore in `docs/superpowers/domande-colombo.md`.
+- **L'INDICE DELL'ARCHIVIO CHE NON C'È PIÙ ✅ (branch `claude/colombo-foto-index-0du2f1`, PR da aprire)**:
+  `pnpm foto:colombo` era fermo dal 2026-09-15 (run ops `34965121210`, morto in **29 secondi**).
+  `elencaArchivi()` scopriva i 79 zip **raschiando** l'elenco dell'area download, e COLOMBO ha rifatto
+  il sito: non più un elenco piatto ma **29 categorie** che pubblicano **solo PDF**. **Verdetto
+  `/llm-council` (5 advisor, unanime): la lista si deriva dalle 79 chiavi di `ARCHIVI`** — e
+  l'argomento che decide non è la comodità: `foto-colombo.ts:130` faceva **già**
+  `if (!(archivio in ARCHIVI)) continue`, quindi il sito **non ha mai deciso _cosa_ scaricare** e
+  derivare non cambia **un byte** di ciò che finisce su Blob. Cambia **come si fallisce**, ed è tutto
+  il guadagno: la `HEAD` di verifica **esisteva già** in `dimensione()`, e il raschiamento la teneva
+  spenta su 79 righe. **Tre affermazioni degli advisor verificate nel repo, due cadute**: «lo scraper
+  si riaccende da sé» è **falso** (la regex pretende gli **apici singoli** di un `onclick` che non
+  esiste più) · «soglia di abort sul calo di copertura» è **sbagliata** (la PR #60 calò da **2.118 a
+  1.609, −24 %, di proposito**: la soglia l'avrebbe bloccata) · «il pericolo è la cancellazione di
+  massa» è **impreciso** (`$transaction` è atomica — il pericolo è un run **VERDE** con indice
+  parziale, che stampa `✓ N articoli con foto` con N più piccolo e non allarma nessuno). Cosa c'è:
+  `urlArchivio()` puro e testato (**4 chiavi su 79 hanno uno spazio**: l'unico punto in cui la
+  derivazione può sbagliare, e dove `elencaArchivi` — che riceveva il path già formato — non poteva) ·
+  rifiuto che **raccoglie tutti** i mancanti e solleva **prima di Blob e DB**, senza flag per
+  proseguire · **errore duro su uno zip vuoto** (passa la `HEAD`, misurato 0 su 79) · il run dichiara
+  **`prima → dopo`** della copertura, letto dal DB, **senza soglia** · pavimento d'integrazione sui
+  cinque modelli 2026. **La password esce da script e workflow**, guardia `test -n` compresa (il
+  secret resta, non referenziato): non era «viva per i PDF» — nel repo non è **mai** stata usata per i
+  PDF, e oggi il sito non la chiede nemmeno per quelli. **Il segnale perduto**: non si ricostruisce
+  come riga di log, che ha sparato **una volta sola** ed è stata raccolta per coincidenza. Nasce
+  **`pnpm vigila:colombo`** + workflow `schedule:` settimanale (**il primo del repo**): confronta le
+  29 categorie pubbliche con uno snapshot committato e **fallisce** — un run schedulato rosso manda la
+  mail, che è la differenza fra un segnale e uno scrollback; **zero categorie è un errore**, mai
+  «nessuna novità»; `parseDocumenti` prende **qualunque** file sotto `/download/` e non i soli PDF,
+  così un `.zip` che ricomparisse si vedrebbe da sé. **Ha già trovato qualcosa il primo giorno**: la
+  categoria 159 serve `ER MAN 2026_**140926**.pdf` mentre il repo conosce `_100726` → **domanda C9**.
+  Nuove anche **C7** (dov'è l'indice adesso) e **C8** (come ci avvisate di un prodotto nuovo, la più
+  importante delle nove), e una prova in più sulla **C1** (gli archivi 2026 scrivono `HPS1`, ma è la
+  **finitura**, non la coda del codice: non chiude). ⚠️ **Scoperto e riparato un effetto collaterale
+  del blocco che nessuno aveva scritto**: `foto-colombo.ts:117` pretendeva la password **prima** del
+  ramo `--dry-run`, quindi `--dry-run --dump` era morto con `elencaArchivi` e **il gate d'integrazione
+  sulle foto era ineseguibile da chiunque**. Gate: typecheck · lint · **test 1.669** · build ·
+  **integrazione 59 + 10 sul catalogo, l'archivio e il PDF veri**. 🟢 **NESSUNA MIGRAZIONE.**
+  🔴 **UN RUN OPS**: «Ops — Foto COLOMBO», atteso `1.609 → 1.728` articoli con foto, ~16 file nuovi su
+  Blob, 79/79 archivi, 707 foto. Spec/piano: `docs/superpowers/{specs,plans}/2026-09-16-indice-archivio-colombo*`.
+
+**▶ PROSSIMA SESSIONE.** Aperte: le **nove domande** per Andrea/COLOMBO, nessuna posta — la **C1**
+(HPS/1: `I1` o `HPS1`?) sblocca 19 righe già misurate, la **C9** è nuova e concreta (scaricare
+l'edizione `ER MAN 2026_140926` e misurare cosa cambia). Poi, da prima: **Vercel Pro** (deciso per
+l'08/08, non risulta fatto — è l'unica con un rischio esterno: Hobby vieta l'uso commerciale) · le
+**tre distinte reali** di MC, Peruzzi e Fosca, la cosa che vale di più sul reparto serramenti ·
+`familyOf` che fonde `AM15 FISSO` e `AM25 FISSO` (49 articoli preesistenti, dichiarato non corretto) ·
+`dedupeRows` last-wins · preview Vercel rotte. **Rischio dichiarato e NON coperto**: il contenuto di
+uno zip che cambia sotto lo stesso nome — è la forma di cambiamento più probabile, e l'unica spia
+resta `FOTO_ATTESE`, che è un totale globale. Il rimedio (un'impronta dei nomi) è stato scartato per
+costo: se capita una volta, si fa. Il prompt completo è in `docs/superpowers/PROMPT-prossima-sessione.md`
+(e in fondo a `handoff.md`); le domande per il fornitore in `docs/superpowers/domande-colombo.md`.
