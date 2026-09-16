@@ -374,6 +374,24 @@ export function chiaveFoto(archivio: string, nome: string): string {
   return `maniglie/colombo/${slug(archivio)}/${slug(nome)}`;
 }
 
+/**
+ * Il path dello zip di un archivio, dalla sua chiave in `ARCHIVI`.
+ *
+ * Dal 2026-09-16 la lista degli archivi si DERIVA da questa tabella: COLOMBO non
+ * pubblica più l'indice dell'area download, e il sito non aveva comunque mai
+ * deciso *cosa* scaricare — un archivio non in tabella veniva già ignorato.
+ *
+ * Vive qui e non dentro lo script perché **quattro chiavi su 79 contengono uno
+ * spazio**, ed è l'unico punto in cui la derivazione può sbagliare: `elencaArchivi`
+ * riceveva il path già formato dall'HTML e quel modo di sbagliare non ce l'aveva.
+ *
+ * NON codifica: `scarica()`/`dimensione()` fanno `encodeURI` a valle, e una
+ * seconda codifica darebbe `%2520`.
+ */
+export function urlArchivio(chiave: string): string {
+  return `/download/maniglie/archivio/${chiave}.zip`;
+}
+
 // ═══════════════════════════════════════════════════════════════
 // L'ABBINAMENTO
 // ═══════════════════════════════════════════════════════════════
