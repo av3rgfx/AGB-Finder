@@ -6,15 +6,16 @@
 // per intervalli. Sul listino 02-26 sono 228 foto su 707.
 //
 // Idempotente: ciò che è già su Blob non si riscarica, quindi rilanciarlo dopo un
-// listino nuovo costa la sola rilettura degli indici. La verità su «quali foto
-// esistono» si rilegge ogni volta da COLOMBO: nessun manifest da tenere allineato,
-// e nessun elenco di nomi del fornitore dentro un repo pubblico.
+// listino nuovo costa la sola rilettura degli indici.
 //
-// La password dell'area download arriva da COLOMBO_DOWNLOAD_PASSWORD e non è
-// scritta da nessuna parte.
+// Il confine col repo pubblico: i nomi degli ARCHIVI stanno nel repo — sono le 79
+// chiavi di `ARCHIVI`, lì da mesi — mentre i nomi dei FILE e i byte delle foto no.
+// Il contenuto di ogni zip si rilegge dal vivo da COLOMBO a ogni run, con le Range
+// sulle central directory: si localizza l'elenco degli ZIP, non l'indice dei FILE,
+// quindi l'abbinamento foto→codice resta misurato sulla realtà e non postulato.
 //
 // Uso:
-//   COLOMBO_DOWNLOAD_PASSWORD=... BLOB_READ_WRITE_TOKEN=... pnpm foto:colombo
+//   BLOB_READ_WRITE_TOKEN=... pnpm foto:colombo
 //   pnpm foto:colombo --dry-run              # non tocca né Blob né DB
 //   pnpm foto:colombo --dry-run --dump f.json # scrive l'indice, per il gate
 import { writeFileSync } from "node:fs";
@@ -26,6 +27,7 @@ import {
   ARCHIVI,
   chiaveFoto,
   copertineDichiarate,
+  urlArchivio,
   type FotoArchivio,
 } from "../src/server/maniglie/foto-archivio";
 import {
@@ -45,32 +47,24 @@ const FOTO_ATTESE = 707;
 
 // ── area download ───────────────────────────────────────────────────────────
 
-/**
- * L'elenco degli zip, dietro il form a sola password.
- *
- * La POST **è** la pagina: l'area download non emette alcun cookie di sessione,
- * quindi non c'è niente da conservare fra una richiesta e l'altra. E i file sotto
- * `/download/…` non sono protetti affatto — la password sbarra solo l'indice.
- * È una scelta del fornitore su cui non facciamo affidamento: le nostre copie
- * finiscono su uno store Blob privato dietro auth.
- */
-async function elencaArchivi(password: string): Promise<string[]> {
-  const html = await fetch(`${BASE}/`, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ password, login: "LOGIN" }),
-  }).then((r) => r.text());
-
-  const zip = [...html.matchAll(/'(\/download\/maniglie\/archivio\/[^']+\.zip)'/g)].map(
-    (m) => m[1]!,
-  );
-  if (zip.length === 0) {
-    throw new Error(
-      "Nessun archivio nell'elenco: password errata, oppure il form dell'area download è cambiato.",
-    );
-  }
-  return [...new Set(zip)].sort();
-}
+// L'INDICE DEGLI ARCHIVI, E PERCHÉ NON SI RASCHIA PIÙ.
+//
+// Fino al 2026-09 la lista degli zip si scopriva con una POST al form a sola
+// password di `download.colombodesign.com/`, raschiando dall'HTML i link
+// `'/download/maniglie/archivio/*.zip'` — fra APICI SINGOLI, perché erano dentro
+// un `onclick`. Poi COLOMBO ha rifatto l'area download: non è più un elenco
+// piatto di file ma un indice di 29 categorie `mostra.php?lang=en&catalogo=NNN`
+// che pubblicano SOLO PDF. L'indice dell'archivio fotografico non compare più in
+// nessuna pagina, e la directory risponde 403 — mentre gli zip restano serviti,
+// e senza password (79 su 79, verificato il 2026-09-16).
+//
+// La lista viene quindi da `ARCHIVI`, che era GIÀ l'autorità: un archivio non in
+// tabella veniva comunque ignorato, quindi non si scarica un file diverso da
+// prima. Cambia solo COME SI FALLISCE — vedi il rifiuto in `main`.
+//
+// Costo dichiarato: un archivio NUOVO non è più scopribile. Quel segnale si è
+// spostato su `scripts/vigila-colombo.ts`, che sorveglia l'indice pubblico dei
+// documenti; le domande C7 e C8 in `docs/superpowers/domande-colombo.md`.
 
 async function scarica(path: string, da?: number, a?: number): Promise<Buffer> {
   const headers: Record<string, string> = {};
@@ -114,27 +108,56 @@ async function main() {
   const dump = process.argv[process.argv.indexOf("--dump") + 1];
   const dumpAttivo = process.argv.includes("--dump") && Boolean(dump);
 
-  const password = process.env.COLOMBO_DOWNLOAD_PASSWORD;
-  if (!password) throw new Error("COLOMBO_DOWNLOAD_PASSWORD mancante nell'ambiente.");
   const token = process.env.BLOB_READ_WRITE_TOKEN;
   if (!token && !dryRun) throw new Error("BLOB_READ_WRITE_TOKEN mancante nell'ambiente.");
 
-  console.log("▶ area download COLOMBO…");
-  const archivi = await elencaArchivi(password);
-  console.log(`  ${archivi.length} archivi`);
+  console.log(`▶ indicizzo ${Object.keys(ARCHIVI).length} archivi COLOMBO…`);
 
-  // 1. l'indice: due Range per zip, niente byte di foto
+  // 1. l'indice: due Range per zip, niente byte di foto.
+  //
+  // Si raccolgono TUTTI i falliti e ci si rifiuta dopo, non al primo: lo scenario
+  // realistico non è «un archivio sparito» ma «ne hanno rinominati sei», e col
+  // fail-fast sarebbero sei cicli run→commit→run da sette minuti l'uno.
   const foto: (FotoArchivio & { path: string; voce: VoceZip })[] = [];
-  for (const path of archivi) {
-    const archivio = path.replace(/^.*\//, "").replace(/\.zip$/, "");
-    if (!(archivio in ARCHIVI)) {
-      console.log(`  ⚠️  archivio non in tabella, ignorato: ${archivio}`);
+  const problemi: string[] = [];
+  for (const archivio of Object.keys(ARCHIVI)) {
+    const path = urlArchivio(archivio);
+    let voci: VoceZip[];
+    try {
+      voci = await vociDi(path);
+    } catch (e) {
+      problemi.push(`${archivio} — ${(e as Error).message}`);
       continue;
     }
-    for (const voce of await vociDi(path)) {
+    // Uno zip che c'è ma è vuoto passa la HEAD e non produce alcun errore: i suoi
+    // articoli perderebbero la foto dentro un run VERDE. Misurato il 2026-09-16:
+    // zero archivi vuoti su 79. Non è mai legittimo.
+    if (voci.length === 0) {
+      problemi.push(`${archivio} — nessun .jpg nello zip`);
+      continue;
+    }
+    for (const voce of voci) {
       const nome = voce.nome.replace(/^.*\//, "").replace(/\.[^.]+$/, "");
       foto.push({ archivio, nome, path, voce });
     }
+  }
+
+  // Il rifiuto sta PRIMA di Blob e del DB, ed è deliberato: il passo 4 azzera
+  // `image_url` e riscrive solo gli abbinati, quindi un indice parziale non
+  // darebbe un errore ma un SUCCESSO più povero — `✓ N articoli con foto` con N
+  // più piccolo, e nessuno se ne accorge. (La transazione è atomica: il pericolo
+  // non è mai stato un crash a metà, è il run verde.)
+  //
+  // Non esiste un flag per proseguire: un archivio ritirato davvero si registra
+  // togliendo la sua riga da ARCHIVI, in un commit che passa da review.
+  if (problemi.length > 0) {
+    throw new Error(
+      `${problemi.length} ${problemi.length === 1 ? "archivio" : "archivi"} ` +
+        `di ARCHIVI non utilizzabili:\n  ` +
+        problemi.join("\n  ") +
+        `\nCorreggere src/server/maniglie/foto-archivio.ts e rilanciare. ` +
+        `Niente è stato caricato su Blob e niente è stato scritto a DB.`,
+    );
   }
   console.log(`  ${foto.length} foto indicizzate`);
   if (foto.length !== FOTO_ATTESE) {

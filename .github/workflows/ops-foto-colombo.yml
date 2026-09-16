@@ -13,9 +13,12 @@ jobs:
     # L'archivio è 3,5 GB, ma si scaricano solo le ~228 foto scelte, una voce di
     # zip alla volta. Il grosso del tempo è conversione e upload.
     timeout-minutes: 60
+    # La password dell'area download NON serve più: dal 2026-09-16 la lista degli
+    # archivi si deriva da ARCHIVI, e gli zip COLOMBO li serve senza password. Il
+    # secret resta nelle impostazioni del repo, non referenziato: serve ancora a
+    # una persona per scaricare a mano i PDF dell'area download.
     env:
       BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
-      COLOMBO_DOWNLOAD_PASSWORD: ${{ secrets.COLOMBO_DOWNLOAD_PASSWORD }}
       # Il secret si chiama NEON_DIRECT_URL, come in ops-neon.yml e
       # ops-extract-images.yml: `DATABASE_URL` non esiste, e il primo run l'ha
       # scoperto fallendo alla guardia in zero secondi.
@@ -34,7 +37,6 @@ jobs:
         run: pnpm prisma generate
       - name: Foto COLOMBO → Blob privato + articles.image_url
         run: |
-          test -n "$COLOMBO_DOWNLOAD_PASSWORD" || { echo "::error::Secret COLOMBO_DOWNLOAD_PASSWORD mancante"; exit 1; }
           test -n "$BLOB_READ_WRITE_TOKEN" || { echo "::error::Secret BLOB_READ_WRITE_TOKEN mancante"; exit 1; }
           test -n "$DATABASE_URL" || { echo "::error::Secret NEON_DIRECT_URL mancante"; exit 1; }
           pnpm foto:colombo ${{ inputs.dry_run && '--dry-run' || '' }}
