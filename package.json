@@ -29,7 +29,8 @@
     "import:listino": "tsx --env-file-if-exists=.env scripts/import-listino.ts",
     "import:vision": "tsx --env-file-if-exists=.env scripts/import-vision.ts",
     "measure:listino": "tsx scripts/measure-listino.ts",
-    "foto:colombo": "tsx --env-file-if-exists=.env scripts/foto-colombo.ts"
+    "foto:colombo": "tsx --env-file-if-exists=.env scripts/foto-colombo.ts",
+    "vigila:colombo": "tsx --env-file-if-exists=.env scripts/vigila-colombo.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

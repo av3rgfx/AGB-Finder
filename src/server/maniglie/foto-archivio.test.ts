@@ -9,6 +9,7 @@ import {
   etichetteModello,
   finituraDiFoto,
   scattoDiProdotto,
+  urlArchivio,
   varianteZero,
   type ArticoloDaAbbinare,
   type FotoArchivio,
@@ -764,5 +765,38 @@ describe("gli archivi dei prodotti 2026", () => {
     // Due archivi, due gamme di finiture, due prodotti. Se collassassero, le
     // foto del Robot6 S finirebbero sulle righe del Robot6.
     expect(ARCHIVI["00b_Robot6"]?.etichetta).not.toBe(ARCHIVI["00c_Robot6S"]?.etichetta);
+  });
+});
+
+describe("urlArchivio", () => {
+  it("costruisce il path dello zip dalla chiave della tabella", () => {
+    expect(urlArchivio("01_Fedra")).toBe("/download/maniglie/archivio/01_Fedra.zip");
+  });
+
+  /**
+   * Quattro chiavi su 79 contengono uno spazio. NON si codificano qui:
+   * `scarica()` e `dimensione()` fanno già `encodeURI`, e una seconda codifica
+   * darebbe `%2520`. Il test esiste per fissare QUALE dei due strati codifica —
+   * è l'unico modo in cui questa funzione può sbagliare.
+   */
+  it("lascia gli spazi al chiamante, che codifica lui", () => {
+    expect(urlArchivio("01_One Q")).toBe("/download/maniglie/archivio/01_One Q.zip");
+    expect(urlArchivio("04_Incasso_Flush handles")).toBe(
+      "/download/maniglie/archivio/04_Incasso_Flush handles.zip",
+    );
+  });
+
+  /**
+   * Il pavimento della derivazione: dalle 79 chiavi devono uscire 79 path
+   * distinti e ben formati. Senza, una chiave storta darebbe un 404 a run time
+   * invece di un test rosso.
+   */
+  it("dà un path distinto e ben formato a ognuna delle 79 chiavi", () => {
+    const path = Object.keys(ARCHIVI).map(urlArchivio);
+    expect(new Set(path).size).toBe(79);
+    for (const p of path) {
+      expect(p.startsWith("/download/maniglie/archivio/"), p).toBe(true);
+      expect(p.endsWith(".zip"), p).toBe(true);
+    }
   });
 });
