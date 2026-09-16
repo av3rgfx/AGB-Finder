@@ -1096,8 +1096,10 @@ BZG` oromat ha due valori diversi a p8 e p13** (scarto 0,2 %), 21 prezzi ripetut
   non in tabella», che oggi è **l'unico modo in cui sappiamo che COLOMBO ha pubblicato un prodotto nuovo** — cioè
   proprio il segnale da cui è nata questa sessione. Primo punto della prossima. **Cinque domande aperte** per
   Andrea/COLOMBO (HPS/1 · surcharge 3,5 % · BT13 −24 % · EAN · `BT19 BZG` due prezzi) e la **tabella delle 270
-  righe** da confermare. **CI: PR #64** aggiunge `pnpm build` a `ci.yml` dopo i test (il segno verde diceva solo
-  «i test passano»; un errore di TypeScript arrivava al merge e lo scopriva Vercel, dove le preview sono rotte).
+  righe** da confermare. ⚠️ **CI: la PR #64 NON è in `main`.** Aggiungeva `pnpm build` a `ci.yml` dopo i test, ma
+  `.github/workflows/ci.yml` esegue tuttora **solo `pnpm test`** (verificato il 2026-09-16): un errore di
+  TypeScript arriva ancora al merge, e lo scopre Vercel — dove le preview sono rotte, quindi non lo scopre
+  nessuno.
   **Questa sessione è la PR [#65](https://github.com/av3rgfx/AGB-Finder/pull/65).**
   Spec/piano: `docs/superpowers/{specs,plans}/2026-09-15-listino-vision-2026*`.
 
@@ -1169,7 +1171,7 @@ diventa la sua verifica. Il prompt completo è in fondo a `handoff.md`.
   ramo `--dry-run`, quindi `--dry-run --dump` era morto con `elencaArchivi` e **il gate d'integrazione
   sulle foto era ineseguibile da chiunque**. Gate: typecheck · lint · **test 1.669** · build ·
   **integrazione 59 + 10 sul catalogo, l'archivio e il PDF veri**. 🟢 **NESSUNA MIGRAZIONE.**
-  🔴 **UN RUN OPS**: «Ops — Foto COLOMBO», atteso `1.609 → 1.728` articoli con foto, ~16 file nuovi su
+  🔴 **UN RUN OPS**: «Ops — Foto COLOMBO», atteso `1.609 → 1.727` articoli con foto, ~16 file nuovi su
   Blob, 79/79 archivi, 707 foto. Spec/piano: `docs/superpowers/{specs,plans}/2026-09-16-indice-archivio-colombo*`.
 
 **▶ PROSSIMA SESSIONE.** Aperte: le **nove domande** per Andrea/COLOMBO, nessuna posta — la **C1**

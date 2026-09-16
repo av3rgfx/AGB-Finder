@@ -10,8 +10,9 @@ on:
 jobs:
   foto:
     runs-on: ubuntu-latest
-    # L'archivio è 3,5 GB, ma si scaricano solo le ~228 foto scelte, una voce di
-    # zip alla volta. Il grosso del tempo è conversione e upload.
+    # L'archivio è 3,5 GB, ma si scaricano solo le ~320 foto scelte, una voce di
+    # zip alla volta, e solo quelle non già su Blob. Il grosso del tempo è
+    # conversione e upload.
     timeout-minutes: 60
     # La password dell'area download NON serve più: dal 2026-09-16 la lista degli
     # archivi si deriva da ARCHIVI, e gli zip COLOMBO li serve senza password. Il

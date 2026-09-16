@@ -55,11 +55,13 @@ L'encoding NON si fa qui: `scarica()` e `dimensione()` in `scripts/foto-colombo.
 chiamano già `encodeURI(path)`. Una seconda codifica produrrebbe `%2520`.
 
 **Files:**
+
 - Modify: `src/server/maniglie/foto-archivio.ts` (aggiungere la funzione dopo
   `chiaveFoto`, che sta intorno a riga 373)
 - Test: `src/server/maniglie/foto-archivio.test.ts`
 
 **Interfaces:**
+
 - Consumes: `ARCHIVI` (già esportata da `foto-archivio.ts`)
 - Produces: `export function urlArchivio(chiave: string): string` — restituisce
   un path **non codificato**, es. `/download/maniglie/archivio/01_Fedra.zip`.
@@ -177,12 +179,14 @@ pretenderla, la guardia `test -n` farebbe fallire in zero secondi un run che non
 ne ha più bisogno — la lezione `NEON_DIRECT_URL` letta al contrario.
 
 **Files:**
+
 - Modify: `scripts/foto-colombo.ts` (intestazione righe 1-19 · `elencaArchivi`
   righe 48-73 · `main` righe 112-148)
 - Modify: `.github/workflows/ops-foto-colombo.yml` (riga `env:` della password ·
   la riga `test -n "$COLOMBO_DOWNLOAD_PASSWORD"`)
 
 **Interfaces:**
+
 - Consumes: `urlArchivio(chiave: string): string` dal Task 1; `ARCHIVI`,
   `abbinaFoto`, `chiaveFoto`, `copertineDichiarate` (già importate); `vociDi`,
   `dimensione`, `scarica` (locali allo script, invariate)
@@ -237,66 +241,65 @@ In `scripts/foto-colombo.ts`:
 2. In `main`, **cancellare** le due righe della password:
 
 ```ts
-  const password = process.env.COLOMBO_DOWNLOAD_PASSWORD;
-  if (!password) throw new Error("COLOMBO_DOWNLOAD_PASSWORD mancante nell'ambiente.");
+const password = process.env.COLOMBO_DOWNLOAD_PASSWORD;
+if (!password) throw new Error("COLOMBO_DOWNLOAD_PASSWORD mancante nell'ambiente.");
 ```
 
 3. **Sostituire** il blocco che va da `console.log("▶ area download COLOMBO…")`
-   (riga 122) fino a `console.log(\`  ${foto.length} foto indicizzate\`);`
-   (riga 139) **inclusa** con il codice qui sotto — che quella riga la
-   ristampa. ⚠️ Il blocco **successivo**, il controllo su `FOTO_ATTESE = 707`
+   (riga 122) fino a `console.log(\` ${foto.length} foto indicizzate\`);`(riga 139) **inclusa** con il codice qui sotto — che quella riga la
+ristampa. ⚠️ Il blocco **successivo**, il controllo su`FOTO_ATTESE = 707`
    (righe 140-144), **resta com'è e non si tocca**: misurato il 2026-09-16,
    sono ancora esattamente 707, e i cinque archivi del 2026 erano già dentro
    quel numero.
 
 ```ts
-  console.log(`▶ indicizzo ${Object.keys(ARCHIVI).length} archivi COLOMBO…`);
+console.log(`▶ indicizzo ${Object.keys(ARCHIVI).length} archivi COLOMBO…`);
 
-  // 1. l'indice: due Range per zip, niente byte di foto.
-  //
-  // Si raccolgono TUTTI i falliti e ci si rifiuta dopo, non al primo: lo
-  // scenario realistico non è «un archivio sparito» ma «ne hanno rinominati
-  // sei», e col fail-fast sarebbero sei cicli run→commit→run.
-  const foto: (FotoArchivio & { path: string; voce: VoceZip })[] = [];
-  const problemi: string[] = [];
-  for (const archivio of Object.keys(ARCHIVI)) {
-    const path = urlArchivio(archivio);
-    let voci: VoceZip[];
-    try {
-      voci = await vociDi(path);
-    } catch (e) {
-      problemi.push(`${archivio} — ${(e as Error).message}`);
-      continue;
-    }
-    // Uno zip che c'è ma è vuoto passa la HEAD e non produce alcun errore: i
-    // suoi articoli perderebbero la foto dentro un run VERDE. Misurato il
-    // 2026-09-16: zero archivi vuoti su 79. Non è mai legittimo.
-    if (voci.length === 0) {
-      problemi.push(`${archivio} — nessun .jpg nello zip`);
-      continue;
-    }
-    for (const voce of voci) {
-      const nome = voce.nome.replace(/^.*\//, "").replace(/\.[^.]+$/, "");
-      foto.push({ archivio, nome, path, voce });
-    }
+// 1. l'indice: due Range per zip, niente byte di foto.
+//
+// Si raccolgono TUTTI i falliti e ci si rifiuta dopo, non al primo: lo
+// scenario realistico non è «un archivio sparito» ma «ne hanno rinominati
+// sei», e col fail-fast sarebbero sei cicli run→commit→run.
+const foto: (FotoArchivio & { path: string; voce: VoceZip })[] = [];
+const problemi: string[] = [];
+for (const archivio of Object.keys(ARCHIVI)) {
+  const path = urlArchivio(archivio);
+  let voci: VoceZip[];
+  try {
+    voci = await vociDi(path);
+  } catch (e) {
+    problemi.push(`${archivio} — ${(e as Error).message}`);
+    continue;
   }
+  // Uno zip che c'è ma è vuoto passa la HEAD e non produce alcun errore: i
+  // suoi articoli perderebbero la foto dentro un run VERDE. Misurato il
+  // 2026-09-16: zero archivi vuoti su 79. Non è mai legittimo.
+  if (voci.length === 0) {
+    problemi.push(`${archivio} — nessun .jpg nello zip`);
+    continue;
+  }
+  for (const voce of voci) {
+    const nome = voce.nome.replace(/^.*\//, "").replace(/\.[^.]+$/, "");
+    foto.push({ archivio, nome, path, voce });
+  }
+}
 
-  // Il rifiuto sta PRIMA di Blob e del DB, ed è deliberato: il passo 4 azzera
-  // `image_url` e riscrive solo gli abbinati, quindi un indice parziale non
-  // darebbe un errore ma un SUCCESSO più povero — `✓ N articoli con foto` con N
-  // più piccolo, e nessuno se ne accorge.
-  //
-  // Non esiste un flag per proseguire: un archivio ritirato davvero si registra
-  // togliendo la sua riga da ARCHIVI, in un commit che passa da review.
-  if (problemi.length > 0) {
-    throw new Error(
-      `${problemi.length} archivi di ARCHIVI non sono utilizzabili:\n  ` +
-        problemi.join("\n  ") +
-        `\nCorreggere src/server/maniglie/foto-archivio.ts e rilanciare. ` +
-        `Niente è stato caricato su Blob e niente è stato scritto a DB.`,
-    );
-  }
-  console.log(`  ${foto.length} foto indicizzate`);
+// Il rifiuto sta PRIMA di Blob e del DB, ed è deliberato: il passo 4 azzera
+// `image_url` e riscrive solo gli abbinati, quindi un indice parziale non
+// darebbe un errore ma un SUCCESSO più povero — `✓ N articoli con foto` con N
+// più piccolo, e nessuno se ne accorge.
+//
+// Non esiste un flag per proseguire: un archivio ritirato davvero si registra
+// togliendo la sua riga da ARCHIVI, in un commit che passa da review.
+if (problemi.length > 0) {
+  throw new Error(
+    `${problemi.length} archivi di ARCHIVI non sono utilizzabili:\n  ` +
+      problemi.join("\n  ") +
+      `\nCorreggere src/server/maniglie/foto-archivio.ts e rilanciare. ` +
+      `Niente è stato caricato su Blob e niente è stato scritto a DB.`,
+  );
+}
+console.log(`  ${foto.length} foto indicizzate`);
 ```
 
 4. In testa al file, aggiungere `urlArchivio` all'import da
@@ -333,10 +336,10 @@ In `.github/workflows/ops-foto-colombo.yml`:
 3. aggiungere sopra il blocco `env:` il commento:
 
 ```yaml
-      # La password dell'area download NON serve più: dal 2026-09 la lista degli
-      # archivi si deriva da ARCHIVI, e gli zip COLOMBO li serve senza password.
-      # Il secret resta nelle impostazioni del repo, non referenziato: serve
-      # ancora a una persona per scaricare i PDF a mano.
+# La password dell'area download NON serve più: dal 2026-09 la lista degli
+# archivi si deriva da ARCHIVI, e gli zip COLOMBO li serve senza password.
+# Il secret resta nelle impostazioni del repo, non referenziato: serve
+# ancora a una persona per scaricare i PDF a mano.
 ```
 
 - [ ] **Step 4: Eseguire lo script e verificare che il rifiuto funzioni**
@@ -358,6 +361,7 @@ pnpm foto:colombo --dry-run 2>&1 | tail -8
 ```
 
 Expected (qualche minuto, ~240 richieste Range):
+
 ```
 ▶ indicizzo 79 archivi COLOMBO…
   707 foto indicizzate
@@ -419,10 +423,12 @@ partenza si **dichiara**; non si usa per decidere.
 Zero stato nuovo: **il DB è già il registro dell'ultimo run**.
 
 **Files:**
+
 - Modify: `scripts/foto-colombo.ts` (la query `db.article.findMany` intorno a
   riga 152, e la riga finale `✓ … articoli con foto`)
 
 **Interfaces:**
+
 - Consumes: `db` (il `PrismaClient` già creato nella `main`), `MARCA`
 - Produces: niente
 
@@ -431,14 +437,14 @@ Zero stato nuovo: **il DB è già il registro dell'ultimo run**.
 In `scripts/foto-colombo.ts`, subito dopo la `findMany` degli articoli:
 
 ```ts
-  // Il «prima» per la riga finale. Non è una soglia e non blocca nulla: la PR
-  // #60 fece scendere la copertura da 2.118 a 1.609 DI PROPOSITO, togliendo 350
-  // foto che mostravano la finitura di un altro codice. Un calo può essere la
-  // decisione giusta; quello che mancava era il numero di partenza, senza il
-  // quale il numero d'arrivo non si può leggere.
-  const conFotoPrima = await db.article.count({
-    where: { brand: MARCA, imageUrl: { not: null } },
-  });
+// Il «prima» per la riga finale. Non è una soglia e non blocca nulla: la PR
+// #60 fece scendere la copertura da 2.118 a 1.609 DI PROPOSITO, togliendo 350
+// foto che mostravano la finitura di un altro codice. Un calo può essere la
+// decisione giusta; quello che mancava era il numero di partenza, senza il
+// quale il numero d'arrivo non si può leggere.
+const conFotoPrima = await db.article.count({
+  where: { brand: MARCA, imageUrl: { not: null } },
+});
 ```
 
 - [ ] **Step 2: Dichiararlo nella riga finale**
@@ -446,18 +452,18 @@ In `scripts/foto-colombo.ts`, subito dopo la `findMany` degli articoli:
 Sostituire la riga finale:
 
 ```ts
-  console.log(`✓ ${perArticolo.size} articoli con foto, ${articoli.length - perArticolo.size} senza`);
+console.log(`✓ ${perArticolo.size} articoli con foto, ${articoli.length - perArticolo.size} senza`);
 ```
 
 con:
 
 ```ts
-  const delta = perArticolo.size - conFotoPrima;
-  const segno = delta > 0 ? `+${delta}` : `${delta}`;
-  console.log(
-    `✓ articoli con foto: ${conFotoPrima} → ${perArticolo.size} (${segno}), ` +
-      `${articoli.length - perArticolo.size} senza`,
-  );
+const delta = perArticolo.size - conFotoPrima;
+const segno = delta > 0 ? `+${delta}` : `${delta}`;
+console.log(
+  `✓ articoli con foto: ${conFotoPrima} → ${perArticolo.size} (${segno}), ` +
+    `${articoli.length - perArticolo.size} senza`,
+);
 ```
 
 - [ ] **Step 3: Verificare sul DB vero**
@@ -513,10 +519,12 @@ andrebbe a zero**.
 PR #61.
 
 **Files:**
+
 - Modify: `src/server/maniglie/foto-archivio.integration.test.ts` (aggiungere in
   fondo al `describe`, prima della `});` finale)
 
 **Interfaces:**
+
 - Consumes: `articoli`, `abbinati` (già preparati nel `beforeAll` del file),
   `browseLabel` e `previewDiGruppo` (già importati nel file)
 - Produces: niente
@@ -526,29 +534,29 @@ PR #61.
 Aggiungere in fondo al `describe("foto ↔ catalogo vero", …)`:
 
 ```ts
-  /**
-   * I CINQUE MODELLI DEL LISTINO VISION 2026, sul catalogo vero.
-   *
-   * Le loro righe in `ARCHIVI` sono state scritte quando i prodotti erano a
-   * catalogo ma non a listino, e sono rimaste inerti finché il run delle foto
-   * non è tornato a girare (2026-09-16). Un refuso in una di quelle cinque
-   * righe lascerebbe il gruppo come tessera-parola, e nessun conteggio andrebbe
-   * a zero — è la ragione per cui questo pavimento esiste.
-   *
-   * Espresso come proprietà e non come conteggio: HALO e KUBO sono coperti
-   * PARZIALMENTE (5/25 e 10/30 sul listino puro) perché è la regola della
-   * finitura che lavora, e il seed del gate aggiunge righe che spostano i
-   * denominatori.
-   */
-  it("i cinque modelli del listino 2026 hanno foto di riga e copertina", () => {
-    for (const g of ["LACONICA", "ROBOT6", "ROBOT6 S", "HALO", "KUBO"]) {
-      const conFoto = articoli.filter(
-        (a) => browseLabel("COLOMBO", a.name) === g && abbinati.has(a.id),
-      );
-      expect(conFoto.length, `${g}: nessun articolo con foto`).toBeGreaterThan(0);
-      expect(previewDiGruppo(g, abbinati.get(conFoto[0]!.id)!), g).not.toBeNull();
-    }
-  });
+/**
+ * I CINQUE MODELLI DEL LISTINO VISION 2026, sul catalogo vero.
+ *
+ * Le loro righe in `ARCHIVI` sono state scritte quando i prodotti erano a
+ * catalogo ma non a listino, e sono rimaste inerti finché il run delle foto
+ * non è tornato a girare (2026-09-16). Un refuso in una di quelle cinque
+ * righe lascerebbe il gruppo come tessera-parola, e nessun conteggio andrebbe
+ * a zero — è la ragione per cui questo pavimento esiste.
+ *
+ * Espresso come proprietà e non come conteggio: HALO e KUBO sono coperti
+ * PARZIALMENTE (5/25 e 10/30 sul listino puro) perché è la regola della
+ * finitura che lavora, e il seed del gate aggiunge righe che spostano i
+ * denominatori.
+ */
+it("i cinque modelli del listino 2026 hanno foto di riga e copertina", () => {
+  for (const g of ["LACONICA", "ROBOT6", "ROBOT6 S", "HALO", "KUBO"]) {
+    const conFoto = articoli.filter(
+      (a) => browseLabel("COLOMBO", a.name) === g && abbinati.has(a.id),
+    );
+    expect(conFoto.length, `${g}: nessun articolo con foto`).toBeGreaterThan(0);
+    expect(previewDiGruppo(g, abbinati.get(conFoto[0]!.id)!), g).not.toBeNull();
+  }
+});
 ```
 
 - [ ] **Step 2: Run test to verify it fails for the right reason**
@@ -623,23 +631,31 @@ dell'area download. Qui nasce la parte **pura e testabile**: due parser e un
 diff, senza rete.
 
 Le due forme di HTML sono state misurate il 2026-09-16 sul sito vero:
+
 - homepage → `href="mostra.php?lang=en&catalogo=161">…Vision 2026 catalogue</a>`
 - pagina categoria → `href="/download/maniglie/pdf/Vision2026_maniglie_catalogo_100726.pdf"`
 
 **Files:**
+
 - Create: `src/server/maniglie/vigilanza.ts`
 - Test: `src/server/maniglie/vigilanza.test.ts`
 
 **Interfaces:**
+
 - Consumes: niente
 - Produces:
+
   ```ts
-  export interface Categoria { id: string; titolo: string }
+  export interface Categoria {
+    id: string;
+    titolo: string;
+  }
   export type Indice = Record<string, { titolo: string; file: string[] }>;
   export function parseCategorie(html: string): Categoria[];
   export function parseDocumenti(html: string): string[];
   export function confronta(attuale: Indice, atteso: Indice): string[];
   ```
+
   Il Task 6 usa tutte e tre.
 
 - [ ] **Step 1: Write the failing test**
@@ -708,15 +724,13 @@ describe("confronta", () => {
   it("nomina una categoria nuova", () => {
     const attuale = { ...atteso, "170": { titolo: "Vision 2027", file: ["/download/v27.pdf"] } };
     expect(confronta(attuale, atteso)).toEqual([
-      'NUOVA categoria 170: «Vision 2027» → /download/v27.pdf',
+      "NUOVA categoria 170: «Vision 2027» → /download/v27.pdf",
     ]);
   });
 
   it("nomina una categoria sparita", () => {
     const { "152": _tolta, ...attuale } = atteso;
-    expect(confronta(attuale, atteso)).toEqual([
-      'SPARITA categoria 152: «RR catalogue 2026»',
-    ]);
+    expect(confronta(attuale, atteso)).toEqual(["SPARITA categoria 152: «RR catalogue 2026»"]);
   });
 
   /**
@@ -724,16 +738,22 @@ describe("confronta", () => {
    * veniamo a sapere che esiste un'edizione nuova. Non si filtra.
    */
   it("nomina un titolo cambiato", () => {
-    const attuale = { ...atteso, "152": { titolo: "RR catalogue 2027", file: ["/download/rr.pdf"] } };
+    const attuale = {
+      ...atteso,
+      "152": { titolo: "RR catalogue 2027", file: ["/download/rr.pdf"] },
+    };
     expect(confronta(attuale, atteso)).toEqual([
-      'CAMBIATO titolo di 152: «RR catalogue 2026» → «RR catalogue 2027»',
+      "CAMBIATO titolo di 152: «RR catalogue 2026» → «RR catalogue 2027»",
     ]);
   });
 
   it("nomina i file cambiati, che è come si vede una ristampa", () => {
-    const attuale = { ...atteso, "152": { titolo: "RR catalogue 2026", file: ["/download/rr2.pdf"] } };
+    const attuale = {
+      ...atteso,
+      "152": { titolo: "RR catalogue 2026", file: ["/download/rr2.pdf"] },
+    };
     expect(confronta(attuale, atteso)).toEqual([
-      'CAMBIATI i file di 152 «RR catalogue 2026»: /download/rr.pdf → /download/rr2.pdf',
+      "CAMBIATI i file di 152 «RR catalogue 2026»: /download/rr.pdf → /download/rr2.pdf",
     ]);
   });
 });
@@ -792,7 +812,10 @@ export function parseCategorie(html: string): Categoria[] {
   )) {
     const id = m[1]!;
     if (out.has(id)) continue;
-    const titolo = m[2]!.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+    const titolo = m[2]!
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
     out.set(id, { id, titolo });
   }
   return [...out.values()];
@@ -894,12 +917,14 @@ giorno che COLOMBO rifà il sito un'altra volta il guardiano direbbe «tutto a
 posto» per sempre.
 
 **Files:**
+
 - Create: `src/server/maniglie/documenti-colombo.ts`
 - Create: `scripts/vigila-colombo.ts`
 - Modify: `package.json` (aggiungere lo script `vigila:colombo` dopo
   `foto:colombo`)
 
 **Interfaces:**
+
 - Consumes: `parseCategorie`, `parseDocumenti`, `confronta`, `type Indice` dal
   Task 5
 - Produces: `export const DOCUMENTI: Indice` da
@@ -1089,9 +1114,11 @@ nuovi — e resta rosso ogni settimana finché qualcuno non ratifica.
 Sarà il **primo workflow `schedule:` del repo**.
 
 **Files:**
+
 - Create: `.github/workflows/ops-vigila-colombo.yml`
 
 **Interfaces:**
+
 - Consumes: `pnpm vigila:colombo` dal Task 6
 - Produces: niente
 
@@ -1187,11 +1214,13 @@ Due nuove, e una prova in più su una che c'era già. Il canale umano è l'unico
 che può restituire il **tempo di anticipo** che il segnale perduto dava.
 
 **Files:**
+
 - Modify: `docs/superpowers/domande-colombo.md` (la tabella «In sintesi», la
   scheda C1, e due schede nuove in fondo prima della sezione «La tabella dei 270
   codici»)
 
 **Interfaces:**
+
 - Consumes: niente
 - Produces: niente
 
@@ -1200,8 +1229,8 @@ che può restituire il **tempo di anticipo** che il segnale perduto dava.
 Dopo la riga `C6`:
 
 ```markdown
-| C7  | Dov'è l'indice dell'archivio fotografico?   | COLOMBO      | 🟡 la scoperta di archivi nuovi            |
-| C8  | Come ci fate sapere di un prodotto nuovo?   | COLOMBO      | 🔴 il **preavviso** sui prodotti nuovi     |
+| C7 | Dov'è l'indice dell'archivio fotografico? | COLOMBO | 🟡 la scoperta di archivi nuovi |
+| C8 | Come ci fate sapere di un prodotto nuovo? | COLOMBO | 🔴 il **preavviso** sui prodotti nuovi |
 ```
 
 - [ ] **Step 2: Aggiungere la prova nuova alla scheda C1**
@@ -1240,8 +1269,8 @@ modelli del 2026 li avevamo visti mesi prima del listino proprio così.
 rinominato, il run lo direbbe col nome — ma non avremmo alcun modo di scoprire
 il nome nuovo.
 
-**Come porla.** *«L'archivio fotografico non compare più fra le categorie
-dell'area download: c'è un indice, un feed o un contatto a cui chiederlo?»*
+**Come porla.** _«L'archivio fotografico non compare più fra le categorie
+dell'area download: c'è un indice, un feed o un contatto a cui chiederlo?»_
 
 ---
 
@@ -1257,9 +1286,9 @@ dell'indice pubblico dei documenti (`pnpm vigila:colombo`): un catalogo o un
 listino nuovo compare lì, ed è di fatto ciò che ha fatto partire le ultime due
 sessioni di lavoro. Ma arriva quando COLOMBO **pubblica**, non quando **decide**.
 
-**Come porla.** *«C'è un modo per essere avvisati quando uscite con un prodotto
+**Come porla.** _«C'è un modo per essere avvisati quando uscite con un prodotto
 o una finitura nuova — una mailing list, il vostro agente di zona, un'area
-riservata? Oggi ce ne accorgiamo dal sito.»*
+riservata? Oggi ce ne accorgiamo dal sito.»_
 ```
 
 - [ ] **Step 4: Verificare**
@@ -1300,11 +1329,13 @@ EOF
 ### Task 9: gate completo e aggiornamento dei `.md`
 
 **Files:**
+
 - Modify: `handoff.md` (nuova sezione «Sessione attuale» in testa, la precedente
   degradata a «Sessione precedente»)
 - Modify: `CLAUDE.md` (una voce nuova in fondo allo §STATO)
 
 **Interfaces:**
+
 - Consumes: i risultati dei gate
 - Produces: niente
 
@@ -1344,7 +1375,7 @@ degli advisor cadute, il costo dichiarato (archivio nuovo non più scopribile),
 il guardiano settimanale e come si ratifica, e le **azioni ops**:
 
 > 🟢 **NESSUNA MIGRAZIONE.** 🔴 **UN RUN OPS**: «Ops — Foto COLOMBO», atteso
-> `1.609 → 1.728` articoli con foto, ~16 file nuovi su Blob, 79/79 archivi.
+> `1.609 → 1.727` articoli con foto, ~16 file nuovi su Blob, 79/79 archivi.
 
 In `CLAUDE.md`, una voce in fondo allo §STATO con la stessa sostanza in forma
 breve, e **l'aggiornamento della riga sull'area download**, che oggi dice che
@@ -1394,12 +1425,12 @@ dove il DB deve precedere il codice).
 Un run di **«Ops — Foto COLOMBO»** (~7 minuti, idempotente). Atteso, misurato in
 locale sul catalogo vero il 2026-09-16:
 
-| | atteso |
-| --- | --- |
-| archivi | `79/79`, zero mancanti |
-| foto indicizzate | `707` |
-| Blob | ~16 caricate · ~304 già presenti |
-| articoli con foto | `1.609 → 1.728` |
+|                   | atteso                           |
+| ----------------- | -------------------------------- |
+| archivi           | `79/79`, zero mancanti           |
+| foto indicizzate  | `707`                            |
+| Blob              | ~16 caricate · ~304 già presenti |
+| articoli con foto | `1.609 → 1.727`                  |
 
 Poi, a mano una volta, **«Ops — Vigila COLOMBO»** per confermare che il
 guardiano parte verde da CI e non solo dal container.

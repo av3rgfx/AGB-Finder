@@ -14,7 +14,7 @@
 | **Branch**               | `claude/colombo-foto-index-0du2f1`                                                                                |
 | **Stato deploy**         | 🟢 **NESSUNA MIGRAZIONE, nessuna finestra di disservizio.** 🔴 **UN RUN OPS**: «Ops — Foto COLOMBO»               |
 | **Gate**                 | typecheck · lint · **test 1.669** · build · **integrazione 59 + 10** su catalogo, archivio e PDF veri             |
-| **In produzione al run** | articoli con foto **1.609 → 1.728** · ~16 file nuovi su Blob · i cinque modelli 2026 con copertina e foto di riga |
+| **In produzione al run** | articoli con foto **1.609 → 1.727** · ~16 file nuovi su Blob · i cinque modelli 2026 con copertina e foto di riga |
 
 ---
 
@@ -129,15 +129,37 @@
 > | --------------------- | ---------------------------------------------------------------------------------------------------------- |
 > | archivi               | `79/79`, zero mancanti                                                                                     |
 > | foto indicizzate      | `707`                                                                                                      |
-> | articoli con foto     | `1.609 → 1.728`                                                                                            |
+> | articoli con foto     | `1.609 → 1.727`                                                                                            |
 > | Blob                  | ~16 caricate · ~304 già presenti                                                                           |
 > | i cinque modelli 2026 | LACONICA **30/30** · ROBOT6 **36/36** · ROBOT6 S **36/36** · HALO **5/25** · KUBO **10/30** righe con foto |
 >
 > HALO e KUBO sono parziali perché è la **regola della finitura** che lavora: una
 > foto resta solo a chi può dimostrare che è sua. Non è un difetto.
 >
-> Poi, a mano una volta, **«Ops — Vigila COLOMBO»**, per confermare che il
-> guardiano parte verde da CI e non solo dal container.
+> ### 🔴 E UNA VERIFICA CHE NON È FACOLTATIVA: il recapito
+>
+> Tutto il valore del guardiano sta in «un run schedulato rosso manda la mail al
+> proprietario». **È un'assunzione, non un fatto misurato** — l'ha segnalato la
+> review, e ha ragione: GitHub recapita la notifica di un workflow schedulato
+> all'utente che ha **toccato per ultimo il cron**, e il commit che lo introduce
+> ha come autore `Claude <noreply@anthropic.com>`, non un account tuo.
+>
+> ⚠️ **`schedule:` e `workflow_dispatch:` funzionano solo dal branch di
+> DEFAULT**: finché la PR non è mergiata il guardiano non è nemmeno lanciabile a
+> mano dalla UI. Quindi, **dopo il merge**, una volta sola:
+>
+> 1. rendere volutamente stale una riga di `DOCUMENTI` (togliere una voce);
+> 2. lanciare «Ops — Vigila COLOMBO» da `workflow_dispatch`;
+> 3. **controllare che la mail arrivi davvero**, e rimettere la riga.
+>
+> Se la mail non arriva, il guardiano è un job rosso che nessuno vede — cioè
+> esattamente il difetto per cui è nato. In quel caso: aggiungere una
+> notifica esplicita, o toccare il cron da un commit col proprio account.
+>
+> ⚠️ **La CI non esegue `pnpm build`.** `CLAUDE.md` dà per fatta la PR #64 che lo
+> aggiungeva: `.github/workflows/ci.yml` in `main` esegue **solo `pnpm test`**
+> (verificato). Un errore di TypeScript arriva ancora al merge, e lo scopre
+> Vercel — dove le preview sono rotte, quindi non lo scopre nessuno.
 >
 > ## 🔴 RISCHIO DICHIARATO E NON COPERTO
 >

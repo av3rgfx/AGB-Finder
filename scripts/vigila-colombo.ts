@@ -53,7 +53,10 @@ async function main() {
   }
 
   if (aggiorna) {
-    console.log("\n// ── da incollare in src/server/maniglie/documenti-colombo.ts ──");
+    // Il blocco esce in forma JSON (chiavi quotate, indentazione sua) e NON è
+    // prettier-clean: dopo averlo incollato serve `pnpm format`, altrimenti il
+    // file resta fuori stile rispetto al resto del repo.
+    console.log("\n// ── da incollare in documenti-colombo.ts, poi `pnpm format` ──");
     console.log(`export const DOCUMENTI: Indice = ${JSON.stringify(attuale, null, 2)};`);
     return;
   }
@@ -74,7 +77,17 @@ async function main() {
   process.exitCode = 1;
 }
 
+// ⚠️ Due modi di fallire, e devono LEGGERSI diversi.
+//
+// Il job fa 30 GET a ogni run: un 502 di COLOMBO il lunedì mattina non è «è
+// uscito il listino 2027». Se i due casi si presentassero uguali, si imparerebbe
+// a ignorare il rosso — e con lui la novità vera, che è tutto ciò per cui questo
+// script esiste. Il testo lo dice, e l'uscita è 2 invece di 1.
 main().catch((e) => {
-  console.error(e);
-  process.exit(1);
+  console.error(`\n✗ ERRORE TECNICO — non è una novità di COLOMBO:\n  ${e}`);
+  console.error(
+    "\nIl sito non ha risposto come atteso (rete, 5xx, o la pagina è cambiata).\n" +
+      "Rilanciare. Se fallisce anche al secondo giro, guardare l'area download a mano.",
+  );
+  process.exit(2);
 });

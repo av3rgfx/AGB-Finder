@@ -3,16 +3,20 @@
 // NON scarica i 3,5 GB. Legge l'indice dei 79 zip con richieste Range sulle
 // central directory (pochi MB), decide quali foto servono con il modulo puro
 // `foto-archivio.ts`, e scarica SOLO quelle — una voce di zip alla volta, sempre
-// per intervalli. Sul listino 02-26 sono 228 foto su 707.
+// per intervalli. Sul listino 05-26 sono 320 foto su 707.
 //
 // Idempotente: ciò che è già su Blob non si riscarica, quindi rilanciarlo dopo un
 // listino nuovo costa la sola rilettura degli indici.
 //
-// Il confine col repo pubblico: i nomi degli ARCHIVI stanno nel repo — sono le 79
-// chiavi di `ARCHIVI`, lì da mesi — mentre i nomi dei FILE e i byte delle foto no.
-// Il contenuto di ogni zip si rilegge dal vivo da COLOMBO a ogni run, con le Range
-// sulle central directory: si localizza l'elenco degli ZIP, non l'indice dei FILE,
-// quindi l'abbinamento foto→codice resta misurato sulla realtà e non postulato.
+// Il confine col repo pubblico, detto per intero perché la mezza verità è già
+// costata un commento sbagliato: nel repo stanno i 79 nomi degli ARCHIVI
+// (`ARCHIVI`) e **quindici** nomi di singoli file (`FILE_MODELLO`, dove COLOMBO
+// scrive la serie nel nome). Non ci stanno gli altri ~690 nomi, e **mai** i byte
+// delle foto. Il contenuto di ogni zip si rilegge dal vivo a ogni run con le
+// Range sulle central directory: si localizza l'elenco degli ZIP, non l'indice
+// dei FILE, quindi l'abbinamento foto→codice resta misurato sulla realtà e non
+// postulato. Per questo il gate d'integrazione prende l'indice da
+// `COLOMBO_FOTO_INDEX`, un file fuori dal repo.
 //
 // Uso:
 //   BLOB_READ_WRITE_TOKEN=... pnpm foto:colombo
@@ -71,7 +75,30 @@ async function scarica(path: string, da?: number, a?: number): Promise<Buffer> {
   if (da !== undefined) headers.Range = `bytes=${da}-${a}`;
   const res = await fetch(BASE + encodeURI(path), { headers });
   if (!res.ok) throw new Error(`${res.status} su ${path}`);
-  return Buffer.from(await res.arrayBuffer());
+  const buf = Buffer.from(await res.arrayBuffer());
+  // Una Range servita CORTA è l'ultimo percorso residuo a un indice parziale, e
+  // sarebbe silenzioso: `parseCentralDirectory` si ferma al primo record che non
+  // ci sta e restituisce una lista più breve **senza sollevare**, quindi
+  // quell'archivio contribuirebbe meno foto, `voci.length > 0` passerebbe, e si
+  // scriverebbe comunque. Qui diventa un errore col nome dell'archivio.
+  const attesi = da === undefined ? undefined : a! - da + 1;
+  if (attesi !== undefined && buf.length !== attesi) {
+    throw new Error(`Range corta su ${path}: ${buf.length} byte invece di ${attesi}`);
+  }
+  return buf;
+}
+
+/**
+ * Il messaggio di un errore, `cause` compresa.
+ *
+ * `fetch` fallito dice solo `"fetch failed"`: il motivo vero — `ENOTFOUND`,
+ * `ECONNRESET`, un timeout — sta in `e.cause`, e buttarlo rende il messaggio più
+ * povero **proprio** nel caso in cui serve a distinguere la rete dalla tabella.
+ */
+function descrivi(e: unknown): string {
+  const err = e as { message?: string; cause?: { message?: string } };
+  const causa = err?.cause?.message;
+  return causa ? `${err.message} (${causa})` : (err?.message ?? String(e));
 }
 
 async function dimensione(path: string): Promise<number> {
@@ -81,7 +108,7 @@ async function dimensione(path: string): Promise<number> {
   return n;
 }
 
-/** Le voci `.jpg` di uno zip, senza scaricarlo: due Range e via. */
+/** Le voci `.jpg` di uno zip, senza scaricarlo: una HEAD e due Range. */
 async function vociDi(path: string): Promise<VoceZip[]> {
   const totale = await dimensione(path);
   const lunghezzaCoda = Math.min(65536 + 22, totale);
@@ -126,7 +153,7 @@ async function main() {
     try {
       voci = await vociDi(path);
     } catch (e) {
-      problemi.push(`${archivio} — ${(e as Error).message}`);
+      problemi.push(`${archivio} — ${descrivi(e)}`);
       continue;
     }
     // Uno zip che c'è ma è vuoto passa la HEAD e non produce alcun errore: i suoi
@@ -151,12 +178,34 @@ async function main() {
   // Non esiste un flag per proseguire: un archivio ritirato davvero si registra
   // togliendo la sua riga da ARCHIVI, in un commit che passa da review.
   if (problemi.length > 0) {
+    // ⚠️ IL CONSIGLIO DEVE DISTINGUERE, o fa perdere foto in un run VERDE.
+    //
+    // 79 archivi × 3 richieste = ~237 richieste a ogni run: un solo 502, un 429 o
+    // un timeout finisce qui esattamente come un 404. Se il messaggio dicesse
+    // «correggi la tabella» in tutti i casi, l'operatore toglierebbe una riga da
+    // ARCHIVI per un disservizio passeggero — e il run dopo sarebbe VERDE, con
+    // quegli articoli senza foto e l'unica traccia in `prima → dopo`, che si
+    // legge come «ovvio, ho tolto quella riga».
+    //
+    // Solo 404 e 403 dicono qualcosa sulla TABELLA; tutto il resto dice qualcosa
+    // sulla RETE, e si riprova.
+    const suTabella = problemi.filter((p) => / (404|403) /.test(p));
+    const consiglio =
+      suTabella.length === problemi.length
+        ? "Il fornitore non serve più quei nomi: correggere ARCHIVI in " +
+          "src/server/maniglie/foto-archivio.ts, in un commit."
+        : suTabella.length === 0
+          ? "Nessuno è un 404/403: sono errori di RETE, non della tabella. " +
+            "Riprovare il run; NON togliere righe da ARCHIVI."
+          : `${suTabella.length} su ${problemi.length} sono 404/403 e riguardano la ` +
+            "tabella; gli altri sono errori di rete. Riprovare il run prima di " +
+            "toccare ARCHIVI, e correggerla solo per i 404/403 che restano.";
     throw new Error(
-      `${problemi.length} ${problemi.length === 1 ? "archivio" : "archivi"} ` +
-        `di ARCHIVI non utilizzabili:\n  ` +
+      `${problemi.length} ${problemi.length === 1 ? "archivio non utilizzabile" : "archivi non utilizzabili"} ` +
+        `fra quelli di ARCHIVI:\n  ` +
         problemi.join("\n  ") +
-        `\nCorreggere src/server/maniglie/foto-archivio.ts e rilanciare. ` +
-        `Niente è stato caricato su Blob e niente è stato scritto a DB.`,
+        `\n${consiglio}` +
+        `\nNiente è stato caricato su Blob e niente è stato scritto a DB.`,
     );
   }
   console.log(`  ${foto.length} foto indicizzate`);
@@ -196,10 +245,11 @@ async function main() {
   console.log(
     `▶ abbinamento: ${perArticolo.size}/${articoli.length} articoli (${pct}%) con ${new Set(perArticolo.values()).size} foto · ${copertine.size} copertine di gruppo`,
   );
-  // Sta PRIMA della scrittura, e non alla fine come conferma: è l'informazione
-  // che serve per decidere se lasciar proseguire il run, non per constatare a
-  // cose fatte. E così la si vede anche in `--dry-run`, che è l'unico modo di
-  // esercitarla senza toccare Blob.
+  // Sta PRIMA della scrittura, e non alla fine come conferma, per una ragione
+  // sola: così la si vede anche in `--dry-run`, che è l'unico modo di esercitarla
+  // senza toccare Blob — e il dry run è dove un umano la legge davvero prima di
+  // lanciare il run vero. ⚠️ Non è un punto di decisione: qui lo script prosegue
+  // da sé, e in Actions non c'è nessuno davanti al log.
   const delta = perArticolo.size - conFotoPrima;
   console.log(
     `  articoli con foto a DB: ${conFotoPrima} → ${perArticolo.size} ` +

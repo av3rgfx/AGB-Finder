@@ -6,6 +6,7 @@ import {
   ARCHIVI,
   chiaveFoto,
   copertineDichiarate,
+  etichetteModello,
   finituraDiFoto,
   scattoDiProdotto,
   FILE_MODELLO,
@@ -202,9 +203,7 @@ describe.skipIf(!attivo)("foto ↔ catalogo vero", () => {
   it("ogni serie dichiarata aggancia almeno un codice a catalogo", () => {
     for (const [archivio, voce] of Object.entries(ARCHIVI)) {
       if (!voce.serie) continue;
-      const n = articoli.filter((a) =>
-        a.codeNorm.replace(/^0/, "").startsWith(voce.serie!),
-      ).length;
+      const n = articoli.filter((a) => a.codeNorm.replace(/^0/, "").startsWith(voce.serie!)).length;
       expect(n, `${archivio} → ${voce.serie}`).toBeGreaterThan(0);
     }
   });
@@ -289,9 +288,7 @@ describe.skipIf(!attivo)("foto ↔ catalogo vero", () => {
   });
 
   it("un articolo ZERO non riceve mai la foto liscia dello stesso modello", () => {
-    const perArchivio = new Map(
-      foto.map((f) => [chiaveFoto(f.archivio, f.nome), f] as const),
-    );
+    const perArchivio = new Map(foto.map((f) => [chiaveFoto(f.archivio, f.nome), f] as const));
     const articoliZero = articoli.filter((a) => varianteZero(a.name));
     expect(articoliZero.length).toBeGreaterThan(100); // 156 sul listino vero
 
@@ -320,6 +317,13 @@ describe.skipIf(!attivo)("foto ↔ catalogo vero", () => {
    * Proprietà e non conteggio: HALO e KUBO sono coperti PARZIALMENTE (5/25 e
    * 10/30 sul listino puro) perché è la regola della finitura che lavora, e il
    * seed del gate aggiunge righe che spostano i denominatori.
+   *
+   * ⚠️ Sulla COPERTINA si asserisce `etichetteModello()`, non
+   * `previewDiGruppo(g, chiaveNonNulla)`. La seconda sarebbe quasi una
+   * tautologia — `copertina.ts` restituisce la chiave che le passi a meno che
+   * l'etichetta non sia fra quelle dei modelli — quindi il peso lo porta
+   * esattamente quell'appartenenza, ed è quella che si verifica. È il difetto
+   * segnalato dalla review: un test che promette più di quel che guarda.
    */
   it("i cinque modelli del listino 2026 hanno foto di riga e copertina", () => {
     for (const g of ["LACONICA", "ROBOT6", "ROBOT6 S", "HALO", "KUBO"]) {
@@ -327,6 +331,7 @@ describe.skipIf(!attivo)("foto ↔ catalogo vero", () => {
         (a) => browseLabel("COLOMBO", a.name) === g && abbinati.has(a.id),
       );
       expect(conFoto.length, `${g}: nessun articolo con foto`).toBeGreaterThan(0);
+      expect(etichetteModello().has(g), `${g}: non è un gruppo-modello`).toBe(true);
       expect(previewDiGruppo(g, abbinati.get(conFoto[0]!.id)!), g).not.toBeNull();
     }
   });

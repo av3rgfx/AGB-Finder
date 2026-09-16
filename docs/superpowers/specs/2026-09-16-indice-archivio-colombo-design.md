@@ -27,15 +27,15 @@ La diagnosi è chiusa e **non va rifatta**:
 
 ### Misurato il 2026-09-16, dal container
 
-| misura                                                   | esito                                  |
-| -------------------------------------------------------- | -------------------------------------- |
-| chiavi di `ARCHIVI`                                       | **79** — una per zip, esatte           |
-| zip raggiungibili **per nome**, senza password            | **79 / 79**                            |
-| `GET /download/maniglie/archivio/`                        | **403** — nessun listing               |
-| homepage area download, **senza password**                | 200 · **29 categorie** · zero `.zip`   |
-| occorrenze di «archiv» / «zip» / «photo» in quelle pagine | **0**                                  |
-| `mostra.php?lang=en&catalogo=161`, **senza password**     | 200 → il PDF del catalogo Vision 2026  |
-| usi di `COLOMBO_DOWNLOAD_PASSWORD` nel repo               | **1** — solo `elencaArchivi`           |
+| misura                                                    | esito                                 |
+| --------------------------------------------------------- | ------------------------------------- |
+| chiavi di `ARCHIVI`                                       | **79** — una per zip, esatte          |
+| zip raggiungibili **per nome**, senza password            | **79 / 79**                           |
+| `GET /download/maniglie/archivio/`                        | **403** — nessun listing              |
+| homepage area download, **senza password**                | 200 · **29 categorie** · zero `.zip`  |
+| occorrenze di «archiv» / «zip» / «photo» in quelle pagine | **0**                                 |
+| `mostra.php?lang=en&catalogo=161`, **senza password**     | 200 → il PDF del catalogo Vision 2026 |
+| usi di `COLOMBO_DOWNLOAD_PASSWORD` nel repo               | **1** — solo `elencaArchivi`          |
 
 ---
 
@@ -44,7 +44,7 @@ La diagnosi è chiusa e **non va rifatta**:
 **Verdetto `/llm-council`, 5 advisor su 5.** L'argomento che decide non è la
 comodità:
 
-> **Il sito non ha mai deciso *cosa* scaricare.** `foto-colombo.ts:130` fa già
+> **Il sito non ha mai deciso _cosa_ scaricare.** `foto-colombo.ts:130` fa già
 > `if (!(archivio in ARCHIVI)) { log; continue; }`, quindi l'insieme scaricato è
 > sempre stato `sito ∩ ARCHIVI`, e il lato che limita è `ARCHIVI`.
 
@@ -79,10 +79,10 @@ pubblicare. Costo di rete: **zero in più**.
 
 ### 2.3 Cosa si perde, cosa si guadagna
 
-| | prima (raschiamento) | dopo (derivazione) |
-| --- | --- | --- |
-| archivio **aggiunto** dal fornitore | riga `⚠️ archivio non in tabella` | **invisibile** — §5 |
-| archivio **tolto** o rinominato | **silenzio**, e un run verde più povero | **errore col nome**, prima di Blob e DB |
+|                                     | prima (raschiamento)                    | dopo (derivazione)                      |
+| ----------------------------------- | --------------------------------------- | --------------------------------------- |
+| archivio **aggiunto** dal fornitore | riga `⚠️ archivio non in tabella`       | **invisibile** — §5                     |
+| archivio **tolto** o rinominato     | **silenzio**, e un run verde più povero | **errore col nome**, prima di Blob e DB |
 
 Non è una perdita secca: è uno **scambio**. E il ramo che si perde non produceva
 niente di automatico — un archivio non in tabella veniva comunque ignorato.
@@ -118,7 +118,7 @@ e senza che nessuno abbia guardato la copertura.
 
 1. **Errore duro se un archivio noto restituisce zero `.jpg`.** Misurato oggi:
    **0 su 79**. Non è mai legittimo, e un archivio svuotato passerebbe la `HEAD`.
-2. **Il run stampa `prima → dopo`** degli articoli con foto, leggendo il *prima*
+2. **Il run stampa `prima → dopo`** degli articoli con foto, leggendo il _prima_
    da `articles.imageUrl != null`. Zero stato nuovo: **il DB è già il registro
    dell'ultimo run**.
 
@@ -266,17 +266,26 @@ non spedito, questa non è una soluzione: è un desiderio.
 Due commenti in testa a `scripts/foto-colombo.ts` affermano il falso, e uno lo
 faceva **già prima** di questa modifica:
 
-| oggi dice | verità |
-| --- | --- |
-| «nessun elenco di nomi del fornitore dentro un repo pubblico» | **falso da mesi**: 79 chiavi di `ARCHIVI` sono nomi di cartelle del fornitore |
-| «la password dell'area download arriva da `COLOMBO_DOWNLOAD_PASSWORD`» | sparisce con la funzione |
+| oggi dice                                                              | verità                                                                        |
+| ---------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| «nessun elenco di nomi del fornitore dentro un repo pubblico»          | **falso da mesi**: 79 chiavi di `ARCHIVI` sono nomi di cartelle del fornitore |
+| «la password dell'area download arriva da `COLOMBO_DOWNLOAD_PASSWORD`» | sparisce con la funzione                                                      |
 
-Il confine vero, che va scritto: **i nomi degli ARCHIVI stanno nel repo; i nomi
-dei FILE e i byte delle foto no.** E resta vero — ed è la ragione per cui la §2
-è accettabile — che **il contenuto di ogni zip si rilegge dal vivo** a ogni run,
-con le Range sulle central directory: si localizza l'elenco degli **zip**, non
-l'indice dei **file**. L'abbinamento foto → codice continua a essere misurato
-sulla realtà, non postulato.
+⚠️ **La prima riscrittura era anch'essa mezza falsa, e l'ha trovata la review di
+branch.** Diceva «i nomi degli ARCHIVI stanno nel repo; i nomi dei FILE e i byte
+delle foto no»: ma `FILE_MODELLO` (`foto-archivio.ts:202-235`) contiene **15 nomi
+di singoli file** dell'archivio — `02_Pomoli/robot45_45`,
+`01_Milla_1/milla1_2CRCM`, … — verificati esistenti contro l'indice vivo. Avevo
+corretto la metà su `ARCHIVI` e lasciato falsa la metà sui file, che è il modo in
+cui un commento sbagliato sopravvive a una correzione.
+
+Il confine vero, per intero: **nel repo stanno i 79 nomi degli ARCHIVI e i 15
+nomi di file di `FILE_MODELLO`** (quelli in cui COLOMBO scrive la serie).
+**Non ci stanno gli altri ~690 nomi, e mai i byte delle foto.** E resta vero — ed
+è la ragione per cui la §2 è accettabile — che **il contenuto di ogni zip si
+rilegge dal vivo** a ogni run, con le Range sulle central directory: si localizza
+l'elenco degli **zip**, non l'indice dei **file**. L'abbinamento foto → codice
+continua a essere misurato sulla realtà, non postulato.
 
 È lo stesso confine che regge il gate: `COLOMBO_FOTO_INDEX` arriva da un JSON
 fuori dal repo, prodotto con `--dry-run --dump`.
@@ -285,15 +294,15 @@ fuori dal repo, prodotto con `--dry-run --dump`.
 
 ## 7. I rischi, e quali non si coprono
 
-| rischio | stato |
-| --- | --- |
-| archivio **tolto o rinominato** | ✅ coperto: errore col nome, prima di Blob e DB |
-| archivio **svuotato** (zip c'è, zero `.jpg`) | ✅ coperto: errore duro |
-| calo di copertura per cause nostre | ✅ **dichiarato** (`prima → dopo`), mai bloccato |
+| rischio                                                                                    | stato                                                                                                                                                                                                                                  |
+| ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| archivio **tolto o rinominato**                                                            | ✅ coperto: errore col nome, prima di Blob e DB                                                                                                                                                                                        |
+| archivio **svuotato** (zip c'è, zero `.jpg`)                                               | ✅ coperto: errore duro                                                                                                                                                                                                                |
+| calo di copertura per cause nostre                                                         | ✅ **dichiarato** (`prima → dopo`), mai bloccato                                                                                                                                                                                       |
 | **contenuto cambiato dentro un archivio noto** (un file rinominato, uno scatto sostituito) | 🔴 **NON coperto, e dichiarato.** È la forma di cambiamento più probabile. L'unica spia resta `FOTO_ATTESE`, che è globale. Il rimedio esiste (l'impronta dei nomi) ed è stato scartato per costo (§3.2): se capiterà una volta, si fa |
-| archivio **nuovo** per un modello già esistente | 🔴 non coperto da nulla, nemmeno dal guardiano |
-| prodotto nuovo annunciato solo in fiera o dal rappresentante | 🔴 non copribile con software: è la domanda **C8** |
-| il guardiano che marcisce in silenzio | ✅ guardia «zero categorie → errore», §5.3 |
+| archivio **nuovo** per un modello già esistente                                            | 🔴 non coperto da nulla, nemmeno dal guardiano                                                                                                                                                                                         |
+| prodotto nuovo annunciato solo in fiera o dal rappresentante                               | 🔴 non copribile con software: è la domanda **C8**                                                                                                                                                                                     |
+| il guardiano che marcisce in silenzio                                                      | ✅ guardia «zero categorie → errore», §5.3                                                                                                                                                                                             |
 
 ---
 
@@ -309,7 +318,7 @@ fuori dal repo, prodotto con `--dry-run --dump`.
   cose diverse a seconda dell'HTML del fornitore, e il run riuscito non direbbe
   quale strada ha preso.
 - **Niente mirror dei 3,5 GB**: risolve un problema che non abbiamo (79/79
-  rispondono) e renderebbe *invisibile* l'invecchiamento.
+  rispondono) e renderebbe _invisibile_ l'invecchiamento.
 - **Niente `--prova <nome>`** per interrogare un archivio ipotizzato: è una
   comodità per un gesto che si fa con un `curl`, e nessuno l'ha chiesta.
 
@@ -333,12 +342,12 @@ produrre `COLOMBO_FOTO_INDEX` — è morto con lei. **Questa PR lo resuscita**, 
 **Un run ops**: «Ops — Foto COLOMBO», idempotente (ciò che è già su Blob non si
 riscarica). Misurato oggi in locale sul catalogo vero, è ciò che deve produrre:
 
-| | atteso |
-| --- | --- |
-| archivi | 79 / 79, zero mancanti |
-| foto indicizzate | 707 |
-| articoli con foto | **1.609 → 1.728** (46,6 % → 46,8 %) |
-| file distinti su Blob | 304 → **320** (≈ 16 caricate) |
+|                       | atteso                                                                                                                          |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| archivi               | 79 / 79, zero mancanti                                                                                                          |
+| foto indicizzate      | 707                                                                                                                             |
+| articoli con foto     | **1.609 → 1.727** (46,6 % → 46,9 %)                                                                                             |
+| file distinti su Blob | 304 → **320** (≈ 16 caricate)                                                                                                   |
 | i cinque modelli 2026 | LACONICA **30/30** · ROBOT6 **36/36** · ROBOT6 S **36/36** · HALO **5/25** · KUBO **10/30** righe con foto, tutti con copertina |
 
 HALO e KUBO sono parziali perché è la **regola della finitura** che lavora: una
