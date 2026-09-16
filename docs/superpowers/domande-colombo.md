@@ -16,14 +16,17 @@
 
 ## In sintesi
 
-| #   | Domanda                                    | A chi        | Cosa sblocca                              |
-| --- | ------------------------------------------ | ------------ | ----------------------------------------- |
-| C1  | HPS/1: la sigla è `I1` o `HPS1`?           | COLOMBO      | 🔴 **19 righe** oggi escluse              |
-| C2  | La maggiorazione 3,5 % vale sul 05/26?     | COLOMBO      | 🔴 il **significato** di 251 prezzi       |
-| C3  | BT13 / BT19 BZG: ribasso o pezzo nuovo?    | COLOMBO      | 🟡 6 codici aggiornati, uno **−24 %**     |
-| C4  | Gli EAN dei codici 2026                    | COLOMBO      | 🟡 lettura del codice a barre in magazzino |
-| C5  | `BT19 BZG` oromat: due prezzi su due pagine | COLOMBO      | ⚪ un valore su uno                        |
-| C6  | MR11/MR15 · LC31/LC41 · LC71/LC81          | COLOMBO      | ⚪ 66 codici senza foto (aperta dal 05/08) |
+| #   | Domanda                                     | A chi   | Cosa sblocca                               |
+| --- | ------------------------------------------- | ------- | ------------------------------------------ |
+| C1  | HPS/1: la sigla è `I1` o `HPS1`?            | COLOMBO | 🔴 **19 righe** oggi escluse               |
+| C2  | La maggiorazione 3,5 % vale sul 05/26?      | COLOMBO | 🔴 il **significato** di 251 prezzi        |
+| C3  | BT13 / BT19 BZG: ribasso o pezzo nuovo?     | COLOMBO | 🟡 6 codici aggiornati, uno **−24 %**      |
+| C4  | Gli EAN dei codici 2026                     | COLOMBO | 🟡 lettura del codice a barre in magazzino |
+| C5  | `BT19 BZG` oromat: due prezzi su due pagine | COLOMBO | ⚪ un valore su uno                        |
+| C6  | MR11/MR15 · LC31/LC41 · LC71/LC81           | COLOMBO | ⚪ 66 codici senza foto (aperta dal 05/08) |
+| C7  | Dov'è l'indice dell'archivio fotografico?   | COLOMBO | 🟡 la scoperta di archivi nuovi            |
+| C8  | Come ci fate sapere di un prodotto nuovo?   | COLOMBO | 🔴 il **preavviso** sui prodotti nuovi     |
+| C9  | `ER MAN 2026`: quale edizione vale?         | Andrea  | 🟡 le foto vengono da lì                   |
 
 ---
 
@@ -35,6 +38,15 @@ La legenda del Vision 2026 stampa `HPS/1`, ma i codici d'ordine non possono
 contenere `/` in quella posizione, e le due riduzioni plausibili (`I1`, `HPS1`)
 esistono entrambe nel catalogo vecchio.
 
+**Una prova in più, 2026-09-16.** Indicizzando gli archivi fotografici dei
+prodotti 2026 si vede che COLOMBO nomina i propri file con la forma **`HPS1`**,
+in **entrambi** gli archivi interessati (Laconica e Halo). ⚠️ **Non chiude la
+domanda**: il nome del file dichiara la **finitura**, non la coda del **codice
+d'ordine**, e la pronta consegna di Andrea contiene comunque entrambe le forme
+(`0AM41RHPS1` per la Laconica, `0AM15FISSOI1` per la Halo). Sposta il peso
+dell'evidenza, non la decide — ed è esattamente la distinzione che il §9
+protegge.
+
 **Perché non si indovina.** È esattamente il divieto §9 (`A50904.22` non esiste,
 ed è il difetto che ha fatto disattivare PVC e battente): un codice inventato per
 concatenazione **esiste, ha un prezzo e non produce alcun warning**.
@@ -42,8 +54,8 @@ concatenazione **esiste, ha un prezzo e non produce alcun warning**.
 **Conseguenza oggi.** Le **19 righe** zirconium del Vision 2026 **non sono state
 importate**. Sono misurate e pronte: la risposta le fa entrare senza altro lavoro.
 
-**Come porla.** *«Per la finitura zirconium HPS/1 dei prodotti 2026, il codice
-d'ordine finisce in `I1` o in `HPS1`? Ce ne servono un paio di esempi completi.»*
+**Come porla.** _«Per la finitura zirconium HPS/1 dei prodotti 2026, il codice
+d'ordine finisce in `I1` o in `HPS1`? Ce ne servono un paio di esempi completi.»_
 
 ---
 
@@ -51,11 +63,11 @@ d'ordine finisce in `I1` o in `HPS1`? Ce ne servono un paio di esempi completi.�
 
 **Il fatto misurato.**
 
-| misura                                                        | esito             |
-| ------------------------------------------------------------- | ----------------- |
-| prezzi del PDF 05/26 uguali al **netto** del 02/26             | **11 su 11**      |
-| prezzi del PDF 05/26 uguali alla **somma** netto + 3,5 %       | **0 su 16**       |
-| occorrenze della parola «surcharge»/«maggiorazione» nel PDF    | **0**             |
+| misura                                                          | esito              |
+| --------------------------------------------------------------- | ------------------ |
+| prezzi del PDF 05/26 uguali al **netto** del 02/26              | **11 su 11**       |
+| prezzi del PDF 05/26 uguali alla **somma** netto + 3,5 %        | **0 su 16**        |
+| occorrenze della parola «surcharge»/«maggiorazione» nel PDF     | **0**              |
 | righe 02/26 in cui `surcharge` è il 3,5 % esatto di `priceList` | **3.456 su 3.456** |
 
 **Cosa NON sappiamo.** La misura **non discrimina** fra «la maggiorazione è stata
@@ -68,9 +80,9 @@ mai `0`, mai il 3,5 % calcolato (**verdetto `/llm-council` unanime 4/4**): `NULL
 l'unico che non afferma qualcosa che non sappiamo. La UI **dichiara entrambe le
 convenzioni**, così l'agente vede quale prezzo ha davanti.
 
-**Come porla.** *«I prezzi del listino Vision 2026 sono già comprensivi della
+**Come porla.** _«I prezzi del listino Vision 2026 sono già comprensivi della
 maggiorazione temporanea del 3,5 %, oppure la maggiorazione si aggiunge come nel
-02/26?»*
+02/26?»_
 
 ---
 
@@ -86,8 +98,8 @@ commerciale, oppure la sigla riusata per un pezzo **ridisegnato** — nel second
 caso l'articolo a magazzino e quello a listino non sono la stessa cosa, e la
 scheda mostrerebbe il prezzo di un prodotto diverso da quello nello scaffale.
 
-**Come porla.** *«I codici BT13 e BT19 BZG del 2026 sono gli stessi pezzi del
-listino 02/26 a un prezzo nuovo, o sono stati ridisegnati mantenendo la sigla?»*
+**Come porla.** _«I codici BT13 e BT19 BZG del 2026 sono gli stessi pezzi del
+listino 02/26 a un prezzo nuovo, o sono stati ridisegnati mantenendo la sigla?»_
 
 ---
 
@@ -100,9 +112,9 @@ nascono quindi **senza codice a barre**, mentre i 3.456 del 02/26 ce l'hanno tut
 **Quando diventa un problema.** Solo se in magazzino si legge il codice a barre
 per identificare l'articolo. Se si digita il codice, non cambia nulla.
 
-**Da chiedere prima ad Andrea:** *«in magazzino i nuovi li cercate leggendo il
-codice a barre o digitando il codice?»* — se sì, allora a COLOMBO: *«ci mandate
-gli EAN dei codici 2026, anche in un foglio a parte?»*
+**Da chiedere prima ad Andrea:** _«in magazzino i nuovi li cercate leggendo il
+codice a barre o digitando il codice?»_ — se sì, allora a COLOMBO: _«ci mandate
+gli EAN dei codici 2026, anche in un foglio a parte?»_
 
 ---
 
@@ -118,8 +130,8 @@ prodotto** (numero di pagina più basso) — una regola, non un numero incollato
 mano, così resta valida anche a prezzi cambiati. Un disaccordo **nuovo** fermerebbe
 l'import invece di passare inosservato.
 
-**Come porla.** *«Il prodotto BT19 BZG in oromat compare a pagina 8 e a pagina 13
-del Vision 2026 con due prezzi diversi: quale dei due vale?»*
+**Come porla.** _«Il prodotto BT19 BZG in oromat compare a pagina 8 e a pagina 13
+del Vision 2026 con due prezzi diversi: quale dei due vale?»_
 
 ---
 
@@ -133,8 +145,67 @@ archivi fotografici ciascuno** e nessuna fonte di COLOMBO li accoppia ai codici:
 ragione: la serie sbagliata darebbe una foto che esiste, si vede benissimo, **ed è
 di un altro prodotto**. I tre gruppi mostrano comunque la copertina.
 
-**Come porla.** *«Negli archivi fotografici, quale cartella corrisponde al modello
-MR11 e quale a MR15? Idem per LC31/LC41 e LC71/LC81.»*
+**Come porla.** _«Negli archivi fotografici, quale cartella corrisponde al modello
+MR11 e quale a MR15? Idem per LC31/LC41 e LC71/LC81.»_
+
+---
+
+## 🟡 C7 — Dov'è l'indice dell'archivio fotografico, adesso?
+
+**Il fatto misurato (2026-09-15/16).** L'area download è stata rifatta: non è più
+un elenco piatto di file ma un indice di **29 categorie**, che pubblicano **solo
+PDF**. Gli zip dell'archivio fotografico **ci sono ancora e rispondono** (79 su
+79, e senza password), ma il loro **elenco non è pubblicato in nessuna pagina**,
+e la directory risponde `403`.
+
+**Conseguenza oggi.** Le foto continuano ad arrivare, perché la lista dei 79
+archivi la teniamo noi. Ma **un archivio nuovo non è più scopribile**: i cinque
+modelli del 2026 li avevamo visti mesi prima del listino proprio così.
+
+**E serve anche per il RECUPERO**: il giorno in cui un archivio venisse
+rinominato, il run lo direbbe col nome — ma non avremmo alcun modo di scoprire
+il nome nuovo.
+
+**Come porla.** _«L'archivio fotografico non compare più fra le categorie
+dell'area download: c'è un indice, un feed o un contatto a cui chiederlo?»_
+
+---
+
+## 🔴 C8 — Come ci fate sapere che esce un prodotto nuovo?
+
+**Perché è la più importante delle nove.** Il preavviso sui prodotti nuovi ci
+arrivava per **effetto collaterale di uno script di conversione immagini**. È
+un'informazione commerciale — chi rifornisce il magazzino la vuole — e non
+dovrebbe dipendere da come è fatto l'HTML del sito del fornitore.
+
+**Cosa abbiamo messo al suo posto, nel frattempo.** Un controllo settimanale
+dell'indice pubblico dei documenti (`pnpm vigila:colombo`): un catalogo o un
+listino nuovo compare lì, ed è di fatto ciò che ha fatto partire le ultime due
+sessioni di lavoro. Ma arriva quando COLOMBO **pubblica**, non quando **decide**.
+
+**Come porla.** _«C'è un modo per essere avvisati quando uscite con un prodotto o
+una finitura nuova — una mailing list, il vostro agente di zona, un'area
+riservata? Oggi ce ne accorgiamo dal sito.»_
+
+---
+
+## 🟡 C9 — `ER MAN 2026`: quale edizione vale, `_100726` o `_140926`?
+
+**Trovata dal guardiano il giorno in cui è nato**, 2026-09-16: l'area download
+serve oggi `ER MAN 2026_140926.pdf`, mentre la copia che abbiamo — e che
+`CLAUDE.md` registra come «il catalogo giusto» — è `ER MAN 2026_100726.pdf`.
+COLOMBO ha pubblicato **un'edizione nuova** del catalogo maniglie e non ce ne
+eravamo accorti.
+
+**Perché ci riguarda.** `ER MAN 2026` è la fonte da cui è stata ricavata la
+mappa nome-commerciale → pagina, ed è il catalogo che un agente apre davanti al
+cliente. Un'edizione nuova può aggiungere modelli, e i modelli sono i gruppi
+dello sfoglio.
+
+**Come porla — ad Andrea, non a COLOMBO.** _«Sull'area download c'è un `ER MAN
+2026` del 14/09: quella che usiamo è di luglio. Scarichi la nuova e la metti
+nella cartella Drive?»_ Poi si misura cosa cambia, prima di toccare qualunque
+tabella.
 
 ---
 
