@@ -1,0 +1,39 @@
+name: Ops — Vigila COLOMBO (indice pubblico dei documenti)
+# Il segnale «COLOMBO ha pubblicato qualcosa di nuovo».
+#
+# Fino al 2026-09 arrivava come riga di log dentro `foto:colombo`, che gira a
+# mano: ha funzionato UNA volta, e per una ragione che non si ripete su
+# ordinazione — chi lanciava il run era la stessa persona che leggeva il log.
+# Qui il recapito È IL FALLIMENTO: un run schedulato rosso manda la mail al
+# proprietario del repo, senza un servizio in più e senza secret. E resta rosso
+# ogni settimana finché qualcuno non ratifica, con un commit datato.
+#
+# Nessun secret: le pagine dell'area download rispondono a una GET nuda.
+#
+# Il rumore è ACCETTATO e dichiarato: se COLOMBO aggiunge un PDF qualunque il job
+# diventa rosso, e si ratifica con `pnpm vigila:colombo --aggiorna` più un
+# commit. Non si filtra, perché un titolo che cambia («ER catalogue 2026» →
+# «2027») È il segnale, e filtrarlo vorrebbe dire indovinare quale cambiamento
+# conta. Se dopo qualche settimana risultasse insostenibile, la risposta è
+# restringere il confronto agli id e ai link, NON spegnere il job.
+on:
+  schedule:
+    # Lunedì alle 06:00 UTC. ⚠️ GitHub disattiva i workflow schedulati dopo 60
+    # giorni di inattività del repo: se smette di girare da solo, è questo.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+jobs:
+  vigila:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Enable corepack (pnpm 10)
+        run: corepack enable
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+      - name: Confronta l'indice dei documenti con quello registrato
+        run: pnpm vigila:colombo
