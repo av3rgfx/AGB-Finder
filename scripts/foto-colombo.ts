@@ -176,6 +176,15 @@ async function main() {
     where: { brand: MARCA },
     select: { id: true, code: true, codeNorm: true, name: true },
   });
+  // Il «prima» per la riga finale. NON è una soglia e non blocca nulla: la PR
+  // #60 fece scendere la copertura da 2.118 a 1.609 DI PROPOSITO, togliendo 350
+  // foto che mostravano la finitura di un altro codice. Un calo può essere la
+  // decisione giusta; quello che mancava era il numero di partenza, senza il
+  // quale il numero d'arrivo non si può leggere. Zero stato nuovo: il DB è già
+  // il registro dell'ultimo run.
+  const conFotoPrima = await db.article.count({
+    where: { brand: MARCA, imageUrl: { not: null } },
+  });
   const perArticolo = abbinaFoto(MARCA, articoli, foto);
   // Le COPERTINE non le sceglie nessun articolo, ed è il motivo per cui
   // esistono: dei gruppi che ne hanno una, nessuno ha un codice con la finitura
@@ -186,6 +195,15 @@ async function main() {
   const pct = ((100 * perArticolo.size) / articoli.length).toFixed(1);
   console.log(
     `▶ abbinamento: ${perArticolo.size}/${articoli.length} articoli (${pct}%) con ${new Set(perArticolo.values()).size} foto · ${copertine.size} copertine di gruppo`,
+  );
+  // Sta PRIMA della scrittura, e non alla fine come conferma: è l'informazione
+  // che serve per decidere se lasciar proseguire il run, non per constatare a
+  // cose fatte. E così la si vede anche in `--dry-run`, che è l'unico modo di
+  // esercitarla senza toccare Blob.
+  const delta = perArticolo.size - conFotoPrima;
+  console.log(
+    `  articoli con foto a DB: ${conFotoPrima} → ${perArticolo.size} ` +
+      `(${delta >= 0 ? "+" : ""}${delta})`,
   );
 
   if (dryRun) {
@@ -238,7 +256,9 @@ async function main() {
       db.article.update({ where: { id }, data: { imageUrl: chiave } }),
     ),
   ]);
-  console.log(`✓ ${perArticolo.size} articoli con foto, ${articoli.length - perArticolo.size} senza`);
+  console.log(
+    `✓ scritti ${perArticolo.size} articoli con foto, ${articoli.length - perArticolo.size} senza`,
+  );
   await db.$disconnect();
 }
 
