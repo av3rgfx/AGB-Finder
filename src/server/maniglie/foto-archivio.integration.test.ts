@@ -306,4 +306,28 @@ describe.skipIf(!attivo)("foto ↔ catalogo vero", () => {
       }
     }
   });
+
+  /**
+   * I CINQUE MODELLI DEL LISTINO VISION 2026, sul catalogo vero.
+   *
+   * Le loro righe in `ARCHIVI` sono state scritte quando i prodotti erano a
+   * catalogo ma non a listino, e sono rimaste **inerti** finché il run delle
+   * foto non è tornato a girare (2026-09-16). Un refuso in una di quelle cinque
+   * righe lascerebbe il gruppo come tessera-parola, e **nessun conteggio
+   * andrebbe a zero** — è la ragione per cui questo pavimento esiste, ed è la
+   * stessa forma dei «sette gruppi segnalati» della PR #61.
+   *
+   * Proprietà e non conteggio: HALO e KUBO sono coperti PARZIALMENTE (5/25 e
+   * 10/30 sul listino puro) perché è la regola della finitura che lavora, e il
+   * seed del gate aggiunge righe che spostano i denominatori.
+   */
+  it("i cinque modelli del listino 2026 hanno foto di riga e copertina", () => {
+    for (const g of ["LACONICA", "ROBOT6", "ROBOT6 S", "HALO", "KUBO"]) {
+      const conFoto = articoli.filter(
+        (a) => browseLabel("COLOMBO", a.name) === g && abbinati.has(a.id),
+      );
+      expect(conFoto.length, `${g}: nessun articolo con foto`).toBeGreaterThan(0);
+      expect(previewDiGruppo(g, abbinati.get(conFoto[0]!.id)!), g).not.toBeNull();
+    }
+  });
 });
